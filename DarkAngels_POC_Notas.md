@@ -976,6 +976,20 @@ dosificar. Verificado en PIE: el combate corre con 15 impactos encadenados y **c
 Recordatorio: el array hay que escribirlo **con los mismos 14 elementos**, no se puede cambiar
 tamaño y contenido a la vez.
 
+### El `HeavyGoundHitTriple` lleva UNA ventana, no tres
+
+Comprobado a ojo en el editor del montage: la pista 2 tiene **un solo `ANS_HitBox`** que abarca
+del frame ~17 al ~65 (de 80). Los tres notifies de la pista 1 son los `BP_Roar_Shake` de cada
+impacto, no hitboxes.
+
+**Consecuencia: 25 de daño y un derribo, no 75.** `AddHitActor` descarta a quien ya fue golpeado
+dentro de la misma activación, así que una ventana = un impacto por muy larga que sea.
+
+**Matiz:** al ser ~1,6 s de trace activo, el golpe entra **en cuanto el trace roza al jugador**,
+que puede no coincidir con ninguno de los tres impactos visibles. Hace el ataque muy difícil de
+esquivar y el daño puede sentirse adelantado. Si molesta, estrechar la ventana hasta el primer
+`BP_Roar_Shake`.
+
 ### La duración del montage decide si hay stunlock
 
 Con el derribo de **2,73 s**, el ciclo `montage + Wait 1,0 s` tiene que ser mayor o el jefe te
