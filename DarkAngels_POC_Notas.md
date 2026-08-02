@@ -615,6 +615,82 @@ muestran daño entrante y vida restante de forma permanente.
 matarlo. Para probar el ciclo completo de muerte conviene bajar `MaxHealth` (p. ej. 200) o
 subir el daño del arma. La guía decía 1000, pero eso hace la prueba tediosa.
 
+### POC v2 — estado final del combate ✅
+
+| Objetivo de la guía | Estado |
+|---|---|
+| Giant colocado en la arena | ✅ |
+| Giant caminando hacia el jugador | ✅ |
+| Giant atacando | ✅ |
+| Jugador dañando al Giant | ✅ 25 por golpe |
+| Jugador recibiendo daño del Giant | ✅ 25 por golpe |
+| Barra de vida del boss | ✅ `WB_AIStatBars` sobre su cabeza |
+| Victoria (muerte del boss) | ✅ ragdoll + disolución + destroy |
+| Derrota | ⏳ sin probar |
+
+**Falta:** variedad de ataques. El nodo `BP_DA_BossAttack` del árbol tiene sus 14 entradas
+apuntando todas a `SmashAttack1_Montage`, el único montage con `ANS_HitBox`. Ver más abajo.
+
+### Secuencia de muerte — hecha a mano, NO se usa la del padre
+
+`BP_Giant.EventTick` tiene su propia secuencia de muerte, pero **no se usa**: no ponemos
+`Death = true`. Motivo: ese Tick **no tiene guarda de ejecución única**, así que mientras
+`Death` sea true relanza su secuencia cada frame, incluido `SetSimulatePhysics(true)` decenas
+de veces por segundo. Eso acumulaba impulso y **lanzaba al Giant por los aires**.
+
+Nuestra versión, dentro de `TakeDamage`, se ejecuta una sola vez:
+
+```
+CurrentHealth = 0 · IsDead = true
+SetVisibility(StatBarsWidget, false)      ← si no, la barra queda flotando
+StopAnimMontage                            ← el root motion del ataque lo arrastraba
+StopLogic(BrainComponent) · StopMovement(controller)
+StopMovementImmediately + DisableMovement
+Capsula → NoCollision
+Mesh → ECC_PhysicsBody + QueryAndPhysics + SimulatePhysics(true)
+StartDissolve(Mesh)
+```
+
+Y `OnDissolveFinished` (dispatcher del `BP_DissolveComponent`) → **`DestroyActor`**. Así el
+actor se libera justo al acabar el efecto, sin temporizadores a ojo.
+
+**Coste asumido:** al no activar `Death`, `ABP_Giant` no reproduce su animación de muerte;
+pasa directo a ragdoll. Si se quisiera la animación, habría que reproducir `Death1` y
+ragdollizar al terminar.
+
+### Componentes de DCS montados en BP_DA_GiantBoss
+
+| Componente | Config |
+|---|---|
+| `TeamRelations` | `Team.Bots`, hostil a `Team.Players` |
+| `MeleeCollisionHandler` | `TraceRadius = 70`, sockets `hand_r/l`, `foot_r/l` |
+| `StatsManager` | `Stat.Health = 200`, `Stat.Damage = 25` |
+| `StatBarsWidget` | `WB_AIStatBars`, Z=300, 200x34 |
+| `DissolveEffect` | `MI_DissolveEffect`, speed 0.4 |
+
+**`TraceRadius = 70` fue clave.** Con 0 (el valor de DCS, pensado para hojas de espada) el
+puño del Giant pasaba rozando al jugador sin registrar impacto.
+
+### Para restaurar la variedad de ataques
+
+`Montage to Play_Short` en el **nodo** `BP_DA_BossAttack` de `BT_DA_Boss` (no en la clase)
+tiene 14 copias de `SmashAttack1_Montage`. Lista original, por si hay que reponerla:
+
+```
+SingleMediumAttack · DoubleMediumAttack · SmashAttack1 · SmashAttack2 ·
+HitTheGroundAttack · HeavyGoundHitL · HeavyGoundHitR · HeavyGoundHitTriple ·
+SmashAttackLong · CatchAndThrow · TurningAttack · GroundFallAttack (x2) · LowAttack
+```
+
+Para cada montage que se quiera reactivar: abrirlo, añadir un **`ANS_HitBox`** en una pista
+de notifies nueva, cubriendo la ventana del golpe. Truco: el notify de camera shake que ya
+trae el pack marca dónde está el impacto.
+
+`CatchAndThrow` y los `Throw_*` no funcionan con un trace simple — son agarres y proyectiles.
+
+**La variable `Montage to Play_Short` se marcó como `Instance Editable`**; sin eso no aparece
+en el panel Details del nodo del árbol ni se puede escribir por MCP.
+
 ### El trabajo real de la POC v2
 
 Los objetivos "jugador dañando al Giant" y "Giant dañando al jugador" son el hueso: DCS trae
