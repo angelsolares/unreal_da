@@ -1,6 +1,7 @@
 # Dark Angels POC — notas de trabajo
 
-Documento de traspaso entre sesiones. Última actualización: 2026-08-01 (paso 7 completado).
+Documento de traspaso entre sesiones. Última actualización: 2026-08-02 (derrota cerrada e
+iluminación construida; POC v2 completa).
 
 > **Copia de seguridad:** `_Backups/DarkAngels_Checkpoint_Paso7_2026-08-01/` — estado íntegro
 > al cerrar el paso 7, con hashes SHA256 verificados. Instrucciones de restauración en el
@@ -626,10 +627,144 @@ subir el daño del arma. La guía decía 1000, pero eso hace la prueba tediosa.
 | Jugador recibiendo daño del Giant | ✅ 25 por golpe |
 | Barra de vida del boss | ✅ `WB_AIStatBars` sobre su cabeza |
 | Victoria (muerte del boss) | ✅ ragdoll + disolución + destroy |
-| Derrota | ⏳ sin probar |
+| Derrota | ✅ muerte + respawn a los 3 s, sin errores |
 
 **Falta:** variedad de ataques. El nodo `BP_DA_BossAttack` del árbol tiene sus 14 entradas
 apuntando todas a `SmashAttack1_Montage`, el único montage con `ANS_HitBox`. Ver más abajo.
+
+## Derrota — ya venía en DCS, no hubo que añadir nada ✅
+
+Igual que el lock-on: el ciclo completo de muerte y reaparición del jugador ya está montado
+en `BP_CombatCharacter`. **No se escribió ni una línea.**
+
+### La cadena, leída nodo a nodo
+
+En el composite `EventGraph > Stats Events` (leído con `find_nodes` + `get_node_infos`,
+porque `read_graph_dsl` sigue sin poder con composites):
+
+```
+OnStatChanged(StatsManager)
+  → Switch on GameplayTag
+     └─ Stat.Health.Current → Branch (StatValue <= 0)
+          └─ true → Reactions|Kill
+```
+
+`fn Kill()`:
+
+```
+SetState(StateManager, "NewEnumerator6")      ← estado Dead; si ya lo estaba, no repite
+  DisableCameraLock(DynamicTargeting)          ← suelta el lock-on
+  DeactivateCollision(MeleeCollisionHandler)
+  RemoveFromParent(InGameWidget)               ← quita el HUD
+  SetCollisionProfileName(mesh, "Ragdoll") · SimulatePhysics(mesh, true)
+  si Activity.IsInCombat: SimulatePhysics sobre las armas de ambas manos
+  SetTimerByEvent(CreateEvent → Respawn, 3.0)
+```
+
+`fn Respawn()`:
+
+```
+L_Controller = GetController · UnPossess(L_Controller)
+GameMode.RestartPlayer(L_Controller) · DestroyActor
+```
+
+El `CreateEvent` del timer apunta a `Respawn` — confirmado con
+`BlueprintTools.get_create_event_function`, que devuelve `"Respawn"`. El nodo no lo enseña
+en sus pines, hay que preguntárselo con esa tool.
+
+**La guarda de ejecución única es el `SetState`**, no un booleano: `Kill` solo sigue si el
+cambio de estado devolvió `HasChanged = true`. Por eso no pasa lo que pasaba con el
+`EventTick` de `BP_Giant`, que relanzaba su secuencia cada frame.
+
+### Verificado en PIE ✅
+
+Prueba end-to-end sin tocar el teclado: se lanza PIE, el jugador se queda quieto en el
+PlayerStart y el Giant hace el resto.
+
+| Momento | Vida | `ReceivedHitCount` |
+|---|---|---|
+| Inicio | 100 / 100 | 0 |
+| Primeras muestras | 50 | 3 |
+| Antes de morir | 10 | 15 |
+| Tras el respawn | **100** (pawn nuevo) | 0 |
+
+El pawn `BP_CombatCharacter_C_0` **desaparece** del mundo y aparece `BP_CombatCharacter_C_1`
+en `(0, -634.25, -78.35)`, yaw 90 — a ras del suelo de la arena (Z = -78.35 es el suelo de
+-176.5 más la media cápsula, el mismo valor que el pawn original) y junto al PlayerStart.
+
+**Cero errores en el log** durante toda la secuencia: ni `Accessed None`, ni
+`Blueprint Runtime Error`, ni avisos de Behaviour Tree. El boss no se queda con una
+referencia colgando del pawn destruido — era el riesgo real, y no se materializa porque
+`BP_DA_BossChooseState` y `BP_DA_BossChase` resuelven el objetivo con `GetPlayerPawn(0)`
+en cada evaluación, así que recogen el pawn nuevo solos.
+
+### Detalle de balance a revisar
+
+Sobre el pawn recién reaparecido se midió limpio: **1 golpe = 20 de daño**
+(100 → 80, `ReceivedHitCount` 0 → 1). Pero durante la pelea el contador subió a 15 mientras
+la vida solo bajaba 90, o sea que **muchos impactos registran sin aplicar daño completo** —
+probablemente bloqueo (el jugador tiene `Stat.Block = 100`).
+
+Las notas anteriores decían "25 por golpe" para el daño del Giant. El valor observado es 20.
+No se ha investigado la diferencia; si el balance importa, empezar por ahí.
+
+### Lo que queda por ver a ojo
+
+La muerte y el respawn están probados por estado del mundo, no por vista. Falta confirmar en
+pantalla dos cosas que el MCP no alcanza:
+
+- Que el **HUD vuelve** tras reaparecer. `Kill` hace `RemoveFromParent(InGameWidget)`; el
+  pawn nuevo debería recrearlo en su `BeginPlay`, pero no está verificado.
+- Que el ragdoll de la muerte se ve bien y no sale disparado.
+
+## Iluminación construida ✅
+
+Hecho a mano (`Build > Build Lighting Only`) — **el MCP no puede lanzarlo**: no hay tool de
+build ni de comando de consola en ningún toolset. Es un clic obligatoriamente humano.
+
+Resultado leído del log:
+
+```
+Lightmass: 3.08 sec total [41/41 mappings]
+L_DA_SeraphArena_POC_BuiltData: lightmap data for 41 meshes in 8 LightmapResourceClusters
+Lightmap texture memory:  6.2 MB (8 texturas)
+Shadowmap texture memory: 6.8 MB (3 texturas)
+MapCheck: Map check complete: 0 Error(s), 0 Warning(s)
+```
+
+El error `WorldSettings_1 Maps need lighting rebuilt` **ya no aparece**.
+
+### Por qué NO se puede pasar las luces a Movable
+
+Fue la primera alternativa que se consideró, para no depender de un horneado que hay que
+rehacer cada vez que se mueve un cubo del graybox. **No sirve en este proyecto:**
+
+| Comprobación | Valor |
+|---|---|
+| `LightSource` / `SpotLight_1` / `SpotLight2` — `Mobility` | **Stationary** las tres |
+| `r.DynamicGlobalIlluminationMethod` | **0 = None** (Lumen apagado) |
+| `r.AllowStaticLighting` | 1 |
+| `PostProcessVolume_1` → `bOverride_DynamicGlobalIlluminationMethod` | `false` (no fuerza nada) |
+
+Con la GI dinámica en None, poner las luces en Movable deja la escena **sin rebote
+indirecto**: se vería más plana y más oscura, no mejor. Este proyecto depende del horneado.
+
+`Config/DefaultEngine.ini` **no tiene sección `[/Script/Engine.RendererSettings]`**, así que
+el valor 0 no viene de ahí. No se ha rastreado su origen; lo que importa es que es el valor
+efectivo en el editor.
+
+### Mejora opcional pendiente
+
+El build avisa: `No importance volume found, so the scene bounding box was used`. Añadir un
+**`LightmassImportanceVolume`** alrededor de la arena concentraría la calidad y acortaría el
+tiempo de horneado. No es un error, es una optimización.
+
+### ⚠️ El horneado hay que GUARDARLO
+
+`Content/DarkAngels/Maps/L_DA_SeraphArena_POC_BuiltData.uasset` en disco es de las
+**01:31**, y el build se hizo a las **15:06**. Mientras no se haga `Ctrl+Shift+S`, el
+horneado nuevo vive solo en memoria y al reabrir el nivel se pierde. Es el mismo fallo que
+ya pasó con el NavMesh.
 
 ### Secuencia de muerte — hecha a mano, NO se usa la del padre
 
