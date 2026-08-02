@@ -621,10 +621,10 @@ subir el daño del arma. La guía decía 1000, pero eso hace la prueba tediosa.
 | Objetivo de la guía | Estado |
 |---|---|
 | Giant colocado en la arena | ✅ |
-| Giant caminando hacia el jugador | ✅ |
-| Giant atacando | ✅ |
+| Giant caminando hacia el jugador | ✅ arreglado 2026-08-02 con Supported Agents — ver abajo |
+| Giant atacando | ✅ (solo si el jugador entra a ≤400 uu por su cuenta) |
 | Jugador dañando al Giant | ✅ 25 por golpe |
-| Jugador recibiendo daño del Giant | ✅ 25 por golpe |
+| Jugador recibiendo daño del Giant | ✅ 25 por golpe, medido 2026-08-02 |
 | Barra de vida del boss | ✅ `WB_AIStatBars` sobre su cabeza |
 | Victoria (muerte del boss) | ✅ ragdoll + disolución + destroy |
 | Derrota | ✅ muerte + respawn a los 3 s, sin errores |
@@ -825,6 +825,387 @@ trae el pack marca dónde está el impacto.
 
 **La variable `Montage to Play_Short` se marcó como `Instance Editable`**; sin eso no aparece
 en el panel Details del nodo del árbol ni se puede escribir por MCP.
+
+## Variedad de ataques — el nodo, leído de verdad
+
+### El grafo de `BP_DA_BossAttack`
+
+```
+EventReceiveExecuteAI(OwnerController, ControlledPawn)
+  cast ControlledPawn → BP_Giant           (CastFailed → FinishExecute(false))
+  intermediate_distance = |boss − GetPlayerPawn(0)|
+  si intermediate_distance <= 700 → PlayMontage(RandomArrayItem(Short))
+  si no                          → PlayMontage(RandomArrayItem(Long))
+     ambos: OnCompleted → FinishExecute(true) · OnInterrupted → FinishExecute(false)
+```
+
+Tres correcciones a lo que decían las notas anteriores:
+
+1. **El nodo tiene TRES arrays, no uno:** `montage to Play_Short`, `_Mid` y `_Long`.
+2. **`montage to Play_Mid` no se lee nunca.** El grafo solo usa `Short` y `Long`. Sus dos
+   entradas (`LowAttack`, `GroundFallAttack`) son datos muertos.
+3. **`Long` tampoco se dispara en esta arena.** `BP_DA_BossChooseState` solo entra en Attack
+   por debajo de `random(250..400)`, siempre < 700. Sus entradas (`Throw_Dirt`,
+   `Throw_Heavy_Rock`) son inalcanzables — y menos mal, porque son proyectiles sin implementar.
+
+**Conclusión: solo `montage to Play_Short` importa.**
+
+`intermediate_distance` **no es un umbral configurable**: es una variable que el grafo
+*escribe* con la distancia medida en cada ejecución. Su valor guardado (0) es irrelevante.
+El umbral de 700 está a fuego en el grafo.
+
+Confirmado de paso que los arreglos anteriores siguen puestos: `FinishExecute` está en las
+dos ramas y en `CastFailed`.
+
+### El `ANS_HitBox`, por dentro
+
+```
+Received_NotifyBegin → GetComponentByClass(BP_CollisionHandlerComponent) del owner
+                       → ActivateCollision(CollisionPartTag)
+Received_NotifyEnd   → DeactivateCollision
+```
+
+Es un **NotifyState** (tiene duración): la ventana de golpe es exactamente su longitud en la
+pista. `GetComponentByClass` devuelve el primero de esa clase; el Giant solo tiene
+`MeleeCollisionHandler`, así que no hay ambigüedad.
+
+`CollisionPartTag` vale `CollisionPart.PrimaryItem` por defecto. En el Giant **da igual**:
+`ActivateCollision` solo guarda el tag y lanza el evento; el trace real usa lo que configuró
+`SetCollisionMeshes` (un componente con los 4 sockets `hand_r/l`, `foot_r/l`).
+
+### ⚠️ Segunda modificación a un asset de terceros — encontrada
+
+Las notas registraban **una** sola (`CanCycleDirectionalTargets` en DCS). Hay una segunda:
+el `ANS_HitBox` se añadió **directamente sobre**
+`GiantBossProject/Anims/Attacks/SmashAttack1_Montage`, sin copia en DarkAngels. Verificado
+por `grep` binario: de los 19 montages del pack, ese es el único que menciona `ANS_HitBox`.
+
+### Copias en DarkAngels ✅
+
+Corregido: 12 montages de cuerpo a cuerpo duplicados a
+**`/Game/DarkAngels/Animations/Boss/`** con prefijo `AM_DA_` (la lección de siempre: nunca
+duplicar conservando el nombre).
+
+```
+AM_DA_SmashAttack1          ← conserva el ANS_HitBox de su original
+AM_DA_SmashAttack2          AM_DA_SmashAttackLong
+AM_DA_SingleMediumAttack    AM_DA_DoubleMediumAttack
+AM_DA_HitTheGroundAttack    AM_DA_TurningAttack
+AM_DA_HeavyGoundHitL        AM_DA_HeavyGoundHitR
+AM_DA_HeavyGoundHitTriple   AM_DA_LowAttack
+AM_DA_GroundFallAttack
+```
+
+**Duplicar un montage conserva sus notifies**, así que `AM_DA_SmashAttack1` funciona desde
+el primer momento sin tocar nada.
+
+Excluidos a propósito: `CatchAndThrow` y `LowGrabAttack` (agarres), `Throw_Dirt` y
+`Throw_Heavy_Rock` (proyectiles), `RoaringAttack` (no golpea), `JumpingAttack` (disponible si
+se quiere, root motion fuerte), `Death1` (muerte).
+
+`montage to Play_Short` reapuntado a las 14 ranuras con `AM_DA_SmashAttack1`. **El
+comportamiento no cambia**, pero el árbol ya no referencia el montage de terceros.
+
+### Trampa de `set_properties` con arrays
+
+No se puede **cambiar el tamaño y el contenido a la vez**:
+
+```
+ArrayRemove: elements changed alongside the size change; removed elements are ambiguous.
+```
+
+Hay que escribir el array **con el mismo número de elementos** que tenía. De ahí que se
+dejaran las 14 ranuras en vez de reducirlas a una. Ventaja no buscada: las 14 ranuras son
+una **bolsa ponderada** para el `RandomArrayItem` — repetir un montage lo hace más frecuente.
+
+### Cómo añadir el notify a los demás (paso manual)
+
+El MCP **no puede**: no existe toolset de montages ni de AnimNotifies, y la propiedad
+`Notifies` del montage tampoco es legible por `ObjectTools`.
+
+Para cada `AM_DA_*` que se quiera activar:
+
+1. Abrir `AM_DA_SmashAttack1`, seleccionar su `ANS_HitBox` en la pista de notifies y
+   **copiarlo** (`Ctrl+C`). Copiarlo en vez de crear uno nuevo evita tener que configurar el
+   `CollisionPartTag` a mano.
+2. Abrir el montage destino, `Ctrl+V` en una pista de notifies, y **ajustar inicio y
+   duración** a la ventana del golpe.
+3. Referencia para encontrar la ventana: el **notify de camera shake** que ya trae el pack
+   marca el instante del impacto. La ventana del `ANS_HitBox` debe abrirse un poco antes y
+   cerrarse justo después.
+
+**Orden importante:** añadir un montage a `montage to Play_Short` **antes** de ponerle el
+notify hace que el boss ejecute ataques que no hacen daño. Primero el notify, después la
+lista.
+
+### Estado: 5 montages activos
+
+Con `ANS_HitBox` puesto y verificado por `grep` binario sobre el `.uasset`:
+
+```
+AM_DA_SmashAttack1  ·  AM_DA_SmashAttack2  ·  AM_DA_SingleMediumAttack
+AM_DA_DoubleMediumAttack  ·  AM_DA_HitTheGroundAttack
+```
+
+Repartidos en las 14 ranuras de `montage to Play_Short` en proporción 3/3/3/3/2.
+
+**Verificación parcial en PIE:** con el jugador teletransportado a 169 uu del boss, un ataque
+impactó por **exactamente 25** de daño (100 → 75, `ReceivedHitCount` 0 → 1). Confirma que la
+cadena entera funciona con los montages copiados.
+
+**Pero solo se pudo medir UN impacto**, porque el empujón (`KnockbackForce = 850`) lanza al
+jugador fuera de alcance y el boss no puede volver a acercarse — no persigue. **Los 4 montages
+nuevos no están verificados individualmente.** Para hacerlo hace falta arreglar antes el Chase,
+o bajar temporalmente `KnockbackForce` a 0 y repetir la prueba a bocajarro.
+
+Sin notify todavía: `AM_DA_SmashAttackLong`, `AM_DA_TurningAttack`, `AM_DA_HeavyGoundHitL`,
+`AM_DA_HeavyGoundHitR`, `AM_DA_HeavyGoundHitTriple`, `AM_DA_LowAttack`,
+`AM_DA_GroundFallAttack`.
+
+Para repoblar la lista por MCP, escribir las 14 ranuras de golpe sobre
+`BT_DA_Boss:BP_DA_BossAttack_C_0`, propiedad `montage to Play_Short` (ojo: el nombre real
+lleva **espacios y minúscula inicial**, no `MontagetoPlay_Short`).
+
+### ⚠️ CORRECCIÓN: quién mataba al jugador en la prueba de la derrota
+
+En la prueba de la derrota se dio por hecho que el Giant bajaba la vida del jugador.
+**Era falso: lo mataba el `BP_WarriorAI`** del `BP_AIOSpawner2` que se conservó en el paso 7.
+
+La prueba lo destapó: con el jugador en el PlayerStart, el `BP_WarriorAI_C_0` estaba a
+`(88, -522)` — **92 uu del jugador** — mientras el Giant seguía a 1208 uu sin moverse.
+
+Eso explica el "20 de daño por golpe" que no cuadraba con los 25 documentados del Giant:
+
+| Atacante | Daño | De dónde sale |
+|---|---|---|
+| `BP_WarriorAI` | **20** | hereda de `BP_CombatCharacter`: `Stat.Damage` 10 base + 10 modifier |
+| `BP_DA_GiantBoss` | **25** | su `StatsManager.Stat.Damage` |
+
+**La derrota en sí sigue verificada** — el jugador murió y reapareció con vida completa y sin
+errores. Solo la atribución del daño estaba mal.
+
+**Lección:** en este nivel hay **dos** IAs hostiles. Cualquier medida de daño al jugador tiene
+que comprobar la posición de las dos antes de atribuir nada.
+
+### El Giant sigue sin perseguir ❌ — el problema NO estaba resuelto
+
+Reproducido el 2026-08-02 en dos sesiones de PIE seguidas. El Giant se asienta en
+`(0, 658.38, 89.65)` yaw `-90.000000000000014` y se queda ahí. Tres muestras **bit a bit
+idénticas**, y el mismo valor exacto en dos sesiones distintas de PIE.
+
+**Prueba de que la máquina de estados sí funciona:** al teletransportar el pawn del jugador a
+329 uu, el yaw pasó de `-90.000000000000014` a `-89.9848` y la X se movió. El boss despierta
+y ataca cuando el jugador entra solo en su rango. **Lo que está roto es únicamente el Chase.**
+
+Descartado, comprobado uno por uno:
+
+| Hipótesis | Resultado |
+|---|---|
+| NavMesh ausente o vacío | ❌ `RuntimeGeneration = Dynamic`, bounds X -2964..4940 · Y -988..2964 · Z -170..-140 |
+| Umbrales mal | ❌ `ChooseState`: ≥1500 Idle · ≤400 Attack · resto Chase. A 1219 uu toca Chase |
+| `AcceptanceRadius` grande | ❌ `BP_DA_BossChase` tiene `AIMoveTo(..., 145)` con sus dos `FinishExecute` |
+| El árbol usa los nodos originales | ❌ Selector → servicio `BP_DA_BossChooseState_C_0`, rama Chase → `BP_DA_BossChase_C_0`, decorador `State == 1` |
+| El servicio no tickea | ❌ `KeyName = "State"`, `Interval 0.5` |
+| El BT no arranca | ❌ existen `BehaviorTreeComponent_0`, `BlackboardComponent`, `PathFollowingComponent` |
+| `set_properties` rompió el nodo | ❌ `Mid` y `Long` intactos tras escribir `Short` |
+| Falta de foco del editor | ❌ el boss sí se asienta en los primeros frames; el mundo tickea |
+
+**Sospecha principal, sin confirmar: desajuste del agente de navegación.**
+
+| Actor | `agentRadius` | `agentHeight` | ¿Navega? |
+|---|---|---|---|
+| `RecastNavMesh-Default` | 35 | 144 | — |
+| `BP_WarriorAI` | 50 | 192 | ✅ |
+| `BP_DA_GiantBoss` | **102** | **528** | ❌ |
+
+El agente del Giant sale de su cápsula (radio 102, media altura 264) y pide **3× el radio y
+3,7× la altura** de la malla construida.
+
+**Probado y NO lo arregla:** bajar su `NavAgentProps` a 50/192 (los del Warrior) deja al boss
+igual de quieto. El cambio está **revertido** a 102/528.
+
+### Supported Agents — aplicado, pendiente de reinicio
+
+**Por qué la prueba de 50/192 no probaba nada:** con `SupportedAgents` **vacío** (que era el
+caso — `Config/DefaultEngine.ini` no tenía sección `[/Script/NavigationSystem.NavigationSystemV1]`),
+Unreal enruta *todos* los agentes a una única nav data sin comparar propiedades. Cambiar el
+radio del Giant no podía cambiar nada. El Supported Agent modifica el **enrutado**, que es lo
+que de verdad está en cuestión.
+
+Añadido a `Config/DefaultEngine.ini`:
+
+```ini
+[/Script/NavigationSystem.NavigationSystemV1]
++SupportedAgents=(Name="Default", AgentRadius=35,  AgentHeight=144, DefaultQueryExtent=(50,50,250)  ...)
++SupportedAgents=(Name="Giant",   AgentRadius=102, AgentHeight=528, DefaultQueryExtent=(150,150,500) ...)
+```
+
+**Van los dos a propósito.** Con la lista vacía todo funcionaba por el camino de respaldo; en
+cuanto se declara **una** entrada, el emparejamiento pasa a ser explícito y cualquier agente no
+cubierto se queda sin malla. `Default` mantiene al jugador y al `BP_WarriorAI` (50/192, que
+emparejan con 35/144 antes que con 102/528).
+
+`Config/` está bajo git: para deshacerlo, `git checkout Config/DefaultEngine.ini`.
+
+**Requiere reiniciar el editor.** `SupportedAgents` se lee al inicializar el sistema de
+navegación; en caliente no hace nada.
+
+Qué comprobar tras el reinicio:
+
+1. Que aparecen **dos** actores `RecastNavMesh` en el Outliner (uno por agente) en vez de uno.
+2. `Build > Build Paths` — aunque con `RuntimeGeneration = Dynamic` se regenera sola.
+3. En PIE, que el Giant se mueve desde `(0, 658)` hacia el jugador.
+
+### RESUELTO ✅ — el Chase funciona
+
+Tras reiniciar aparecieron **dos** actores en el Outliner: `RecastNavMesh-Default` y
+`RecastNavMesh-Giant` (`AgentRadius 102`, `AgentHeight 528`). Confirmado que la hipótesis del
+agente era correcta: **el problema era el enrutado, no las propiedades**.
+
+**Segundo escalón, el mismo que ya mordió antes:** la malla nueva nace con
+`RuntimeGeneration = Static` y bounds planos (`Z -170..-170`, sin superficie). Hubo que
+ponerle **`Dynamic`**, igual que a la `-Default` en su día, y guardar.
+
+> **Regla:** cada `RecastNavMesh` nuevo que cree el sistema de navegación viene en `Static`
+> por defecto. Hay que pasarlo a `Dynamic` uno por uno.
+
+Verificado en PIE: el Giant sale de `(0, 600)`, recorre más de 1200 uu y llega a
+`(-513, -513)` — a 514 uu del jugador — con el yaw cambiando todo el rato (`-125.6`, `-152.1`,
+`26.8`). **Navega de verdad.** El jugador acabó muerto con `ReceivedHitCount = 31`.
+
+### PROBLEMA NUEVO: el BT se cuelga al morir el jugador
+
+Tras la muerte y el respawn del jugador, el Giant se queda clavado en
+`(-513.00000311970757, -513.0000015764906)` yaw `26.808959960937518` — tres muestras **bit a
+bit idénticas**, con el pawn nuevo (`BP_CombatCharacter_C_1`) ya existiendo a 514 uu, distancia
+que exige Chase.
+
+Son **dos fallos distintos**, no uno:
+
+| # | Fallo | Estado |
+|---|---|---|
+| 1 | Sin nav data para el agente del Giant → nunca perseguía | ✅ arreglado (Supported Agents + Dynamic) |
+| 2 | El BT se cuelga cuando se destruye el pawn objetivo | ❌ abierto |
+
+**Sospecha del #2:** `BP_DA_BossChase` llama a
+`AIMoveTo(pawn, location, GoalActor = GetPlayerPawn(0), 145)`. `Respawn()` hace `DestroyActor`
+sobre el pawn, así que el **goal actor se invalida a mitad de movimiento**. Si en ese aborto no
+se dispara ni `OnSuccess` ni `OnFail`, `FinishExecute` no se llama nunca y el árbol queda
+colgado para siempre. Es exactamente la misma clase de bug que ya tenía `BP_BossAttack` en la
+rama larga.
+
+### La causa real del #2: los cubos del borde bloquean al Giant
+
+**La hipótesis del `GoalActor` destruido era falsa.** Se instrumentó `BP_DA_BossChase` con
+`PrintString` en la entrada de la tarea, en `OnSuccess` y en `OnFail`, y el log fue tajante:
+
+```
+[BP_DA_BossChase_C_0] CHASE: Execute
+[BP_DA_BossChase_C_0] CHASE: OnSuccess      ← en el MISMO milisegundo
+```
+
+en bucle, **con el Giant a 521 uu del jugador y un `AcceptanceRadius` de 145**.
+
+`AIMoveTo` no se cuelga: devuelve **éxito** porque Unreal calcula un **camino parcial** hasta
+el punto alcanzable más cercano, el Giant llega ahí, y reporta éxito. El árbol funciona
+perfectamente; lo que no existe es una ruta hasta el jugador.
+
+**Dónde se queda clavado:** `(-519.9, -516.3)` = **radio 732** desde el centro. Justo el anillo
+de los 8 `SM_DA_ArenaEdge`.
+
+**Prueba concluyente:** teletransportando al Giant a `(0, 0)` —dentro del anillo— salió
+disparado hacia el jugador y se paró en `(34.25, -409.64)`, a **144 uu**: exactamente su radio
+de aceptación. Y empezó a pegar: vida del jugador 100 → 50, `ReceivedHitCount` 3.
+
+**Las cuentas del anillo:**
+
+| Medida | Valor |
+|---|---|
+| Cubos en radio 730, cada 45°, escala `3,3,6` → **300×300** de planta | |
+| Cuerda entre centros | `2 × 730 × sin(22.5°)` = **558,7** |
+| Hueco libre entre cubos | 558,7 − 300 = **258,7** |
+| Lo que necesita el Giant (`agentRadius` 102) | **204** + margen |
+
+258 contra 204 es demasiado justo: con la erosión de Recast y la voxelización, el hueco **se
+cierra** en la navmesh del agente grande. El jugador (radio 35) pasa sin problema; el Giant no.
+
+**Por eso parecía "se cuelga al morir el jugador":** el Giant deambula con `BP_DA_BossRandomPatrol`
+(radio 500), acaba fuera del anillo — se le vio en radio 964 y 999, fuera incluso del disco de
+900 — y ya no puede volver a entrar. No es un cuelgue, es un encierro.
+
+### Arreglo APLICADO ✅ — cubos adelgazados
+
+Los 8 `SM_DA_ArenaEdge` pasan de escala `3,3,6` a **`2,2,6`**. Posición (radio 730, cada 45°
+desde 22.5°, Z=123.5) y rotación (yaw = ángulo polar) **sin tocar**.
+
+```
+hueco = 558,7 − 200 = 358,7   →  204 necesarios, 154 de margen
+```
+
+Mantiene los 8 pilares y la lectura de la arena, solo los adelgaza. Como los cubos siguen a
+Z=123.5 con escala Z=6, la altura no cambia y la base sigue a ras de suelo (-176.5).
+
+Alternativas descartadas: moverlos hacia fuera no cabe (la esquina se saldría del disco de 900
+y tocaría la pared en 944), y bajar el `agentRadius` del Giant lo haría atravesar los pilares.
+
+**Verificado en PIE, sin tocar el teclado:**
+
+- El Giant **entra en la arena**: se le midió en `(32.2, -307.5)` = radio 309, a 244 uu del
+  jugador. Antes se quedaba clavado en radio 732.
+- **Sigue operativo tras la muerte y el respawn del jugador** — se movía mientras existía ya el
+  pawn `BP_CombatCharacter_C_1`. El falso "cuelgue al morir" era solo el encierro.
+- El log de `CHASE` alterna `Execute` → `OnSuccess` / `OnFail` sin quedarse mudo: el árbol cicla.
+
+### Residuo conocido, no bloqueante
+
+El Giant todavía **deambula hasta el borde** (se le vio en radio 801-822 y, antes del arreglo,
+hasta 999, fuera del disco). Es `BP_DA_BossRandomPatrol`, que vaga en radio 500 desde donde
+esté, sin ninguna atadura a la arena. Ahora puede volver a entrar, así que no bloquea la POC,
+pero un jefe de arena no debería salirse.
+
+Arreglo natural cuando toque: acotar el patrullaje al disco (usar el centro de la arena como
+origen en vez de la posición del boss), o subir el umbral de Idle por encima del diámetro de la
+arena para que nunca entre en patrulla estando el jugador dentro.
+
+### ⚠️ Pendiente de limpieza
+
+`BP_DA_BossChase` **conserva los `PrintString` de diagnóstico**. Quitarlos cuando se cierre esto.
+
+### ⚠️ `write_graph_dsl` deja nodos huérfanos
+
+Al reescribir el `EventGraph` de `BP_DA_BossChase` se descubrió que el grafo tenía **6 nodos
+`AIMoveTo`** y más de 30 `CallFunction`, cuando `read_graph_dsl` solo muestra uno. Las
+reescrituras anteriores (700-1000 → 200 → 145) **no borraron los nodos viejos**: quedaron
+desconectados. Sigue ahí el `RandomFloatInRange` original.
+
+No compilan —están sueltos— pero engordan el asset y confunden. `read_graph_dsl` solo enseña lo
+conectado al evento; para ver la basura hay que usar `find_nodes`.
+
+**Segunda trampa del DSL:** al escribir `(AI|BehaviorTree|FinishExecute true)` el literal
+booleano **se guardó como `false`**. Hubo que corregirlo con `set_pin_value` sobre el pin
+`bSuccess`. **Releer siempre con `read_graph_dsl` después de escribir.**
+
+**No confundir con el aviso `LogCrowdFollowing: Unable to find RecastNavMesh instance`**: sale
+**una sola vez por sesión** al crear el `UCrowdManager` durante el init del mundo, antes de que
+la malla Dynamic se genere. Es de temporización y es inofensivo — se le atribuyó importancia
+que no tiene.
+
+### Ruta del nodo dentro del Behaviour Tree
+
+Descubierta navegando por propiedades, porque el MCP no tiene toolset de Behaviour Trees:
+
+```
+BT_DA_Boss.BT_DA_Boss                        → rootNode
+  :BTComposite_Selector_0                    → children[]
+    [0] BTComposite_Sequence_1   (Idle)
+    [1] BTComposite_Sequence_0   (Chase)
+    [2] BTComposite_Sequence_3   (Attack) → children[]
+          [0] BP_DA_BossAttack_C_0   ← el nodo con los arrays
+          [1] BTTask_Wait_0
+```
+
+`ObjectTools.get_properties` / `set_properties` **sí funcionan** sobre estos subobjetos. Lo
+que no se puede sigue siendo cambiar la *clase* de un nodo.
 
 ### El trabajo real de la POC v2
 
