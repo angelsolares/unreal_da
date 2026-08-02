@@ -894,6 +894,72 @@ Dependencias residuales hacia `GiantBossProject`, **inofensivas** y de solo lect
 Los nombres de clave y los valores del enum coinciden, así que resuelve correctamente. La
 copia de `BossEnum` en DarkAngels quedó **huérfana** — nadie la referencia, se puede borrar.
 
+## Reacción al golpe del Giant
+
+Dos capas, ambas en el `OnHit` de `BP_DA_GiantBoss`:
+
+1. **Stun nativo de DCS.** Se añadió el tag **`HitData.CanStun`** al `FHitData` (antes solo
+   llevaba `CanBeBlocked`). `BP_CombatCharacter.TakeDamage` tiene la rama que lo consume y
+   llama a `ApplyStatus` sobre el `StatusEffects`. Es lo mismo que hace `MakeMeleeHitData`.
+2. **Empujón.** `LaunchCharacter` con
+   `dirección × KnockbackForce + (0,0,350)`. La Z evita que el jugador salga raspando el
+   suelo. `KnockbackForce` es variable editable, **900** por defecto.
+
+### Un golpe = un impacto (ya lo garantiza DCS)
+
+No hace falta contador propio. `GetHitActors` / `AddHitActor` del `BP_CollisionHandlerComponent`
+mantienen la lista de actores golpeados **indexada por componente de colisión, no por socket**.
+El Giant tiene un único componente con 4 sockets, así que los cuatro comparten lista: el primero
+que impacta registra al objetivo y los demás quedan descartados. `RefreshHitActors` limpia en
+cada `ActivateCollision`.
+
+Por eso `OnHit` —y con él el daño y el empujón— se dispara **una sola vez por ataque**.
+
+## Lock-on — ya venía en DCS, no hubo que añadir nada
+
+`BP_DynamicTargetingComponent` (en `BP_CombatCharacter`) hace todo el trabajo:
+
+```
+SphereOverlapActors(jugador, 2500, [Pawn])
+  → IsTargetable()  (interfaz I_IsTargetable)
+  → ¿en pantalla? → ¿línea de visión libre?
+  → elige el más centrado (dot product)
+```
+
+Config: alcance **2500**, altura máx **640**, tipos **Pawn**, bloqueo por **WorldStatic**.
+
+### Teclas reales (de `IMC_Player`)
+
+| Acción | Teclado | Mando |
+|---|---|---|
+| `IA_ToggleTargeting` | **`Tab`** | clic stick derecho |
+| `IA_SwitchTargetToLeft` | `Q` | stick derecho izq. |
+| `IA_SwitchTargetToRight` | `E` | stick derecho der. |
+
+**No es la rueda del ratón** (esa cambia de arma). `Q` y `E` solo funcionan con un objetivo ya
+fijado. Ojo: `Q` también es `IA_UIBack` y `E` también es `IA_Interact` / `IA_UITakeAll`.
+
+En el juego, la tecla `K` abre la lista de controles de DCS.
+
+### El Giant es fijable
+
+Implementa `I_IsTargetable` (`IsTargetable` devuelve `not IsDead`) y tiene un `TargetWidget`
+con el `WB_LockIcon` de DCS a 50x50, Z=170, oculto por defecto. `OnSelected` lo muestra y
+`OnDeselected` lo oculta.
+
+### ⚠️ ÚNICA modificación hecha a un asset de terceros
+
+```
+BP_CombatCharacter → DynamicTargeting → CanCycleDirectionalTargets : false → true
+```
+
+Es un booleano sin lógica, para poder alternar objetivos con `Q` / `E`. **Se hizo sobre el
+asset de DCS porque el GameMode sigue usando `BP_CombatCharacter`, no
+`BP_DA_PlayerCharacter`** (verificado: `DefaultPawnClass = BP_CombatCharacter_C`).
+
+**Una actualización de DCS lo revertirá.** Cuando el GameMode pase a usar
+`BP_DA_PlayerCharacter`, conviene mover este ajuste al hijo y devolver el original a `false`.
+
 ## No hacer todavía (lista de la guía)
 
 Importar el Serafín · cambiar el esqueleto del personaje · quitar inventario · crear IA de boss ·
