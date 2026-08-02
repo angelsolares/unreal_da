@@ -959,9 +959,55 @@ jugador fuera de alcance y el boss no puede volver a acercarse — no persigue. 
 nuevos no están verificados individualmente.** Para hacerlo hace falta arreglar antes el Chase,
 o bajar temporalmente `KnockbackForce` a 0 y repetir la prueba a bocajarro.
 
-Sin notify todavía: `AM_DA_SmashAttackLong`, `AM_DA_TurningAttack`, `AM_DA_HeavyGoundHitL`,
-`AM_DA_HeavyGoundHitR`, `AM_DA_HeavyGoundHitTriple`, `AM_DA_LowAttack`,
-`AM_DA_GroundFallAttack`.
+### ⏭️ SIGUIENTE PASO — 9 montages listos, falta repartirlos
+
+Se añadieron 4 notifies más a mano. Verificado por `grep` binario: **9 montages con
+`ANS_HitBox`**.
+
+```
+SmashAttack1 · SmashAttack2 · SmashAttackLong
+SingleMediumAttack · DoubleMediumAttack · HitTheGroundAttack
+LowAttack · TurningAttack · HeavyGoundHitTriple
+```
+
+**Pendiente:** escribir el reparto en `montage to Play_Short` del nodo
+`BT_DA_Boss:BP_DA_BossAttack_C_0`. Ahora mismo sigue con 14 ranuras repartidas solo entre los
+5 antiguos (3/3/3/3/2), así que **los 4 nuevos no salen en el juego todavía**.
+
+Reparto acordado (14 ranuras):
+
+| Montage | Ranuras |
+|---|---|
+| `SmashAttack1` · `SmashAttack2` · `SmashAttackLong` | 2 cada uno |
+| `SingleMediumAttack` · `DoubleMediumAttack` | 2 cada uno |
+| `HitTheGroundAttack` · `LowAttack` · `TurningAttack` · `HeavyGoundHitTriple` | 1 cada uno |
+
+Recordatorio: el array hay que escribirlo **con los mismos 14 elementos**, no se puede cambiar
+tamaño y contenido a la vez.
+
+### La duración del montage decide si hay stunlock
+
+Con el derribo de **2,73 s**, el ciclo `montage + Wait 1,0 s` tiene que ser mayor o el jefe te
+pega otra vez en el suelo:
+
+| Montage | Duración | Ciclo | ¿Sirve? |
+|---|---|---|---|
+| `HeavyGoundHitL` | 1,40 s | ~2,40 s | ❌ pega en el suelo |
+| `HeavyGoundHitR` | 1,60 s | ~2,60 s | ❌ pega en el suelo |
+| `TurningAttack` | 1,93 s | ~2,93 s | ⚠️ 0,2 s de margen → peso 1 |
+| `LowAttack` | 2,20 s | ~3,20 s | ✅ |
+| `SmashAttackLong` | 2,27 s | ~3,27 s | ✅ |
+| `HeavyGoundHitTriple` | 2,67 s | ~3,67 s | ✅ |
+| `GroundFallAttack` | 2,70 s | ~3,70 s | ✅ |
+
+**`HeavyGoundHitL` y `HeavyGoundHitR` quedan fuera a propósito**: reintroducen el stunlock. Si
+se quieren, hay que subir antes el `Wait` del Behaviour Tree de 1,0 a 1,5 s.
+
+`GroundFallAttack` sin notify a propósito: root motion de salto, riesgo de desplazar al boss.
+
+**⚠️ Comprobar el Triple:** si lleva **tres** ventanas de `ANS_HitBox` (una por impacto), hace
+**75 de daño** y aplica el derribo tres veces, porque `RefreshHitActors` limpia la lista de
+golpeados en cada `ActivateCollision`. Con una sola ventana se comporta como un golpe normal.
 
 Para repoblar la lista por MCP, escribir las 14 ranuras de golpe sobre
 `BT_DA_Boss:BP_DA_BossAttack_C_0`, propiedad `montage to Play_Short` (ojo: el nombre real
