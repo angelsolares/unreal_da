@@ -902,8 +902,31 @@ Dos capas, ambas en el `OnHit` de `BP_DA_GiantBoss`:
    llevaba `CanBeBlocked`). `BP_CombatCharacter.TakeDamage` tiene la rama que lo consume y
    llama a `ApplyStatus` sobre el `StatusEffects`. Es lo mismo que hace `MakeMeleeHitData`.
 2. **Empujón.** `LaunchCharacter` con
-   `dirección × KnockbackForce + (0,0,350)`. La Z evita que el jugador salga raspando el
-   suelo. `KnockbackForce` es variable editable, **900** por defecto.
+   `Normalize2D(dirección) × KnockbackForce + (0,0,320)`. `KnockbackForce` es variable
+   editable, **850** por defecto.
+
+**El `Normalize2D` es imprescindible, no un adorno.** Sin él, usando la dirección 3D entre
+orígenes, el vector salía **apuntando hacia abajo**: el origen del Giant está a Z=93.7 (centro
+de su cápsula) y el del jugador a Z=-78, así que a corta distancia esa diferencia vertical
+domina el vector normalizado. Medido con un print: `X=113 Y=-1166 Z=-766`. El impulso existía
+y era grande, pero **clavaba al jugador contra el suelo**, por eso no se veía nada.
+
+También hace falta **`StopAnimMontage` sobre la víctima antes de lanzar**: con root motion
+activo, `CharacterMovementComponent` descarta la velocidad y manda la animación. El coste es
+perder la animación de reacción de DCS; para un golpe de un gigante, el empujón cuenta mejor
+la historia.
+
+**Descartado:** `ApplyImpulseToSelf` de DCS **no sirve** para esto. Está guardado por
+`if IsAnySimulatingPhysics(mesh)`, así que solo actúa sobre un ragdoll — es el impulso de
+muerte, no un empujón para un personaje vivo.
+
+**El tag `HitData.CanStun` se quitó**: se probó como sospechoso del empujón fallido y no era
+la causa, pero se dejó fuera porque el empujón ya da la reacción. Reañadirlo es trivial si se
+quiere también el aturdimiento.
+
+**Lección de método:** el fallo se encontró **imprimiendo el vector**. Las dos hipótesis
+previas (root motion, stun) eran plausibles y ambas erróneas. Cuando un nodo se ejecuta pero
+no tiene efecto, imprimir sus entradas antes de teorizar sobre el sistema que lo consume.
 
 ### Un golpe = un impacto (ya lo garantiza DCS)
 
