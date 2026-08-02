@@ -1,7 +1,7 @@
 # Dark Angels POC — notas de trabajo
 
-Documento de traspaso entre sesiones. Última actualización: 2026-08-02 (derrota cerrada e
-iluminación construida; POC v2 completa).
+Documento de traspaso entre sesiones. Última actualización: 2026-08-02 (polish de combate:
+knockdown snappy, i-frames, giro del Giant al atacar, traces de debug apagados).
 
 > **Copia de seguridad:** `_Backups/DarkAngels_Checkpoint_Paso7_2026-08-01/` — estado íntegro
 > al cerrar el paso 7, con hashes SHA256 verificados. Instrucciones de restauración en el
@@ -482,7 +482,8 @@ Consecuencia práctica: el print de vida va dentro de `TakeDamage` con `Key` fij
 | `TraceChanneltoCollideWith` | `TraceTypeQuery1` (sin usar) |
 | `IgnoredClasses` | **vacío** |
 | `TraceRadius` | **0** |
-| `Debug` | `false` — ponerlo a `true` dibuja los traces en pantalla |
+| `Debug` | `false` por defecto — `true` dibuja esferas/líneas **rojas** (`ForDuration`,
+  color `(1,0,0)`) en `DoTraceTest`. Ver sección *Traces de debug apagados* más abajo. |
 
 El mesh del Giant es `ECC_Pawn` con `QueryOnly`, así que **sobre el papel el trace sí debería
 impactarlo**. `PerformTrace` traza entre posiciones de socket del arma, descarta actores ya
@@ -1432,6 +1433,76 @@ activo, `CharacterMovementComponent` descarta la velocidad y manda la animación
 perder la animación de reacción de DCS; para un golpe de un gigante, el empujón cuenta mejor
 la historia.
 
+### Derribo (falldown) en vez de empujón ✅
+
+El empujón leía como "el jugador saltó hacia atrás", no como "lo machacaron". La culpa era del
+`+ (0,0,320)` en Z del `LaunchCharacter`, más el `StopAnimMontage` que deja al personaje en
+pose neutra mientras vuela.
+
+**DCS ya tenía la animación.** `M_Backstabbed` no es una animación suelta, son dos encadenadas
+en el slot **`FullBody`** (5,46 s en total, con root motion):
+
+| Segmento | Animación | Tramo |
+|---|---|---|
+| 1 | `Anim_GetHitBackFall` — cae de espaldas | 0 → 2,81 s |
+| 2 | `Anim_GetHitBackStandUp` — se levanta | 2,81 → 5,46 s (play rate 1,75) |
+
+**El StatusEffect de Backstab entero NO sirve.** Leído `BP_StatusEffectLogic_Backstab`: es un
+derribo **sincronizado** — añade `Activity.IsDisabled.Backstab` a víctima *y* atacante, y un
+Timeline (`UpdateApplierPosition`) **teletransporta al atacante** a una posición concreta
+respecto a la víctima para que las animaciones casen. Aplicado a un gigante de 5,3 m sería un
+desastre. Solo se reutiliza el montage.
+
+Copia propia en `/Game/DarkAngels/Animations/Player/AM_DA_Knockdown` (duplicado de
+`M_Backstabbed`). Duplicar conserva los segmentos y el slot.
+
+`OnHit` de `BP_DA_GiantBoss` queda:
+
+```
+TakeDamage(...)  ·  CastToCharacter  ·  StopAnimMontage
+Animation|PlayAnimMontage(victima, AM_DA_Knockdown)     ← sustituye a LaunchCharacter
+```
+
+`LaunchCharacter` **se eliminó**: su velocidad y el root motion del montage se pelean (la misma
+razón por la que hizo falta el `StopAnimMontage` en su día), y el root motion del
+`GetHitBackFall` ya arrastra al personaje hacia atrás y al suelo. `KnockbackForce` queda sin
+uso; se puede borrar la variable.
+
+**Editado por nodos, NO con `write_graph_dsl`.** Ese `EventGraph` contiene
+`EventTick → Parent: Tick` y el DSL no sabe crear nodos `Parent:`; reescribirlo lo habría roto.
+La secuencia fue: `delete_node` sobre el `LaunchCharacter`, `create_node`
+(`Animation|PlayAnimMontage`), dos `connect_pins` y un `set_pin_value` con la ruta del montage.
+Verificado que el `Parent: Tick` sigue ahí.
+
+`Animation|PlayAnimMontage` acepta el **Character directamente**, así que no hacen falta los
+`GetMesh` → `GetAnimInstance` que usa `Montage_Play`.
+
+### `InPlayRate = 2.0` — por qué ese número
+
+A rate 1.0 el derribo dura 5,46 s y **el boss encadenaba golpes con el jugador en el suelo**
+(confirmado jugando). El derribo tiene que ser más corto que el ciclo de ataque del jefe.
+
+Ciclo del jefe, medido sobre el árbol y los montages:
+
+```
+[State == Attack] Sequence → BP_DA_BossAttack → Wait 1.00s
+SmashAttack1_Montage = 67 frames @ 30 fps = 2,23 s
+→ ciclo completo ~3,2 s de un impacto al siguiente
+```
+
+| `InPlayRate` | Duración | Margen antes del siguiente golpe |
+|---|---|---|
+| 1.0 | 5,46 s | **negativo** — encadena |
+| 1.5 | 3,64 s | ~0 s, sigue sin dar respiro |
+| **2.0** | **2,73 s** | **~0,5 s de pie antes del siguiente impacto** |
+
+Se eligió **2.0**: es el primer valor que abre ventana real. Reparte 1,4 s de caída y 1,3 s de
+levantarse, que todavía lee como derribo y no como animación acelerada.
+
+**La otra palanca, si 0,5 s sigue siendo poco margen:** subir el `Wait` del nodo del Behaviour
+Tree (rama Attack) de 1,0 s a 1,5-2,0 s. Es el arreglo más de diseño — ralentiza al jefe en vez
+de acelerar al jugador — y no toca la animación.
+
 **Descartado:** `ApplyImpulseToSelf` de DCS **no sirve** para esto. Está guardado por
 `if IsAnySimulatingPhysics(mesh)`, así que solo actúa sobre un ragdoll — es el impulso de
 muerte, no un empujón para un personaje vivo.
@@ -1498,6 +1569,224 @@ asset de DCS porque el GameMode sigue usando `BP_CombatCharacter`, no
 
 **Una actualización de DCS lo revertirá.** Cuando el GameMode pase a usar
 `BP_DA_PlayerCharacter`, conviene mover este ajuste al hijo y devolver el original a `false`.
+
+## Knockdown como StatusEffect propio ✅ + GameMode al hijo
+
+### El problema: `CustomJump` cancela cualquier montage
+
+```
+fn CustomJump()
+  si IsInState(StateManager, "NewEnumerator1") Y CanJump():
+     si hay montage sonando → Montage_Stop(0.25)      ← cancelaba el derribo
+     Jump()
+```
+
+Está **diseñado** para eso. No mira actividades ni tags, solo esas dos condiciones, así que la
+única forma de bloquearlo sin tocar DCS es hacer fallar una: **`CanJump()`**, que se cae si el
+movimiento está desactivado.
+
+### Enums descifrados
+
+| Enum | Valores |
+|---|---|
+| `E_CharacterState` | `NewEnumerator1` = **Idle** · `NewEnumerator6` = **Dead** (lo confirma `Kill`) |
+| `E_StatusEffectType` | 0=Undefined · **1=Stun** · **2=Knockdown** · **5=Backstab** |
+
+Cuadra con `Impact` (usa 1 = Stun) y `TryBackstab` (usa 5 = Backstab).
+
+### DCS dejó el hueco `Knockdown` sin implementar
+
+`E_StatusEffectType` declara `Knockdown` pero **no existe ninguna lógica ni data asset** — solo
+están las carpetas `Stun/` y `Backstab/`. Es un punto de extensión que el pack dejó abierto.
+
+Rellenado con assets propios en `/Game/DarkAngels/Blueprints/Combat/`:
+
+| Asset | Qué es |
+|---|---|
+| `BP_DA_StatusEffectLogic_Knockdown` | Copia del Stun **sin VFX**. `OnApplied` → `AddActivity(IsDisabled.Movement)` **y** `AddActivity(IsImmortal)` (i-frames en el piso); `OnRemoved` quita ambas |
+| `DA_DA_StatusEffect_Knockdown` | data asset de referencia; en combate se usa `ApplyStatusByParams` con duración **2.39** (montage a rate 2.5) |
+
+### La clave: `ApplyStatusByParams` evita tocar DCS
+
+`BP_StatusEffectsComponent.DefaultStatusEffects` es un mapa `tipo → data asset` que solo tiene
+Stun y Backstab. Registrar Knockdown ahí habría exigido modificar `BP_CombatCharacter`.
+
+**No hace falta.** El componente expone `ApplyStatusByParams(Applier, StatusParams)`, que
+**recibe el struct directamente y no consulta el mapa**. Desde el `OnHit` del Giant:
+
+```
+ApplyStatusByParams(
+   GetComponentByClass(victima, BP_StatusEffectsComponent_C),
+   self,
+   MakeFStatusEffectParams(2.73, BP_DA_StatusEffectLogic_Knockdown_C, NewEnumerator2))
+```
+
+**Verificado en PIE** leyendo `ActiveStatusEffects` del jugador en vivo: `type: "Knockdown"`,
+`duration 2.73`, `applier` = el Giant, y `logicSpawnedObject` instanciado — o sea que
+`EventOnApplied` corrió.
+
+### GameMode al hijo ✅
+
+Aunque `ApplyStatusByParams` ya evitaba tocar DCS, se hizo igual el cambio de GameMode porque
+es lo que permite saldar la deuda del lock-on.
+
+**Sin tocar `BP_DCSGameMode`:** se creó `/Game/DarkAngels/Blueprints/World/BP_DA_GameMode` como
+**hijo** suyo, con `DefaultPawnClass = BP_DA_PlayerCharacter_C`, y se puso en
+`World Settings > GameMode Override` del nivel — que es propiedad del mapa, no de DCS.
+
+Verificado en el log: `LogLoad: Game class is 'BP_DA_GameMode_C'`, y el pawn en PIE es
+`BP_DA_PlayerCharacter_C_1`.
+
+### ⚠️ Paso manual pendiente: la deuda del lock-on
+
+`CanCycleDirectionalTargets` sigue en `true` sobre el `DynamicTargeting` de
+**`BP_CombatCharacter`** (asset de DCS). Ahora que el GameMode usa el hijo, toca moverlo:
+
+1. Abrir `BP_DA_PlayerCharacter`, seleccionar el componente heredado `DynamicTargeting`,
+   marcar `CanCycleDirectionalTargets = true`.
+2. Abrir `BP_CombatCharacter` (DCS) y devolverlo a **`false`**.
+
+**El MCP no puede hacerlo:** `StatusEffects` y `DynamicTargeting` son componentes *heredados*,
+y no existen como subobjetos del CDO del hijo hasta que se sobrescriben desde el editor.
+`ObjectTools` devuelve `is not valid Object` en todas las variantes de ruta.
+
+## Enemigo pequeño desactivado temporalmente ⏸️
+
+El `BP_WarriorAI` estaba ensuciando las pruebas del jefe: es quien mataba al jugador en la
+prueba de la derrota, y su daño (20) se confundía con el del Giant (25).
+
+**Apagado sin borrar nada.** `BP_AIOSpawner_C_2` (label `BP_AIOSpawner2`) tiene una propiedad
+pensada justo para esto:
+
+```
+startSpawningMethod :  SpawnOnGameStart  →  None
+```
+
+El enum `E_SpawnerStartSpawningMethod` admite `None | SpawnOnGameStart | SpawnOnRadius |
+SpawnOnRegion`. Con `None` el spawner nunca arranca. Verificado en PIE: **cero `BP_WarriorAI`**
+en el mundo, y el actor spawner sigue en el nivel.
+
+**Es propiedad de instancia**, así que no toca `BP_AIOSpawner`, que es asset de DCS.
+
+### Para volver a encenderlo
+
+Poner `startSpawningMethod` de nuevo en **`SpawnOnGameStart`**. El resto de su configuración
+está intacta y es esta:
+
+| Propiedad | Valor |
+|---|---|
+| `spawnedActorClass` | `BP_WarriorAI_C` |
+| `spawnAmount` | 1 |
+| `respawnMethod` | `EachIndividually` |
+| `respawnDelay` | 5 |
+
+**Por qué no otras vías:** `isSpawningStopped` es estado de runtime, no configuración, así que
+no persiste bien como ajuste de nivel. Borrar el spawner habría roto la referencia por GUID que
+`BP_PatrolPath3` tiene con él (ver paso 7). Y ocultar el actor no impide que la IA corra.
+
+## Polish de combate — sesión 2026-08-02 ✅
+
+Trabajo posterior al cierre de la POC v2. Todo en `Content/DarkAngels` salvo el flag
+`Debug` del CollisionHandler (se restauró al valor documentado en estas notas).
+
+### Roll = i-frames ✅
+
+`CanBeAttacked` de DCS solo mira `Activity.IsImmortal`. El roll pone estado `Rolling`
+(`NewEnumerator5`) pero **no** inmortalidad, y el Giant aplicaba knockdown aunque
+`TakeDamage` fallara.
+
+**Fix:**
+- Override en `BP_DA_PlayerCharacter` → `CanBeAttacked`: `false` si Dead (`NewEnumerator6`),
+  Immortal, o **Rolling** (`NewEnumerator5`).
+- En `BP_DA_GiantBoss` OnHit: knockdown solo si `TakeDamage` retorna éxito.
+
+### Giant temblando / ataques cortados ✅
+
+Causa: decorators del BT abortaban Attack al parpadear el State cerca del umbral (~400 uu)
+sin histéresis.
+
+**Fix en `BT_DA_Boss`:**
+- Attack decorator: `flowAbortMode = None`
+- Chase e Idle: `flowAbortMode = Self`
+
+**Fix en `BP_DA_BossChooseState` (histéresis):**
+- Entra Attack ≤ 350
+- Sale a Chase ≥ 700
+- Idle ≥ 1500
+- Solo escribe blackboard si el estado relevante cambia
+
+### Knockdown atrasado (~1 s) ✅
+
+Dos causas:
+1. `AM_DA_Knockdown` tenía `blendIn = 0.25` y el primer segmento `animStartTime = 0.5`.
+2. `TakeDamage` de DCS llama `PlayGetHitAnim` **antes** de que el Giant reproduzca el
+   knockdown → reacción competidora.
+
+**Fix montage** (`/Game/DarkAngels/Animations/Player/AM_DA_Knockdown`):
+- `blendIn = 0.05`, `blendOut = 0.15`
+- Fall `animStartTime = 0`, standup `startPos = 3.307`
+- Play rate desde OnHit: **2.5**
+
+**Fix OnHit del Giant** (antes de `TakeDamage`):
+```
+GetComponentByClass(victima, BP_StateManagerComponent)
+→ Cast → AddActivityForDuration(Activity.HasPlayedGetHitEffects, 0.5)
+→ TakeDamage(Message)   ; si WasAdded ya es false, DCS no reproduce get-hit
+→ si Result: StopAnimMontage → PlayAnimMontage(AM_DA_Knockdown, 2.5)
+→ ApplyStatusByParams(..., Duration 2.39, Knockdown logic)
+```
+
+Usar **`CanBeAttacked|TakeDamage(Message)`**, no `CanBeAttacked|TakeDamage` (ese resuelve a
+la función del Giant y el pin `self` es `BP_BaseAI`, no la víctima).
+
+`BreakHitResult` con bind simple agarra `bBlockingHit`; hay que multi-bind hasta `HitActor`
+o conectar el pin 9 a mano.
+
+### Invulnerable mientras está tirado ✅
+
+`BP_DA_StatusEffectLogic_Knockdown`:
+- `OnApplied` → también `AddActivity(Activity.IsImmortal)`
+- `OnRemoved` → `RemoveActivity(IsImmortal)`
+
+`CanBeAttacked` del player ya rechaza golpes con Immortal (misma vía que el roll).
+
+Duración del status alineada al montage: **2.39 s** (antes 2.73 / 2.98).
+
+### Giant se gira hacia el jugador antes de atacar ✅
+
+`BP_DA_BossAttack` a veces lanzaba el montage mirando a un lado vacío (el player ya estaba
+a la espalda). Chase sí actualizaba posición, pero Attack no reorientaba.
+
+**Fix en `BP_DA_BossAttack` EventReceiveExecuteAI** (antes de elegir montage):
+```
+FindLookAtRotation(GiantLoc, PlayerLoc)
+→ SetActorRotation(yaw only; pitch/roll = 0)
+→ luego distancia y PlayMontage Short/Long
+```
+
+### Traces de debug (esferas rojas) apagados ✅
+
+Documentado arriba: `BP_CollisionHandlerComponent.Debug`. En `DoTraceTest`, si `Debug`:
+`DrawDebugType = ForDuration` con color rojo.
+
+**Trampa:** el BP del Giant puede tener `Debug = false` y la **instancia del mapa**
+(`L_DA_SeraphArena_POC` → `BP_DA_GiantBoss_C_6.MeleeCollisionHandler`) seguir en `true`.
+El CDO del componente también se había quedado en `true`.
+
+**Fix aplicado:**
+1. CDO de `BP_CollisionHandlerComponent`: `Debug = false` (valor de estas notas).
+2. Template del Giant: `Debug = false`.
+3. BeginPlay del Giant: `SetDebug(false)` en `MeleeCollisionHandler` (fuerza la instancia).
+4. `BP_CombatCharacter.MeleeCollisionHandler`: `Debug = false` (traces del arma del player).
+
+Para volver a verlos al diagnosticar hits: poner `Debug = true` en el `MeleeCollisionHandler`
+del actor que interese (o comentar/quitar el `SetDebug(false)` del BeginPlay).
+
+### Pendientes que siguen abiertos
+
+- Deuda lock-on: `CanCycleDirectionalTargets` mover a `BP_DA_PlayerCharacter`, revertir en DCS
+- Quitar PrintString de diagnóstico en `BP_DA_BossChase` (si aún quedan)
+- Variedad de ataques: más `ANS_HitBox` en montages `AM_DA_*` (hoy casi todo SmashAttack1)
 
 ## No hacer todavía (lista de la guía)
 

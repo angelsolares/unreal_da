@@ -43,9 +43,10 @@ _Backups/
 # *.umap filter=lfs diff=lfs merge=lfs -text
 # *.uasset filter=lfs diff=lfs merge=lfs -text
 
-# Montages AM_DA_* : son DUPLICADOS de GiantBossProject (asset de pago).
-# Aunque solo llevan slot/tiempos/notifies y los keyframes siguen en el pack,
+# Montages AM_DA_* : son DUPLICADOS de assets de pago.
+#   Boss/   <- GiantBossProject/Anims/Attacks/  (+ ANS_HitBox a mano)
+#   Player/ <- DynamicCombatSystem M_Backstabbed (derribo del jugador)
+# Aunque solo llevan slot/tiempos/notifies y los keyframes siguen en los packs,
 # son assets derivados de contenido comercial. Misma regla que arriba.
-# Se recrean duplicando /Game/GiantBossProject/Anims/Attacks/ y volviendo a
-# colocar el ANS_HitBox. Ver DarkAngels_POC_Notas.md.
-Content/DarkAngels/Animations/Boss/
+# Como recrearlos: ver DarkAngels_POC_Notas.md.
+Content/DarkAngels/Animations/
