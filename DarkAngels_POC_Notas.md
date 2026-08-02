@@ -959,28 +959,19 @@ jugador fuera de alcance y el boss no puede volver a acercarse — no persigue. 
 nuevos no están verificados individualmente.** Para hacerlo hace falta arreglar antes el Chase,
 o bajar temporalmente `KnockbackForce` a 0 y repetir la prueba a bocajarro.
 
-### ⏭️ SIGUIENTE PASO — 9 montages listos, falta repartirlos
+### Variedad de ataques COMPLETA ✅ — 9 montages en rotación
 
-Se añadieron 4 notifies más a mano. Verificado por `grep` binario: **9 montages con
-`ANS_HitBox`**.
-
-```
-SmashAttack1 · SmashAttack2 · SmashAttackLong
-SingleMediumAttack · DoubleMediumAttack · HitTheGroundAttack
-LowAttack · TurningAttack · HeavyGoundHitTriple
-```
-
-**Pendiente:** escribir el reparto en `montage to Play_Short` del nodo
-`BT_DA_Boss:BP_DA_BossAttack_C_0`. Ahora mismo sigue con 14 ranuras repartidas solo entre los
-5 antiguos (3/3/3/3/2), así que **los 4 nuevos no salen en el juego todavía**.
-
-Reparto acordado (14 ranuras):
+**9 montages con `ANS_HitBox`**, verificado por `grep` binario sobre el `.uasset`, y repartidos
+en las 14 ranuras de `montage to Play_Short` (`BT_DA_Boss:BP_DA_BossAttack_C_0`):
 
 | Montage | Ranuras |
 |---|---|
 | `SmashAttack1` · `SmashAttack2` · `SmashAttackLong` | 2 cada uno |
 | `SingleMediumAttack` · `DoubleMediumAttack` | 2 cada uno |
 | `HitTheGroundAttack` · `LowAttack` · `TurningAttack` · `HeavyGoundHitTriple` | 1 cada uno |
+
+Los cinco de peso 2 son el núcleo; los de peso 1 son los situacionales o los que conviene
+dosificar. Verificado en PIE: el combate corre con 15 impactos encadenados y **cero errores**.
 
 Recordatorio: el array hay que escribirlo **con los mismos 14 elementos**, no se puede cambiar
 tamaño y contenido a la vez.
