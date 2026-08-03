@@ -1721,6 +1721,71 @@ Editado **por nodos, no con `write_graph_dsl`** — ese grafo tiene `Parent: Beg
 
 **Verificado en PIE leyendo el pawn en vivo:** `CanCycleDirectionalTargets: true`.
 
+## Tech roll: recuperación rápida con timing
+
+Ventana corta durante la caída del derribo en la que el roll sí funciona, como el "tech" de los
+Souls. **Solo fue posible gracias al cambio de GameMode**: toda la lógica vive en
+`BP_DA_PlayerCharacter`, sin tocar el input de `BP_CombatCharacter`.
+
+### Punto de partida: el roll ya estaba bloqueado
+
+Comprobado jugando. Importante porque la condición de DCS **no** lo explica sola:
+
+```
+fn CanRoll()          →  IsIdleNotFalling()  Y  stamina >= 1
+fn IsIdleNotFalling() →  IsInState(Idle)  Y  not IsFalling()
+```
+
+El Knockdown solo añade `Activity.IsDisabled.Movement` y **no cambia el estado**, así que sobre
+el papel `CanRoll` debería pasar. En la práctica no rueda, así que algo más lo bloquea — no se
+investigó porque el comportamiento deseado ya era el correcto. **Se verificó preguntando, no
+asumiendo:** la hipótesis inicial (que el roll escapaba libremente) era falsa.
+
+### Piezas
+
+| Pieza | Qué hace |
+|---|---|
+| `CanTechRoll` (bool en `BP_DA_PlayerCharacter`) | marca si estás dentro de la ventana |
+| `ANS_DA_TechWindow` | notify state: `NotifyBegin` → `SetCanTechRoll(true)`, `NotifyEnd` → `false` |
+| `TryTechRoll()` | la secuencia del tech |
+| Evento `IA_Roll` → `TryTechRoll` | engancha la tecla de esquiva |
+
+`fn TryTechRoll()`:
+
+```
+si CanTechRoll:
+   SetCanTechRoll(false)                          ← evita encadenar dos techs
+   InterruptStatus(StatusEffects, NewEnumerator2) ← quita el Knockdown y devuelve el movimiento
+   StopAnimMontage
+   Roll()
+```
+
+**El orden importa:** `InterruptStatus` va primero porque retira
+`Activity.IsDisabled.Movement`; sin eso `Roll()` no pasaría sus propias condiciones.
+
+### Colocación de la ventana
+
+`ANS_DA_TechWindow` sobre el arranque de `AM_DA_Knockdown`, cubriendo **el primer ~30 % del
+tramo de caída** ≈ **0,4 s** con el montage a rate 2.0. Si resulta muy difícil, alargarlo; si
+sale siempre, acortarlo. Es arrastrar el borde.
+
+### Trampas encontradas
+
+**El `AnimNotifyState` nuevo nace sin grafos.** Sus handlers son *overrides* de función, no
+eventos, y `BlueprintTools.create` deja el Blueprint vacío. Solución: **duplicar `ANS_HitBox`**,
+que ya trae `Received_NotifyBegin` / `Received_NotifyEnd` / `GetNotifyName`, y reescribirlos.
+
+**Ojo con `GetNotifyName` al duplicar:** la copia seguía reportando `"HitBox"` y en la pista del
+montage se veía idéntica a un hitbox real — imposible distinguirlas. Hay que reescribirla.
+Quedó devolviendo `"TechWindow"`.
+
+**Orden de argumentos en los setters del DSL:** `(Set<Var> valor target)`, primero el valor y
+luego el objetivo. Al revés da `Could not connect pin ... The pins may be incompatible types`.
+
+**El DSL no renderiza el cuerpo de los eventos de Enhanced Input.** `read_graph_dsl` muestra
+`(event EnhancedInputActionIA_Roll (...))` sin nada dentro aunque la conexión exista. Para
+verificarlo hay que usar `get_node_infos` sobre el nodo llamado y mirar sus `connected_pins`.
+
 ### Trampa: los componentes heredados no se leen ni escriben por MCP
 
 `StatusEffects` y `DynamicTargeting` vienen de `BP_CombatCharacter` y **no existen como
