@@ -1,12 +1,37 @@
 # Dark Angels POC — notas de trabajo
 
-Documento de traspaso entre sesiones. Última actualización: 2026-08-02 (polish de combate:
-knockdown snappy, i-frames, giro del Giant al atacar, traces de debug apagados).
+Documento de traspaso entre sesiones. Última actualización: 2026-08-02 (alas del pack en todos
+los enemigos, oleada secuencial y SFX de combate del jefe).
 
-> **Copia de seguridad:** `_Backups/DarkAngels_Checkpoint_Paso7_2026-08-01/` — estado íntegro
-> al cerrar el paso 7, con hashes SHA256 verificados. Instrucciones de restauración en el
-> `LEEME.md` de esa carpeta. El proyecto no está bajo control de versiones: esa copia es la
-> única red. Repetirla antes de empezar cambios grandes.
+> **Control de versiones: SÍ lo hay.** Repositorio git en la raíz, remoto
+> `github.com/angelsolares/unreal_da`. Es la red principal; los `_Backups/` son secundarios.
+>
+> **Los tres packs de pago están excluidos** del repo vía `.gitignore`:
+> `DynamicCombatSystem/`, `GiantBossProject/`, `Angel_wings_pack/` y
+> `DarkAngels/Animations/` (montages derivados). Verificado: `git ls-files` no devuelve ni un
+> archivo de ninguno. **Comprobarlo antes de cada push.**
+
+## Estado actual de la POC
+
+| Bloque | Estado |
+|---|---|
+| Arena, iluminación, NavMesh | ✅ |
+| El jefe persigue y ataca (9 montages en rotación) | ✅ |
+| Daño en ambas direcciones, muerte y respawn del jugador | ✅ |
+| Derribo (Knockdown propio) + tech roll con ventana | ✅ |
+| Alas del pack en jefe y enemigos pequeños | ✅ |
+| Oleada secuencial: 2 enemigos, uno tras otro, luego el jefe | ✅ |
+| SFX: impacto en ambas direcciones + swing del jefe | ✅ |
+| **Cero modificaciones a assets de pago** | ✅ |
+
+**Cabos sueltos conocidos** (detallados en sus secciones):
+
+- `AM_DA_DoubleMediumAttack` sin notify de swing; los otros 8 sí lo tienen.
+- El jefe se sale de la arena con `RandomPatrol`; puede volver, pero no debería salir.
+- `EnemiesSpawned` no se reinicia si el jugador muere a mitad de oleada.
+- El sonido al golpear al jefe es siempre de espada, sin leer el tag de tipo de daño.
+- `HeavyGoundHitTriple`: tres impactos pero un solo swing y una sola ventana de hitbox.
+- `BP_DA_BossChase` conserva `PrintString` de diagnóstico y nodos huérfanos.
 
 ## Contexto del proyecto
 
