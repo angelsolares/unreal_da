@@ -1556,11 +1556,35 @@ Se reproduce en la **localización del actor**, no en el punto de impacto. Para 
 5,7 m es aceptable; si molesta, sacar el `HitResult` del `BreakFHitData` que ya existe en el
 grafo.
 
-### Pendiente: sonido de swing
+### Sonido de swing ✅ — notify por montage
 
-El Giant ataca en silencio; solo suena el impacto. Para el silbido del golpe hace falta un
-**AnimNotify de sonido** en cada montage de ataque — trabajo manual, uno por montage, igual que
-los `ANS_HitBox`. `CUE_SwingLarge` es el que pega con un gigante.
+`CUE_SwingLarge` como **AnimNotify `Play Sound`** en cada montage de ataque. Paso manual: el MCP
+no toca notifies.
+
+**Es un notify instantáneo, no un NotifyState** — se ve como una marca, no como una barra.
+
+**Colocación:** un poco **antes** de que empiece la ventana del `ANS_HitBox`. El silbido suena
+cuando el brazo arranca, no cuando conecta. Con el `HitBox` empezando sobre el frame 29, el
+sonido va por el 20-24.
+
+**Cómo replicarlo:** seleccionar la marca, `Ctrl+C`, abrir el siguiente montage (pestaña
+`Asset Browser`, sin salir de la ventana), clic derecho en la pista → `Paste`, ajustar y
+`Ctrl+S`. Al pegarlo ya viene con el sonido asignado.
+
+**Cómo verificar que llegaron a disco** (sin fiarse de la vista):
+
+```bash
+for f in *.uasset; do
+  printf "%-32s hitbox:%s swing:%s\n" "${f%.uasset}" \
+    "$(grep -aoc ANS_HitBox "$f")" "$(grep -aoc CUE_SwingLarge "$f")"
+done
+```
+
+Ese chequeo destapó que `AM_DA_DoubleMediumAttack` se había quedado sin el swing aunque sí
+tenía el hitbox.
+
+`GroundFallAttack`, `HeavyGoundHitL` y `HeavyGoundHitR` van sin notify de ningún tipo **a
+propósito**: están fuera de la rotación.
 
 ## Reacción al golpe del Giant
 
