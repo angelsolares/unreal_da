@@ -1688,18 +1688,57 @@ es lo que permite saldar la deuda del lock-on.
 Verificado en el log: `LogLoad: Game class is 'BP_DA_GameMode_C'`, y el pawn en PIE es
 `BP_DA_PlayerCharacter_C_1`.
 
-### ⚠️ Paso manual pendiente: la deuda del lock-on
+### Deuda del lock-on SALDADA ✅ — cero modificaciones a assets de pago
 
-`CanCycleDirectionalTargets` sigue en `true` sobre el `DynamicTargeting` de
-**`BP_CombatCharacter`** (asset de DCS). Ahora que el GameMode usa el hijo, toca moverlo:
+Era la última atadura con DCS. Resuelta en dos mitades:
 
-1. Abrir `BP_DA_PlayerCharacter`, seleccionar el componente heredado `DynamicTargeting`,
-   marcar `CanCycleDirectionalTargets = true`.
-2. Abrir `BP_CombatCharacter` (DCS) y devolverlo a **`false`**.
+**1. Revertir DCS** (hecho a mano). Se quitó el override de `CanCycleDirectionalTargets` en
+`BP_CombatCharacter`. Verificado: el CDO del componente
+(`BP_DynamicTargetingComponent`) está en `false` y **ningún** Blueprint tiene override — el
+nombre de la propiedad no aparece en ningún `.uasset`, comprobado por `grep` binario.
 
-**El MCP no puede hacerlo:** `StatusEffects` y `DynamicTargeting` son componentes *heredados*,
-y no existen como subobjetos del CDO del hijo hasta que se sobrescriben desde el editor.
-`ObjectTools` devuelve `is not valid Object` en todas las variantes de ruta.
+**Con esto, el proyecto ya no modifica ningún asset de terceros.**
+
+**2. Activarlo en el hijo** — y aquí el override desde el editor **no funcionó**. Tres intentos
+marcando el checkbox en `BP_DA_PlayerCharacter > DynamicTargeting` no llegaron nunca a disco.
+
+> **Cómo se detectó:** el log solo tenía **un** `LogFileHelpers: Saving Package:
+> BP_DA_PlayerCharacter`, con el mismo timestamp que el `.uasset`. Todo lo posterior generaba
+> entradas de *compilar*, nunca de *guardar*. **Compilar y guardar son cosas distintas**, y el
+> asterisco de la pestaña es la única señal fiable.
+
+**Solución aplicada, sin depender del override:** se asigna en el `BeginPlay` de
+`BP_DA_PlayerCharacter` por cirugía de nodos:
+
+```
+EventBeginPlay
+  Parent: BeginPlay
+  SetCanCycleDirectionalTargets(true, GetDynamicTargeting)
+```
+
+Editado **por nodos, no con `write_graph_dsl`** — ese grafo tiene `Parent: BeginPlay` y
+`Parent: Tick`, y el DSL no sabe crear nodos `Parent:`.
+
+**Verificado en PIE leyendo el pawn en vivo:** `CanCycleDirectionalTargets: true`.
+
+### Trampa: los componentes heredados no se leen ni escriben por MCP
+
+`StatusEffects` y `DynamicTargeting` vienen de `BP_CombatCharacter` y **no existen como
+subobjetos del CDO del hijo** hasta que se sobrescriben desde el editor. `ObjectTools` devuelve
+`is not valid Object` en todas las variantes de ruta probadas:
+
+```
+BP_DA_PlayerCharacter.BP_DA_PlayerCharacter_C.DynamicTargeting      ✗
+BP_DA_PlayerCharacter.Default__BP_DA_PlayerCharacter_C.DynamicTargeting  ✗
+BP_DA_PlayerCharacter.BP_DA_PlayerCharacter_C:DynamicTargeting      ✗
+```
+
+**Lo que sí funciona:** leerlos sobre la **instancia en PIE**
+(`UEDPIE_0_...:PersistentLevel.BP_DA_PlayerCharacter_C_0.DynamicTargeting`), o sobre el CDO del
+**componente** (`BP_DynamicTargetingComponent.Default__BP_DynamicTargetingComponent_C`).
+
+Y para *escribir* en un componente heredado, la vía fiable es **asignarlo en `BeginPlay`** en
+vez de pelearse con el override del editor.
 
 ## Enemigo pequeño desactivado temporalmente ⏸️
 
