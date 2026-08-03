@@ -1852,7 +1852,49 @@ y el spawner apunta a él (`spawnedActorClass`).
 
 Hereda IA, combate y equipo; solo añade las alas.
 
-### Las alas se ocultan al morir el jefe
+### Las alas se DISUELVEN 1 s después del cuerpo
+
+Efecto buscado: que las alas "vivan" un poco más que el cuerpo.
+
+**`StartDissolve` funciona sobre cualquier malla.** Leído `BP_DissolveComponent:StartDissolve`:
+no toca parámetros del material existente, **lo sustituye** por instancias dinámicas de
+`MI_DissolveEffect` guardando los originales. Por eso da igual que las alas usen `MI_Wings`. Y
+`DissolvedComponents` es un **array**, así que admite varias mallas a la vez.
+
+```
+TakeDamage (muerte):
+   ...
+   SetTimerByFunctionName("DissolveWings", 1.0)     ← retardo
+   ...
+   StartDissolve(Mesh)                              ← cuerpo, inmediato
+
+fn DissolveWings():
+   StartDissolve(Wings)
+   SetTimerByFunctionName("DestroySelfAfterWings", 2.7)
+
+fn DestroySelfAfterWings():
+   DestroyActor
+```
+
+**Duración del disolve: 2,5 s exactos.** `DissolveInterpSpeed = 0.4` con
+`FInterpTo_Constant` → `1 / 0.4`. De ahí el 2,7 de margen.
+
+### ⚠️ Por qué hubo que mover el `DestroyActor`
+
+`OnDissolveFinished` **se dispara por CADA componente**, no cuando terminan todos — se ve en
+`UpdateDissolvedComponents`, que llama al dispatcher dentro del bucle por elemento.
+
+Con el `DestroyActor` colgando de ahí, el cuerpo terminaba a los 2,5 s, destruía el actor y
+**cortaba las alas a media disolución**. Se desconectó ese enlace y ahora la destrucción la
+programa `DissolveWings` con su propio temporizador.
+
+**Consecuencia:** `OnDissolveFinished` queda vacío. Si algún día se quita `DissolveWings` de la
+cadena de muerte, el jefe **no se destruirá nunca**.
+
+Se descartó comparar qué componente terminó porque no hay nodo de igualdad de objetos accesible
+por MCP (`Math|Object|...` no devuelve nada, y `Equal(Object)` solo encuentra el de Asserts).
+
+### Alternativa anterior, descartada
 
 Los Warriors desaparecen enteros al morir, pero el Giant **se disuelve**: el cuerpo hace
 ragdoll + dissolve y el actor no se destruye hasta `OnDissolveFinished`. Las alas, al ser un
