@@ -1894,6 +1894,69 @@ RelativeScale3D   (3.0, 0.15, 1.8)
 **Sirve para validar el pipeline antes de gastar:** cuando lleguen alas de verdad, se cambia el
 componente a `SkeletalMeshComponent` y se le asigna el mesh.
 
+### Pack comprado y migrado ✅
+
+Se compró **"Animated angel wings fifth"**. Migrado a `Content/Angel_wings_pack/` con solo
+**12 assets** — sin `ThirdPerson`, sin `Map`, sin las animaciones del `Base_avatar`:
+
+```
+Meshes/      SKM_Wings5 · SK_Wings5_Skeleton · PA_Wings5_PhysicsAsset
+Animations/  AS__AS_W5_idle_ground · AS__AS_W5_flapping
+Materials/   M_Wings · M_Wings_bones · MI_Wings
+Textures/    4 (base color, opacity, normal, AO)
+```
+
+**Excluido del repo** en `.gitignore` (`Content/Angel_wings_pack/`): es asset de pago.
+
+> **Migrar arrastra las dependencias completas.** Bastó seleccionar las dos animaciones: el
+> diálogo *Asset Report* incluyó solo el mesh, el esqueleto, el physics asset, materiales y
+> texturas. No hicieron falta dos pasadas.
+>
+> **`Migrate` está en el submenú `Asset Actions`**, no en el nivel principal del menú
+> contextual. En UE5 lo movieron ahí.
+
+### El esqueleto de las alas es independiente ✅
+
+```
+Bone (raíz)
+├── R_Wing3 → R_Wing3_001 ... _012
+└── L_Wing3 → L_Wing3_001 ... _012
+```
+
+**Ningún hueso de Manny.** Son un `SkeletalMesh` autónomo que se engancha por socket a
+cualquier personaje y **anima por su cuenta**. Era la única duda técnica que quedaba.
+
+**Las dos alas van en un solo mesh**, así que basta **un** `SkeletalMeshComponent`, no dos.
+
+### Componente `Wings` en `BP_DA_GiantBoss`
+
+Sustituye a los dos `WingPlaceholder` (eliminados).
+
+| Propiedad | Valor |
+|---|---|
+| `SkeletalMeshAsset` | `SKM_Wings5` |
+| `AnimationMode` | `AnimationSingleNode` |
+| `AnimationData.AnimToPlay` | `AS__AS_W5_idle_ground` |
+| `bSavedLooping` / `bSavedPlaying` | `true` / `true` |
+| `RelativeLocation` | `(-25, 0, 600)` |
+| `RelativeScale3D` | `2.5` |
+
+### ⚠️ Escala y posición SIN AJUSTAR
+
+Los valores de arriba son un punto de partida calculado, **no verificados a ojo**. Con
+`Z = 400` y escala 3 los bounds del actor llegaban a `Z = -359`, es decir **las alas colgaban
+183 uu por debajo del suelo** (-176,5). Se subió a `Z = 600` y escala 2,5, pero sigue sin
+comprobarse en pantalla.
+
+**Ajustar mirando el viewport**, no por bounds: las lecturas de `get_actor_bounds` sobre un
+skeletal mesh animado no son fiables para esto (tras el ajuste los bounds en X se *encogieron*,
+lo que no cuadra con la geometría). Los dos números a tocar son `RelativeLocation.Z` y
+`RelativeScale3D` del componente `Wings`.
+
+**Captura del viewport por MCP: poco útil aquí.** El billboard del `SPAWNER` tapa al Giant y el
+viewport tiene una relación de aspecto muy alargada. Y cada `CaptureViewport` devuelve ~1,5 MB
+de base64 que hay que volcar a PNG a mano para poder verlo.
+
 ### ⚠️ Paso manual: el socket
 
 Están colgando del **componente** de malla, no del **hueso**. `AttachSocketName` **no se puede

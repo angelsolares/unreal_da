@@ -50,3 +50,8 @@ _Backups/
 # son assets derivados de contenido comercial. Misma regla que arriba.
 # Como recrearlos: ver DarkAngels_POC_Notas.md.
 Content/DarkAngels/Animations/
+
+# Angel wings fifth (Nikita00, Fab) - asset de pago migrado desde su proyecto.
+# Cada persona que clone debe comprarlo y migrar: SKM_Wings5 desde
+# Angel_wings_pack/Meshes/ arrastra esqueleto, materiales y texturas.
+Content/Angel_wings_pack/
