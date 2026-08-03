@@ -1237,6 +1237,21 @@ conectado al evento; para ver la basura hay que usar `find_nodes`.
 booleano **se guardó como `false`**. Hubo que corregirlo con `set_pin_value` sobre el pin
 `bSuccess`. **Releer siempre con `read_graph_dsl` después de escribir.**
 
+> ### ⚠️ REGLA: `write_graph_dsl` corrompe los literales `true`
+>
+> No es un caso aislado. Ha pasado **cuatro veces** hasta ahora, siempre igual: se escribe
+> `true` y se guarda `false`. Los `false` sí se respetan.
+>
+> | Dónde | Pin |
+> |---|---|
+> | `BP_DA_BossChase` (×2, al instrumentar y al limpiar) | `FinishExecute.bSuccess` |
+> | `BP_DA_GiantBoss:HideUntilWaveCleared` | `SetActorHiddenInGame.bNewHidden` |
+> | `BP_DA_GiantBoss:CheckWaveCleared` | `SetActorEnableCollision.bNewActorEnableCollision` |
+>
+> **Procedimiento obligatorio:** tras cada `write_graph_dsl`, releer con `read_graph_dsl` y
+> corregir cada `true` perdido con `set_pin_value`. Es silencioso: compila sin errores y el
+> comportamiento sale al revés.
+
 **No confundir con el aviso `LogCrowdFollowing: Unable to find RecastNavMesh instance`**: sale
 **una sola vez por sesión** al crear el `UCrowdManager` durante el init del mundo, antes de que
 la malla Dynamic se genere. Es de temporización y es inofensivo — se le atribuyó importancia
@@ -1805,7 +1820,101 @@ BP_DA_PlayerCharacter.BP_DA_PlayerCharacter_C:DynamicTargeting      ✗
 Y para *escribir* en un componente heredado, la vía fiable es **asignarlo en `BeginPlay`** en
 vez de pelearse con el override del editor.
 
-## Enemigo pequeño desactivado temporalmente ⏸️
+## Oleada: primero los Warriors, luego el Giant ✅
+
+El Giant ya no está en pantalla desde el inicio. Aparece **cuando la oleada de `BP_WarriorAI`
+está limpia**.
+
+Implementado **dentro de `BP_DA_GiantBoss`**, sin actores nuevos, para que el `WaveManager`
+completo se pueda construir encima sin tirar esto.
+
+| Función | Qué hace |
+|---|---|
+| `HideUntilWaveCleared()` | En `BeginPlay`: `SetActorHiddenInGame(true)`, quita colisión, **`StopLogic`** del BrainComponent y arranca `SetTimerByFunctionName("CheckWaveCleared", 0.5, looping)` |
+| `CheckWaveCleared()` | `GetAllActorsOfClass(BP_WarriorAI_C)`. Si hay > 0 → `WaveStarted = true`. Si hay 0 **y** `WaveStarted` → aparece, recupera colisión, `RestartLogic` y `ClearTimerByFunctionName` |
+
+**La guarda `WaveStarted` es imprescindible.** Sin ella, en el primer frame hay 0 Warriors
+—todavía no han spawneado— y el Giant saldría de inmediato. Solo aparece si la oleada
+**existió y luego murió**.
+
+**Hay que parar el `BrainComponent`, no solo ocultar.** Si solo se oculta, el boss te persigue
+invisible y te pega.
+
+### Configuración de la oleada
+
+`BP_AIOSpawner_C_2` (label `BP_AIOSpawner2`), propiedades de instancia:
+
+| Propiedad | Valor | Por qué |
+|---|---|---|
+| `startSpawningMethod` | `SpawnOnGameStart` | reactivado |
+| `spawnAmount` | **3** | **este es el número de enemigos de la oleada** |
+| `respawnMethod` | `Undefined` | antes era `EachIndividually` con 5 s: reaparecían y la oleada no acababa nunca |
+
+`selectingSpawnPointsMethod = UseSpecifiedSpawnPoints`, así que los 3 salen del mismo sitio
+salvo que se definan más puntos.
+
+**Verificado en PIE:** 3 `BP_WarriorAI` en el mundo, Giant con `bHidden: true` y
+`WaveStarted: true`.
+
+### Pendiente: el WaveManager de verdad
+
+Lo de arriba resuelve "una oleada y luego el jefe". Para varias oleadas configurables haría
+falta un `BP_DA_WaveManager` propio con un array de oleadas (clase + cantidad por entrada). El
+diseño acordado: ocultar/despertar el Giant en vez de spawnearlo, porque la instancia colocada
+tiene configuración ya verificada (controller de IA, componentes de DCS, barra de vida).
+
+## Alas para los enemigos — placeholder montado
+
+Objetivo: dar sensación de Dark Angels poniendo alas a los enemigos.
+
+### Sobre comprar el pack de alas
+
+Se revisó **"Animated angel wings fifth"** (Nikita00, **$704–$1.005**). Veredicto: **técnicamente
+sirve, pero es la compra equivocada**.
+
+- Usarías **~4 de sus 25 animaciones** (idle, aleteo, plegar, desplegar). Todo lo que lo encarece
+  —vuelo, 11 dashes, caída, escudo, grito— no se toca.
+- El Giant mide 5,3 m: unas alas de ángulo humano hay que escalarlas ×2,8.
+- Distribución "Complete project": migración y demo de relleno. Sería el cuarto asset de terceros.
+- Y el Giant es el **placeholder** que sustituirá el Serafín.
+
+Para este uso, un asset dedicado de alas ($20–80 en Fab) da lo mismo.
+
+### Lo que ya está montado
+
+`WingPlaceholder_L` y `_R` (`StaticMeshComponent`, cubo de Engine) en `BP_DA_GiantBoss`, con
+`set_parent_component` colgando de `CharacterMesh0`:
+
+```
+RelativeLocation  (-35, ±55, 410)      ← altura de la espalda del Giant
+RelativeRotation  (pitch 20, yaw ±25)
+RelativeScale3D   (3.0, 0.15, 1.8)
+```
+
+**Sirve para validar el pipeline antes de gastar:** cuando lleguen alas de verdad, se cambia el
+componente a `SkeletalMeshComponent` y se le asigna el mesh.
+
+### ⚠️ Paso manual: el socket
+
+Están colgando del **componente** de malla, no del **hueso**. `AttachSocketName` **no se puede
+escribir por MCP** — vive en el nodo del SCS, no en la plantilla del componente
+(`the following properties could not be set`).
+
+En `BP_DA_GiantBoss`, seleccionar cada `WingPlaceholder` y poner **`Parent Socket` = `spine_05`**
+(el hueso más alto de la espalda en `SKM_Manny`; la jerarquía llega hasta `spine_05`).
+
+### Trampa: `set_parent_component` y la ruta del padre
+
+El componente hijo se referencia con `..._C:Nombre_GEN_VARIABLE`, pero **el padre hay que
+pasarlo por el CDO**:
+
+```
+componente: BP_DA_GiantBoss_C:WingPlaceholder_L_GEN_VARIABLE     ✓
+padre:      BP_DA_GiantBoss.Default__BP_DA_GiantBoss_C.CharacterMesh0   ✓
+padre:      BP_DA_GiantBoss_C:CharacterMesh0                     ✗ "is not valid SceneComponent"
+```
+
+## Enemigo pequeño desactivado temporalmente ⏸️ (revertido, ver oleada arriba)
 
 El `BP_WarriorAI` estaba ensuciando las pruebas del jefe: es quien mataba al jugador en la
 prueba de la derrota, y su daño (20) se confundía con el del Giant (25).
