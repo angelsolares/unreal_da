@@ -1530,6 +1530,32 @@ siempre `false` y **se cancelaban sonido y animación a la vez**.
 `OnHit` del Giant hace `StopAnimMontage` + `PlayAnimMontage(AM_DA_Knockdown)` justo después, así
 que el derribo se impone igual.
 
+### Causa 3: al golpear TÚ al Giant tampoco sonaba (problema distinto)
+
+**No es el mismo fallo.** Las causas 1 y 2 eran del Giant pegándote a ti. Al revés el motivo es
+otro: el sonido de impacto lo reproduce `PlayGetHitEffects`, que vive en `BP_CombatCharacter`.
+**El Giant no hereda de esa clase** — implementa su propio `TakeDamage`, que resta vida y poco
+más. Nunca hubo sonido en esa dirección.
+
+Añadido en `BP_DA_GiantBoss:TakeDamage`, en la rama de daño aplicado y **antes** de la
+comprobación de muerte, para que suene en todos los golpes incluido el último:
+
+```
+Interface|TakeDamage(StatsManager, damage)
+SetCurrentHealth(...)
+PlaySoundAtLocation(CUE_HitSword, GetActorLocation)     ← añadido
+si CurrentHealth <= 0: [secuencia de muerte]
+```
+
+**Simplificación asumida:** suena siempre `CUE_HitSword`, el arma por defecto del jugador. DCS
+elegiría el sonido leyendo el tag `HitData.DamageType.*` del `FHitData` entrante; replicar eso
+aquí exigiría una rama y varias referencias de sonido. Si algún día el jugador pelea desarmado
+o con arco, el sonido no encajará.
+
+Se reproduce en la **localización del actor**, no en el punto de impacto. Para un bicho de
+5,7 m es aceptable; si molesta, sacar el `HitResult` del `BreakFHitData` que ya existe en el
+grafo.
+
 ### Pendiente: sonido de swing
 
 El Giant ataca en silencio; solo suena el impacto. Para el silbido del golpe hace falta un
