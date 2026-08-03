@@ -1820,6 +1820,57 @@ BP_DA_PlayerCharacter.BP_DA_PlayerCharacter_C:DynamicTargeting      ✗
 Y para *escribir* en un componente heredado, la vía fiable es **asignarlo en `BeginPlay`** en
 vez de pelearse con el override del editor.
 
+## Alas en TODOS los enemigos ✅
+
+### Valores finales, verificados a ojo
+
+| Propiedad del componente `Wings` | Valor |
+|---|---|
+| `RelativeLocation` | `(0, 0, 0)` |
+| `RelativeRotation` | **Pitch `-90`** |
+| `RelativeScale3D` | **`1.0`** |
+| `Parent Socket` | **`spine_05`** (manual) |
+
+**Escala 1.0 es lo correcto en los dos, y hay una razón:** las alas están hechas para un ángel
+humano a escala 1:1 con el esqueleto de Epic. Como el componente cuelga de la malla y **hereda
+su escala**, en el Giant (malla ×3) las alas salen ×3 automáticamente, y en el Warrior (malla
+×1) salen a tamaño natural. Poner 0.35 o 0.6 fue el error: estaba compensando algo que ya se
+compensaba solo.
+
+> **La malla del Giant está a escala 3** (`CharacterMesh0.RelativeScale3D = 3`). Cualquier
+> componente que se le cuelgue hereda ese ×3.
+
+**La rotación `Pitch -90` es imprescindible.** Los huesos de la columna de Manny apuntan **a lo
+largo del hueso**, o sea hacia arriba, no hacia adelante. Con rotación `0,0,0` las alas salen
+disparadas por encima de la cabeza. Es un clásico al colgar cosas de sockets de columna.
+
+### `BP_DA_WarriorAI` — hijo propio, sin tocar DCS
+
+`BP_WarriorAI` es asset de DCS, así que **no se le añadió nada**. Se creó
+`/Game/DarkAngels/Blueprints/Characters/BP_DA_WarriorAI` como hijo, con el componente `Wings`,
+y el spawner apunta a él (`spawnedActorClass`).
+
+Hereda IA, combate y equipo; solo añade las alas.
+
+### Las alas se ocultan al morir el jefe
+
+Los Warriors desaparecen enteros al morir, pero el Giant **se disuelve**: el cuerpo hace
+ragdoll + dissolve y el actor no se destruye hasta `OnDissolveFinished`. Las alas, al ser un
+componente aparte, ni ragdollizaban ni se disolvían — se quedaban animando en el aire durante
+todo el efecto.
+
+Arreglado en `TakeDamage`, en la rama de muerte, justo después de ocultar la barra de vida:
+
+```
+SetVisibility(StatBarsWidget, false, true)
+SetVisibility(Wings, false, true)          ← añadido
+StopAnimMontage
+...
+```
+
+Editado **por cirugía de nodos**: ese grafo arrastra cientos de nodos huérfanos de reescrituras
+anteriores y un `write_graph_dsl` habría sido una ruleta.
+
 ## Oleada: primero los Warriors, luego el Giant ✅
 
 El Giant ya no está en pantalla desde el inicio. Aparece **cuando la oleada de `BP_WarriorAI`
@@ -1840,21 +1891,54 @@ completo se pueda construir encima sin tirar esto.
 **Hay que parar el `BrainComponent`, no solo ocultar.** Si solo se oculta, el boss te persigue
 invisible y te pega.
 
-### Configuración de la oleada
+### Ahora es SECUENCIAL: uno, luego otro, luego el jefe
 
-`BP_AIOSpawner_C_2` (label `BP_AIOSpawner2`), propiedades de instancia:
+El spawner de DCS **no sabe generar enemigos de uno en uno bajo demanda** — su lógica de spawn
+vive en eventos internos y no expone función pública (`list_functions` solo devuelve helpers de
+posición y comprobación). Así que se **apagó** (`startSpawningMethod = None`) y la secuencia la
+lleva el propio jefe.
 
-| Propiedad | Valor | Por qué |
-|---|---|---|
-| `startSpawningMethod` | `SpawnOnGameStart` | reactivado |
-| `spawnAmount` | **3** | **este es el número de enemigos de la oleada** |
-| `respawnMethod` | `Undefined` | antes era `EachIndividually` con 5 s: reaparecían y la oleada no acababa nunca |
+`CheckWaveCleared()`, cada 0,5 s:
 
-`selectingSpawnPointsMethod = UseSpecifiedSpawnPoints`, así que los 3 salen del mismo sitio
-salvo que se definan más puntos.
+```
+si no queda ningún BP_WarriorAI vivo:
+   si EnemiesSpawned < EnemiesToSpawn:
+       SpawnActor(BP_DA_WarriorAI) en la posición del spawner
+       EnemiesSpawned++
+   si no:
+       aparece el jefe · RestartLogic · ClearTimer
+```
 
-**Verificado en PIE:** 3 `BP_WarriorAI` en el mundo, Giant con `bHidden: true` y
-`WaveStarted: true`.
+Ya no hace falta la guarda `WaveStarted`: `EnemiesSpawned < EnemiesToSpawn` cubre el arranque
+(al principio hay 0 vivos y 0 spawneados, así que genera el primero).
+
+**Sigue usando la posición del `BP_AIOSpawner2`** como punto de aparición, así que mover ese
+actor cambia dónde salen.
+
+### Configuración
+
+**`EnemiesToSpawn`** en el **Giant** (Instance Editable) = **2**. Ahí se cambia la cantidad.
+
+> ### ⚠️ Hay que ponerlo en la INSTANCIA, no en la clase
+>
+> Al añadir la variable, el Giant ya colocado en el nivel se quedó con `0` y en la primera
+> prueba el jefe salió de inmediato sin generar enemigos. Es la misma trampa de siempre:
+> **los actores colocados no recogen valores nuevos del Blueprint.**
+>
+> Comprobar siempre leyendo la propiedad **en la instancia del nivel**.
+
+**Verificado en PIE:** un solo `BP_DA_WarriorAI_C_0` en el mundo, `EnemiesSpawned: 1` de `2`, y
+`bHidden: true` en el jefe.
+
+**Detalle que se verificó a propósito:** `CheckWaveCleared` busca `BP_WarriorAI_C`, pero el
+spawn es de `BP_DA_WarriorAI` (subclase). `GetAllActorsOfClass` **incluye subclases**, así que
+los sigue contando. Podría haber roto la secuencia y no lo hace.
+
+### Cabo suelto conocido
+
+Si el jugador muere durante la oleada, **`EnemiesSpawned` no se reinicia**: la secuencia
+continúa desde donde estaba en vez de empezar de cero. Para la POC no molesta; si se quiere,
+hay que resetearlo al reaparecer.
 
 ### Pendiente: el WaveManager de verdad
 
