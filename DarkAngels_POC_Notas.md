@@ -1477,6 +1477,65 @@ Dependencias residuales hacia `GiantBossProject`, **inofensivas** y de solo lect
 Los nombres de clave y los valores del enum coinciden, así que resuelve correctamente. La
 copia de `BossEnum` en DarkAngels quedó **huérfana** — nadie la referencia, se puede borrar.
 
+## SFX del combate contra el Giant
+
+### El pack del Giant NO trae sonido
+
+Cero assets de audio en `GiantBossProject`. Todo el SFX del jefe tiene que salir de la
+librería de DCS, que es esta:
+
+```
+CUE_HitHands · CUE_HitSword · CUE_HitArrow
+CUE_SwingLarge · CUE_SwingSmall
+CUE_ShieldBlock · CUE_SwordBlock
+CUE_Roll · CUE_PotionHeal · CUE_Explosion · CUE_GroundExplosion
+```
+(en `DCS/SFX/`)
+
+### Causa 1: faltaba el tag de tipo de daño
+
+`BP_CombatCharacter:PlayGetHitEffects` elige el sonido **por GameplayTag del `FHitData`**:
+
+```
+si tiene HitData.DamageType.MeleeWeapon → CUE_HitSword
+si tiene HitData.DamageType.Hands       → CUE_HitHands
+si no                                    → la variable queda vacía
+```
+
+Y luego llama a `PlaySoundAtLocation` con esa variable. **Sin tag no hay sonido, sin más.**
+
+El `FHitData` del Giant solo llevaba `HitData.CanBeBlocked`. Añadido
+**`HitData.DamageType.Hands`** (pega con los puños) en **las dos ramas** del `OnHit` — `then` y
+`CastFailed`, porque la lógica está duplicada.
+
+### Causa 2: un `AddActivityForDuration` que silenciaba todo
+
+Había un nodo añadiendo `Activity.HasPlayedGetHitEffects` a la víctima **antes** de llamar a
+`TakeDamage`, con duración 0,5 s. **Eliminado.**
+
+Final de `BP_CombatCharacter:TakeDamage`:
+
+```
+wasAdded = AddActivityForDuration(StateManager, "Activity.HasPlayedGetHitEffects", 0.3)
+si wasAdded:
+    PlayGetHitEffects(HitData)      ← el sonido
+    PlayGetHitAnim(HitDirection)    ← la animación de reacción
+```
+
+`AddActivityForDuration` devuelve **`false` si el tag ya estaba**. Es el antirrebote de DCS: en
+0,3 s solo el primer golpe reproduce efectos. Al ponerlo por adelantado, `wasAdded` salía
+siempre `false` y **se cancelaban sonido y animación a la vez**.
+
+**Por qué quitarlo no rompe la animación:** aunque ahora DCS reproduzca su `PlayGetHitAnim`, el
+`OnHit` del Giant hace `StopAnimMontage` + `PlayAnimMontage(AM_DA_Knockdown)` justo después, así
+que el derribo se impone igual.
+
+### Pendiente: sonido de swing
+
+El Giant ataca en silencio; solo suena el impacto. Para el silbido del golpe hace falta un
+**AnimNotify de sonido** en cada montage de ataque — trabajo manual, uno por montage, igual que
+los `ANS_HitBox`. `CUE_SwingLarge` es el que pega con un gigante.
+
 ## Reacción al golpe del Giant
 
 Dos capas, ambas en el `OnHit` de `BP_DA_GiantBoss`:
