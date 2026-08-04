@@ -3136,6 +3136,100 @@ Verificado en PIE: las tres instancias a `false`.
 - **`describe_toolset` de `BlueprintTools` no cabe en contexto** (72 000 caracteres). Volcarlo a
   fichero y extraer solo los esquemas que hagan falta.
 
+## Las 7 casas colocadas ✅ — 1655 actores
+
+| Casa | Barrio | Centro | Actores | Caballete |
+|---|---|---|---|---|
+| 01 | Aire | (2404, 849) | 600 | de costado |
+| 02 | Aire | (3429, 1874) | 85 | a hastial |
+| 03 | Aire | (879, 2393) | 185 | de costado |
+| 04 | Fuego | (1874, −3429) | 82 | a hastial |
+| 05 | Fuego | (849, −2404) | 80 | a hastial |
+| 06 | Agua | (−2405, −850) | 58 | de costado |
+| 07 | Tierra | (−849, 2374) | 102 | a hastial |
+
+**1192 actores de casa.** Los cuatro barrios tienen al menos una.
+
+### ⚠️ El templo se come dos huecos: son 14, no 16
+
+La plataforma del templo ocupa **X ±2200, Y 2800–4600**, y ahí caían `Aire_Casa_4` (1874, 3429) y
+su espejo `Tierra_Casa_2` (−1874, 3430). House_04 se colocó ahí y quedó **atravesando el muro
+derecho del templo y su columna 4**; hubo que rescatarla al barrio del Fuego.
+
+**La calle del barrio de Tierra sigue chocando** con la plataforma a partir de u≈1500 (la traza da
+123,5 en vez de −176,5). No bloquea nada hoy, pero al montar el templo real habrá que estrechar
+la plataforma o desviar esa calle.
+
+Las 7 cajas de hueco libre se borraron: al lado de casas reales cantaban demasiado. Coordenadas
+por si se reponen (tamaño 1300×1250×800, yaw = ángulo del barrio):
+
+```
+Fuego_Casa_3   ( 2404,  -849)      Agua_Casa_2   (-3429, -1874)
+Fuego_Casa_4   ( 3429, -1874)      Agua_Casa_3   ( -849, -2404)
+Tierra_Casa_3  (-2404,   849)      Agua_Casa_4   (-1874, -3429)
+Tierra_Casa_4  (-3429,  1874)
+```
+
+### El flujo bueno: pegar y NO agrupar
+
+```
+House_01   600 actores   ~7 min
+House_02    85 actores    123 s
+House_03   185 actores      5 s   <- sin Ctrl+G
+House_04    82 actores      6 s
+```
+
+**La clave es la carpeta `House_NN` que el pegado conserva.** Con `get_actors_in_folder` se tienen
+los actores en **una** llamada y desaparece toda la fase de búsqueda, que era el 95 % del coste.
+El `Ctrl+G` destruye esa carpeta y encima **no sirve por MCP** (mover el GroupActor no arrastra a
+los hijos).
+
+Receta por casa:
+1. Sample: carpeta → `Select` → `Select Subtree` → `Ctrl+C` sobre el viewport.
+2. Malkuth: `Ctrl+V`. **No agrupar.**
+3. Medir con `get_actors_in_folder`: centro de bounds, **Z de los muros modulares** (es el plano
+   de suelo de la casa) y el eje del caballete (el par de `Gable` más separado).
+4. Rotar al múltiplo de 90° más cercano respecto a la calle del barrio, trasladar al hueco y
+   bajar `DZ = -176.5 - Z_muros`.
+5. Etiquetar `MK_CasaNN`, mover a `Malkuth/04_Barrios/<Barrio>/Casa_NN`, borrar la caja.
+
+> ### Los tags salvaron Casa_03
+>
+> Apareció desplazada **(+810, −730)** en bloque —traslación pura, cosa de un arrastre de gizmo
+> con selección residual—. Como sus 185 actores llevaban `MK_Casa03`, se localizaron en una
+> llamada, se comprobó que el desplazamiento era uniforme y se devolvieron.
+>
+> **Sin el tag habría sido imposible distinguirlos de las casas vecinas.** Etiquetar siempre.
+
+## Suelo y vegetación
+
+**El suelo era `MossyGround` a 800 cm de tiling:** verde saturado y sin variación, al lado de
+fotogrametría se leía como una moqueta. Cambiado a **`HeavyMud` a 380 cm** con tinte
+`0.92, 0.90, 0.85`.
+
+**168 props** repartidos (`Malkuth/07_Vegetacion`): musgo `IcelandicMossClusters`, doleritas,
+ramas, raíces, tocones. 120 en las cuatro calles, 26 en la avenida sur, 22 en el anillo de la plaza.
+
+> ### ⚠️ Todos los Megascans son `BlockAll`
+>
+> Soltar 168 props con colisión en las calles habría destrozado el NavMesh del jefe. Van todos
+> con colisión desactivada. Verificado por trazas: las calles siguen dando −176,5 limpio.
+
+### Trampas nuevas
+
+- **La colisión no se escribe en el componente**: `collisionEnabled` y `collisionProfileName` **no
+  existen** ahí. Viven dentro del struct **`bodyInstance`**:
+  ```json
+  {"bodyInstance": {"collisionEnabled": "NoCollision", "collisionProfileName": "NoCollision"}}
+  ```
+- **Un `set_properties` fallido aborta el script entero** del `ProgrammaticToolset`, aunque lo
+  envuelvas en `try/except`. Probar cada propiedad con una llamada suelta antes de meterla en un
+  bucle de 200.
+- **`delete_folder` sobre una carpeta que ya no existe también aborta.** Las carpetas se borran
+  solas al quedarse vacías, así que comprobar contra `get_folders` antes.
+- **No borrar `GroupActor` por MCP**: podría llevarse a sus hijos y no hay deshacer. Para
+  deshacer un grupo, en el editor: clic derecho → `Group` → `Ungroup`.
+
 ## No hacer todavía (lista de la guía)
 
 Importar el Serafín · cambiar el esqueleto del personaje · quitar inventario · crear IA de boss ·
