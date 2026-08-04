@@ -2997,6 +2997,39 @@ mientras que sus tres hermanas sí cuelgan directamente de `Well/`. Resolver sie
 118×205×**19**: está modelado **tumbado**, y con el pivote en un extremo (`offXY.y = −102`).
 Levantarlo exige pitch/roll a ojo. No compensa por MCP.
 
+## Escombro contra la silueta de caja ✅
+
+**131 piezas** repartidas con un kit de 14 mallas ligeras (4-40 MB), todas medidas antes con
+`get_asset_tags`:
+
+| Zona | Piezas | Carpeta |
+|---|---|---|
+| Templo: borde de plataforma, muros interiores, pie de columnas, faldón exterior | **60** (`SM_MK_Escombro_T*`) | `03_TemploPuerta/Escombro` |
+| Muralla: cara interior de los 15 tramos + torres de la puerta sur | **51** (`SM_MK_Escombro_M*`) | `05_Muralla/Escombro` |
+| Pie de las 10 columnas de las sefirot | **20** | `01_Plaza/Sefirot/Escombro` |
+
+Kit: `VolcanicDolerite_01..06` (rocas), `ChapelStructure_01..04` (cascotes tallados),
+`RomanStoneFloor` y `AngkorWatTempleStones` (losas), `StoneWall` y `BrokenChapelStoneWall`
+(bloques grandes). Cada pieza con yaw aleatorio, pitch/roll de ±6°, escala variable y
+**hundida 8-28 cm** en el suelo para que nada flote.
+
+**No se migraron carpetas de rocas** (`ChiseledRock`, `CrackedRock`, `RockGranite`…). El escombro
+sale de piedra tallada, que para una ciudad en ruinas funciona mejor que cantos rodados.
+
+> ### ⚠️ TRAMPA: si el MCP no devuelve respuesta, la operación PUEDE haberse ejecutado igual
+>
+> Un apagón cortó la respuesta de un script que colocaba 71 escombros. Al volver, se relanzó — y
+> había **142**: el original **sí se había ejecutado y guardado**, solo se perdió la respuesta.
+> Como se usa una semilla fija para el azar, las copias quedaron **exactamente superpuestas** e
+> invisibles a ojo.
+>
+> **Procedimiento obligatorio tras cualquier corte (apagón, timeout, reconexión del MCP):**
+> contar actores por prefijo **antes** de relanzar nada. Se detecta comparando el total esperado,
+> y se limpia recorriendo los actores y borrando los que repitan etiqueta.
+>
+> Ventaja lateral de nombrar todo con prefijo (`SM_MK_Escombro_M%03d`): sin nombres
+> deterministas, los duplicados habrían sido imposibles de distinguir.
+
 ## No hacer todavía (lista de la guía)
 
 Importar el Serafín · cambiar el esqueleto del personaje · quitar inventario · crear IA de boss ·
