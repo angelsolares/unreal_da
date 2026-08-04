@@ -3230,6 +3230,72 @@ ramas, raíces, tocones. 120 en las cuatro calles, 26 en la avenida sur, 22 en e
 - **No borrar `GroupActor` por MCP**: podría llevarse a sus hijos y no hay deshacer. Para
   deshacer un grupo, en el editor: clic derecho → `Group` → `Ungroup`.
 
+## El templo con assets reales ✅ — 1848 actores
+
+Traído del Goddess Temple por copiar/pegar. El sample es una **cantera/gruta con ruinas romanas
+dispersas**, no un templo en pie: no hay pórtico que copiar, hay piezas sueltas.
+
+| Elemento | Qué se usó |
+|---|---|
+| **Pórtico** | 4 columnas de `Columns_Large` a ×7,4–7,6 en (±700, 3000) y (±1700, 3000) |
+| **Ruinas al pie de la escalinata** | Las 2 columnas derribadas del mismo lote, de 9,9 y 8,6 m |
+| **Enlosado** | Las 52 `SM_RomanStoneFloor` de `GroundTiles`, a ×3,7 (392×597 cada una) |
+| **La Puerta** | `SM_OldChapelArch` a ×5 (1245×414×1281) empotrado en el muro del fondo |
+| **Muros de la cella** | 15 tramos de altura irregular + 70 piezas de sillería rota |
+| **Decorado ritual** | 60 piezas curadas (braseros, vasijas, alambiques, velas) |
+
+Cotas: la plataforma remata a **+123,5**; las columnas apoyan ahí y coronan a 1307–1354, tocando
+el dintel que arranca en 1323.
+
+### ⚠️ El decorado del sample eran 1676 actores
+
+`Candles` (734), `HangingLanterns` (279), `IncenseBurners` (114), `Z_Dressing` (547) y `Heads` (2).
+Es el decorado completo de una gruta de 2578 actores, **con decenas de luces puntuales dentro**
+(`CandleLightSmall*`, `PointLight1..49`). Con Lumen eso hunde el frame.
+
+**Borrado entero y repuesto a mano** con 60 piezas colocadas por traza. El nivel pasó de 3388 a
+1768 actores.
+
+Las **cabezas colosales** venían con bounds de 22869 × 23147 × **26501** — 265 metros — y su malla
+llegó sin material (`CustomAssets/HeadTextures` solo trae el `.uasset`). Borradas. Si se quieren,
+hay que migrar sus `T_Head*` y escalarlas a 4–6 m.
+
+Los **faroles colgantes** no se repusieron: su montaje cuelga de `SM_LongChain` desde una bóveda
+de gruta y en un templo a cielo abierto no tienen de dónde colgar. Para luz de calle está
+`SM_LanternPost` del pueblo, ya migrado.
+
+### Los muros: partir en vez de bajar
+
+Los tres muros originales eran losas de 44×16 m y 14 m de alto. No hay ninguna pieza migrada que
+dé esa medida (`ChapelStructure` es de 1×2×3 m), así que componerlos habría costado **más de 200
+actores por muro**.
+
+Solución: **partirlos en tramos de altura irregular**, que cuesta 15 actores y rompe la silueta.
+
+```
+Fondo (7 tramos):  640 · 900 · 1450 · 1520 · 1450 · 980 · 700
+Laterales (4 c/u): 560 · 840 · 700 · 1080
+```
+
+Los tres centrales del fondo se quedan altos **a propósito**: el arco necesita 1280 de despeje.
+
+Y **28 de las 70 piezas de sillería van coronando** los tramos, para que el corte superior no se
+lea recto. Ese es el detalle que lo convierte en ruina.
+
+### ⚠️ Ojo con `SM_RomanColumnHigh_02`
+
+`Columns_Large` la arrastra. Es la de **1.099.989 triángulos y 2.942 MB de build** que ya nos
+colgó el editor una vez. Al pegar la carpeta el editor se queda al 0 % un buen rato construyendo
+su Nanite: **no es un cuelgue, hay que dejarlo terminar.**
+
+### Pendiente en el templo
+
+- El **dintel del pórtico** (`SM_MK_TempleLintel`) sigue siendo una caja de 4000×300×200. No hay
+  viga de 40 m en lo migrado; se podría partir en tramos como los muros.
+- La **plataforma** sigue siendo caja, aunque enlosada por encima.
+- La **calle del barrio de Tierra choca con la plataforma** a partir de u≈1500. Al decidir la
+  forma final del templo habrá que estrecharla o desviar la calle.
+
 ## No hacer todavía (lista de la guía)
 
 Importar el Serafín · cambiar el esqueleto del personaje · quitar inventario · crear IA de boss ·
