@@ -1,7 +1,7 @@
 # Dark Angels POC — notas de trabajo
 
-Documento de traspaso entre sesiones. Última actualización: 2026-08-02 (alas del pack en todos
-los enemigos, oleada secuencial y SFX de combate del jefe).
+Documento de traspaso entre sesiones. Última actualización: 2026-08-03 (POC v3: blockout del
+nivel **Malkuth** en `L_DA_Malkuth_POC`).
 
 > **Control de versiones: SÍ lo hay.** Repositorio git en la raíz, remoto
 > `github.com/angelsolares/unreal_da`. Es la red principal; los `_Backups/` son secundarios.
@@ -23,6 +23,8 @@ los enemigos, oleada secuencial y SFX de combate del jefe).
 | Oleada secuencial: 2 enemigos, uno tras otro, luego el jefe | ✅ |
 | SFX: impacto en ambas direcciones + swing del jefe | ✅ |
 | **Cero modificaciones a assets de pago** | ✅ |
+| Nivel Malkuth: blockout completo en `L_DA_Malkuth_POC` | ✅ (sin iluminación construida) |
+| Assets Megascans reales | ❌ los dos packs aún no están descargados |
 
 **Cabos sueltos conocidos** (detallados en sus secciones):
 
@@ -2374,6 +2376,626 @@ del actor que interese (o comentar/quitar el `SetDebug(false)` del BeginPlay).
 - Deuda lock-on: `CanCycleDirectionalTargets` mover a `BP_DA_PlayerCharacter`, revertir en DCS
 - Quitar PrintString de diagnóstico en `BP_DA_BossChase` (si aún quedan)
 - Variedad de ataques: más `ANS_HitBox` en montages `AM_DA_*` (hoy casi todo SmashAttack1)
+
+## POC v3 — Malkuth, el primer nivel
+
+Nivel nuevo: **`/Game/DarkAngels/Maps/L_DA_Malkuth_POC`**. `L_DA_SeraphArena_POC` se conserva
+intacto como banco de pruebas de combate (verificado `is_dirty = false` tras duplicar).
+
+### Por qué Malkuth y qué significa
+
+Malkuth es la **décima y última sefirá** del Árbol de la Vida cabalístico: el *Reino*, el mundo
+material, donde el cielo toca la tierra. Es el suelo sobre el que se apoya todo el Árbol. Es la
+sefirá **cuatripartita**: la única con cuatro colores en la escala del Golden Dawn — **citrino,
+oliva, rojizo (russet) y negro** — uno por cada uno de los Cuatro Mundos, y por extensión los
+cuatro elementos (aire, agua, fuego, tierra). Sus títulos son todos de umbral: *la Puerta*, *la
+Puerta de la Muerte*, *la Puerta de las Lágrimas*, *la Puerta de la Justicia*. Su arcángel es
+**Sandalfón**; su símbolo ritual, el **altar del doble cubo**. Su qliphá (cara oscura) es
+**Nehemot / Lilit**, «la Reina de la Noche», reino de susurros, pesadillas e ilusiones.
+
+Por eso es el nivel 1: **es el único sitio por donde se puede empezar a subir.** De Malkuth solo
+sale un camino, la **senda 32 (Tau)**, que lleva a Yesod. El juego entero puede mapearse al Árbol:
+10 niveles, uno por sefirá.
+
+### Traducción a diseño de nivel
+
+| Idea cabalística | Cómo se lee en el nivel |
+|---|---|
+| Malkuth = el mundo material, lo mundano | Una **aldea medieval** corriente, no un templo celestial |
+| Sefirá cuatripartita, 4 colores / 4 elementos | La aldea se parte en **cuatro barrios**, uno por color-elemento |
+| Cruz de brazos iguales, símbolo de Malkuth | Las calles de los barrios convergen en la plaza |
+| Altar del doble cubo | **Monolito 3×3×6 m en el centro exacto de la plaza** |
+| Las 10 sefirot | **Círculo de 10 pilares** rodeando el altar, abierto al norte |
+| «La Puerta» (título de Malkuth) | El **templo sellado** al norte: la salida hacia Yesod |
+| Senda 32 (Tau), única salida | La **escalinata procesional** del eje +Y, plaza → templo |
+| Nehemot, la Reina de la Noche | Justificación de fondo para los enemigos alados y la paleta oscura |
+
+**El eje sur→norte lo cuenta todo de un vistazo:** el jugador entra por la puerta sur, camina por
+la avenida, cruza el círculo de las diez sefirot con el altar en medio, sube la escalinata Tau y
+se encuentra la Puerta cerrada. Todo alineado en X = 0.
+
+### Los cuatro barrios
+
+Cada uno en una diagonal, arranque a radio 2100 del centro, calle propia hacia la plaza.
+
+| Barrio | Color de Malkuth | Ángulo | Hito que cierra la calle |
+|---|---|---|---|
+| **Aire** | Citrino | 45° | Campanario (4×4×16 m) + plaza de mercado |
+| **Fuego** | Rojizo | −45° | Fragua con chimenea (cilindro 11 m) + casa quemada |
+| **Agua** | Oliva | −135° | Pozo + molino (4×4×12 m) |
+| **Tierra** | Negro | 135° | Cripta + osario + 8 lápidas — *la Puerta de la Muerte* |
+
+Cada barrio tiene un **pedestal** (cilindro, u=550 sobre su calle): ahí va el fragmento/llave que
+abre la Puerta. Encaja con el sistema de oleadas que ya existe: limpiar barrio → coger fragmento
+→ cuatro fragmentos → se abre la Puerta → el jefe.
+
+### Cotas y medidas reales
+
+Todo se calibró para **reutilizar la cota de suelo de la arena, `Z = -176.5`**, y así no invalidar
+ni el `PlayerStart`, ni la Z del jefe, ni nada ya verificado.
+
+| Pieza | Valor |
+|---|---|
+| Suelo (`SM_MK_Ground`) | Cubo `scale 140,140,4`, centro Z `-376.5` → cara superior **-176.5** |
+| Plaza (`SM_MK_PlazaFloor`) | Cilindro `scale 28,28,0.4` → **radio 1400**, a ras (centro Z -196.5) |
+| Altar doble cubo | 2 cubos `scale 3,3,3` a Z `-26.5` y `273.5` → 300×300×600 |
+| Círculo de las 10 sefirot | Cilindros `scale 2,2,8` a **radio 1300**, cada 36° desde 0° |
+| Escalinata Tau | 8 peldaños, huella 150, contrahuella **37.5**, ancho 2000, Y de 1600 a 2800 |
+| Plataforma del templo | `scale 44,18,3`, centro `(0, 3700)` → cara superior **+123.5** |
+| Muralla | **radio 5200**, 16 tramos de 22.5°, `scale 21,3,8`; falta el tramo 12 = puerta sur |
+| `PlayerStart` | `(0, -3400, -71.5)`, yaw 90 (mira al eje Tau) |
+| `NavMeshBoundsVolume` | `(0, 0, -100)`, `scale 56,56,4` → XY ±5600, Z -500..300 |
+| `BP_AIOSpawner2` | `(0, 900, -50)` — punto de aparición de la oleada, dentro de la plaza |
+| `BP_DA_GiantBoss` | sin tocar: `(0, 600, 93.74)`, dentro del disco de la plaza |
+
+**97 actores `SM_MK_*`**, organizados en el Outliner: `Malkuth/00_Terreno`, `01_Plaza`,
+`01_Plaza/Sefirot`, `02_SendaTau`, `03_TemploPuerta`, `03_TemploPuerta/LaPuerta`,
+`04_Barrios/<Elemento>_<Color>`, `05_Muralla`.
+
+Borrados de la copia: `BP_DemoRoom` (la sala cerrada del demo, que era suelo *y* paredes) y los
+10 `StaticMeshActor` de la arena (disco + 8 pilares + `SM_BoxPlaceholder`).
+
+### ⚠️ Restricción de diseño heredada: el jefe no cabe por todas partes
+
+El agente de navegación del Giant es `AgentRadius 102` / `AgentHeight 528`. Ya se aprendió por
+las malas (ver *«los cubos del borde bloquean al Giant»*): necesita **≥ 204 uu de hueco libre**
+más margen de voxelización, y en la práctica 258 no bastaban.
+
+Comprobado en este blockout:
+
+- Círculo de las sefirot: hueco entre pilares = `2·1300·sin(18°) − 200` = **603 uu** ✅
+- Calles de los barrios: **700 uu** entre hileras de casas ✅
+- Pórtico del templo: columnas interiores a ±700 → hueco **1100 uu** ✅
+
+**Regla para todo lo que se coloque a partir de ahora:** ningún paso por el que deba circular el
+jefe puede quedar por debajo de ~400 uu libres. Los interiores de casa y los callejones son
+territorio del `BP_DA_WarriorAI` (`AgentRadius 50`), no del jefe.
+
+### Verificado
+
+| Comprobación | Resultado |
+|---|---|
+| Trazas verticales en plaza, calle sur, barrio Aire y anillo exterior | **-176.5** en todas |
+| Traza sobre la plataforma del templo | **+123.5** |
+| `RecastNavMesh-Default` / `-Giant` | ambas siguen en **`Dynamic`** |
+| `WorldSettings.defaultGameMode` | `BP_DA_GameMode_C` (el override sobrevivió al duplicado) |
+| Ningún actor por encima de Z = 1600 | ✅ nada atraviesa el cielo |
+| `L_DA_SeraphArena_POC` tras duplicar | `is_dirty = false`, intacto |
+
+### Pendiente en Malkuth
+
+- **Construir la iluminación** (`Build > Build Lighting Only`) y **guardar**: mismo caso que la
+  arena, el `_BuiltData` no se duplica. Hasta entonces se ve blanco plano. **El MCP no puede
+  lanzar el build.**
+- Ver el NavMesh en verde con `P`. El volumen es ahora 11200×11200: puede tardar en generarse.
+- Añadir un `LightmassImportanceVolume` — con un nivel de este tamaño ya no es opcional.
+- La iluminación heredada (2 SpotLight de la sala del demo) no tiene sentido a cielo abierto:
+  hay que rehacerla.
+
+### Límites del MCP encontrados aquí
+
+- **No hay tool para crear un nivel nuevo.** `SceneTools` solo tiene `load_level`. La vía es
+  `AssetTools.duplicate` sobre el `.umap`.
+- `AssetTools.duplicate` deja el asset **sucio**, y `load_level` se niega a cargar un nivel con
+  cambios sin guardar. Hay que `save_assets` en medio.
+- `ObjectTools.get_properties` usa los parámetros **`instance`** y **`properties`**, no
+  `object` / `property_names`.
+- `EditorAppToolset.CaptureViewport` sigue devolviendo ~1,5 MB de base64: inviable en
+  conversación. Para ver el nivel, mejor mover la cámara del viewport con `SetCameraTransform` y
+  mirar el editor.
+
+## Assets reales — Megascans (PENDIENTE de descarga manual)
+
+Los dos packs elegidos **no están instalados**: `Content/` solo tiene `DynamicCombatSystem`,
+`GiantBossProject`, `Angel_wings_pack` y `DarkAngels`.
+
+| Pack | Uso previsto en Malkuth |
+|---|---|
+| **Medieval Village Megascans Sample** (gratis) | Los 4 barrios, la muralla y las calles |
+| **Goddess Temple Megascans Sample** (gratis) | El templo del norte y la Puerta |
+
+**Hay que descargarlos desde Fab / Epic Games Launcher** — no se puede por MCP ni por línea de
+comandos. Ambos son *proyectos completos*, no packs de assets: lo correcto es abrirlos aparte y
+**migrar** solo lo necesario a `Content/`, igual que se hizo con las alas.
+
+**Ojo con la versión:** el *Goddess Temple* es de la época de UE 4.25 (usa Runtime Virtual
+Textures y ray tracing). Puede pedir conversión al abrirlo, y sus materiales RVT quizá haya que
+retocarlos en 5.8. El *Medieval Village* es de UE5 y no debería dar problema.
+
+**Son gratuitos, pero siguen siendo assets de terceros:** aplica la regla del proyecto —
+carpeta propia, no tocar los originales, y el trabajo nuevo en `Content/DarkAngels`. Decidir
+antes de migrar si van al repo o al `.gitignore`; al ser gratis se pueden subir, pero engordan
+mucho el repositorio.
+
+### Cómo sustituir el blockout por los assets reales
+
+El blockout está hecho **solo con `/Engine/BasicShapes/Cube` y `Cylinder`**. Cada caja marca un
+volumen y una orientación ya validados contra el NavMesh, así que el reemplazo es mecánico:
+localizar el actor por su label `SM_MK_*`, colocar la malla real en su transform y borrar la caja.
+El orden sensato es plaza → senda Tau → templo → barrios → muralla.
+
+## Migración de los Megascans — hecha ✅
+
+`Migrate` desde `D:\Game Projects\Mega Scans\MedievalVillageMegascansS` (abierto con 5.8) hacia
+`Content/`. Se conserva la estructura de origen **a propósito**: es lo que permite copiar
+actores desde el nivel del sample y pegarlos en Malkuth.
+
+| Carpeta | Tamaño | Assets |
+|---|---|---|
+| `Content/Meshes` (incl. `Houses` 2,7 GB / 387 assets) | 4,1 GB | 532 |
+| `Content/Megascans` (`3D_Assets` 2,6 GB · `Surfaces` 669 MB) | 3,3 GB | 302 |
+| `Content/Materials` | 356 MB | 37 |
+| `Content/PhysMat` · `Content/Effects` | 440 KB | 4 |
+
+Verificado: **39 dependencias comprobadas sobre 18 mallas de muestra, cero rotas**.
+`MapCheck: 0 Error(s), 0 Warning(s)`. Nivel intacto: 119 actores, 97 `SM_MK_*`.
+
+Todo excluido del repo en `.gitignore`. **No renombrar ni mover esas carpetas** o se rompe el
+copiar/pegar desde el sample.
+
+### ⚠️ Al sample le faltaba el `.uproject`
+
+`MedievalVillageMegascansS/` solo tenía `Content`, `DerivedDataCache`, `Intermediate` y `Saved`.
+Se le escribió a mano un `MedievalGame.uproject` con `EngineAssociation: 5.8`.
+
+### ⚠️ No hay casas prefabricadas — es un kit modular
+
+No existe ningún `SM_House_XX` completo. Las casas del sample se montan pieza a pieza
+(`SM_BoardWall`, `SM_GableFront_*`, `SM_HBeam_*`, `SM_Roof_*`, cartas de paja). Por eso su nivel
+tiene **6208 actores**.
+
+**La vía es copiar/pegar actores entre proyectos**: seleccionar los actores de una casa en
+`MedievalVillage_P_WP`, `Ctrl+C`, y `Ctrl+V` en `L_DA_Malkuth_POC`. Funciona porque Unreal
+serializa los actores como texto y las rutas de las mallas coinciden.
+
+### ⚠️ `MI_Cobblestone` depende de una RVT de landscape
+
+```
+MI_Cobblestone → M_BlendMaster → Materials/Landscape/RVT/RVT_Landscape_01 (+ _Height_01)
+```
+
+Los assets están, pero Malkuth no tiene landscape ni `RuntimeVirtualTextureVolume`, así que se
+verá mal. Hará falta una instancia propia en `DarkAngels/Materials` sin la parte de blend.
+**Las mallas de casas están limpias** — `SM_GableFront_01` solo depende de sus tres `MI_`.
+
+## Salto a SM6 + Lumen + Nanite
+
+### El proyecto corría en Shader Model 5
+
+Heredado de ser una plantilla de época UE4: `Config/DefaultEngine.ini` **no tenía sección
+`[/Script/WindowsTargetPlatform.WindowsTargetSettings]`**, así que caía en SM5 por defecto.
+
+```
+LogRHI: Using Default RHI: D3D12
+LogCsvProfiler: Metadata set : rhifeaturelevel="SM5"
+LogD3D12RHI: Skipped NVAPI RT queries since the feature level is below SM6
+LogShaderCompilers: Compiling shader autogen file: .../ShaderAutogen/PCD3D_SM5/...
+```
+
+Consecuencia leída en vivo con `SearchCVars`:
+
+| CVar | Valor antes |
+|---|---|
+| `r.DynamicGlobalIlluminationMethod` | 0 = None |
+| `r.Shadow.Virtual.Enable` | 0 |
+| `r.ReflectionMethod` | 2 = SSR |
+| `r.AllowStaticLighting` | 1 |
+
+**No era la escalabilidad** (estaba en Epic, `@3`, con `r.Lumen.DiffuseIndirect.Allow:1`) ni el
+hardware targeting (`Desktop` / `Maximum`).
+
+### Lo que lo decidió: Nanite estaba apagado
+
+`naniteSettings.bEnabled = true` en `SM_GableFront_01`, `SM_CastleWall` y `SM_GraveA_00`.
+**Nanite requiere SM6**, así que los 8 GB de Megascans se dibujaban con su malla *fallback*.
+
+### Por qué Lumen y no seguir horneando
+
+Contradice la decisión de la arena (*«Por qué NO se puede pasar las luces a Movable»*), y con
+razón: ahí era una sala de 41 mappings que horneaba en 3 s. Malkuth con casas reales son miles
+de mappings, y las mallas de Megascans traen UVs de lightmap pobres o inexistentes.
+
+Además el sample del Medieval Village es un proyecto 5.3 **construido sobre Lumen + Nanite +
+VSM**: sin eso sus materiales se ven planos hagas lo que hagas.
+
+Equipo: **RTX 4070 (12 GB) + i7-14700F**. De sobra.
+
+### Escrito en `Config/DefaultEngine.ini`
+
+```ini
+[/Script/WindowsTargetPlatform.WindowsTargetSettings]
+DefaultGraphicsRHI=DefaultGraphicsRHI_DX12
+-D3D12TargetedShaderFormats=PCD3D_SM5
++D3D12TargetedShaderFormats=PCD3D_SM6
+-D3D11TargetedShaderFormats=PCD3D_SM5
+
+[/Script/Engine.RendererSettings]
+r.DynamicGlobalIlluminationMethod=1
+r.ReflectionMethod=1
+r.Shadow.Virtual.Enable=1
+r.GenerateMeshDistanceFields=True
+```
+
+**`r.AllowStaticLighting` se deja en 1 a propósito:** así `L_DA_SeraphArena_POC` conserva sus
+lightmaps horneados y no se rompe. Lumen añade GI dinámica encima, no la sustituye.
+
+`r.GenerateMeshDistanceFields=True` es requisito de Lumen por software.
+
+**Revertir:** `git checkout Config/DefaultEngine.ini` — pero obliga a otra recompilación completa.
+
+### Coste asumido
+
+Cambiar de SM5 a SM6 **invalida el caché de shaders entero**: DCS, GiantBossProject y los 8 GB
+nuevos. Media hora a una hora con 14 workers. Es de una sola vez.
+
+### Si tras reiniciar sigue en SM5
+
+`Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini` guarda `PreviewFeatureLevel=3`
+(3 = SM5, 4 = SM6). Tiene `bPreviewFeatureLevelWasDefault=True`, así que debería recalcularse
+solo. Si no: botón **Platforms** de la barra de herramientas → **Preview Rendering Level** →
+*Shader Model 6*.
+
+### SM6 verificado en vivo ✅
+
+Tras reiniciar, leído con `SearchCVars` y del log:
+
+| Comprobación | Antes | Ahora |
+|---|---|---|
+| `rhifeaturelevel` | `SM5` | **`SM6`** |
+| `ShaderAutogen` | `PCD3D_SM5` | **`PCD3D_SM6`** |
+| `r.DynamicGlobalIlluminationMethod` | 0 | **1 = Lumen** |
+| `r.ReflectionMethod` | 2 = SSR | **1 = Lumen** |
+| `r.Shadow.Virtual.Enable` | 0 | **1** |
+| `r.GenerateMeshDistanceFields` | — | **1** |
+| `r.Nanite` | inactivo | **1** |
+| `r.AllowStaticLighting` | 1 | **1** (la arena conserva su horneado) |
+
+El aviso *«Missing Project Settings / SM6 is required to use Nanite»* ya no aparece. Es el
+indicador definitivo.
+
+> ### La estimación de «media hora a una hora» de recompilado fue errónea
+>
+> No recompiló nada visible. Tres motivos: UE5 compila **bajo demanda**; el
+> `DerivedDataCache` del proyecto son 1,6 MB (el grueso vive en la caché global compartida, que
+> ya tenía permutaciones SM6); y Malkuth solo tiene primitivas de Engine. **La compilación
+> pesada llegará al colocar la primera malla de Megascans.**
+
+## Iluminación de Malkuth reconstruida para Lumen
+
+El nivel heredó de la sala del demo un montaje de UE4 que con Lumen no funciona.
+
+### Lo que había y por qué no servía
+
+| Actor | Problema |
+|---|---|
+| `AtmosphericFog` | **Actor deprecado de UE4: en UE5 no renderiza nada.** Borrado |
+| `BP_Sky_Sphere` | Skybox estático; no alimenta a Lumen y tapa a la `SkyAtmosphere` |
+| **Ninguna `SkyLight`** | Sin ella Lumen no tiene ambiente de cielo: todo lo que no toca el sol queda casi negro |
+| `LightSource` | `Stationary` — no lo gestiona Lumen |
+| 2 × `SpotLight` | 100.000 de intensidad apuntando a una sala que ya no existe |
+| `PostProcessVolume` | **Exposición clavada**: ver abajo |
+
+### ⚠️ El hallazgo importante: la exposición estaba bloqueada
+
+`PostProcessVolume_1` (`bUnbound = true`, afecta a todo el mundo) traía:
+
+```
+autoExposureMinBrightness = 0.5
+autoExposureMaxBrightness = 0.5     ← min == max: exposición FIJA
+```
+
+Calibrada para la sala oscura del demo. A cielo abierto eso revienta la imagen a blanco. Es
+parte de por qué el blockout se veía plano incluso antes de Lumen.
+
+**Unidades:** `r.DefaultFeature.AutoExposure.ExtendDefaultLuminanceRange = 0`, o sea **legacy de
+UE4** (brillo lineal), **no EV100**. No confundir las escalas al tocar estos valores.
+
+Puesto en **`0.03` – `4.0`** (auto-exposición desbloqueada). Cuando el arte esté fijado conviene
+volver a bloquearla para poder juzgar la iluminación.
+
+### Montaje actual — carpeta `Malkuth/06_Iluminacion`
+
+| Actor | Config |
+|---|---|
+| `Light Source` | **Movable**, `bAtmosphereSunLight = true`, pitch **-25** yaw **140** (sol bajo, sombras largas cruzando la plaza) |
+| `MK_SkyAtmosphere` | por defecto |
+| `MK_SkyLight` | **Movable**, `sourceType = SLS_CapturedScene`, **`bRealTimeCapture = true`**, intensidad 1.0 |
+| `MK_HeightFog` | `bEnableVolumetricFog = true`, densidad 0.025, falloff 0.15, a cota de suelo |
+
+En `Malkuth/99_HeredadoDelDemo`, apagados pero **no borrados** (reversible con un clic):
+
+- `SpotLight` y `SpotLight2` → `bAffectsWorld = false`
+- `SkySphere` → `SkySphereMesh.bVisible = false`
+
+**Total: 121 actores.**
+
+### Trampas del MCP encontradas aquí
+
+- `ObjectTools.set_properties` usa **`instance`** y **`values`** (un *string* JSON), no
+  `properties`. `get_properties` sí usa `properties`.
+- **`bUsedAsAtmosphereSunLight` no existe** en 5.8. La propiedad es **`bAtmosphereSunLight`**.
+- **`bHiddenEd` no se puede escribir** (es transitoria del editor). Para ocultar algo en el
+  viewport hay que apagar la **visibilidad del componente** (`bVisible = false` sobre
+  `SkySphereMesh`), no el actor.
+- **`add_to_scene_from_class` falla si PIE está corriendo** (`Cannot create actors while PIE is
+  active`). Los `set_properties` sí pasan.
+- Para editar el `PostProcessVolume` hay que **leer el struct `settings` entero, modificarlo y
+  reescribirlo completo**, activando además el `bOverride_<Campo>` correspondiente.
+
+### Pendiente de vista humana
+
+- La intensidad del sol sigue en **3,14** (valor heredado de UE4, sin unidades). Con la
+  auto-exposición desbloqueada importa poco, pero si al mirar sale lavado o gris, es la primera
+  palanca.
+- El ángulo del sol (-25 / 140) es un punto de partida, no una decisión de arte.
+
+## Material de blockout world-aligned ✅
+
+### Por qué no se pueden "pintar" los Megascans sobre los cubos
+
+Duda que salió y conviene dejar zanjada: lo migrado son **mallas escaneadas**, no un pack de
+texturas. Un `MI_Cobblestone` sobre un cubo de Engine de 140 m se estira: las UVs de un cubo van
+de 0 a 1 por cara. **Los cubos se sustituyen, no se pintan.**
+
+Pero ver todo blanco impide juzgar volúmenes, así que se montó la solución estándar para
+graybox: un material de **proyección triplanar** que ignora las UVs y proyecta según la posición
+en el mundo. Densidad de téxel correcta sea cual sea la escala de la caja, y desechable.
+
+### `/Game/DarkAngels/Materials/M_DA_Blockout`
+
+Construido entero por MCP con `MaterialTools`:
+
+```
+BaseColorTex (TextureObjectParameter) ┐
+TextureSize  (Scalar, 256 por defecto)┼→ WorldAlignedTexture ─[XYZ Texture]→ Multiply → BaseColor
+                                      │                                        ↑
+Tint (VectorParameter) ───────────────┼────────────────────────────────────────┘
+NormalTex (TextureObjectParameter)    ┼→ WorldAlignedNormal  ─[XYZ Texture]→ Normal
+Roughness (Scalar, 0.85) ─────────────┴──────────────────────────────────────→ Roughness
+```
+
+Funciones de Engine usadas:
+`/Engine/Functions/Engine_MaterialFunctions01/Texturing/WorldAlignedTexture` y
+`.../WorldAlignedNormal`.
+
+**Pines de `WorldAlignedTexture`:** entradas `TextureObject`, `TextureSize`, `WorldPosition`,
+`Export Float 4`, `World Space Normal`, `ProjectionTransitionContrast`; salidas `XY Texture`,
+`Z Texture`, **`XYZ Texture`** (la buena).
+
+### 8 instancias — y los cuatro colores de Malkuth
+
+| Instancia | Textura | Tamaño | Tinte | Actores |
+|---|---|---|---|---|
+| `MI_DA_BO_Suelo` | `MossyGround` | 800 | — | 1 |
+| `MI_DA_BO_Plaza` | `Cobblestone` | 300 | — | 1 |
+| `MI_DA_BO_Muralla` | `CastleWall` | 450 | — | 18 |
+| `MI_DA_BO_Templo` | `JapaneseShrineStoneFloorA` | 300 | cálido | 33 |
+| `MI_DA_BO_Aire` | `StoneWall` | 260 | **citrino** `1.00, 0.94, 0.70` | 9 |
+| `MI_DA_BO_Fuego` | `StoneWall` | 260 | **rojizo** `0.88, 0.55, 0.40` | 9 |
+| `MI_DA_BO_Agua` | `StoneWall` | 260 | **oliva** `0.70, 0.78, 0.55` | 9 |
+| `MI_DA_BO_Tierra` | `StoneWall` | 260 | **negro** `0.40, 0.40, 0.45` | 17 |
+
+Los cuatro barrios llevan literalmente la escala de color de la décima sefirá. **97 de 97
+actores con material**, ninguno sin asignar.
+
+Se evitó `MI_Cobblestone` del pack a propósito: arrastra la RVT de landscape. Aquí solo se usan
+sus **texturas**, no su material.
+
+## Goddess Temple — inventario (SIN migrar todavía)
+
+`D:\Game Projects\Mega Scans\GoddessTempleMegascansSam` · `GoddessTempleMegascansSam.uproject`
+· **`EngineAssociation: 4.25`** → hay que abrirlo con 5.8 y convertir copia. **8,0 GB.**
+
+| Carpeta | Tamaño |
+|---|---|
+| `Megascans/3D_Assets` (38 assets) | 4,7 GB |
+| `CustomAssets` | 1,5 GB |
+| `Megascans/3D_Plants` | 1017 MB |
+| `Megascans/Surfaces` (5) · `Atlases` | 449 + 357 MB |
+| `Maps` · `Masters` · `FX` · `HDRI` · `Blueprints` | ~80 MB |
+
+### Lo que encaja con Malkuth
+
+| Asset | Sustituye a |
+|---|---|
+| **`RomanColumn`** + **`RomanMarbleCapital`** | Las 4 columnas del pórtico **y los 10 pilares de las sefirot** |
+| **`RomanStoneFloor`** | Plataforma del templo y losas de la plaza |
+| **`OldChapelArch`** | El arco de **la Puerta** |
+| **`ChapelStructure`** · `BrokenChapelStoneWall` | Muros del templo |
+| **`CastleStairs`** | La escalinata de la senda Tau |
+| **`AngkorWatTempleStones`** | Sillería y **el altar del doble cubo** |
+| **`SM_RomanHead`** (`CustomAssets/HeadTextures`) | Cabeza colosal. Candidata a pieza central de la plaza |
+| `JapaneseBell` | El campanario del barrio del Aire |
+| `Candle` · `IncenseBurner` · `OldCandleHolder` · `VintageOilLamp` · `OldAlembic` · `OldJar` | Props rituales del altar — encajan con el tono |
+| `Cobblestone` · `Chain` · `ChiseledRock` · `CrackedRock` · `RockGranite` · `RockSandstone` | Relleno |
+| `Surfaces`: `IcelandicStonyGround` · `QuarryGroundGravel` · `RockCliffLayered` · `Sand` | Suelos |
+
+### No migrar
+
+`Maps/` · `FX/` · `Cinematics/` · `Blueprints/` · `3D_Plants` (1 GB) · `Atlases` (357 MB) ·
+`CustomAssets/Quarry` (820 MB, es la cantera del demo) · `CustomAssets/CommentaryBox` ·
+`CustomAssets/ScaleMan`.
+
+**`Masters/` sí hace falta** (23 MB): son los master materials de los que cuelgan los `MI_`.
+
+### ⚠️ Riesgo específico de este pack
+
+Es de **4.25** y fue el sample con el que Quixel estrenó las Runtime Virtual Textures. Espera
+más materiales con dependencia de RVT que en el Medieval Village. Si una malla sale negra,
+mirar ahí primero. Y **verificar que el `.uproject` sigue en su sitio** tras crearlo: al
+Medieval Village le faltaba.
+
+## Primeras mallas reales en Malkuth ✅
+
+**162 actores.** Cuatro bloques del blockout sustituidos por Megascans.
+
+| Bloque | Cajas fuera | Mallas dentro |
+|---|---|---|
+| 10 pilares de las sefirot | 10 cilindros | **40** (`SM_MK_Sefirah_NN_{Base,Fuste,Alto,Capitel}`) |
+| Altar del doble cubo | 2 cubos | **12** (`SM_MK_Altar_HN_M`) |
+| Escalinata Tau | 8 peldaños | **9** (`SM_MK_TauStair_K_J`) |
+| Lápidas del barrio de Tierra | 8 cubos | **8** (`SM_MK_Tierra_Tumba_N`) |
+
+### ⚠️ Las dos mallas que colgaron el editor
+
+```
+SM_RomanColumnHigh_01 →   559.991 triangulos, build 2942 MB
+SM_RomanColumnHigh_02 → 1.099.989 triangulos, build 2942 MB
+```
+
+Todo lo demás del pack está entre **4 y 39 MB** de build. Instanciar esas dos dejó el editor
+bloqueado ~40 min con un núcleo al 100 %, hasta que hubo que matar el proceso. **No usarlas
+nunca**: no aportan nada frente a `SM_RomanColumn_01..06` y **no traen Nanite**.
+
+> ### REGLA: medir con `get_asset_tags`, nunca instanciando
+>
+> `AssetTools.get_asset_tags` lee el **registro de assets sin cargar la malla**, así que no
+> dispara ningún build. Devuelve `ApproxSize`, `Triangles`, `NaniteEnabled`,
+> `BuildRequiredMemoryEstimate`, `Materials`, `UVChannels`, `LODs`…
+>
+> **Antes de instanciar cualquier Megascan, mirar ahí.** Cualquier cosa por encima de ~100 MB de
+> `BuildRequiredMemoryEstimate` se instancia sola y cronometrada, o no se instancia.
+>
+> Trampa del DSL: el valor devuelto es un `_StrictDict`. **`d.get(k, defecto)` falla en
+> silencio**; hay que comprobar `k in list(d)` y usar `d[k]`.
+
+> ### REGLA: un solo editor de Unreal abierto
+>
+> Con el sample del Medieval Village abierto a la vez quedaban **4,6 GB libres de 31,8**. Un
+> build de Nanite pide ~3 GB y una textura 4K otros 1,2. Cerrando el sample subió a 14,9 GB.
+
+### Los Megascans del Goddess Temple son fragmentos, no un kit
+
+Medido, no supuesto. Ninguna pieza es una columna de templo:
+
+| Malla | Tamaño real (cm) |
+|---|---|
+| `SM_RomanColumn_05` | 55×55×**213** |
+| `SM_RomanColumn_02` | 31×31×**187** |
+| `SM_RomanColumn_06` | 40×40×**161** |
+| `SM_RomanMarbleCapital` | 37×37×14 |
+| `SM_CastleWall` | 363×90×**41** ← es una losa tumbada, no un muro |
+| `SM_CastleStairs` | 727×145×94 |
+| `SM_OldChapelArch` | 250×84×256 |
+
+**Ninguna malla del Goddess Temple trae Nanite** — el pack es de 4.25, anterior a Nanite. Solo lo
+tienen las del Medieval Village.
+
+Consecuencia de diseño: para el **pórtico y los muros del templo** hay que copiar/pegar desde el
+nivel del sample, igual que con las casas. Solo lo apilable en vertical se puede componer por MCP.
+
+### Cómo se compuso cada pilar de las sefirot
+
+Cuatro piezas, escala **1,5**, estrechándose al subir, con **15 cm de solape** entre tambores
+(son fragmentos rotos: a tope se ven las juntas). Yaw distinto por pieza para que los diez no
+parezcan clonados. Rematan a **Z = 647** (los cilindros llegaban a 623).
+
+**Todos los pivotes de estas mallas están en la base y centrados en XY** — verificado uno a uno
+con `get_actor_bounds` sobre una instancia temporal. Excepción: `SM_GraveA_01` tiene el pivote
+desplazado **74 cm en X**; por eso se descartó y se usaron `SM_GraveA_00` y `SM_GraveB`.
+
+### La escalinata: dos fallos y cómo se detectaron
+
+**1. La malla estaba del revés.** El perfil por trazas *descendía* al avanzar
+(−90,6 → −163,5). La cara alta de `SM_CastleStairs` mira a **−Y**. Arreglado con **yaw 180**.
+Ojo: al girar 180° el offset del pivote (`off_XY.y = 10`) cambia de signo.
+
+**2. Agujero en la junta.** Con el paso igual a la profundidad de la malla (154) quedaba un hueco
+en Y=2640: la traza caía al suelo. **Paso reducido a 138** → ~16 cm de solape.
+
+Verificación final, trazas cada 10 uu en **tres carriles** (X = −700, 0, +700):
+**cero huecos y cero descensos**, de −176,5 (suelo) a +123,5 (plataforma) de forma continua.
+
+> **Lección:** una escalera de Megascans es un **escaneo dañado**, no un bloque limpio. Nunca dar
+> por hecha su orientación ni que el paso sea igual a su profundidad. Trazar siempre el perfil
+> completo, y en varios carriles.
+
+### El altar
+
+6 hiladas × 2 losas de `SM_AngkorWatTempleStones` (191×100×69), escala 1,55, **aparejo alterno**
+(yaw 0 / 90 en hiladas pares/impares). Las dos losas de cada hilada estaban a ±77,5 y dejaban una
+**junta de cuchillo** en el eje: la traza en (0,0) se colaba al suelo. **Acercadas a ±70.**
+
+La cima es irregular (347 a 425 según el punto) porque es un montón de piedras escaneadas. Es lo
+buscado, no un defecto.
+
+## Segunda tanda de mallas reales — 184 actores
+
+| Bloque | Fuera | Dentro |
+|---|---|---|
+| Pozo del barrio de Agua | 1 cilindro | **4** piezas (`SM_MK_Agua_Pozo_*`) |
+| Fragua del barrio de Fuego | 1 cilindro | **2** (`SM_MK_Fuego_Horno` + `_Chimenea`) |
+| Pedestales de los 4 barrios | 4 cilindros | **4** tambores `SM_RomanColumn_04` |
+| Ofrendas del altar | — | **10** (`SM_MK_Ofrenda_*`) |
+| Taller de la fragua | — | **8** (`SM_MK_Fuego_Taller_*`) |
+
+Verificado por bounds: base a −176,5 (±2) en todo, nada flotando ni enterrado.
+
+### ⚠️ Cinco bombas más, cazadas antes de instanciarlas
+
+`get_asset_tags` sobre todos los candidatos, antes de tocar nada:
+
+```
+SM_WoodenBarrelA    3050 MB   ← un barril de 38 cm
+SM_WindmillWings_B  1742 MB
+SM_WindmillWings    1638 MB
+SM_Fence_Rough_01    589 MB
+SM_Fence_Rough_02    168 MB
+```
+
+**El recuento de triángulos no predice el coste**: `SM_WoodenBarrelA` tiene 5.058 triángulos y
+pide 3 GB — lo caro son sus texturas. Mirar siempre `BuildRequiredMemoryEstimate`, no `Triangles`.
+
+Las 10 mallas ligeras que sí se usaron tardaron **15,2 s en total** en su primera carga.
+
+### Piezas que comparten origen
+
+Hallazgo útil: varios conjuntos de Megascans están modelados **con un origen común**, así que se
+colocan las piezas todas en el mismo punto y encajan solas. Se detecta porque el pivote queda
+*por debajo* de la base de la malla:
+
+| Malla | Pivote sobre su base |
+|---|---|
+| `SM_WellBase` | +2 |
+| `SM_MainWell` | 0 |
+| `SM_WellDetailPieces` | **−24** |
+| `SM_WellShingles` | **−171** |
+| `SM_Furnace_Low` | +81 |
+| `SM_Furnace_ChimneyAddon` | **−147** |
+
+Los cuatro del pozo van en `(x, y, suelo)` sin más. El horno se sube 81·escala para apoyarlo, y la
+chimenea va **en ese mismo punto**, no encima.
+
+### Rutas: no asumirlas
+
+`/Game/Meshes/Well/SM_WellBase` **no existe** — es `/Game/Meshes/Well/WellBase/SM_WellBase`,
+mientras que sus tres hermanas sí cuelgan directamente de `Well/`. Resolver siempre con
+`find_assets` antes de construir la ruta a mano.
+
+### Descartado: `SM_Townsign`
+
+118×205×**19**: está modelado **tumbado**, y con el pivote en un extremo (`offXY.y = −102`).
+Levantarlo exige pitch/roll a ojo. No compensa por MCP.
 
 ## No hacer todavía (lista de la guía)
 

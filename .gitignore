@@ -51,6 +51,31 @@ _Backups/
 # Como recrearlos: ver DarkAngels_POC_Notas.md.
 Content/DarkAngels/Animations/
 
+# ---------------------------------------------------------------
+# Megascans Samples (Quixel/Epic, gratis en Fab) - migrados desde
+# sus proyectos de muestra. Son GRATIS pero:
+#   1) la Standard License de Fab no permite redistribuirlos
+#   2) son ~5 GB, el repo se volveria inmanejable
+# Migrate conserva la estructura de origen, por eso caen en la raiz
+# de Content/. NO renombrar ni mover estas carpetas: los actores que
+# se copian/pegan desde el nivel del sample referencian estas rutas
+# exactas. Como recrearlas: ver DarkAngels_POC_Notas.md.
+# ---------------------------------------------------------------
+Content/Meshes/
+Content/Megascans/
+Content/Materials/
+Content/MSPresets/
+Content/Textures/
+Content/PhysMat/
+Content/Blueprints/
+Content/Environment/
+Content/Effects/
+# Llegadas con el Goddess Temple:
+Content/CustomAssets/
+Content/Masters/
+Content/HDRI/
+Content/FX/
+
 # Angel wings fifth (Nikita00, Fab) - asset de pago migrado desde su proyecto.
 # Cada persona que clone debe comprarlo y migrar: SKM_Wings5 desde
 # Angel_wings_pack/Meshes/ arrastra esqueleto, materiales y texturas.
