@@ -3030,6 +3030,112 @@ sale de piedra tallada, que para una ciudad en ruinas funciona mejor que cantos 
 > Ventaja lateral de nombrar todo con prefijo (`SM_MK_Escombro_M%03d`): sin nombres
 > deterministas, los duplicados habrían sido imposibles de distinguir.
 
+## Primera casa real en Malkuth ✅
+
+`House_01` del Medieval Village traída por **copiar/pegar entre editores**. **600 actores**,
+**12,7 × 12,2 × 8 m**. Colocada en el barrio del Aire, hueco `Casa_1` en `(2404, 849)`.
+
+### El copiar/pegar, paso a paso
+
+1. En el sample: clic en la carpeta `House_01` → clic derecho → **`Select` → `Select Subtree`**.
+   **Marcar la carpeta NO selecciona sus actores** — este era el fallo por el que "no copiaba".
+2. Ratón **sobre el viewport** → `Ctrl+C`.
+3. Comprobación barata: pegar en el Bloc de notas. Si sale `Begin Map / Begin Actor Class=…`,
+   la copia es buena.
+4. En Malkuth: ratón sobre el viewport → `Ctrl+V`.
+
+### ⚠️ Comprobar las dependencias ANTES de pegar
+
+Del volcado de texto salieron **42 mallas distintas**, y **18 no estaban migradas** — entre ellas
+los `SM_MedievalModularWall*`, `Door*`, `Gable*` y `CornerWall*`, o sea **los muros, puertas y
+esquinas**. Pegar así habría dado una casa sin paredes, y **las referencias vacías no se
+rellenan solas** al migrar después: hay que borrar y repetir.
+
+Se resolvió migrando en bloque `Megascans/3D_Assets` y `Meshes` enteras (~4,5 GB de más), que
+cubre también las seis casas restantes.
+
+> **`AssetTools.exists` NO sirve para assets.** Devolvió `false` para las 42, incluidas mallas
+> que estaban en el proyecto. Comprobar siempre con **`find_assets`** y comparar el último
+> segmento del path.
+
+### ⚠️ El `Ctrl+G` no ayuda al MCP
+
+Se agrupó la casa con `Ctrl+G` pensando en mover el `GroupActor` de una llamada.
+**No funciona: mover el GroupActor por MCP cambia su transform pero no arrastra a los hijos** —
+el agrupado es lógica del editor y la API se la salta. Además sus `get_actor_bounds` devuelven
+basura (±1.638.400).
+
+El grupo **sí sirve para el humano**: con él seleccionado, el **gizmo del viewport** (tecla `W`)
+mueve los 600 de golpe. El Details panel no, porque muestra "Multiple Values" y no deja teclear.
+
+### Rendimiento: el cuello de botella era `get_label`
+
+Mover 600 actores uno a uno costó tres tandas. La primera versión recorría **los 900 actores del
+nivel llamando a `get_label`** en cada pasada: **245 s solo de preparación**.
+
+> **Truco:** `find_actors(name='SM_MK_')` devuelve todos los nuestros en **una** llamada. Restando
+> ese conjunto (más los actores de sistema, buscados por nombre) se obtiene la casa sin recorrer
+> etiquetas. La preparación bajó de **245 s a 7 s**.
+
+> **Reanudar tras un corte:** `ActorTools.add_tag` + `find_actors(tag=…)`. Se etiqueta cada actor
+> al moverlo y el siguiente script recupera los pendientes con una sola llamada. Los 600 quedaron
+> con el tag **`MK_Casa01_movida`**, así que futuros movimientos de esa casa son inmediatos.
+
+### Reparto de casas rehecho: 4 por barrio
+
+Las cajas originales eran de 7×5 m; la casa real mide 12,7×12,2. Se rehízo el reparto:
+
+| | |
+|---|---|
+| Huecos | **4 por barrio** (16 en total), `SM_MK_<Barrio>_Casa_1..4` |
+| Tamaño de caja | 1300 × 1250 × 800, la planta real medida |
+| Separación a lo largo de la calle | 1450 (`u = 200` y `1650`) |
+| Hileras | `v = ±1100` → **calle de 900 uu** |
+| Radio ocupado | 1609 a 4849: fuera de la plaza, dentro de la muralla |
+
+**Ojo con la posición inicial:** al colocar la casa en el reparto viejo, su esquina llegaba a
+radio 918 (la plaza tiene 1400) y **se comía la columna `SM_MK_Sefirah_02`**. Verificar siempre
+por traza que la plaza y las columnas quedan libres.
+
+## Traces de debug del arma — apagados de verdad ✅
+
+En la primera partida con assets reales salía una **línea roja** del jugador al enemigo. Leído en
+PIE sobre las instancias vivas:
+
+```
+BP_DA_WarriorAI_C_0.MeleeCollisionHandler      debug = true
+BP_DA_PlayerCharacter_C_0.MeleeCollisionHandler debug = true
+BP_DA_GiantBoss_C_6.MeleeCollisionHandler       debug = false
+```
+
+El CDO del componente está en `false`, así que el `true` venía de la plantilla en
+`BP_CombatCharacter` — **inaccesible por MCP**, porque los componentes heredados no existen como
+subobjetos del CDO del hijo.
+
+**Arreglado por cirugía de nodos** en el `BeginPlay` de nuestras dos clases hijas, sin tocar DCS:
+
+```
+EventBeginPlay
+  Parent: BeginPlay                                    ← conservado
+  [SetCanCycleDirectionalTargets true …]               ← solo en el jugador
+  SetDebug(false, target = GetMeleeCollisionHandler)   ← nuevo
+```
+
+Verificado en PIE: las tres instancias a `false`.
+
+### Trampas del API de Blueprints
+
+- **El DSL muestra el nodo como `Class|PCGSettingsInterface|SetDebug`.** Es un despiste del
+  visor: varias clases del motor tienen una función `SetDebug`. El nodo es el correcto — se
+  confirma por el tipo del pin `self`: `BP Collision Handler Component Object Reference`.
+- **`pin_id.index_id` va por dirección**, no en un espacio común: entradas 0,1,2 y salidas 0,1
+  conviven. Leerlos con `get_node_infos`, nunca contarlos a ojo.
+- **`arrange_nodes` no acepta `graph`**, pide una lista de `nodes`. Llamarlo mal aborta el script.
+- Los dicts que devuelve el `ProgrammaticToolset` son **`_StrictDict`**: `d.get(k, defecto)`
+  **lanza** si la clave no existe. Comprobar con `k in list(d)` y usar `d[k]`.
+- **`describe_toolset` de `BlueprintTools` no cabe en contexto** (72 000 caracteres). Volcarlo a
+  fichero y extraer solo los esquemas que hagan falta.
+
 ## No hacer todavía (lista de la guía)
 
 Importar el Serafín · cambiar el esqueleto del personaje · quitar inventario · crear IA de boss ·
