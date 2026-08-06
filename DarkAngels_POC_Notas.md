@@ -3323,3 +3323,163 @@ consola de Unreal con `ModelContextProtocol.StartServer`.
 
 Se eligió `EditorToolset` en vez de `All Toolsets` a propósito: el agregador arrastra 21
 plugins experimentales innecesarios para este trabajo.
+
+## Vórtice Celestial v2 — hueste de ángeles sobre Malkuth
+
+Reemplaza los 7 anillos poligonales originales (`MK_Coro_Anillo_0..6`, ~200 componentes
+StaticMesh individuales) por una hueste densa estilo "hostia angelical": **~280 ángeles en
+8 draw calls** + 10 serafines skeletal. Todo vive en `Malkuth/08_Cielo/Vortice`.
+
+Centro: **(0, 45000)**. Núcleo (`MK_Coro_Nucleo`, esfera de 24 m de diámetro) y luz central
+en **Z=38000**; quedan completamente por encima de la hueste (máximo medido ≈Z=33772).
+Los anillos bajan en embudo desde Z=30500 (interior) hasta Z=23400 (exterior).
+
+| Actor | Mesh | Radio | Cant. | Escala | Giro (°/s) |
+|---|---|---|---|---|---|
+| `MK_Vortice_Anillo_1` | `SM_DA_AngelV2` | 60 m | 14 | 6–9 | 14,0 |
+| `MK_Vortice_Anillo_2` | `SM_DA_AngelV2` | 95 m | 20 | 7–11 | 11,0 |
+| `MK_Vortice_Anillo_3` | `SM_DA_AngelV2` | 135 m | 26 | 8–12 | 8,5 |
+| `MK_Vortice_Anillo_4` | `SM_DA_AngelV2` | 180 m | 32 | 9–14 | 6,5 |
+| `MK_Vortice_Anillo_5` | `SM_DA_AngelSilueta` | 235 m | 40 | 8–13 | 5,0 |
+| `MK_Vortice_Anillo_6` | `SM_DA_AngelSilueta` | 295 m | 48 | 9–14 | 3,8 |
+| `MK_Vortice_Anillo_7` | `SM_DA_AngelSilueta` | 360 m | 56 | 10–16 | 2,8 |
+| `MK_Vortice_Dispersos` | `SM_DA_AngelV2` | 70–340 m | 34 | 6–12 | 4,5 |
+| `MK_Vortice_Serafines` | `BP_DA_AngelCentinela` ×10 | 45 m | 10 | 6 | 9,0 |
+
+### Cómo está montado
+
+- Cada anillo es **un solo actor** con un `InstancedStaticMeshComponent` ("Angeles",
+  Movable, sin sombras) y un `RotatingMovementComponent` ("Giro"). Interior más rápido →
+  paralaje de vórtice.
+- Las instancias se escribieron vía MCP (`PerInstanceSMData` con matrices 4×4). Jitter por
+  instancia: radio ±15 %, Z ±14 m, guiñada ±15°, alabeo ±30°, **cabeceo −85°…−50°** (vuelo
+  prono, cabeza hacia la tangente; los meshes son figuras verticales con alas en su eje Y).
+- `MK_Vortice_Serafines`: pivote con `SceneComponent` + `RotatingMovementComponent`; los 10
+  `BP_DA_AngelCentinela` (cuerpo + alas skeletal animadas) van attacheados y orbitan a 45 m
+  del núcleo, de pie, mirando a la tangente.
+- `MK_Vortice_LuzCentral`: PointLight en el núcleo — 100k cd, atenuación 600 m,
+  blanco cálido (255, 240, 205), radio de fuente 15 m, **sin sombras** (coste).
+
+### Coste
+
+Los 8 ISM son 8 draw calls (~86k tris estáticos en total). Los 10 serafines son los únicos
+skeletal (20 SkeletalMeshComponents). El giro es `RotatingMovementComponent` puro: solo se
+ve en PIE/juego, en el viewport del editor queda congelado.
+
+### Verificado
+
+- Rotación confirmada en PIE (dos capturas separadas muestran los anillos girados).
+- Vista cenital: espiral densa y orgánica, sin patrón concéntrico evidente.
+- Desde el PlayerStart el vórtice queda a ~850 m tras el bosque de aproximación; se percibe
+  el resplandor al final del camino.
+
+### Rebalance anti-ceguera (misma sesión)
+
+La primera versión lavaba el cielo en blanco y los ángeles (emisivos blancos) desaparecían
+contra el resplandor. Ajustes:
+
+| Qué | Antes | Después |
+|---|---|---|
+| Emisivo `M_DA_NucleoLuz` | (90, 78, 57) | (22, 18.5, 13) |
+| `MK_Vortice_LuzCentral` | 400k cd, fuente 25 m | 100k cd, fuente 15 m |
+| Esfera núcleo | escala 66 | escala 24, Z=38000 |
+| Ángeles del vórtice (8 ISM) | `M_DA_AngelLuz` (emisivo 13/11/7.4) | **`M_DA_AngelContraluz`** |
+
+`M_DA_AngelContraluz` (nuevo): material lit sin emisivo — BaseColor bronce (0.28, 0.18,
+0.10), roughness 0.65. La hueste se lee como **cuerpos oscuros a contraluz** contra la luz
+central, igual que la referencia. Los 10 serafines skeletal y los centinelas del camino
+conservan sus materiales luminosos (contraste: pocos brillantes cerca del núcleo, masa
+oscura alrededor). Verificado en PIE: el cielo al final del camino ya muestra azul y nubes,
+y los ángeles se distinguen como siluetas.
+
+Corrección posterior: la luz estaba en el vórtice, pero la esfera había quedado por error en
+el origen del mundo `(0,0,0)`, ocupando la plaza de Malkuth. Se trasladó a
+`(0,45000,38000)` y se redujo de escala 45 a 24.
+
+## Barrios elementales v2 — lectura visual y densidad
+
+Se reforzó la lectura de los cuatro barrios sin convertir todo Malkuth en VFX ni teñir el
+suelo completo. La identificación usa tres capas repetibles: **estandarte en la entrada**,
+**silueta/hito propio** y **actividad ambiental local**.
+
+### Corrección de densidad
+
+La casa grande de Aire tenía copias superpuestas en la misma transformación. Se retiraron
+**524 actores redundantes** que no aportaban volumen visible. El barrio pasó de 877 a 353
+actores antes de añadir su nueva señalización; tras el pase completo quedó en 360.
+
+Para poblar Agua y Tierra sin repetir el problema se combinaron sus casas existentes en
+meshes reutilizables:
+
+| Asset | Triángulos | Optimización | Copias nuevas |
+|---|---:|---|---:|
+| `SM_SM_MK_House_Water_01` | 110.509 | Nanite + 10 hulls convexos | 2 |
+| `SM_SM_MK_House_Earth_01` | 196.255 | Nanite + 10 hulls convexos | 2 |
+
+Los assets viven en `Content/DarkAngels/Environment/Malkuth/Districts`. Las cuatro casas
+nuevas son un actor cada una y conservan colisión para gameplay.
+
+### Lenguaje de cada barrio
+
+| Barrio | Estandarte | Hito / silueta | Atmósfera y utilería |
+|---|---|---|---|
+| Aire / Citrino | oro-citrino | campanario + campana | viento, hojas en vórtice y tres estandartes altos |
+| Fuego / Rojizo | rojo oscuro | fragua + casa quemada | llama, brasas y columna de humo |
+| Agua / Oliva | oliva húmedo | pozo + molino | charcos, lluvia vertical, gotas ascendentes y cisterna |
+| Tierra / Negro | negro-bronce | cripta + osario | raíces, piedras, polvo y niebla baja |
+
+Cada entrada tiene dos postes altos y dos planos de tela con una instancia de
+`MI_Flag` propia. Materiales:
+
+- `MI_MK_Flag_Air_Citrine`
+- `MI_MK_Flag_Fire_Reddish`
+- `MI_MK_Flag_Water_Olive`
+- `MI_MK_Flag_Earth_Black`
+
+Todo el pase nuevo usa el tag `MK_DistrictIdentity` y carpetas `Identity` dentro de cada
+barrio. Conteo final del pase: Aire 22, Fuego 8, Agua 24 y Tierra 22 actores de identidad.
+
+### Refuerzo de lectura elemental
+
+El fuego seguía siendo el único elemento legible en una vista estática porque llama y
+emisivo producen una silueta inmediata; viento, goteo y polvo dependen demasiado del
+movimiento. Se añadió un sello físico de 8–9,2 m en el pedestal de Aire, Agua y Tierra,
+usando sus materiales cabalísticos existentes:
+
+- Aire: halo citrino elevado de 8,2 m, anillo de ocho luces, tres postes altos, viento
+  contenido y hojas en movimiento.
+- Agua: cuenca oliva de 9,2 m, superficie mojada, columna de lluvia, tres gotas ascendentes
+  y seis luces turquesa.
+- Tierra: sello carbón/bronce de 8,8 m, seis piedras verticales, raíces, polvo más denso y
+  dos nieblas bajas.
+
+Así los tres barrios conservan su VFX, pero también se pueden localizar desde arriba o
+cuando el efecto está entre ciclos.
+
+La composición final forma cuatro cuadrantes claros:
+
+| Cuadrante | Elemento | Centro focal |
+|---|---|---|
+| 1 | Tierra | `(−2000, +2000)` |
+| 2 | Agua | `(−2758, −2758)` |
+| 3 | Aire | `(+2000, +2000)`, halo en `Z=1050` |
+| 4 | Fuego | `(+2758, −2758)` |
+
+Materiales emisivos nuevos: `M_DA_Element_Air_Citrine`, `M_DA_Element_Water_Olive` y
+`M_DA_Element_Earth_Bronze`. El `NS_Wind` no se escaló como marcador principal: a gran
+tamaño sus sprites parecían tablones beige y tapaban Aire, por lo que se redujo y el halo
+pasó a ser la lectura dominante.
+
+### Assets que todavía mejorarían el resultado
+
+No hace falta descargar nada para reconocer los barrios en esta POC. Para un segundo pase
+de calidad, la prioridad de Fab sería:
+
+1. **Canal medieval modular + agua animada** para que Agua tenga una línea de circulación,
+   no solo superficies mojadas.
+2. **Banderas de tela animadas, veletas y campanas de viento** para que Aire tenga movimiento
+   físico legible además de partículas.
+3. **Set modular de cementerio/cripta y niebla localizada** para dar más profundidad a Tierra.
+
+Fuego ya está razonablemente cubierto por la fragua, carbón, yunque y VFX existentes; no es
+prioridad comprar otro pack.
