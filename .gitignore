@@ -75,6 +75,23 @@ Content/CustomAssets/
 Content/Masters/
 Content/HDRI/
 Content/FX/
+# ThirdParty del MedievalVillage: el bosque de abetos PN_interactiveSpruceForest,
+# el pack de VFX M5VFXVOL2 y los cuervos de AnimalVarietyPack. Son de terceros
+# y van dentro del sample gratuito; misma regla que el resto: no se redistribuyen.
+Content/ThirdParty/
+# Se colaron en la migracion del bosque (1,1 GB del sample, nada nuestro):
+#   Audio/        289 MB de sonido ambiente del sample
+#   Cinematics/   su secuencia de intro
+#   Maps/         SUS niveles, incluido MedievalVillage_P_WP.umap
+#   __ExternalActors__/Maps/  los actores externos de esos niveles World Partition
+# Nuestros mapas viven en Content/DarkAngels/Maps/, que si se sube.
+Content/Audio/
+Content/Cinematics/
+Content/Maps/
+Content/__ExternalActors__/Maps/
+
+# Configuracion local del editor, no es trabajo del proyecto
+.cursor/
 
 # Angel wings fifth (Nikita00, Fab) - asset de pago migrado desde su proyecto.
 # Cada persona que clone debe comprarlo y migrar: SKM_Wings5 desde
