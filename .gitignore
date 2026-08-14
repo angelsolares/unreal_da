@@ -97,3 +97,26 @@ Content/__ExternalActors__/Maps/
 # Cada persona que clone debe comprarlo y migrar: SKM_Wings5 desde
 # Angel_wings_pack/Meshes/ arrastra esqueleto, materiales y texturas.
 Content/Angel_wings_pack/
+
+# --- Añadido 2026-08-14: casi 1 GB sin rastrear que no debe ir al repo publico ---
+
+# Fuentes descargadas (560 MB). Son CC0 -PolyHaven, ambientCG, Three D Scans- asi
+# que redistribuirlas seria legal, pero no pintan nada en un repo de juego sin LFS.
+# Lo propio de ArtSource (los .blend de los kits y sus scripts) SI se sube.
+ArtSource/Downloaded/
+*.blend1
+
+# Assets importados de terceros. Misma regla que los packs de Fab: quien clone
+# los instala aparte. Nature son 195 MB en 15 ficheros, escaneos de alta
+# resolucion; de ellos solo 6 son envoltorios propios SM_DA_*.
+Content/DarkAngels/Environment/Nature/
+# 41 MB en 8 ficheros con estructura Master_Materials/Material_Functions:
+# es un pack de materiales ajeno, no trabajo del proyecto.
+Content/Custom/
+
+# Copias de seguridad y archivo muerto de mapas (122 MB). Las copias buenas
+# viven en _Backups/ en la raiz, que ya estaba excluido.
+Content/DarkAngels/Maps/Backup/
+Content/DarkAngels/Maps/_Archivo/
+# Salida generada, se puede rehacer
+Content/DarkAngels/Maps/_GENERATED/
