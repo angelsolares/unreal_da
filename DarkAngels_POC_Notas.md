@@ -3483,3 +3483,2231 @@ de calidad, la prioridad de Fab sería:
 
 Fuego ya está razonablemente cubierto por la fragua, carbón, yunque y VFX existentes; no es
 prioridad comprar otro pack.
+
+---
+
+## L_DA_Malkuth_POC_V2 — POC jugable con mecánicas (2026-08-07)
+
+Segunda versión del nivel Malkuth, esta vez como **POC jugable completo** (loop de ~5 min)
+con enemigos funcionales, sistema Farsa/Corruptio, boss Gabriel de 3 fases, trampas y UI base.
+Construido íntegramente vía MCP (BlueprintTools DSL + SceneTools + ProgrammaticToolset).
+
+### Cómo probar
+
+1. Abrir `/Game/DarkAngels/Maps/L_DA_Malkuth_POC_V2` y pulsar Play.
+2. El jugador spawnea en el Jardín (0, 6500) como `BP_DA_PlayerCharacter_V2`.
+3. Recorrido: Jardín → Sendero → Claro → Gazebo (Archangel) → Puente (trampas) →
+   Santuario (altar con `IA_Interact`) → Anfiteatro → Trono (Gabriel) → Escalera → Portal.
+4. Para probar el sistema Farsa: seleccionar al jugador en PIE y poner `Farsa = 30`
+   en Details → los Messengers pasan de Patrol/Observation a Attack.
+5. Dark Strike: botón de thrust attack (`IA_MeleeThrustAttack`) con Corruptio >= 30.
+   Cuesta 30 Corruptio + 5 Farsa, daño 60 en 5 m, rompe el Light Shield (3 hits).
+6. Alas: se desbloquean al derrotar a Gabriel (Jump en el aire = glide 0.3x gravedad).
+
+### Assets nuevos
+
+- **Player**: `BP_DA_PlayerCharacter_V2` (hijo de `BP_DA_PlayerCharacter`). Vars Farsa /
+  Corruptio / MaxFarsa / TearsOfRepentance / checkpoint. Funciones `AddFarsa`,
+  `AddCorruptio`, `GetFarsaValue`, `GetCorruptioValue`, `RestAtAltar`, `RestoreHealth`.
+  EventGraph: cooldown Dark Strike + glide por polling de `Input|EnhancedActionValues`
+  (los eventos `EnhancedInputActionIA_*` no se pueden crear vía MCP DSL), daño con
+  `Game|Damage|EventAnyDamage` (HP vía `Interface|SetStat`/`GetStatValue` del
+  StatsManager DCS), muerte → Mancha de Sombra (log), MaxFarsa -10 (mín 50), respawn
+  en checkpoint. BeginPlay crea `WBP_DA_HUD`.
+- **Enemigos**: `BP_Angel_Messenger` (HP 60, patrol/observation/attack, trompeta 8 s,
+  refuerzo <50 % HP, autodestrucción si hay Archangel vivo, +15 Corruptio al morir),
+  `BP_Archangel` (HP 400, 3 fases, escudo al 70 % que rompe con 3 Dark Strikes o 5 s,
+  Judgment Beam cada 12 s en fase 2+, invoca Messengers en fase 3),
+  `BP_Gabriel` (HP 800, hijo de Archangel; fase 1 diálogo por log cada 10 s con check
+  Farsa >= 50, fase 2 destruye 4 espejos + mirada drena Farsa 5 %/s, fase 3 destruye
+  todos los espejos + escudo regenera cada 15 s + cristalización en sal al 10 % HP;
+  al morir desbloquea las alas). Tags: `Angel`, `Archangel`, `Gabriel`, `Mirror`.
+- **Mundo**: `BP_CelestialRay` (aviso 1.5 s + rayo 25 daño, patrón 3 s/1.2 s),
+  `BP_AltarOfContemplation` (proximidad + `IA_Interact` → `RestAtAltar`),
+  `BP_Portal` (rotación + "TO BE CONTINUED"), `BP_RespawnVolume` (KillZ bajo el puente,
+  respawn en inicio del puente), `BP_DA_BeamVisual` (cilindro 20 m, muere en 1 s),
+  `BP_LightShield` (esfera visual, muere en 5 s).
+- **UI**: `WBP_DA_HUD` (vars HP/Stamina/Corruptio/Farsa Percent, Tick actualiza Farsa y
+  Corruptio), `WBP_DA_BossBar`, `WBP_DA_DialogueWheel`, `WBP_DA_DeathScreen`,
+  `WBP_DA_PauseMenu` (shells funcionales: sin árbol visual, diseñar en UMG a mano).
+- **Data**: `DT_FarsaEvents` (8 filas, schema `GameplayTagTableRow` como workaround:
+  evento en `Tag`, delta y descripción en `DevComment`).
+
+### Simplificaciones del POC (documentadas)
+
+- Diálogo de Gabriel y telegrafía de ataques van por `PrintString` (la Dialogue Wheel
+  visual requiere diseño UMG manual).
+- Desperation del Messenger: AoE si existe CUALQUIER Archangel vivo (sin check de HP
+  del Archangel; los getters cross-BP no se indexaban en el registro de nodos).
+- Sin Niagara (no soportado por MCP): fuentes/portal usan materiales con Panner;
+  feather-dissolve y dust burst son logs + destrucción.
+- Sin audio (no hay toolset de SoundCues): cues descritos vía logs.
+- "Romper objeto sagrado" y "evadir sin matar (+1 %)" no implementados (requieren
+  BPs de setos/fuentes dañables y tracking de evasión).
+- Stamina la gestiona el DCS base; HP del jugador se reduce en `EventAnyDamage`
+  propio (el DCS no escucha ese evento, no hay doble descuento).
+- Escudo: Dark Strike se detecta como daño >= 60 (mismo canal ApplyDamage).
+
+### Verificación (2026-08-07)
+
+- PIE OK: jugador spawnea en PlayerStart, sin errores LogBlueprint/LogScript.
+- Messenger patrulla en loop (muestreo de posiciones en PIE).
+- Los 12 espejos del Trono tienen tag `Mirror`; GameMode apunta a `BP_DA_PlayerCharacter_V2`.
+
+## Reemplazo con GardenKit de Blender (2026-08-07)
+
+Se reemplazaron 48 actores placeholder (primitivas SM_MK_*) por meshes del kit Blender importado en `/Game/Blender/`:
+
+- **Setos** (`SM_MGK_Hedge_Straight_400`): 12 setos del Jardin Geometrico (escala 1.19/1.0/1.9) y 12 muros del Sendero de Setos (escala 1.19/2.5/1.9, offset +500 Y por pivot al extremo).
+- **Fuentes del jardin** (`SM_MGK_Fountain_Octagonal_Centerpiece` + `_WaterUpper`): 3 bases y 3 jets reemplazados (z=0, pivot inferior).
+- **Bancas** (`SM_MGK_Bench_Stone_B`, `SM_MGK_Bench_Straight_A`): 2 bancas del Sendero.
+- **Fuentes del puente** (`SM_MGK_Fountain_Round_Small` + `_Water`): 8 fuentes + 8 jets en el Puente (z=210, nivel del deck).
+
+Los meshes conservan sus materiales importados de Blender (`M_MGK_Foliage_Emerald`, `M_MGK_Stone_Ivory`, `M_MGK_Water_Preview`).
+Piezas del kit aun sin usar (disponibles para decoracion extra): Topiary_Sphere/Spiral, GardenLamp, Trellis_Arch, Hedge_GateArch, Hedge_Corner/T/Cross/End, Hedge_Low_200, Path_*, PathBorder_*, Planter_*, Flowerbed_Round, Birdbath(+Water), Fountain_Wall(+Water), SteppingStones_Cluster, StoneBollard, Bench_Curved_45, SM_Malkuth_GardenKit_ALL.
+
+## Pasada de decoracion GardenKit (2026-08-07)
+
+63 piezas decorativas del kit Blender colocadas en carpeta `Deco_GardenKit/` del outliner (snap_to_ground):
+
+- **A_Jardin** (24): Hedge_GateArch en entrada (0,6100), 4 Topiary_Sphere en esquinas, 2 Topiary_Spiral flanqueando estatua, 6 GardenLamp en eje central, 2 Birdbath+Water, 4 Flowerbed_Round, SteppingStones, 2 Bench_Curved_45 (escala 1.3) alrededor de fuente central.
+- **B_Sendero** (16): 5 GardenLamp alternados, 4 StoneBollard en entrada/salida, Trellis_Arch (0,24500), 2 Planter_Rectangular junto a bancas, 4 Hedge_End como capas de los muros.
+- **C_Claro** (3): 2 Flowerbed_Round, SteppingStones.
+- **D_Gazebo** (4): 2 Planter_Rectangular y Fountain_Wall+Water sobre el piso pulido (z=1050, corregido tras detectar que snap_to_ground traza desde el Z de spawn).
+- **E_Puente** (6): 4 StoneBollard, 2 GardenLamp. **Fix**: las 8 fuentes + 8 aguas del puente estaban flotando sobre el agua (x=+/-600, z=210); se movieron al deck (x=+/-360, z=0).
+- **F_Santuario** (6): 2 GardenLamp flanqueando dais, 2 Topiary_Sphere en entrada, 2 Flowerbed_Round.
+- **G_Anfiteatro** (4): 2 StoneBollard, 2 GardenLamp.
+
+Zonas H (Trono) e I (Escalera) se dejaron limpias intencionalmente: claridad para el boss y la ascension.
+
+## Pavimento y setos bajos GardenKit (2026-08-07)
+
+62 piezas adicionales (carpeta `Deco_GardenKit/`):
+
+- **Eje central del jardin pavimentado**: Path_Straight_600 de (0,6400) a (0,12400), Path_Straight_300 de transicion, Path_Plaza_600 bajo la fuente central (0,13000) con PathBorder_Straight_300 en lados E/W, y continuacion norte hasta el pedestal de la estatua (0,18700).
+- **Sendero pavimentado**: 10x Path_Straight_600 de y=20500 a y=26500 (pasan bajo el Trellis_Arch).
+- **Enlace al Claro**: 2x Path_Straight_600 (y 26500-27700) que conectan con los SteppingStones.
+- **Setos bajos** (Hedge_Low_200): 12 flanqueando la entrada (6200-7400, x=+/-250) y 10 flanqueando la aproximacion a la estatua (17700-18700).
+- **Hedge_Cross**: 2 parterres en (+/-2800, 10000).
+
+Nota: los tiles de Path tienen pivot al extremo (-Y), igual que los setos: colocar en y = fin_del_tramo.
+
+## Fix de caminabilidad puente->portal (2026-08-07)
+
+Reporte del usuario: "cuando llego al puente no puedo pasar desde ahi, no me deja llegar hasta el templo".
+
+Diagnostico (trazas + capturas): el "link" entre el puente (termina y=50000) y el santuario (empieza y=52500) era un cilindro escalado (10,25,1) en (0,51250,-50). Su colision convexa facetada dejaba huecos reales de ~60cm+ en el centro y mas en los lados; el jugador caia al agua (z=-650) y el RespawnVolume (kill z<-400) lo devolvia al inicio del puente. La traza por canal Visibility daba falso positivo de suelo continuo.
+
+Fixes aplicados (carpeta `Fixes_Walkability/` + `Deco_GardenKit/E_Puente`):
+
+1. **Pasarela puente->santuario**: 5x Path_Straight_600 (y=50200..52600) + 1x Path_Straight_300 (y=52900) en z=-14 (tope al ras del deck, z=0), sin snap_to_ground. Cubre y 49600..52900.
+2. **Pasillo anfiteatro**: los 5 tiers centrales (StaticMeshActor_565/568/571/574/577, topes 100-500) bloqueaban la entrada sur. Eliminados; pasillo pavimentado con tiles (y 57400..58900). Los tiers laterales quedan.
+3. **Rampa del trono**: el ascenso era 0->800->1500->1600 en escalones gigantes (la "rampa" original era una losa con pitch=31 que no inclinaba nada util y colisionaba como bbox plano). Nueva rampa: cubo (10,26.2,0.5) en (0,63475,750) roll=-34.9 (sube de 0 a 1500 entre y 62400..64550) + cubo (10,6.1,0.5) en (0,64850,1550) roll=-9.46 (1500->1600). Material Cream_Stone.
+4. **Escalera de cristal**: SM_MK_GlassStair original era una losa PLANA inclinada de lado (pitch=31 sobre eje equivocado) con colision bbox plana a z=3150: imposible subir. Eliminada y reemplazada por cubo (6,58.3,0.5) en (0,73100,3100) roll=-30.96, material M_DA_MK_Glass: sube de 1600 (y=70600) a 4600 (y=75600), pendiente 31 caminable.
+5. **Borde arena->base escalera**: depresion de 100cm (montana top 1500 entre arena y base, ambos 1600). Rampa cubo (8,4.12,0.3) en (0,69200,1550) roll=-14.04.
+6. **Entrada de la arena**: espejo sur (596) y pilar sur (585) estaban en (0,65500) bloqueando el eje. Movidos a (+1300,65400) y (-1300,65400).
+7. **Escenario del anfiteatro**: hundido de z=25 a z=0 (tope 25cm, subible sin salto).
+8. **Arbol sur del santuario** (0,53200): movido a (1000,53400) para despejar el eje de entrada.
+
+**Leccion clave**: en este MCP, `roll` POSITIVO levanta el extremo -Y (sur). Para rampas que ascienden hacia +Y (norte) usar roll NEGATIVO. Verificado empiricamente con tile de prueba y trazas finas.
+
+Verificacion: traza completa y 42000->76600 sin huecos ni escalones >45cm (las pendientes continuas 31-35 grados son caminables). Portal accesible a z=4600.
+
+PENDIENTE: el guardado por MCP (SceneTools.save) hizo timeout repetidamente y luego el MCP dejo de responder ("fetch failed") con el editor vivo. Los cambios quedaron en memoria del editor: guardar manual con Ctrl+S al volver al editor.
+
+RESUELTO: al reconectar el MCP se guardo con `AssetTools.save_assets` (lista vacia = todos los dirty). NOTA: `SceneTools.save` ya no existe en el toolset actual; usar `AssetTools.save_assets`.
+
+## Reemplazo con PropsKit de Blender (2026-08-07 noche)
+
+Kits nuevos importados por el usuario en `/Game/Blender/`: **PropsKit** (32 meshes + 7 mats), **RuinsKit** (29 + 6), **MirrorLabyrinthKit** (27 + superficies espejo separadas + 6). Importacion limpia: materiales asignados en slots, tamanos coherentes, low-poly (36-232 tris).
+
+Pasada PropsKit aplicada (carpeta `PropsKit_POC/`):
+
+1. **Puente (E)**: deck cubo eliminado. 6x `SM_MP_Bridge_Wide_600x1200` (pivots y 43200-49200, z=-45 para tope a z=0; pivot al extremo +Y como los tiles GardenKit). 48x `SM_MP_BridgeRailing_300` continuas en x=+/-290 (seguridad anti-caidas al agua). 8 fuentes + 8 aguas movidas de x=+/-360 a +/-200. Tile walkway EF_0 movido a y=49800 para empatar sin gap ni overlap.
+2. **Escalera del trono (G)**: rampa cubo reemplazada por 5x `SM_MP_Stair_Wide_600x600` yaw=180, pivots y=61500+600i, z=300i. Sube 0->1500 y aterriza exacto en la cara de la montana (y=64500). La mini-rampa cubo ArenaLip (1500->1600) se conserva.
+3. **Escalera de ascension (H)**: cubo de cristal reemplazado por 10x `SM_MP_Stair_Wide_600x600` yaw=180, pivots y=69600+600i, z=1600+300i. Ultimo peldaño aterriza al ras de la plataforma del portal (4600) en y=75600.
+4. **Portal (I)**: anillos cubo eliminados. Set completo en (0,76200) sobre la plataforma: `Portal_Arch_500` + `Portal_RuneRing` + `PortalSurface_Preview` (superficie violeta emisiva) + `Threshold` + `Keystone`. `BP_Portal_C_0` intacto.
+5. **Trono (H)**: no existia blockout de trono (solo pilar + espejo). Agregado: `Throne_Dais_400` (z=1600) + `Throne_Malkuth_Main` (z=1675) + `ThroneCanopy`. Pilar norte movido a (600,68500).
+
+**Lecciones PropsKit**: pivot al extremo +Y en puentes/escaleras/barandales (colocar en y = fin del tramo). Escaleras: borde BAJO en el pivot; con yaw=180 el cuerpo cubre y..y+600 ascendiendo al norte; apilar con delta z=300 (peldaños de ~33cm, caminables). Verificado con trazas finas.
+
+Verificacion: trazas puente/escaleras sin huecos ni escalones >45cm; capturas de las 4 zonas OK. Guardado en disco.
+
+## Sistema de guia del jugador: HUD de objetivos + texto flotante (2026-08-07 noche)
+
+Pedido del usuario: "Necesito que me marques con texto flotante en que parte del escenario estoy y un HUD que me diga cual es la meta a seguir, y al pasarla cual seguiria".
+
+### Arquitectura implementada
+
+- **`/Game/DarkAngels/Blueprints/UI/BP_DA_HUD`** (BP de **AHUD**, no UMG): dibuja en `EventReceiveDrawHUD` el objetivo actual (arriba-centro, dorado, escala 2) y un banner de zona (30% alto, escala 3.5, con fade por alpha). Variables: `ObjectiveText` (default "OBJETIVO: Explora el Jardin de las Hostias"), `ZoneText`, `ZoneBannerEnd`, `ObjectiveIndex`. Funciones `SetObjective(InText, InIndex)` (solo avanza si InIndex > actual: progresion monotonica, no regresa si el jugador vuelve atras) y `ShowZoneBanner(InText)` (visible 5s con fade).
+- **`/Game/DarkAngels/Blueprints/Level/BP_DA_HUDSpawner`** (actor en el nivel, carpeta Guidance): en BeginPlay hace `CreateWidget(WBP_DA_HUD)` + `AddToViewport` (el widget UMG queda para futuras barras de stats) y **`ClientSetHUD(BP_DA_HUD)`** sobre el PlayerController 0.
+- **`/Game/DarkAngels/Blueprints/Level/BP_DA_ZoneTrigger`**: actor con `TriggerBox` + `TextRenderComponent` ("ZoneLabel", texto flotante 3D). Vars instance-editables: `ZoneName`, `ObjectiveText`, `ObjectiveIndex`. En BeginPlay: setea collision OverlapAllDynamic + overlap events + texto del label + **timer loop 0.5s a `CheckPlayerInside`**. Esta funcion hace chequeo MATEMATICO (`IsPointinBox` con loc del jugador vs loc del actor + `GetScaledBoxExtent`) con guard `HasFired`: al detectar al jugador dentro, dispara `FireZoneEntry` una sola vez, que castea `GetHUD(PC0)` a `BP_DA_HUD` y llama `SetObjective` + `ShowZoneBanner`. (Existe ademas el evento `OnComponentBeginOverlap` como via redundante.)
+- **9 instancias en el nivel** (carpeta Guidance): Jardin (0,9000) idx1 -> Sendero (0,20500) idx2 -> Claro (0,30000) idx3 -> Ruinas/Gazebo (0,36500) idx4 -> Puente (0,47000) idx5 -> Santuario (0,53000) idx6 -> Anfiteatro (0,59000) idx7 -> Trono/Arena (0,65500,z1800) idx8 "Derrota a Gabriel" -> Escalera Ascension (0,71000,z2600) idx9 "Entra al Portal".
+
+### Errores encontrados y fixes (lecciones clave)
+
+1. **UMG OnPaint no dibuja nada**: `WBP_DA_HUD` creado por MCP es un shell sin root widget de designer; su `OnPaint` nunca renderiza. Solucion: pivot a **AHUD con DrawText/DrawRect de canvas** (deterministico, no depende del designer UMG).
+2. **El GameMode NO spawnea el HUD aunque `HUDClass` este bien seteado** en el CDO de `BP_DA_GameMode` (verificado con get_properties). Fix: **`HUD|ClientSetHUD`** desde el HUDSpawner.
+3. **Las capturas MCP NO muestran UI screen-space**: ni `CaptureViewport` (re-render desde pose, sin canvas) ni `CaptureEditorImage` (downscaleado a 512px) muestran PrintString en pantalla, DrawText ni DrawRect. Horas de debugging falso-negativo. **Verificacion real = captura de pantalla de Windows con PowerShell** (`CopyFromScreen`), que si muestra lo que ve el usuario.
+4. **Fuente distance-field invisible en canvas**: `RobotoDistanceField` no renderiza con `AHUD::DrawText`. Con font null ("" en DSL) cae al font default del engine y si dibuja.
+5. **Typo de clase en llamadas cruzadas**: `Class|WBPDAHUD|SetObjective` (widget UMG) vs `Class|BPDAHUD|SetObjective` (AHUD) — find_node_types muestra ambos; el resolver del DSL eligio el equivocado silenciosamente. Verificar siempre el id exacto con find_node_types.
+6. **Los BoxExtent de las instancias quedaron con Y/Z por defecto (1500/400)**: `ObjectTools.set_properties` con JSON `{"x":..,"y":..,"z":..}` **solo aplica X** (bug del tool). El formato que funciona es texto Unreal: `"(X=5000,Y=9000,Z=500)"`. Con Y=1500 el jugador (y=3070) estaba fuera de la caja del jardin (y 7500-10500): por eso nunca disparaba.
+7. **Overlaps de colision no confiables aqui**: `IsOverlappingActor` (version actor) reportaba false pese al jugador dentro (respuestas de colision del capsule DCS vs WorldDynamic). Solucion robusta: chequeo matematico `IsPointinBox` en timer 0.5s + guard `HasFired` (bool agregada con `add_variable` name/type_name).
+8. **DSL docs**: `BlueprintTools.get_graph_dsl_docs()` tiene la gramatica completa (if/else multi-statement, `not`, multi-exec con `(:Pin ...)`, binds). `add_function_graph(blueprint, graph_name)` crea funciones; `add_variable(blueprint, name, type_name)`; `find_nodes(graph, title, entry_points_only)` + `delete_node` para borrar eventos huerfanos (write_graph_dsl hace upsert por evento, NO borra los no mencionados).
+
+Verificacion final (captura real de pantalla): objetivo "OBJETIVO: Sigue el sendero hacia el norte" arriba-centro, banner "JARDIN DE LAS HOSTIAS" con fade al 30%, y texto flotante 3D "JARDIN DE LAS HOSTIAS" visible en el mundo. Sin prints de debug. Todo guardado con `AssetTools.save_assets([])`.
+
+### Mejora de contraste/legibilidad (2026-08-07 noche, feedback del usuario)
+
+El texto dorado sobre cielo brillante no se leia. Fix en `BP_DA_HUD.EventReceiveDrawHUD`:
+
+- **Paneles de fondo**: `HUD|DrawRect` semitransparente oscuro (0.01,0.01,0.05, a=0.62) detras del objetivo y del banner (alpha del panel = 0.65 * fade para el banner). El texto se dibuja DESPUES del rect para quedar encima.
+- **Centrado exacto**: `HUD|GetTextSize(self, text, font, scale)` -> (OutWidth, OutHeight) permite centrar texto y panel al pixel: `x = SizeX*0.5 - tw*0.5`, panel con padding (+56 ancho, +24 alto objetivo; +96/+40 banner).
+- **Texto flotante 3D**: `WorldSize` de los 9 ZoneLabel de 110 a 220 (el doble). El `TextRenderColor` NO se pudo cambiar por instancia (set_properties no aplica FColor ni en formato texto ni JSON; queda blanco por defecto, que es legible).
+
+Nota DSL: `bind` con tupla `(bind (_tw _th) (HUD|GetTextSize ...))` funciona para nodos multi-output. Verificado con captura real: objetivo y banner perfectamente legibles sobre sus paneles.
+
+### Fix de solapamiento banner/texto 3D (2026-08-07 noche, feedback del usuario)
+
+Problema: el banner del HUD (30% altura) se sobreponia al texto 3D flotante (que se proyecta al centro de pantalla al mirarlo) y ninguno se leia.
+
+Fixes:
+
+- **Banner movido al 72% de altura** (tercio inferior) en `BP_DA_HUD`: ya no solapa con el texto 3D central ni con el objetivo superior.
+- **Color del texto 3D por runtime**: `TextRenderColor` no es seteable ni por instancia ni por CDO template via `ObjectTools.set_properties` (no aplica FColor y el getter regresa basura). Solucion: `Rendering|Components|TextRender|SetTextRenderColor` + `Utilities|Struct|MakeColor` en el `EventBeginPlay` del trigger (dorado 255,215,100). NOTA: el post-proceso del nivel (bloom/exposure) lava los tonos; un rojo puro de prueba renderizo como amarillo-dorado, o sea que el pipeline de color funciona pero los tonos finales se aclaran.
+
+Estado final verificado con captura real: objetivo con panel arriba, banner con panel abajo, texto 3D dorado al centro — los tres separados y legibles. Guardado en disco.
+
+## Integracion runtime Malakh / BP_Malakh_DCS (2026-08-09)
+
+### Causa principal
+`MalakMesh` NO era invisible por HiddenInGame ni por mesh roto. El body desaparecia al activar `ABP_Malakh_Retarget`: el IK Retargeter manda la pose de Malakh varios miles de UU en +Z (bounds Z max ~4800-9300 vs ~680 en pose estatica). La camara tercera persona mira la capsula; solo se veia equipo (escudo/espada) sobre sockets de Manny.
+
+Ademas, `RelativeScale3D=100` era correcto para el FBX tipico de Tripo en metros, pero **`SKM_Malakh_Own` en `Malakh_Scale1v2` ya mide ~1 m** (bounds height ~100 UU). Scale 100 lo convierte en gigante.
+
+### Assets reales
+- `BP_Malakh_DCS` → parent `BP_DA_PlayerCharacter`; DefaultPawn de `BP_DA_GameMode`
+- Componente: **`MalakMesh`** (hijo de `CharacterMesh0`)
+- `SKM_Malakh_Own` + `SK_Malakh_Own` + `PHYS_Malakh_Own` + `IK_Malakh` + `ABP_Malakh_Retarget` en `/Game/Tripo/Malakh_Scale1v2/`
+- `RTG_DCS_to_Malakh` en `/Game/DynamicCombatSystem/Demo/Meshes/Mannequins/Meshes/` (Source `IK_DCS` / Target `IK_Malakh`)
+- `SKM_Manny` + `ABP_CombatCharacter` en CharacterMesh0
+- No existen assets `_100`
+- AccuRig (`SKM_Malakh_AccuRig_UE5`) NO comparte huesos UE5 de DCS Manny (nombres Tripo: Root/Hip/Pelvis) → no sirve Copy Pose directo
+
+### Cambios aplicados (compilado + guardado)
+**CharacterMesh0 (Manny fuente):**
+- Visible=true, HiddenInGame=false
+- RenderInMainPass/Depth/CustomDepth=false, CastShadow=false
+- AlwaysTickPoseAndRefreshBones, Scale 1,1,1
+- Mesh/AnimBP DCS intactos
+
+**MalakMesh:**
+- Mesh = SKM_Malakh_Own
+- Scale final **1.7** (antes 100)
+- Visible, RenderInMainPass=true
+- Durante el diagnostico se uso **AnimationCustomMode** temporalmente para confirmar el body en A-pose.
+- Estado final: **AnimationMode = AnimationBlueprint**, AnimClass = `ABP_Malakh_Retarget`.
+- Parent = CharacterMesh0 confirmado
+
+**RTG_DCS_to_Malakh:**
+- TargetMeshScale: 100 → **1** (coherente con Scale1v2)
+- TargetMeshOffset → 0
+- En ABP node: customRetargetProfile con translationAlpha=0, bEnableFK=true (no bastó solo: OpStack del asset sigue lanzando Z)
+
+### Resultado PIE
+- Estatico (sin ABP): Malakh **visible**, actor/capsule scale 1, Manny no se dibuja, espada/escudo DCS siguen
+- El primer intento con ABP enviaba Malakh al cielo. Este estado historico queda **superado por el workaround documentado abajo**.
+
+## 2026-08-09 (tarde) — Malakh visible Y animado en PIE (RESUELTO via MCP)
+
+### Diagnostico definitivo (con datos runtime)
+Se instrumento un probe temporal por Blueprint que imprimia `GetSocketLocation` de los huesos
+de MalakMesh cada segundo durante PIE:
+
+- Actor: Z = -429.7 (correcto, en el suelo, scale 1,1,1)
+- MalakMesh (componente): Z = -526.7 (correcto)
+- **Hueso Pelvis: Z = +8206.762 (constante exacta entre frames y sesiones)**
+- Hueso Head: Z = +8260 y variaba frame a frame → la animacion FK **si funcionaba**
+
+Conclusion: TODA la pose venia desplazada una constante de **+5137 unidades en espacio del mesh**
+(~51.37 × 100 = la altura de la pelvis multiplicada por 100). Es el clasico dato x100 guardado
+dentro de la **Retarget Pose del target** en `RTG_DCS_to_Malakh` (RootTranslationOffset corrupto,
+producto de los experimentos con TargetMeshScale=100). No era la logica del personaje ni la op
+de Pelvis Motion.
+
+### Intentos que NO funcionaron (documentado para no repetir)
+1. Legacy `rootSettings/globalSettings` en customRetargetProfile del nodo (UE 5.8 los ignora, usa Op Stack).
+2. Forzar `targetRetargetPoseName = "Default Pose"` via perfil → sin efecto (la pose corrupta ES la Default).
+3. `retargetOpProfiles` tipado con `/Script/IKRig.IKRetargetPelvisMotionOpSettings`
+   (translationAlpha=0, bEnabled=false, translationOffsetGlobal=-5090) → **ninguno tuvo efecto en runtime**;
+   en este build el customRetargetProfile del nodo no llega al procesador.
+4. El Op Stack y las Retarget Poses del asset RTG son propiedades privadas: MCP no puede editarlas.
+
+### Fix inicial aplicado (workaround determinista, escala 1.7)
+Como el desplazamiento es una constante perfecta, se cancelo a nivel de componente:
+
+- `BP_Malakh_DCS` → `MalakMesh.RelativeLocation = (0, 0, -8646.2)`
+- `MalakMesh.AnimationMode = AnimationBlueprint` (ABP_Malakh_Retarget reactivado)
+- Verificado en PIE: Pelvis queda en Z = -439.4 (altura correcta), Head anima frame a frame
+
+### Resultado PIE final (verificado visualmente por captura)
+- Malakh **visible**, de pie sobre el suelo y animado
+- Animado via retarget FK (idle sway confirmado por posiciones de Head variables)
+- Espada y escudo DCS visibles y unidos
+- Manny sigue generando la animacion sin renderizarse
+- Bounds del actor normalizados (Z max: 8534 → 680)
+- Assets compilados y guardados; probe de debug eliminado (HUDSpawner restaurado)
+
+### ADVERTENCIA importante
+El `RelativeLocation.Z = -8646.2` actual de MalakMesh **compensa la pose corrupta del Retargeter**
+con su escala final 1.7.
+Si algun dia se corrige la Retarget Pose del target en `RTG_DCS_to_Malakh` (opcion correcta:
+en el editor del Retargeter, Target → Retarget Pose → Reset o poner el offset de traslacion
+del root/pelvis en 0), hay que **volver a poner MalakMesh RelativeLocation en (0,0,0)**.
+Tambien depende de la escala del componente: si cambia la escala, recalcular el offset
+(offset local base observado = -5086 UU; `offset final ≈ -5086 × escala del componente`;
+con escala 1.7 → aproximadamente -8646.2). No reutilizar este numero a ciegas en otro personaje:
+medir primero su error runtime.
+
+### Limitacion conocida del workaround
+La traslacion de la pelvis queda congelada (no hay bob vertical en locomocion ni crouch
+con desplazamiento de cadera); rotaciones y extremidades animan normal. Se corrige de raiz
+arreglando la Retarget Pose y quitando el offset.
+
+### Prueba de altura 1.8 y reversion (2026-08-09)
+
+Se probo temporalmente aumentar solamente el componente visual:
+
+- `MalakMesh.RelativeScale3D`: `(1.7,1.7,1.7)` → `(1.8,1.8,1.8)`.
+- `MalakMesh.RelativeLocation.Z`: `-8646.2` → `-9154.8`.
+
+La prueba funciono, pero visualmente la escala original era preferible. Por solicitud del usuario
+se revirtio y el **estado final guardado** es:
+
+- `MalakMesh.RelativeScale3D = (1.7,1.7,1.7)`.
+- `MalakMesh.RelativeLocation = (0,0,-8646.2)`.
+- Actor, Capsule y CharacterMesh0 permanecen en escala `(1,1,1)`.
+- `AnimationMode=AnimationBlueprint` y `ABP_Malakh_Retarget` permanecen activos.
+- Blueprint compilado y guardado por MCP.
+
+## Procedimiento reutilizable — Personaje Tripo como visual de DCS
+
+Esta es la receta recomendada para los proximos personajes creados en Tripo que deban usar
+locomocion, ataques, bloqueos, montages y equipo del Dynamic Combat System.
+
+### Principio de arquitectura
+
+```text
+BP_<Personaje>_DCS
+└── CapsuleComponent                  escala 1,1,1; colision y movimiento
+    └── Mesh / CharacterMesh0         Manny; AnimBP original de DCS
+        └── <Personaje>Mesh           personaje Tripo visible
+```
+
+- **Nunca reemplazar Manny en CharacterMesh0.** DCS necesita su skeleton, AnimBP, montages,
+  sockets y logica de equipamiento originales.
+- Manny debe permanecer activo y animando, pero sin render:
+  `Visible=true`, `HiddenInGame=false`, `RenderInMainPass=false`,
+  `RenderInDepthPass=false`, `RenderCustomDepth=false`, `CastShadow=false`,
+  `AlwaysTickPoseAndRefreshBones`, escala `1,1,1`.
+- El mesh Tripo es solo la representacion visual:
+  `NoCollision`, visible, render main/depth, `UseAttachParentBound=false`,
+  `AlwaysTickPoseAndRefreshBones`; es hijo directo de CharacterMesh0.
+- Actor, Capsule y Manny siempre quedan en escala `1,1,1`. Ajustar provisionalmente solo
+  el componente visual Tripo. No usar World Settings para corregir escala.
+
+### 1. Importacion segura y nomenclatura
+
+No sobrescribir assets originales de DCS ni reemplazar una importacion Tripo que ya se use.
+Crear assets nuevos por personaje:
+
+```text
+/Game/Tripo/<Personaje>/
+SKM_<Personaje>
+SK_<Personaje>
+PHYS_<Personaje>
+IK_<Personaje>
+RTG_DCS_to_<Personaje>
+ABP_<Personaje>_Retarget
+BP_<Personaje>_DCS
+```
+
+Importar el FBX con Skeleton=None, auto-select skeleton desactivado, animations off y
+physics asset on. Primero medir el mesh en Unreal:
+
+- Un humano normal debe medir aproximadamente 170-200 UU de alto.
+- Si mide ~1-2 UU, la conversion metros→centimetros sigue incorrecta: preferir reimportar
+  una **copia nueva** con escala uniforme 100.
+- Si mide ~100 UU como `SKM_Malakh_Own`, no aplicar escala 100 al componente. Usar una
+  escala visual razonable (Malakh usa 1.7).
+- `Target Mesh Scale` del Retargeter es solo preview; no corrige runtime.
+
+### 2. Validacion estatica obligatoria
+
+Antes de tocar IK o retargeting:
+
+1. Asignar el SKM Tripo al componente visual.
+2. Poner `AnimationMode=AnimationCustomMode`, sin animacion.
+3. Confirmar geometria, materiales, reference pose, escala y bounds.
+4. Probar en Viewport y PIE.
+
+Interpretacion:
+
+- Invisible estatico → problema de importacion, materiales, transform, bounds o visibilidad.
+- Visible estatico pero falla con ABP → problema de IK Rig, Retargeter o Retarget Pose.
+- Visible en Blueprint pero no en PIE → buscar overrides runtime de mesh, escala o visibilidad.
+
+No diagnosticar cadenas hasta que esta prueba estatica pase.
+
+### 3. IK Rig y Retargeter
+
+- Source IK Rig: el IK Rig de Manny/DCS (`IK_DCS` en esta integracion).
+- Target IK Rig: `IK_<Personaje>` con preview mesh del personaje.
+- Elegir el hueso de cadera real (`Pelvis`, `Hips`, `Hip`, etc.) como Retarget Root/Pelvis.
+- Crear y revisar cadenas principales: pelvis, spine, neck, head, brazos, manos, piernas y pies.
+- Operation Stack minimo comprobado:
+
+```text
+Pelvis Motion
+FK Chains
+```
+
+- No borrar `FK Chains`: sin esta operacion solo se desplaza el cuerpo y las extremidades
+  quedan rigidas.
+- Base FK: enabled, Interpolated, rotation alpha 1, translation mode None.
+- Base Pelvis Motion: translation alpha 0, rotation alpha 1.
+- Evitar editar escala de huesos en Current Retarget Pose.
+- Mantener `TargetMeshScale=1` salvo que se necesite exclusivamente para inspeccion visual.
+
+### 4. Animation Blueprint destino
+
+Crear `ABP_<Personaje>_Retarget` sobre el skeleton propio del personaje:
+
+```text
+Retarget Pose From Mesh → Output Pose
+```
+
+Configurar:
+
+- IK Retargeter = `RTG_DCS_to_<Personaje>`.
+- Retarget From = Parent Skeletal Mesh Component.
+- No usar Copy Pose From Mesh entre skeletons diferentes.
+- Componente visual: `AnimationMode=AnimationBlueprint`,
+  `AnimClass=ABP_<Personaje>_Retarget`.
+
+### 5. Diagnostico runtime si el cuerpo desaparece o vuela
+
+No asumir que es culling. Medir en PIE:
+
+1. Actor location/scale.
+2. Componente visual world location y relative transform.
+3. `GetSocketLocation` de root, pelvis y head.
+4. Bounds del actor.
+
+Patrones:
+
+- Actor/componente correctos, pero root/pelvis/head miles de UU lejos: pose/retarget corrupto.
+- Pelvis constante lejos y Head cambia entre frames: FK funciona; toda la pose tiene un
+  offset constante.
+- Bounds enormes con el Actor en el suelo: los huesos animados estan fuera, no es la capsula.
+- Huesos inmoviles: revisar FK Chains, chain mappings y tick order.
+
+Para instrumentar temporalmente se puede usar un actor de diagnostico con timer y
+`GetSocketLocation`. Eliminar el actor, funcion y prints al terminar.
+
+### 6. Workaround de offset constante
+
+Usarlo solamente cuando MCP no pueda editar la Retarget Pose privada y se confirme que el
+error es constante:
+
+1. Medir `PelvisWorldZ` durante varios frames.
+2. Definir la altura deseada de pelvis sobre el Actor.
+3. Calcular la compensacion local considerando `RelativeScale3D`.
+4. Aplicarla solo a `<Personaje>Mesh.RelativeLocation.Z`.
+5. Verificar pelvis/head, bounds, locomocion, ataques, bloqueo y equipo en PIE.
+6. Registrar el valor, escala, mediciones y captura por personaje.
+
+No copiar `-8646.2` a otro personaje. Ese valor pertenece a Malakh, su pose corrupta y
+su escala 1.7.
+
+Arreglo definitivo cuando se tenga acceso manual al asset:
+
+1. Abrir `RTG_DCS_to_<Personaje>`.
+2. Target → Retarget Pose.
+3. Resetear la pose o dejar la traslacion del root/pelvis en cero.
+4. Guardar y verificar PIE.
+5. Volver `<Personaje>Mesh.RelativeLocation` a `(0,0,0)`.
+
+### 7. Checklist de aceptacion por personaje
+
+- Mesh visible estatico y con ABP.
+- Actor, Capsule y Manny en escala `1,1,1`.
+- Manny invisible pero animando con el AnimBP original de DCS.
+- Personaje Tripo en el suelo, escala humana y bounds razonables.
+- Brazos, manos, columna, piernas y pies se animan.
+- Locomocion, equipar, atacar y bloquear funcionan.
+- Espada/escudo siguen unidos correctamente mediante DCS.
+- No desaparece por distancia ni culling.
+- Blueprint/ABP/IK/RTG compilados y guardados.
+- No se modificaron destructivamente assets originales de DCS.
+- Cualquier workaround queda documentado con valores medidos y condicion para retirarlo.
+
+## Nivel: El Claro (L_DA_Malkuth_Claro_POC) - 2026-08-12
+
+Beat 04/13 del PDF (El Claro - Hueste Mixta). Creado desde cero duplicando la base
+visual del Jardin (misma luz/cielo/niebla/landscape/montanas lejanas) y limpiando
+todo el contenido del jardin (setos, topiarios, rio, coloso, abetos del valle).
+
+Composicion (centro de arena en X=8000, Y=0, suelo Z=-40):
+
+- Anillo doble de acantilados QuarryCliff (25 piezas) cerrando el claro; hueco de
+  entrada al sur y puerta al norte. Carpeta Claro/Acantilados.
+- Puerta norte: piramide escalonada de bloques AngkorWatTempleStones + plataforma,
+  2 hojas SM_MedievalModularDoor3x2M con M_DA_MK_Pale_Gold, columnas MRK flanqueando,
+  2 PointLights calidos, roca QuarryCliff de fondo. Carpeta Claro/Puerta.
+- 12 bloques de ruina Angkor + columna caida + escombros MRK. Carpeta Claro/Bloques.
+- Vegetacion: 44 abetos PN full sobre las cimas (trace_world para asentarlos),
+  46 helechos en bases y bloques, 30 flores (Crownbeard/WhiteEverlasting/Lily),
+  12 GroundCover. Carpeta Claro/Vegetacion.
+- Hueste: 4 siluetas emisivas SM_DA_AngelV2 (2 Vigilantes, Lancero, Arquero sobre
+  bloques apilados en Z=344) + PointLight dorado a los pies de cada uno + 2 estatuas
+  flanqueando la escalinata. Carpeta Claro/Hueste. SIN gameplay todavia (los
+  BP_Angel_Messenger son graybox cilindro+esfera; se retiraron por fidelidad visual).
+- PlayerStart en (8000, -1650) mirando yaw 90 hacia la puerta.
+- Sol TEMP_Sun: pitch -40, yaw 70 (desde detras del jugador, bana la cara de la
+  puerta), intensidad 9, temperatura 4300K.
+
+Aprendizajes:
+
+- SM_CastleStairs de Megascans es UN solo escalon, no una escalera.
+- SM_MP_Stair_Wide_600x600 del PropsKit se deforma gigante al colocarlo (revisar export).
+- SM_DA_AngelV2 funciona a media/larga distancia; de cerca se ve voxel.
+- SK_MAP_Archangel lee como tablones blancos (alas de tarjetas), no usar para hueste.
+
+Pendiente proximo pase: mas brillo/presencia del oro de la puerta, niebla suave de
+distancia, NavMesh + enemigos reales cuando exista arte de angeles, conexion con
+el Jardin (corredor sur).
+
+### Correccion de puerta y escalinata (feedback usuario, 2026-08-12)
+
+- La piramide de bloques Angkor NO era subible (160cm por fila > max step height).
+  Reemplazada por SM_CastleStairs_02 (escalera completa de Megascans con muretes,
+  332x455x166) escala (2.0, 2.0, 1.8) = ~30cm por escalon, subible caminando.
+- La puerta ahora es SM_MedievalModularDoor3x2M CON SU MATERIAL ORIGINAL (porton
+  doble de madera con herrajes, se distingue como puerta). OJO: a yaw 0 se ve su
+  TRASERA (refuerzos en X, tablas con backface culling = invisible); debe ir a
+  yaw 180 para mostrar la cara frontal hacia el sur.
+- BP_DoorToMirrorChapel descartada para esto: es solo un marco abierto con tablas,
+  no un porton monumental cerrado.
+- Eje real de la abertura norte del anillo: x=8250 (no 8000); cara de roca de fondo
+  en y~3255 (medida con trace_world). Puerta adosada a esa cara sobre plinto de 2
+  bloques Angkor apilados (top z=264).
+- Cliff_In_2 movido a (10250, 3000) y GateRock_L/R a (6950/9550, 3950) porque
+  tapaban el nicho.
+
+REGLA DE FLUJO: antes de elegir un asset para una construccion, revisar el Content
+completo desde el Parent (find_assets en /Game + CaptureAssetImage + get_bounds de
+los candidatos). No asumir por el nombre: SM_CastleStairs es UN escalon,
+SM_CastleStairs_01/_02 son escaleras completas.
+
+### Alineacion fina de la puerta (2026-08-12)
+
+- SM_MedievalModularDoor3x2M tiene el PIVOTE EN LA ESQUINA (bounds locales x[0,300]),
+  no en el centro: al colocarla por location queda corrida media anchura (~390cm a
+  escala 2.6). Compensar: loc_x = centro_deseado + escala_x * 150.
+- Metodo correcto de ensamblaje: leer bounds locales (StaticMeshTools.get_bounds) y
+  calcular el AABB mundial con yaw/escala para poner caras al ras, en lugar de
+  posicionar a ojo. Valores finales: escalera top y=3008 z=232; plinto frente
+  al ras en y=3008, top z=232; puerta base z=232.5, cara frontal y=3068,
+  centrada en x=8245.
+
+### Playtest PIE y correcciones (2026-08-12, tarde)
+
+- Escalera pegada a la puerta: Claro_Escalera movida a y=2600 para que el ultimo
+  escalon toque la cara frontal del porton (y=3068). Sin hueco.
+- BUG ENCONTRADO EN PIE: los 4 angeles de la hueste (SM_DA_AngelV2) estaban
+  ENTERRADOS 2.4m. El pivote del mesh esta 200cm ARRIBA de los pies (bounds
+  locales z[-200, 90]); al colocarlos con z=suelo solo asomaban cabeza/alas y se
+  veian como manchas blancas acostadas. Regla: z_actor = superficie + 200 * escala.
+  Corregidos: Vigilante1/Lancero z=200, Vigilante2 z=210, Arquero z=642 (sobre
+  bloques, tope real en z=422 medido con trace_world).
+- OJO trace_world: devuelve la DISTANCIA (float) desde start, no un hit struct.
+  z_impacto = start_z - distancia. Ademas puede chocar con el propio mesh que se
+  quiere asentar (a los angeles enterrados les pegaba en la cabeza): validar el
+  resultado contra el suelo esperado.
+- Estatuas flanqueantes: mismas SM_DA_AngelV2 pero ahora con override
+  M_MRK_Stone_Ivory (sin brillo, leen como estatuas de piedra) paradas SOBRE sus
+  pedestales SM_MRK_StatueBase_200 (150cm alto, pivote en base), simetricas al eje
+  de la escalera en x=8250+-650, y=2300. Solo la hueste del campo queda emisiva.
+- Luz Claro_Vigilante_1_Glow bajada a intensidad 3 / radio 600: sobreexponia la
+  columna caida de marfil y se veia como bloque blanco desde lejos.
+- FALSA ALARMA: patron de tablero de ajedrez en el cielo tras los abetos en las
+  capturas = ghosting del antialiasing temporal al teletransportar la camara de
+  captura (desaparece al capturar dos veces seguidas). NO es material roto; no
+  forzar LODs por esto.
+
+## Master: conexion Jardin + Claro + Santuario (2026-08-12)
+
+`L_DA_Malkuth_Master` ya tenia hitos del plano PDF y Level Instances de
+Jardin (-60000,-60000), Santuario (44000,48000), Anfiteatro y Gabriel.
+Faltaba El Claro.
+
+- LI_04_ElClaro en el hito 04 (36000, -12000, 0), DesiredRuntimeBehavior
+  Partitioned, carpeta Secciones. Arena mundial ~ (44000, -12000).
+- Paso norte del Claro: GateRock_Back corrido a y=-5000 y cliffs Out_2/Out_3
+  abiertos para dejar un hueco caminable detras del porton (la ruta que se abre).
+- Corredor Jardin->Claro (Conexiones/JardinClaro): senda SM_MGK_Path_Straight_600
+  + setos a ambos lados desde el fin del Sendero (-25500,-59800) hasta la boca
+  sur del Claro (44000,-15000). El landscape del Master y el del Claro se
+  solapan en x[5600,10400], y[-62400,-9600]: se puede CAMINAR sin teletransporte.
+- Corredor Claro->Santuario (Conexiones/ClaroSantuario): misma senda+setos desde
+  detras de la puerta (44000,-6800) hasta el spawn del Santuario (42850,47200).
+  Suelo extra Conn_CS_Ground (hierba del valle) cubre el hueco donde termina el
+  landscape del Claro (y=38400) y empieza el templo (y=48000).
+- PlayerStart persistente del Master movido al spawn del Jardin
+  (-59649,-60004,112). OJO: los subniveles siguen teniendo sus propios
+  PlayerStart; PIE puede elegir otro al azar. Si spawneas en Anfiteatro/Gabriel,
+  usa el PS del Jardin.
+- Zone triggers (BP_DA_ZoneTrigger) en las tres entradas.
+- Luces: cada LI trae su DirectionalLight (aviso de Forward Shading). El sol
+  persistente del Master tiene ForwardShadingPriority=10.
+
+## Nivel: Puente Ascendente (L_DA_Malkuth_Puente_POC) - 2026-08-12
+
+Beat 07/13 del PDF (Puente de Agua Ascendente - Trampa Celestial: agua invertida,
+patron de picos, Angel gigante como orientacion. Objetivo: "Cruza entre los pulsos
+de picos"). Duplicado de la base visual del Jardin, limpiado igual que El Claro
+(602 actores: Jardin/*, Valle/*, Fondo/Coloso).
+
+OJO WORLD PARTITION: al cargar un mapa duplicado, los actores espaciales quedan
+DESCARGADOS en el editor (find_actors solo ve ~111 de 700+; get_actors_in_folder
+falla con "Folder does not exist" aunque get_folders si lista las carpetas). No
+hay tool para cargar celdas. WORKAROUND: crear un LevelInstance del mapa dentro
+del Master, edit_level_instance (carga TODO), borrar ahi, commit, borrar el LI y
+recien entonces cargar el mapa directo (lo que queda si esta cargado).
+
+Composicion (eje del puente x=0, sur->norte ascendiendo; suelo del valle z=-40):
+
+- Puente: 10 x SM_MP_Bridge_Wide_600x1200 inclinados ROLL=-14 (en UE roll
+  negativo = extremo -Y del mesh baja; el pivote esta en el extremo +Y ALTO).
+  Pivote i: y = -4624.76 + i*1164.35, z = 216.64 + i*290.31. Deck: z(y) = -30 +
+  (y+5800)*tan(14). Arranca al ras del suelo (-30 vs suelo -32) en y=-5800 y
+  termina en y=5844 z=2872. 80 barandales SM_MP_BridgeRailing_300 siguiendo la
+  pendiente (misma rotacion, offset local (+-290, -d, 45) rotado a mano) y 5
+  pilares SM_MP_Bridge_Pillar escalados hasta el agua.
+- Picos del deck: SM_MRK_Obelisk_400 escala (0.5,0.5,1.1) con M_DA_MK_Salt_Crystal,
+  4 filas (y=-3000,-800,1400,3600) de 2 picos c/u con HUECO alternado (x=180,
+  -180, 0, 180) para poder zigzaguear. Estaticos por ahora: el "pulso" (subir/
+  bajar temporizado) queda pendiente como gameplay.
+- Abismo: plano de agua M_DA_MK_Agua_Quieta (95x150m) bajo el puente + 8 picos
+  gigantes Obelisk_700 de cristal saliendo del agua.
+- Agua invertida: 24 planos verticales (SM_DA_GroundPlane pitch 90) con
+  M_DA_MK_Water_Upward: 5 pares de cortinas flanqueando el puente (x=+-750,
+  altura deck+600) + 2 cascadas grandes (8m ancho, 37m alto) junto a la mesa
+  norte. Cada cortina son 2 planos espalda con espalda (yaw 0+180) por el
+  backface culling.
+- Canon: 10 QuarryCliff_01 escala 3 x lado (x=+-3300) con altura creciente
+  (sz 2.6->5.6) + 2 flancos sur + mesa norte (3 cliffs sz 6.6-7.0 de fondo y
+  2 sub-soportes bajo la plataforma).
+- Plataforma norte: SM_DA_GroundPlane (16x20m) con M_MGK_Stone_Ivory en z=2872,
+  al ras del final del puente (verificado con trazas: 2872 continuo en la union
+  y=5870). Portal de 2 Obelisk_700 dorados (M_DA_MK_Pale_Gold) + 2 PointLights
+  calidas. BUG CORREGIDO: Puente_Mesa_2 atravesaba la plataforma (roca a z=3077);
+  movida a y=9600 como telon de fondo.
+- Angel gigante: SM_SM_DA_AngelSilueta escala 45 (154m de envergadura) en
+  (0, 16000, 6000) yaw 270, flotando tras la plataforma + 3 BP_CelestialRay.
+- Sol TEMP_Sun: pitch -22, yaw 270 (desde el NORTE, detras del angel = contraluz
+  al ascender), intensidad 8, temperatura 4800K. Propiedad del componente:
+  bUseTemperature (con b, no useTemperature).
+- PS_Puente en (0,-6600,72) yaw 90 + BP_DA_ZoneTrigger "Puente Ascendente" /
+  "Cruza entre los pulsos de picos" en la entrada.
+
+QA por trazas (el viewport del usuario quedo en modo Top ortografico y
+CaptureViewport/PIE solo devuelven esa proyeccion; sin captura en perspectiva):
+
+- Deck continuo y monotono cada 300cm de y=-5800 a 5844, sin huecos.
+- Picos: fila y=-3000 golpea a z=1072 en x=-180/0 y deja libre x=180.
+- Union puente->plataforma al ras (2872/2872). Escalon de entrada sur: 2cm.
+
+LECCION set_actor_transform: un xform PARCIAL (solo rotation) RESETEA location a
+(0,0,0) en la practica. Pasar SIEMPRE location+rotation+scale completos al mover
+actores existentes.
+
+Pendiente Puente: pulso temporizado de los picos (gameplay), verificacion visual
+en perspectiva, conexion en el Master (LI + corredor), oro/bloom del portal.
+
+### Fix "el puente no tiene colision" (feedback usuario, 2026-08-12 noche)
+
+El puente SI tenia colision (1 convex hull por modulo); el bug real era el SPAWN:
+
+- PS_Puente estaba a z=72 pero el pawn DCS necesita ~z=suelo+156 para spawnear
+  sin encroachment (suelo -32 => minimo ~124). Al spawnear enterrado 52cm, la
+  resolucion de colision lo empujaba HACIA ABAJO y caia al LECHO DEL RIO del
+  landscape heredado del Jardin (z~-90), POR DEBAJO del plano de agua: desde ahi
+  el puente es una pared y "no se puede subir". Reproducido con spawn de prueba
+  en PIE (pawn terminaba en z=-90). Fix: PS_Puente a z=145.
+  REGLA: PlayerStart a suelo + ~150, igual que el del Jardin (112 sobre -40).
+- Bonus arreglado: el convex hull del SM_MP_Bridge_Wide_600x1200 queda hasta
+  66cm POR ENCIMA del deck visible a mitad de modulo (el hull une los picos de
+  los extremos): el pawn "flotaba" al caminar. Puesto
+  bodySetup.collisionTraceFlag = CTF_UseComplexAsSimple en el mesh (guardado en
+  el asset, tambien beneficia al V2). Verificado en PIE: pies exactamente sobre
+  el deck (z pawn 2014 = deck 1915 + capsula ~99) y estable en la rampa de 14.
+- Diagnostico util: spawnear el pawn con StartPIE startTransform y leer su Z con
+  find_actors(actor_type=/Script/Engine.Character) a los 3s: si z-capsula no da
+  la superficie esperada, esta parado en otra cosa (hull, agua, lecho).
+- OJO CaptureViewport: captura el viewport de NIVEL activo; si el usuario lo
+  dejo en Top ortografico, todas las capturas (incluso con PIE corriendo en otro
+  panel) salen top-down. Sin tool para cambiar la proyeccion.
+
+### Pase visual del Puente + workaround de captura en perspectiva (2026-08-12)
+
+WORKAROUND CAPTURA EN PERSPECTIVA (clave para todo QA visual futuro):
+StartPIE con playMode=PlayMode_InEditorFloating + startTransform donde se quiera
+inspeccionar, y luego CaptureEditorImage: la ventana flotante de PIE SI sale en
+la captura del escritorio del editor, en perspectiva 3a persona real con HUD.
+Recortar la region de la ventana (aprox rect 893,0,387,240 en captura 1280x494)
+con System.Drawing y ampliar. Verificado: trigger "Puente Ascendente" aparece,
+pawn sobre el deck, colision OK.
+
+Cortinas de agua rehechas: los 20 planos anchos flotantes (5 pares por lado) se
+veian como rectangulos blancos; reemplazados por 12 columnas en CRUZ (2 planos
+de 1.7-2.6m de ancho con yaw 0/90) que nacen EN el agua del abismo (z=-32) y
+suben hasta deck+500, alternando lado y radio (x=+-680..1100). Leccion:
+M_DA_MK_Water_Upward es translucent + twoSided => NO hacen falta pares
+espalda-con-espalda; la cruz da volumen desde cualquier angulo. Las 2 cascadas
+de la mesa tambien convertidas a cruz (plano B yaw 90 en vez de 180).
+
+Estado visual verificado en PIE (sur, y mitad del puente): puente ascendente
+hacia angel luminoso central (M_DA_AngelLuz emisivo), columnas de agua
+flanqueando, canon enmarcando, agua reflejante abajo. Muy blanco/bloom al centro
+pero coincide con "trampa celestial" + majestuosidad divina del PDF (beat 7).
+
+### Integracion Master: 12 zonas conectadas + niveles _Sub (2026-08-12)
+
+Master (L_DA_Malkuth_Master) ahora contiene los 13 beats del PDF como Level
+Instances conectados por senderos (SM_MGK_Path_Straight_600, escala 1.3x3,
+z=-38, piezas cada ~2000; el suelo global es SM_Plano_Referencia a z=-50).
+
+Posiciones de LIs nuevos (z=0 salvo indicado):
+- LI_03_MiradorSariel (-16000,-24000) ramal desde el sendero Jardin-Claro
+- LI_05_RuinasGazebo (64000,16000) ramal al este del Claro
+- LI_07_PuenteAscendente (16000,60000, yaw 90, z=-4) tras el Santuario
+- LI_09_ElevadorTrono (-74000,8000) al sur del Anfiteatro
+- LI_10_GabrielC1 (-40000,-15000); LI_11_GabrielC2 (renombrado, ex LI_10_12)
+- LI_12_GabrielC3 (-92000,-15000); LI_13_PortalYesod (-92000,16000)
+Corredores: JardinMirador, ClaroGazebo, SantuarioPuente, PuenteAnfiteatro,
+AnfiteatroElevador, ElevadorGabrielC1, GabrielC1C2, C2C3, C3Yesod (139 piezas
+en carpetas Conexiones/*).
+
+LECCION CLAVE - niveles _Sub sin entorno: cada POC arrastra su propio entorno
+(TEMP_Sun/Atm/Sky/Fog/PP/Cloud + PlayerStart + Landscape + ~93 montanas
+Monte_Lejos/Aguja/Monte_Medio/Ladera + WaterZone heredadas de la BaseVisual).
+Meterlos directo como LI al Master duplica soles/cielos y planta anillos de
+montanas sobre las zonas. Solucion: duplicar cada POC a L_DA_Malkuth_*_Sub y
+ahi borrar los 7 actores de entorno (en los 10: Mirador, Gazebo, Puente,
+Elevador, GabrielC1, GabrielC3, Yesod, Jardin, Claro, Gabriel) y ademas las 96
+piezas de escenografia+landscape en los 6 nuevos de interior (el Puente_Sub
+conserva su canon/mesa/agua porque es parte del beat). Los LIs del Master
+apuntan a los _Sub; los *_POC originales quedan intactos para trabajo
+individual. Resultado verificado: 1 DirectionalLight, 1 SkyAtmosphere, 1 PPV
+en el Master.
+
+Ademas se borraron 12 montanas puntuales que invadian zonas jugables: 11 en
+Jardin_Sub (Monte_Lejos 15/18/20/24/26/27, Ladera 69/70/86/90/92) y Ladera_89
+en Puente_Sub (bloqueaba el corredor Claro-Gazebo). Deteccion: bounds de cada
+montana vs circulo de zona / distancia a segmento de corredor.
+
+Playtest en PIE (ventana flotante + captura de escritorio, recorte
+893,0,387,240): spawn por defecto cae en el Jardin (PS_Master_Jardin); Mirador
+con estatua y luz de llave visibles desde el sendero; trigger "Ruinas del
+Gazebo" dispara; acceso al Puente con canon y columnas de agua; Elevador con
+rayo celestial entre acantilados (muy PDF); Gabriel C1/C3 con portales
+iluminados; ascenso a Yesod legible con obeliscos. Trazas de suelo continuas
+en las 12 zonas y 9 corredores (sendero z=-26, suelo -50, escalon 24cm
+caminable).
+
+## Revision visual del Master zona por zona (2026-08-12, sesion Claude Code)
+
+Recorrido de las 12 Level Instances con el workaround de PIE flotante
+(`StartPIE` playMode=PlayMode_InEditorFloating + startTransform, luego
+`CaptureEditorImage` y recortar la esquina superior derecha ~70% del ancho x 47%
+del alto). Confirmado: `CaptureViewport` es inutil mientras el viewport de nivel
+este en ortografico (sale la regla de "10cm" y capturas dentro de las mallas).
+
+### CAUSA RAIZ del blanqueo general: la NIEBLA, no las luces
+
+Auditado el mundo del Master: **1 DirectionalLight, 1 SkyAtmosphere, 1
+ExponentialHeightFog, 1 PostProcessVolume, 1 SkyLight**. No habia soles
+duplicados. El lavado venia de tres valores del `Fog_Malkuth`:
+
+| Valor | Antes | Ahora | Por que |
+|---|---|---|---|
+| `fogDensity` | 0.055 | **0.006** | 0.055 disuelve todo mas alla de ~300 m en un mundo de 1,8 km |
+| `fogMaxOpacity` | 0.85 | **0.45** | techo de opacidad demasiado alto |
+| `directionalInscatteringLuminance` | (1.3, 0.85, 0.42) | **(0.10, 0.08, 0.06)** | era el halo ambar que tenia todo del color del sol |
+| `volumetricFogExtinctionScale` | 1.1 | 0.35 | |
+| `fogInscatteringLuminance` | — | (0.22,0.26,0.34) | azul frio de aire, en vez de crema |
+
+Ademas sol subido de pitch -24 a **-38** (intensidad 5.2, 5600K,
+volumetricScattering 2.2 -> 0.8) y PP con auto-exposicion 0.06-6.0, bias 0.35,
+bloom 0.45 con umbral 1.25, film slope 0.95 / toe 0.62 / shoulder 0.22.
+
+Resultado: el valle del Jardin pasa de crema uniforme a verde legible con
+coniferas y setos visibles a ambos lados.
+
+### Estado por zona (contra el PDF)
+
+- **01 Jardin** — lo mejor tras el arreglo de niebla. FALTA: el coloso no se ve
+  desde el spawn (deberia dominar el fondo segun el beat 01); el sendero es una
+  cinta de losas con borde duro, no una vereda de tierra; sabana especular en la
+  hierba a contraluz.
+- **04 El Claro** — no evaluado en condiciones: el spawn de prueba (44000,-15500)
+  cae contra una cara de acantilado. Usar el PS real del Claro.
+- **06 Santuario** — el que mas se acerca al PDF: contraluz por la abertura,
+  hiedra, helechos, musgo, rayos volumetricos. FALTA: el centro se sobreexpone y
+  se come el altar y a Cassiel.
+- **07 Puente Ascendente** — composicion correcta (rampa, columnas de agua,
+  canon, angel al fondo, agua reflejante). FALTA: todo es blanco puro sin
+  definicion de material; el angel gigante lee como una cruz blanca, no como
+  angel.
+- **08 Anfiteatro** — se distinguen columnas y obeliscos en el horizonte pero el
+  graderio se pierde en la bruma. FALTA: revisar tras el cambio de niebla; la
+  hierba tapa el empedrado de la arena.
+- **11 Gabriel C2** — la mejor de las tres camaras: sala circular, hornacinas de
+  espejo reflejando, agua reflejante, boveda. FALTA: sobreexpuesto al centro;
+  Gabriel sigue siendo `SM_DA_AngelV2` (placeholder plano).
+- **13 Portal a Yesod** — legible (senda, escalinata, portal luminoso, obeliscos
+  morados). FALTA: los dos focos del portal revientan a blanco; falta el viraje
+  oro->purpura que pide el beat 13.
+
+### Patron transversal
+
+Casi todas las zonas comparten dos defectos: **sobreexposicion en el foco de
+interes** (focos locales demasiado intensos con la exposicion automatica del
+Master) y **placeholders de angel** (`SM_DA_AngelV2` / `SM_SM_DA_AngelSilueta`)
+que a corta distancia no leen como personaje. El segundo no se arregla con
+ajustes: necesita arte de angel propio.
+
+## REGLA DE MAPAS: el _Sub manda (2026-08-12)
+
+Establecida tras romper el Puente por editar los dos gemelos como si fueran iguales.
+
+**La regla, en una linea: todo cambio va al `_Sub`. El Master apunta al `_Sub`. Los
+`_POC` son archivo de solo lectura.**
+
+Por que: mantener dos copias del mismo nivel sin mecanismo de sincronizacion ya
+costo un fallo real. Se ensancho la calzada del Puente a 18 m **solo en el Sub**;
+al aplicar despues un arreglo de barandales a los dos mapas por igual con el
+borde del Sub (|x|=878), en el POC —cuya calzada llega a ±300— quedaron 60
+barandales flotando a 6 m sobre el vacio. Duplicar el arreglo no arregla la
+duplicacion.
+
+### Estado tras la limpieza
+
+Ahora **las 12 zonas tienen `_Sub`** y el Master apunta a todos. Se crearon los dos
+que faltaban duplicando su POC (ya venian sin entorno global, verificado):
+
+- `L_DA_Malkuth_Santuario_Sub`  (663 actores) ← LI_06, en (44000, 48000)
+- `L_DA_Malkuth_Anfiteatro_Sub` (1205 actores) ← LI_08, en (-74000, 42000)
+
+Las Level Instances se repuntaron borrando la vieja y recreandola con
+`create_level_instance` sobre el mismo transform: es fiable, y `worldAsset` no se
+puede escribir por MCP.
+
+### PENDIENTE MANUAL: archivar los 12 POC
+
+`AssetTools.move` **no puede mover `.umap`**: devuelve `false` sin mensaje, incluso
+con el mapa descargado y la carpeta destino ya creada. No es World Partition (estos
+mapas no tienen `__ExternalActors__` propios). Es limitacion de la tool.
+
+La carpeta `/Game/DarkAngels/Maps/_Archivo/` **ya esta creada**. Hay que arrastrar
+estos 12 ahi desde el Content Browser, que si gestiona los redirectors:
+
+```
+L_DA_Malkuth_Jardin_POC      L_DA_Malkuth_Claro_POC
+L_DA_Malkuth_Mirador_POC     L_DA_Malkuth_Gazebo_POC
+L_DA_Malkuth_Puente_POC      L_DA_Malkuth_Elevador_POC
+L_DA_Malkuth_GabrielC1_POC   L_DA_Malkuth_Gabriel_POC
+L_DA_Malkuth_GabrielC3_POC   L_DA_Malkuth_Yesod_POC
+L_DA_Santuario_POC           L_DA_Malkuth_Anfiteatro_POC
+```
+
+Verificado con `get_referencers`: **ninguno tiene referencias externas**. Mover es
+seguro. Mover, no borrar: son la red si un Sub sale mal.
+
+### Como trabajar una seccion suelta
+
+Los `_Sub` no tienen sol ni cielo (por eso el Master no tiene 13 soles), asi que
+abrirlos solos se ven sin luz. Dos caminos:
+
+1. **Edit Level Instance desde el Master** — camino bueno, da la iluminacion real.
+2. Rig temporal de luz en el Sub, y **quitarlo antes de guardar**.
+
+## Electric Dreams migrado: SUBSTRATE es la trampa (2026-08-12)
+
+Migrado de `ElectricDreamsEnv` (UE 5.5) el follaje templado y el material de
+landscape: KikuyuGrass, CloverVarieties, WhiteWindflower, Periwinkle, Fern,
+GroundCover, LilyOfTheValley + `Content/Landscape/M_BGLandscape_Auto`.
+
+**Sus materiales salen NEGROS.** Causa: el maestro de follaje
+`/Game/Custom/CustomMaterials/.../M_MS_CustomFoliage` esta autorado para
+**Substrate**. Electric Dreams tiene en su `DefaultEngine.ini`:
+
+```
+r.Substrate=True
+r.Substrate.AccurateSRGB=1
+r.Substrate.BytesPerPixel=170
+```
+
+y DarkAngelsPOC **no tiene ninguna linea de Substrate**. Sin el, esos materiales
+no compilan bien y renderizan en negro.
+
+**NO se activo Substrate a proposito**: es un cambio de render que afecta a TODOS
+los materiales del proyecto (DCS incluido), obliga a recompilar shaders enteros y
+puede cambiar el aspecto de lo ya construido. Decision: dejarlo apagado.
+
+**Solucion aplicada:** material propio `M_DA_MK_Hierba_Kikuyu` en
+`DarkAngels/Materials/Malkuth`, hecho con las texturas de Megascans que si
+migraron bien (`T_KikuyuGrass_01_BC/_N/_AoRT/_T`), sin depender del maestro de ED:
+
+- BlendMode Masked, TwoSided, ShadingModel **TwoSidedFoliage**
+- BaseColor <- BC.RGB ; OpacityMask <- BC.A (clip 0.5)
+- Normal <- N ; Roughness <- AoRT.G ; AO <- AoRT.R ; SubsurfaceColor <- T
+- Asignado a las 7 mallas SM_KikuyuGrass_0X
+
+**Regla general:** cualquier asset que venga de Electric Dreams (o de otro proyecto
+con Substrate) necesita re-materializarse contra un maestro propio. Comprobar el
+`DefaultEngine.ini` del proyecto origen ANTES de migrar materiales.
+
+### Otra cosa que NO funciona: M_BGLandscape_Auto
+
+Se aplico al landscape del Jardin y salio en blanco y negro. Es un material de
+mezcla por capas y necesita **pesos de capa pintados** en el landscape, que el
+nuestro no tiene y que no se pueden pintar por MCP. Revertido a
+`M_DA_MK_Valle_Hierba`.
+
+### Densidad de vegetacion: usar InstancedStaticMesh, no actores
+
+Colocar matas como actores sueltos no da densidad de pradera: 900 actores sobre el
+valle = una cada 4,6 m², sigue leyendo a cesped. La via buena es
+`ActorTools.add_component` con `/Script/Engine.InstancedStaticMeshComponent` y
+escribir `perInstanceSMData`.
+
+Hecho en el Jardin: 4 actores ISM con 1.401 instancias cada uno = **5.604 matas de
+KikuyuGrass**. La matriz de cada instancia es un `FMatrix` (xPlane/yPlane/zPlane/
+wPlane); wPlane lleva la traslacion.
+
+**OJO con el tamano del lote:** 1.401 instancias en una sola llamada hacen que la
+peticion HTTP expire por timeout (`UND_ERR_HEADERS_TIMEOUT`) aunque **la escritura
+SI se completa** en el editor. Verificar leyendo `perInstanceSMData` antes de
+reintentar, o el trabajo se duplica. Trocear en lotes de ~300 para evitarlo.
+
+## ESTADO POR ZONA — revision visual completa (2026-08-12, fin de sesion)
+
+Capturado con `CaptureViewport` (funciona si el viewport de nivel esta en
+**Perspectiva**; en Top ortografico devuelve basura — dejarlo SIEMPRE en
+Perspectiva). Camaras usadas: posicion del LI en el Master +/- offset, mirando yaw 0.
+
+| Beat | Zona | Estado | Que le falta |
+|---|---|---|---|
+| 01 | Jardin | Bueno | Terreno plano (esculpir a mano); coloso es ESFINGE |
+| 03 | **Mirador Sariel** | **GRAYBOX** | Todo: caja blanca + 2 columnas + cesped |
+| 04 | El Claro | Bueno | Angeles placeholder (SM_DA_AngelV2 = cruces) |
+| 05 | **Ruinas Gazebo** | **CASI GRAYBOX** | Plataforma blanca + columnas; sin vegetacion ni ruina |
+| 06 | Santuario | **El mejor** | Solo sobreexposicion al centro |
+| 07 | Puente | Bueno | Angel gigante lee como cruz blanca |
+| 08 | Anfiteatro | **REGRESION** | Manto de geometria verde/amarilla deforme en primer plano |
+| 09 | **Elevador Trono** | **ROTO** | **NO TIENE SUELO** — se ve la rejilla del editor |
+| 10-12 | Gabriel C1/C2/C3 | C2 bueno | Gabriel placeholder; cortinas de agua |
+| 13 | Yesod | Bueno | — |
+
+### Orden de trabajo acordado
+1. **Elevador** (bug: falta suelo, no es jugable)
+2. **Anfiteatro** (regresion: averiguar el manto verde del primer plano)
+3. **Mirador** y **Gazebo** (construir de cero)
+
+### Receta que YA funciona, aplicar en las tres
+- Suelo: `SM_DA_GroundPlane` + `M_DA_MK_Valle_Hierba` (o `M_DA_MK_Tierra_Arena`
+  para patios de combate, ver El Claro).
+- Acantilados: `QuarryCliff_01/02/05` para altura, `IcelandicCliff` SOLO a ras de
+  suelo (escalados leen como laminas flotantes). Nunca `GraniteRockAssembly` ni
+  `IcelandicRockAssembly` en primer plano: traen madera muerta que lee a bosque
+  quemado.
+- Cascadas: `SM_Waterfall_Arc` + `SM_Waterfall_Base` de `/Game/WaterMaterials`
+  (pack tharlevfx, CC BY - **acreditar en creditos**). Medir la pared con
+  `trace_world` antes de colocar; validar que |x| no caiga sobre geometria jugable.
+- Hierba densa: ISM con `SM_KikuyuGrass_0X` + `M_DA_MK_Hierba_Kikuyu` (material
+  propio, NO el de Electric Dreams: Substrate).
+- Piedra: `M_DA_MK_Piedra_Marfil` / `_Oscura` / `_Pulida` / `_Calzada` / `_Borde`.
+- Zonas encerradas por acantilados quedan en sombra (el sol del Master viene de
+  +X): meter PointLights de relleno calidas ~1500-2600, castShadows=false.
+
+### Deuda transversal (no se arregla colocando actores)
+- **El angel colosal**: bloquea el parecido en beats 01, 04, 07 y 10-12. No existe
+  gratis; hay que encargarlo o esculpirlo.
+- **Terreno plano**: esculpir es manual (Landscape Mode). El MCP no lo expone.
+- **Rotulos del plan**: siguen colandose en encuadres. Carpeta `Plan/` en el Master,
+  se pueden borrar cuando ya no hagan falta para orientarse.
+
+## Elevador del Trono — trabajo a medias (2026-08-12, fin de contexto)
+
+Referencia (beat 09 del PDF): plataforma circular con roseta labrada donde esta
+Malakh, encajada en un POZO vertical entre paredes de roca oscuras que enmarcan
+izquierda y derecha; al fondo y abajo, vacio abierto con plazas circulares
+aterrazadas, cascadas por los acantilados, coniferas y una puerta gotica lejana
+con luz calida. Contraste fuerte: primer plano oscuro, fondo luminoso.
+
+### Lo que se hizo
+
+- **BUG PRINCIPAL ERA: no habia suelo.** El nivel tenia 29 actores y ningun plano
+  de suelo; se veia la rejilla del editor. Anadido `Elevador_Suelo`
+  (SM_DA_GroundPlane, esc 260 = X -13000..13000, Y -10400..15600, z=-400).
+- El "disco" del elevador era `SM_MRK_Pedestal_Round_120` — **1,2 m**, cuando en la
+  lamina mide ~12 m. Sustituido por `Elevador_Plataforma` (Cylinder esc 12 = 1200 cm)
+  + `Elevador_Roseta` (Cylinder esc 7.5 en Piedra_Pulida) encima.
+- 12 paredes de pozo (QuarryCliff_02/05), 6 cascadas del pack tharlevfx,
+  3 terrazas circulares al fondo (esc 26/34/20), 34 coniferas, spot de fondo
+  calido y 2-3 PointLights de relleno.
+
+### ESTADO: mal, hay que retocar
+
+Ultimo cambio **empeoro**: baje las paredes de escala 5-9 a 2.6-4.2 y las acerque
+a |x|=2400, y ahora **hay rocas atravesando el encuadre** de lado a lado, tapando
+la vista. Antes el problema era el opuesto: a escala 5-9 y |x|=1750 eran muros de
+128 m que dejaban TODO el pozo en sombra total (el suelo existia pero salia negro).
+
+**Lo que hay que hacer:** las paredes del pozo deben quedar ALTAS pero **abiertas
+por arriba y por el fondo** — enmarcar sin cerrar. Probar |x| ~3000-3500, escala
+5-7, y **verificar con captura que no cruzan el eje central** (y que dejan ver las
+terrazas del fondo). El error de las dos veces fue no medir el AABB resultante
+contra el corredor de vision antes de dar por bueno.
+
+Camara de referencia usada: world `(-74000, 6200, 250)` yaw 90, pitch -2.
+(LI_09 esta en -74000, 8000 => local (0, -1800)).
+
+### Siguientes en la cola, sin empezar
+
+- **08 Anfiteatro**: REGRESION. Manto de geometria verde/amarilla deforme cubriendo
+  el primer plano. No estaba al construirlo. Hay que identificar que actor es
+  (probar `find_actors` con bounds sobre la zona baja del encuadre).
+- **03 Mirador de Sariel**: graybox (caja blanca + 2 columnas). Beat: el ramal
+  opcional que entrega la Llave. Construir de cero.
+- **05 Ruinas del Gazebo**: casi graybox (plataforma blanca + columnas). Beat:
+  "Cenizas y Verdad", lore + Corruptio en ramal elevado. Construir de cero.
+
+### Anfiteatro: el "manto verde" RESUELTO (2026-08-12)
+
+Era **`SM_Suelo_Base`**, el propio plano de suelo del Anfiteatro: 200 m de lado con
+`M_DA_MK_Valle_Hierba`, cuyo material tiene **TextureCoordinate tiling 420** (se
+hizo para un Landscape de 1 km). A ras de horizonte ese tileado produce un muare
+verde/amarillo estirado que parece geometria rota.
+
+**Arreglo:** material `M_DA_MK_Tierra_Arena` (tiling 26, y ademas es lo que pide el
+beat 08: patio de piedra y tierra, no pradera) y plano reducido de escala 200 a 85.
+
+**Leccion:** un tiling alto pensado para landscape genera muare en planos grandes
+vistos en rasante. Al reutilizar `M_DA_MK_Valle_Hierba` fuera de un Landscape,
+bajar el tiling o usar otro material.
+
+**Y una leccion de metodo:** el actor culpable YA aparecia en mi consulta de bounds
+(`SM_Suelo_Base | dim 20000 | Z -6..-6`) y lo pase por alto cuatro veces porque
+buscaba "algo roto" en vez de sospechar del suelo. Antes de descartar, revisar
+tambien lo que parece normal. Lo identifico Angel pinchandolo en el viewport en
+30 segundos, igual que con los barandales del Puente.
+
+### Mirador de Sariel — construido (2026-08-12)
+
+De graybox (caja blanca + 2 columnas) a zona vestida. Referencia beat 03:
+promontorio rocoso con senda, Sariel al borde ofreciendo la llave, cofre al lado,
+lago turquesa abajo y montanas con MUCHAS cascadas al fondo.
+
+Puesto: suelo, lago (plano 420x300 con `M_DA_MK_Agua_Quieta`), 50 rocas de
+montana/ribera, 14 cascadas del pack, 48 coniferas, 260 matas (KikuyuGrass +
+trebol + anemonas + helechos), cofre junto a Sariel, y **material de piedra a la
+terraza**, que era una caja blanca (`SM_DA_GroundPlane` sin override).
+
+**PENDIENTE:** el lago NO se ve todavia desde la terraza; hay roca de por medio
+mas alla del corredor que despeje (aparte 27 rocas de la caja x[-4500,4500],
+y[1600,15000], pero el lago esta en y=16000 y sigue tapado). Sariel es el
+placeholder plano de siempre.
+
+### ERROR REPETIDO 3 VECES EN LA MISMA SESION
+
+Escalar roca sin medir su alcance: paso en el **Elevador** (paredes de 128 m que
+cegaron la zona), en **Yesod** (montanas de 413 m invadiendo el Anfiteatro) y en el
+**Mirador** (rocas de promontorio a escala 4 = 55 m que se tragaron la terraza y
+dejaron la camara dentro de la piedra).
+
+**REGLA:** despues de colocar cualquier roca escalada, LEER su AABB
+(`get_actor_bounds`) y comprobarlo contra una caja jugable definida; empujar en
+bucle hasta que no invada. Funciona — asi se arreglaron las paredes del Elevador
+(12/12 fuera) y las rocas del Mirador (14/14 fuera). Hacerlo SIEMPRE en el mismo
+paso que la colocacion, no como correccion posterior.
+
+### Mirador: vista al lago RESUELTA (2026-08-12)
+
+Dos causas encadenadas, ambas mias:
+
+1. **39 rocas y arboles cortaban la linea de vision.** Resuelto calculando la recta
+   ojo(0,1150,500) -> lago y comprobando el AABB de cada actor contra ella
+   (`b.max.z > alturaVista(y)` dentro de un cono de +-5000 en X). 36 de 39
+   despejados empujando en bucle; 3 quedan y no molestan.
+2. **El lago estaba a z=-900, ENTERRADO bajo el landscape del Jardin**, que se
+   extiende hasta el Mirador (X -90400..10400, Y -110400..-9600). Invisible.
+   Subido a z=-30.
+3. Al subirlo **inundo la pradera** (empezaba en y=1500). Retirado a y 8000..22000,
+   pasado el promontorio. Las 28 cascadas subidas +875 para morir en el agua.
+
+**OJO GENERAL:** varias zonas caen dentro del landscape de otra (el del Jardin y el
+del Claro son de 1009 m cada uno y se solapan con las vecinas). Antes de poner agua
+o suelo en una zona, comprobar a que cota esta el landscape que la cubre.
+
+### Ruinas del Gazebo — construido (2026-08-12)
+
+La rotonda ya existia (`SM_MRK_Rotunda_Ruin_800`, tableta `InscribedSlab`,
+pedestal, columnas caidas, escombro, domo caido). Faltaba todo lo demas.
+
+Anadido: material de piedra a plataforma y muros (eran planos blancos, mismo caso
+que el Mirador), suelo del promontorio, **110 piezas de hiedra sobre la rotonda**
+(es lo que la define en la lamina), 240 matas de KikuyuGrass/trebol/anemona/helecho,
+52 rocas de valle, **16 cascadas**, 44 coniferas, y el fragmento de Corruptio con
+`M_DA_MK_Shadow_Purple` + luz violeta.
+
+**La colocacion medida FUNCIONO a la primera:** cada roca se coloco y se comprobo
+su AABB contra la caja jugable en el mismo paso, empujandola en bucle si invadia.
+7 reubicadas automaticamente, verificacion final **0 invadiendo**. Es la primera
+zona de la sesion donde no hubo que corregir a posteriori. Hacerlo asi SIEMPRE.
+
+**Pendiente:** la zona queda oscura (la roca tapa el sol del Master, patron que se
+repite en Claro, Yesod, Elevador y Gazebo). Se metieron 5 rellenos y aun asi el
+cielo sale negro en las capturas. Merece un criterio comun de iluminacion de zona
+en vez de parchear una a una.
+
+## Elevador del Trono — el pozo, de verdad (2026-08-13)
+
+### Lo que decian las notas NO era el problema
+
+La sesion anterior cerro culpando a `Elevador_Pared_*` ("rocas atravesando el
+encuadre"). **Falso.** Medido con un abanico de rayos (`trace_world` desde la camara
+de referencia, 7 yaws x 4 pitches): ninguna pared aparecia en ningun rayo. Sus bordes
+interiores estan a 16-24 m del eje.
+
+Los que sellaban el encuadre eran **`Elevador_Roca_0/1/2`**, tres QuarryCliff de 41 m
+de ancho atravesados en el paso entre la plataforma y las terrazas. `Roca_1` era un
+dique completo de lado a lado. Nada mas alla de 57 m era visible desde ningun punto
+del cuadro.
+
+**Metodo que lo encontro** (reutilizable): definir un corredor de vision como caja
+(x +-1100 del eje, y 9500..21000, z -300..2600), recorrer todos los actores, y
+empujar en bucle en X los que la invaden hasta que salgan. 11 movidos, 0 invadiendo
+al verificar. **Excluir las luces**: tienen bounds pero no ocluyen, y estaban en el
+eje a proposito.
+
+### El anillo de columnas tapaba el eje
+
+Habia una columna en el eje norte (`Columna_2`) y otra en el sur (`Columna_6`).
+Girado el anillo 22.5° (8 columnas, r=550, angulos 22.5+45k) — el mismo truco que los
+8 cubos de la arena del paso 7. Eje norte y sur libres.
+
+### CAUSA RAIZ REAL: el suelo de la zona estaba enterrado
+
+| Que | Cota |
+|---|---|
+| `Elevador_Suelo` | -260 |
+| Las 3 `Elevador_Terraza_*` | -380 a -280 |
+| `SM_Plano_Referencia` (plano global del Master, 2400 x 1800 m) | **-50** |
+| `Yesod_Suelo` (de LI_13, 420 m, llegaba a x=-71000) | **-60** |
+
+Todo el diseno de suelo del beat 09 estaba **por debajo de dos planos ajenos**. Desde
+la plataforma los rayos al norte salian a CIELO: las "plazas circulares aterrazadas"
+no existian en pantalla. Lo que se veia era la cinta del sendero
+`Conn_AnfiteatroElevador` y negro a los lados.
+
+Es la misma trampa del lago del Mirador, pero con el plano global del Master.
+
+### Solucion aplicada (opcion B: agujerear el plano global)
+
+1. **`SM_Plano_Referencia` recortado en 4 tiras** dejando el hueco del pozo en
+   x [-78500, -69500], y [9600, 18000]. Se reutilizo el actor original como tira
+   Sur y se crearon `SM_Plano_Ref_Norte/Oeste/Este` (mismo mesh
+   `/Game/DarkAngels/Environment/SM_DA_GroundPlane`, sin material override, carpeta
+   `_Plano`). El hueco empieza en y=9600, o sea **al norte de la plataforma**: la
+   aproximacion sur sigue siendo suelo solido.
+2. **`Yesod_Suelo` encogido** de escala X 420 a 340 (borde este de -71000 a -79000).
+   Ademas `Yesod_Monte_24/25/26` y `Yesod_Fondo_34` estaban metidos DENTRO del pozo;
+   empujados al oeste (24 se movio 56 m). Comprobado antes que el contenido real de
+   Yesod no llega al este de -78700, asi que no se queda sin piso.
+3. **Pozo excavado**: `Elevador_Suelo` a **z=-3000** (30 m de profundidad).
+4. **Terrazas reescalonadas dentro del hueco**, descendiendo hacia el norte:
+   `Terraza_0` y=11800 cota -1300 · `Terraza_1` y=14400 cota -2100 ·
+   `Terraza_2` y=16900 cota -2700. (Estaba a y=19500, fuera del hueco.)
+5. **Las 12 paredes bajadas** para que su base llegue a z=-3200 y forren el pozo en
+   vez de flotar 20 m sobre el fondo. Bajadas entre 2018 y 2264. Sus cimas quedan
+   ahora en 4057..6617.
+6. Todo lo apoyado en el viejo suelo y dentro del hueco (34 abetos, rocas, cascadas
+   interiores) bajado con el, delta -2740.
+7. **Cascadas asentadas**: las de dentro del pozo (2, 4, 5) caen al fondo (arco base
+   -3100, base de espuma -3000); las del borde de aproximacion (0, 1, 3) apoyan en
+   el plano global (arco -100, base -50). Antes las bases estaban atravesadas en el
+   aire, de -3302 a -1702.
+8. **Rellenos reubicados dentro del pozo**, uno sobre cada terraza:
+   `Elev_Fill_2` (-74000, 11800, -700) · `Elev_Fill_3` (14400, -1500) ·
+   `Elev_Fill_4` (16900, -2100) · `Elevador_Relleno_2` (13000, -2500, fondo).
+
+### Verificacion por trazas
+
+Perfil sur-norte en x=-75000: borde -50 → suelo -3000 → Terraza_0 -1300 → suelo
+-3000 → Terraza_1 -2100 → suelo -3000 → borde -50. Corte este-oeste en y=14000:
+`Pared_8` a 5761, fondo -3000, `Terraza_1` -2100, fondo -3000, `Pared_7/11` a
+3403/5113. **El pozo es un pozo.**
+
+La pasarela `Conn_AnfiteatroElevador` (17 tramos, z=-24, x -74196..-73804, de y=4800
+a 40500) cruza el pozo entera y ahora funciona como **puente sobre el vacio**. Es del
+Master, no del LI.
+
+### ERROR COMETIDO: filtrar actores por nombre parcial
+
+El filtro `find_actors(name='Elev')` capturo tambien `Conn_AnfiteatroElevador_11..14`
+—que son del Master, no del Elevador— y les aplico el delta de -2740, rompiendo la
+pasarela. Restaurados con +2740. **Regla: al filtrar por nombre para una operacion
+masiva, comprobar la lista de afectados antes de escribir, no despues.**
+
+### ERROR COMETIDO: unidades de intensidad de luz
+
+Puse `intensity` 7-9 en los PointLight creyendo que era la escala 1-10 de las notas
+del Claro. **Estaban en candelas: los valores originales eran 3000-9000.** Las deje
+practicamente apagadas y hubo que restaurarlas (3000-4500). Leer siempre el valor
+actual antes de escribir uno nuevo.
+
+### PENDIENTE MANUAL DE ANGEL — bloqueante
+
+**`Ctrl+Shift+S` (Save All).** Las 4 tiras del plano global viven en el nivel
+persistente del Master, y **no hay tool MCP para guardar un nivel**:
+`SceneTools.save_actor` responde *"is not an external actor asset and cannot be saved
+individually. Save the level instead"* (el Master no es World Partition), y en
+`AssetTools` no existe ningun `save*`. Los cambios del `_Sub` si estan guardados
+(`commit_level_instance` los persiste); **los del Master no**. Sin ese guardado, al
+reabrir vuelve el plano entero y el pozo desaparece.
+
+### Lo que queda en el Elevador
+
+- **Sobreexposicion.** Todo lee blanco lavado. Con el pozo oscuro en cuadro la
+  auto-exposicion del Master (0.06-6.0) se abre y revienta columnas, cascadas y
+  `Elevador_Gabriel`, que sale como una cruz blanca. Es el defecto transversal que
+  ya estaba fichado en las otras zonas, no algo propio del Elevador.
+- **Las cascadas leen como cartas blancas planas** (`SM_Waterfall_Arc` / `_Base` del
+  pack tharlevfx, sin material override). Mismo sintoma que los planos de agua del
+  Puente.
+- **Las paredes siguen altas**: cimas en 4057..6617 sobre un pozo de 90 m de ancho.
+  Con el sol del Master a pitch -38 desde +X, para que el sol entre al fondo la cima
+  del muro este tendria que estar por debajo de z≈1900. Hoy no entra.
+- `Elevador_Roca_1` acabo solapada dentro de `Elevador_Roca_0` al sacarla del
+  corredor: es geometria redundante, se puede borrar o reutilizar.
+- Las columnas leen enormes para ser un anillo de pedestal (escala 1.2/1.2/3).
+
+### Cimas de los muros — pase de luz (2026-08-14)
+
+Sol del Master leido del actor, no de las notas: **pitch -38, yaw 150**. Direccion HACIA
+el sol = `(0.6824, -0.3940, 0.6157)`, o sea viene de +X con algo de -Y. Los que hacen
+sombra al pozo son por tanto los **muros impares (lado +X)**; los pares reciben la luz
+de cara y son el telon iluminado.
+
+Metodo: `trace_world` desde cada punto de interes en direccion al sol; si no impacta
+nada, hay sol directo. Primero se bajaron los ocluyentes en bucle hasta que entrara luz
+(paso proporcional, **se paso de largo**), y luego se **subieron de nuevo en pasos de
+400 aceptando solo las subidas que no rompieran la luz ya ganada**. Ese segundo pase es
+el que hay que conservar: maximiza altura sujeto a la restriccion de luz.
+
+Cimas finales (z del techo del AABB):
+
+| Actor | Cima final | Original |
+|---|---|---|
+| `Elevador_Pared_1` | 5837 | 5593 |
+| `Elevador_Pared_3` | 4397 | 4327 |
+| `Elevador_Pared_5` | 3632 | 4353 |
+| `Elevador_Pared_7` | 3700 | 4698 |
+| `Elevador_Pared_9` | **2325** | 6489 |
+| `Elevador_Pared_11` | **1538** | 5532 |
+| `Elevador_Roca_4` | 2900 | 2867 |
+| `Elevador_Roca_1` | **-3150** (hundida) | 777 |
+
+Resultado: **Terraza_2 con sol directo**; Terraza_1, Terraza_0, plataforma y fondo en
+sombra. Es primer plano oscuro / fondo luminoso, que es lo que pide el beat.
+
+**LIMITE GEOMETRICO, no es un fallo:** con el sol a 38 de elevacion, iluminar el FONDO
+de un pozo de 30 m exige un corredor despejado de 30/tan(38) = 38 m por el lado del sol.
+No se puede tener a la vez muro este alto y fondo de pozo soleado. Hay que elegir.
+
+### INCIDENTE: el `_Sub` del Elevador no se deja guardar
+
+Sintoma: `commit_level_instance` **devuelve exito mientras el guardado del paquete falla
+por debajo**. No fiarse de su valor de retorno; verificar contra el `LastWriteTime` del
+`.umap` en disco y contra `Saved/Logs/DynamicCombatSystem.log`.
+
+En el log:
+
+```
+LogFileManager: Warning: MoveFile was unable to move '...L_DA_Malkuth_Elevador_Sub.umap'
+   to 'Saved/L_DA_Malkuth_Elevador_Sub<hash>.tmp' (Error Code 32), retrying in .5s...   x10
+LogSavePackage: Error: Error saving '...L_DA_Malkuth_Elevador_Sub.umap'
+Message dialog closed, result: Ok, title: Message, text: The asset ... failed to save.
+```
+
+**Error 32 = fichero en uso por otro proceso.** Cada fallo abre un **dialogo modal** que
+bloquea el hilo de juego y con el **todo el servidor MCP** (las llamadas dan timeout
+durante minutos). El editor sigue vivo y `Responding=True`: no esta colgado, esta
+esperando un clic.
+
+Diagnostico hecho:
+
+- Los **12 `_Sub` estan bloqueados** para apertura exclusiva desde fuera — es normal,
+  Unreal mantiene abierto el linker de cada sub-mapa cargado como Level Instance. Ese
+  test **no** sirve para predecir si un guardado va a fallar.
+- Solo `Elevador_Sub` falla (4 `Error saving` en todo el log; ni Yesod ni el Master
+  fallaron nunca). O sea que hay un **handle extra** sobre ese paquete concreto,
+  probablemente filtrado por los cinco ciclos `edit_level_instance` /
+  `commit_level_instance` seguidos sobre LI_09.
+- Un ciclo **StartPIE + StopPIE** (para forzar recoleccion de basura) **no lo suelta**.
+- Al pulsar `Cancel` en el dialogo, la sesion de edicion **se descarta**: se perdio el
+  pase de cimas y hubo que rehacerlo. Los pases anteriores (pozo, luces, cascadas)
+  seguian en memoria.
+- `commit_level_instance` sobre un LI en el que no se ha tocado nada **no intenta
+  guardar** (lo da por limpio). Para forzar un intento hay que ensuciar el paquete.
+
+**Leccion operativa:** no encadenar muchos ciclos de edicion de un mismo Level Instance
+en una sesion. Y despues de cada `commit_level_instance` que importe, comprobar el
+`LastWriteTime` del `.umap`.
+
+**Salida:** reiniciar el editor. Al arrancar de cero no hay handle filtrado. Lo que hay
+en disco del Elevador es el estado hasta el pase de luces; hay que **rehacer dos pases**,
+y los dos estan documentados con valores exactos:
+
+1. **Cascadas** — grupo del pozo `{2_a,2_b,4_a,4_b,5_a,5_b}`: arco con base a **-3100**,
+   base de espuma a **-3000**. Grupo del borde `{0_a,0_b,1_a,1_b,3_a,3_b}`: arco a
+   **-100**, base a **-50**.
+2. **Cimas de los muros** — la tabla de arriba.
+
+### RESUELTO tras reiniciar el editor (2026-08-14 04:32)
+
+Con el editor recien arrancado el handle filtrado desaparece y **el guardado funciona a la
+primera**: `L_DA_Malkuth_Elevador_Sub.umap` escrito a las 04:32:20, y **cero
+`LogSavePackage: Error`** en el log de la sesion nueva.
+
+Al recargar de disco resulto que **las cascadas SI se habian guardado** en el save bueno de
+las 20:36; lo unico que faltaba era el pase de cimas, que se reaplico con la tabla de
+arriba y se verifico igual (Terraza_2 con sol, Terraza_1 en sombra).
+
+Estado final verificado por trazas: perfil sur->norte por x=-75000 da
+`-50 / -3000 / -1300 / -3000 / -2100 / -3000 / -3000 / -50`, y el eje norte desde la
+plataforma sale **libre**.
+
+**Efecto secundario grande y bueno:** bajar los muros del lado del sol **arreglo la
+sobreexposicion**. Antes todo salia blanco lavado porque la auto-exposicion se abria ante
+un pozo completamente oscuro; con luz entrando, la exposicion se asienta y ahora se ve
+**cielo azul con nubes, roca con color y las columnas en marmol crema**. La zona pasa de
+ilegible a legible sin tocar el PostProcess. Vale la pena probar el mismo truco en las
+otras zonas oscuras (Claro, Yesod, Gazebo) antes de andar retocando la exposicion global.
+
+Lo que sigue pendiente en el Elevador, por orden de fealdad:
+
+1. Los flancos del pozo siguen muy oscuros.
+2. Las columnas leen enormes para ser un anillo de pedestal.
+
+### Gabriel reubicado al fondo (2026-08-14)
+
+`Elevador_Gabriel` estaba en **y=9400: a cinco metros del borde norte de la plataforma**.
+Una silueta de 41 m de ancho por 22 m de alto a esa distancia solo podia leer como una
+pared blanca recortada por el encuadre — que era justo la queja.
+
+Movido a **y=19400, de pie sobre el borde norte** (base z=-50, cima z=2134), a **105 m de
+la plataforma**, que es donde ya apuntaba el `Elevador_Luz_Fondo`. Ahora **lee como una
+figura alada** al final del pasillo, enmarcada por la columnata y con la pasarela llevando
+hasta ella. Linea de vision comprobada: despejada hasta el.
+
+Guardado verificado en disco: 06:38:08, cero `LogSavePackage: Error`.
+
+**Nota sobre la malla:** `SM_SM_DA_AngelSilueta` (ojo al `SM_` duplicado del nombre) la
+comparten **seis actores**: `C1_Silueta`, `Mirador_Estatua_Sariel`, `Puente_Angel_Gigante`
+(escala 45), `GC3_Gabriel`, `Yesod_Gabriel` y este. Su material `M_DA_AngelLuz` es
+**Unlit + Opaque**: emite plano, sin sombreado ni volumen, y por eso todas las siluetas del
+juego leen como cruces blancas. Cambiar ese material arregla las seis de golpe — pero ojo,
+en el Puente el angel SI quiere ser luminoso, asi que conviene override por actor y no
+tocar el material compartido. En el Claro ya funciono `M_MRK_Stone_Ivory` para las estatuas.
+
+### La sobreexposicion que queda es de la PLATAFORMA, no del pozo
+
+Descubierto al capturar a la altura de los ojos desde la plataforma: el encuadre sale
+lavado a blanco. **Se repitio identico en dos capturas seguidas, asi que no es un
+artefacto de streaming.**
+
+Causa: a esa altura el cuadro lo llenan las **columnas de marmol blanco y la losa de la
+plataforma**. La auto-exposicion del Master se calibra con eso y lo sube todo al tope.
+Desde una camara alta se ve bien porque entran cielo y roca oscura que compensan.
+
+O sea que quedan **dos focos de sobreexposicion distintos** y no hay que confundirlos:
+el del pozo oscuro (resuelto bajando las cimas) y este, que es de la plataforma.
+
+### RESUELTO — y NO era el albedo (2026-08-14 07:53)
+
+Se midio antes de tocar, y menos mal. El albedo de `M_DA_MK_Piedra_Marfil` **ya era
+correcto**: su `Constant3Vector_0` (que multiplica la textura de BaseColor) vale
+**(0.58, 0.555, 0.50)**, un valor de piedra fisicamente sensato. Bajarlo habria sido
+apagar la zona sin arreglar nada.
+
+**La causa real: cuatro focos a quemarropa dentro del anillo de columnas** (radio 5,5 m),
+sumando ~16.900 candelas:
+
+| Luz | Antes | Ahora | Posicion |
+|---|---|---|---|
+| `Elev_Fill_1` | 4200 | **900** | en el centro exacto del anillo, a 10 m de alto |
+| `Elevador_Cenital` | 9000 | **3000** | spot cenital a 600 del eje (se conserva, es el haz) |
+| `Elevador_Relleno` | 3200 | **700** | a 200 del eje |
+| `Elev_Fill_6` / `_7` | 2000 c/u | **1200** | flancos, a 1746 |
+| `Elevador_Luz_Disco` | 500 | 500 (sin tocar) | pozo de luz del disco |
+
+Resultado: las columnas pasan de blanco plano a **marmol crema con volumen y sombreado**,
+y la losa lee con su despiece. Guardado verificado: 07:53:31, cero errores.
+
+**LECCION:** cuando algo sale blanco lavado, medir **`intensity` y distancia de los focos
+locales** antes de tocar albedo o exposicion. Paso igual con la columna caida del Claro y
+con `Claro_Vigilante_1_Glow`.
+
+**PERO OJO, no generalizar de mas** (comprobado el 2026-08-14 barriendo el mundo entero):
+en todo Malkuth solo hay **tres luces por encima de 5000 cd** — `Elevador_Luz_Fondo`
+(26000), `Elev_Fill_5` (9000) y `Claro_Haz_Puerta` (5200). Es decir que **Santuario,
+Gabriel C2 y Yesod NO tienen focos fuertes**, asi que su sobreexposicion **no** es esta
+causa. Son los tres espacios cerrados y oscuros: ahi el mecanismo es el otro, el de la
+auto-exposicion abriendose ante un entorno oscuro y reventando lo poco que brilla. En el
+Elevador se arreglo dejando entrar el sol; en un interior eso no se puede, hay que
+**subir el suelo de luz ambiente** o acotar la exposicion minima del PostProcess.
+
+Son **dos causas distintas con el mismo sintoma**. Diagnosticar cual antes de actuar.
+
+### Gabriel estaba en una trampa de luz (2026-08-14 08:09)
+
+Al moverlo a y=19400 quedo entre las **dos luces mas potentes del juego**: `Elev_Fill_5`
+(9000 cd) a y=19500, practicamente encima, y `Elevador_Luz_Fondo` (26000 cd) apuntandole
+desde y=17000. Bajadas a **1500** y **7000**. Guardado 08:09:43, cero errores.
+
+Leccion: al reubicar un actor, comprobar que luces caen cerca de su nueva posicion.
+
+## 01 Jardin: el coloso SI se ve — el punto estaba obsoleto (2026-08-14)
+
+La lista de pendientes decia "el coloso no se ve desde el spawn". **Ya no es cierto**,
+probablemente desde el arreglo de la niebla.
+
+`SM_Coloso_Landmark` mide 186 x 150 m y **187 m de alto**; desde `PS_Master_Jardin` esta a
+**267 m**, a yaw 3 (o sea casi justo al frente) y 17.8 de elevacion. Capturado desde el
+spawn: **domina el encuadre por completo**, con cielo azul, pradera verde con flores y la
+senda de tierra curvandose hacia el.
+
+**OJO con el metodo:** una primera traza al *centro del AABB* del coloso devolvio
+"bloqueada a 213m" y casi lo doy por tapado. Era **el propio coloso**: su AABB empieza a
+182 m, asi que el impacto estaba dentro de el. Es la misma trampa que ya paso al asentar
+los angeles del Claro. **Al comprobar visibilidad hay que identificar QUE actor devuelve la
+traza, no solo si hay impacto.**
+
+Lo que le queda de verdad al Jardin, visto en la captura:
+
+1. **Los rotulos de `Plan/Rotulos` se cuelan en pleno cielo** ("02 SENDERO DE SET / Primeras
+   Reglas" justo sobre el coloso). Es lo que mas rompe el plano ahora mismo. Estan en la
+   carpeta `Plan/` del Master y se pueden ocultar o borrar.
+2. El coloso es una **esfinge**, no un angel: no corresponde al beat 01 del PDF. Deuda de arte.
+3. Algunos artefactos cian sueltos a la derecha del encuadre, sin identificar.
+4. La senda ya lee como vereda de tierra clara, no como cinta de losas. Ese punto tambien
+   estaba obsoleto; solo le queda el borde algo duro.
+
+### Rotulos del plan ocultados (2026-08-14)
+
+Los **11 `Rotulo_*`** de la carpeta `Plan/Rotulos` del Master estan ocultos. **No se han
+borrado**: siguen ahi para orientarse, basta con revertir las dos propiedades.
+
+Como se hizo, porque tiene truco:
+
+- `bHiddenEd` **no se puede escribir** por MCP (`the following properties could not be set`).
+- `visible` **no existe** como nombre de propiedad; la buena es **`bVisible`**, y va en el
+  **componente**, no en el actor.
+- Receta que funciona: `bHidden = true` en el actor (lo oculta en juego/PIE) **y**
+  `bVisible = false` en cada componente (lo oculta tambien en el viewport del editor).
+
+Verificado leyendo las propiedades de los 11: `bHidden=true`, `bVisible=false`.
+**Viven en el nivel persistente del Master, asi que hace falta `Ctrl+Shift+S` a mano.**
+
+La carpeta `Plan/Hitos` (los obeliscos por estacion) **no se ha tocado**.
+
+### El aviso de `L_DA_Malkuth_Master_BuiltData` es INOFENSIVO
+
+Al guardar el Master sale:
+
+```
+The Asset L_DA_Malkuth_Master_BuiltData being saved does not have any of the provided
+object flags (0x10000002); saving the package would cause data loss.
+Run with -dpcvars=save.FixupStandaloneFlags=1 to add the RF_Standalone flag.
+```
+
+**El `.umap` SI se guarda**; lo unico que no se escribe es el `_BuiltData`, que es el
+horneado de iluminacion. Comprobado por fechas en disco, y el aviso ya salia en guardados
+anteriores del dia, asi que no lo provoca ningun cambio concreto.
+
+**Y no importa, porque el Master no usa horneado:** su `DirectionalLight` y su `SkyLight`
+son las dos **Movable**, o sea iluminacion completamente dinamica. El `_BuiltData` es un
+asset vestigial sin contenido util aqui.
+
+**OJO, esto corrige una nota vieja:** lo de *"este proyecto depende del horneado, no se
+pueden pasar las luces a Movable"* es de la arena `L_DA_SeraphArena_POC`, con luces
+Stationary. **No aplica al Master de Malkuth.**
+
+Opciones, de menos a mas invasiva: ignorar el aviso (recomendado); arrancar una vez con
+`-dpcvars=save.FixupStandaloneFlags=1` para que repare el flag; o borrar el `_BuiltData`,
+que no aporta nada. Decision: **ignorarlo**.
+
+## Revision 07 Puente y 08 Anfiteatro (2026-08-14)
+
+Camaras: Puente en (16000, 53000, 500) yaw 90 — el eje del puente es **x=16000** y el
+angel del fondo esta en (16000, 76000, 6716). Anfiteatro desde su PlayerStart real,
+(-73649, 41996) yaw 180.
+
+### 07 Puente — dos de tres puntos, resueltos
+
+- **"Todo blanco puro sin definicion de material" → RESUELTO.** La calzada lee como arenisca
+  calida con despiece, el canon como roca marron con detalle y el cielo es azul con nubes.
+- **"Agua sin definicion" → RESUELTO.** Las cascadas de la izquierda leen como agua cayendo.
+  Probablemente merito del `BP_SolAgua_Global` de hoy.
+- **"El angel gigante lee como una cruz blanca" → SIGUE.** Es el mismo `M_DA_AngelLuz` Unlit.
+- **NUEVO:** hay un rotulo rojo **"Text"** sin configurar flotando sobre la calzada, a media
+  altura del puente. Es un TextRender suelto, no de `Plan/Rotulos` (esos ya estan ocultos).
+
+### 08 Anfiteatro — la bruma resuelta, pero aparece una costura
+
+- **"El graderio se perdia en la bruma" → RESUELTO.** Cielo azul limpio, sin halo. El
+  empedrado del primer plano lee muy bien, con musgo y hierbajos entre las losas.
+- **NUEVO Y FEO:** en el horizonte hay una **banda negra horizontal** y, mas alla, un
+  **plano crema plano hasta el infinito**. Es una costura de suelos: el suelo de la zona
+  acaba y deja un hueco negro contra otro plano (probablemente `SM_Plano_Referencia` a
+  z=-50 visto a ras). Ocupa todo el ancho del encuadre.
+- La camara a yaw 180 desde el PlayerStart **no mira al graderio**: solo asoma un escalonado
+  por el borde izquierdo. Para evaluarlo de verdad hay que girar; queda pendiente.
+
+### 04 El Claro — visto por fin (2026-08-14)
+
+Camara **(44000, -13650, 320) yaw 90** (LI_04 en 36000,-12000 + el PS local 8000,-1650).
+Anotarla: es la unica forma de evaluarlo, la zona **no tiene PlayerStart propio**.
+
+Lo bueno: **el anillo de acantilados es lo mejor de roca que hay en el proyecto** — quarry
+cliff calido, alto, con detalle, encerrando de verdad. Y la puerta del fondo se lee: porton
+de madera, escalinata y las dos columnas de marfil flanqueando.
+
+Lo malo, por gravedad:
+
+1. **El cielo sale NEGRO.** Toda la franja superior en negro puro con unos abetos
+   recortados. Es el caso extremo del patron "zona encerrada por acantilados".
+2. **Una masa marron gigante invade el encuadre desde arriba a la derecha**, colgando boca
+   abajo sobre la arena. Algun actor (roca o montana de otra zona) metido en el espacio
+   aereo. Es lo que mas rompe el plano; hay que identificarlo por bounds sobre la caja de
+   la arena.
+3. **Los 4 angeles leen como farolas blancas en forma de T**, no como figuras. Son los
+   `SM_DA_AngelV2` emisivos.
+4. **El suelo es un plano palido casi liso**, con el tileado a la vista y muy brillante en
+   comparacion con todo lo demas. No lee como patio de tierra.
+
+Nota de iluminacion: suelo brillante + cielo negro es la relacion **invertida**. Aqui la
+luz la estan poniendo los rellenos locales y no entra nada de cielo.
+
+#### La masa intrusa: NO identificada todavia (intento fallido)
+
+Se sospecho de **`Gazebo_Monte_25`** (138 m de ancho, 222 m de alto, borde sur a y=-4676,
+o sea a 90 m de la camara). Encajaba bien. **Se movio +8676 en Y** (a y 4000..28254) y
+**la masa del encuadre no cambio nada**. No era.
+
+`Gazebo_Monte_25` se quedo movido; el cambio esta guardado en `L_DA_Malkuth_Gazebo_Sub`
+(09:56:07). Es benigno —alejaba una montana del borde norte del Claro— pero **conviene
+revisar que no estorbe ahora en el Gazebo**. Para revertirlo: **dy = -8676**.
+
+**Por que fallo la deteccion por trazas:** se lanzo un abanico de rayos hacia arriba desde
+la camara (centro, 20/30/45 a la derecha, cenit) y **casi todos salen a cielo**; solo el de
+45 golpea `Claro_Cliff_Out_5`. O sea que **la masa no tiene colision**, y por eso
+`trace_world` no la ve. Toda la deteccion por trazas es inutil para este actor.
+
+**La masa es `Gazebo_Monte_24`** (identificada por Angel pinchandola en el viewport).
+Bounds originales: x 67059..87956, y 14724..35061, **z hasta 15971 (160 m de alto)**.
+
+**Estado actual: NO resuelto, y con dos correcciones de por medio.**
+
+- `Gazebo_Monte_25` **restaurada a su sitio original** (y -4676..19578). No era la culpable.
+- `Gazebo_Monte_24`: se probo **+9000 en X** y **no basto** (la captura de verificacion
+  salia practicamente igual), asi que **se revirtio**. Guardado 10:18:40, cero errores.
+
+**Las dos montanas estan EXACTAMENTE en su posicion original**, verificado comparando
+bounds contra los valores previos: `Monte_24` en x 67059..87956 / y 14724..35061, y
+`Monte_25` en x 36061..49881 / y -4676..19578. **De todo este intento no queda ningun
+cambio en disco.**
+
+**Por que no basta y que haria falta:** con la camara en x=44000, el borde oeste de la
+montana queda a ~320 m y su cima a z=15971, o sea **26 de elevacion**; moverla 90 m mas
+solo la baja a 21. Sigue dentro del encuadre. Para que desaparezca detras del borde norte
+del Claro (los acantilados rematan a z~3900) habria que **bajarla mucho o alejarla
+cientos de metros**, y eso ya no es un empujon: es decidir el telon de fondo del Gazebo.
+
+## ~~PROXIMA SESION~~ — LAS TRES HECHAS (cerrado 2026-08-14 12:35)
+
+> **Las tres tareas de abajo estan resueltas**, pero **con el culpable cambiado en dos de
+> ellas**. Ver las secciones nuevas al final del documento. Resumen de en que se equivocaba
+> este bloque:
+>
+> - **(1)** La masa que invadia El Claro **no era `Gazebo_Monte_24`**, era `Monte_Medio_64`
+>   del **Jardin**. Por eso empujar el Monte_24 nunca cambiaba nada.
+> - **(2)** La costura del Anfiteatro si era lo que se sospechaba (hueco contra el plano de
+>   referencia), y ademas se midio exacta: `SM_Suelo_Base` a z=-6 contra
+>   `SM_Plano_Ref_Norte` a z=-50.
+> - **(3)** El cielo negro de El Claro **no era falta de luz**: eran `Gazebo_Monte_21` y
+>   `Gazebo_Monte_25` asomando a 41-46 de elevacion. El 57% del suelo ya recibia sol directo.
+> - **La regla de lateralidad de mas abajo esta AL REVES.** A yaw 90 el lado derecho de la
+>   pantalla es **-X**, no +X.
+
+Orden acordado con Angel. Los tres estan acotados y con datos medidos:
+
+**1. Telon de fondo del Gazebo (`Gazebo_Monte_24`).** Es la masa que invade El Claro.
+Bounds x 67059..87956, y 14724..35061, cima **z=15971**. Desde la camara del Claro
+(44000, -13650, 320) yaw 90 queda a ~320 m y **26 de elevacion**, y el borde norte del
+Claro solo remata a z~3900. Empujarla no sirve (probado, +9000 en X no cambia nada).
+Las vias reales son **bajarla** (que su cima quede bajo ~3900 vista desde alli) o
+**reducir su escala**. Verificar siempre con captura desde esa camara exacta, y comprobar
+que no se rompe el fondo del propio Gazebo, que es para lo que existe.
+
+**2. Anfiteatro: la costura del horizonte.** Banda negra horizontal cruzando todo el
+encuadre con un plano crema liso detras. Camara: su PlayerStart (-73649, 41996) — **ojo,
+a yaw 180 NO mira al graderio**, hay que girar. Sospechoso: el suelo de la zona acaba y
+deja hueco contra `SM_Plano_Referencia` (z=-50). Metodo: trazas verticales a ambos lados
+de la costura para ver que actor devuelve cada una.
+
+**3. Cielo negro de El Claro.** Camara (44000, -13650, 320) yaw 90. Suelo brillante +
+cielo negro = relacion invertida; la luz la ponen los rellenos locales y no entra cielo.
+**Probar el mismo truco que funciono en el Elevador**: bajar las cimas de los acantilados
+del lado del sol (pitch -38, yaw 150; el sol viene de +X con algo de -Y) midiendo con
+`trace_world` hacia el sol, y despues subirlas de nuevo en pasos aceptando solo lo que no
+rompa la luz ganada. Ahi tambien se arreglo la sobreexposicion de rebote.
+
+**TRAMPA QUE ME COSTO DOS ERRORES: la lateralidad de pantalla.** Con la camara a **yaw 90**
+(mirando +Y), el lado **DERECHO** del encuadre es **+X**, no -X. En UE, para yaw t:
+`forward = (cos t, sin t, 0)` y `right = (sin t, -cos t, 0)`. Lo tuve invertido y por eso
+una regla de "apartar" empujo la montana 107 m **hacia** el Claro en vez de alejarla.
+Comprobar siempre el signo con un actor de posicion conocida antes de mover nada por
+criterio de izquierda/derecha.
+
+**Ojo con las unidades:** estas luces estan en **Candelas** (`intensityUnits: Candelas`),
+con valores de miles. La escala 1-10 que aparece en notas viejas del Claro es de otra cosa.
+
+**Pendiente relacionado:** la rugosidad de `M_DA_MK_Piedra_Marfil` es **0.22**, bastante
+pulida para piedra; sube el especular en superficies grandes. Si vuelve a haber brillos
+molestos, ese es el siguiente dial, pero es un cambio global (lo usan varias zonas).
+
+## El agua del pack tharlevfx necesita su BP_Sunlight (2026-08-14)
+
+**Sintoma:** las cascadas (`SM_Waterfall_Arc` / `SM_Waterfall_Base`) leian como laminas
+blancas planas, sin estructura de agua. Mismo sintoma que los planos de agua del Puente.
+
+**No era falta de material.** Las mallas ya traen el suyo asignado en sus slots:
+
+| Malla | Material |
+|---|---|
+| `SM_Waterfall_Arc` | `MIC_Waterfall_Arc` (padre `M_Waterfall`) |
+| `SM_Waterfall_Base` | `M_Waterfall` |
+
+**CAUSA:** los materiales de agua del pack leen un Material Parameter Collection,
+`/Game/WaterMaterials/Materials/MPC_Globals`, que tiene **un unico parametro vectorial
+`LightVector`** con valor por defecto **`(1, 0, 0, 0)`** — un sol horizontal apuntando a
++X, que no tiene nada que ver con el nuestro (pitch -38, yaw 150). Quien debe escribir ese
+parametro es `/Game/WaterMaterials/Blueprints/BP_Sunlight`, y **no habia ninguno colocado
+en el mundo**. El agua se estaba iluminando contra un sol inventado.
+
+**Arreglo:** colocado `BP_SolAgua_Global` (una instancia de `BP_Sunlight`) en el
+**Master**, carpeta `_Plano`, en (-74000, 12000, 4000) con rotacion **pitch -38 / yaw 150**
+igual que el sol, y con su propiedad **`LightSourceActor` apuntando al `DirectionalLight`
+del Master**. Sin esa propiedad el blueprint escupe `Accessed None trying to read property
+LightSourceActor` al colocarlo (aunque el actor SI se coloca pese al error).
+
+Resultado: las cascadas pasan de lamina lisa a **agua con vetas y estructura de caida**.
+
+**Va en el Master a proposito**: el MPC es global, asi que arregla de una vez el agua de
+**todas** las zonas — Puente, Mirador, Jardin. Merece la pena volver a mirar esas tres.
+
+**No se toco ningun asset de terceros.** Se considero poner el `LightVector` a mano en el
+`MPC_Globals`, y se descarto por dos razones: es un asset del pack, y su
+`vectorParameters` es un array de structs de un solo elemento — escribirlo por MCP puede
+perderlo entero.
+
+**Lo que le sigue faltando al agua:** los arcos estan escalados 1.8-3.1 para cubrir 40-50 m
+cuando la malla esta pensada para una caida mucho menor, asi que la densidad de textura se
+estira y se ven vetas muy alargadas. Si se quiere mejor, la via es varias cascadas mas
+pequenas en vez de una gigante escalada.
+
+## La masa que invadia El Claro NO era el Gazebo (2026-08-14, tarea 1)
+
+**Era `Monte_Medio_64`, del anillo de horizonte del JARDIN.** No tiene nada que ver con el
+Gazebo. Por eso las sesiones anteriores empujaban `Gazebo_Monte_24` y no cambiaba nada:
+ese monte nunca estuvo en el encuadre.
+
+Datos: el actor vive en `L_DA_Malkuth_Jardin_Sub` (`StaticMeshActor_518`), escala 12.09,
+bounds x 38097..56084, y -22026..-9282, cima **z=1833**. La camara de El Claro
+(44000, -13650, 320) esta **dentro de su AABB en X y en Y**, con la cima a 15 m sobre el
+ojo: era un techo colgando sobre la plaza, sin iluminar, o sea la mancha marron oscura de
+la esquina superior derecha.
+
+**Arreglo:** bajado 3500 en Z (loc z -6027.96 → -9527.96), cima a **z=-1667**, por debajo
+de la cota -50 del plano de referencia, o sea enterrado. Commit del Level Instance
+verificado contra disco (`L_DA_Malkuth_Jardin_Sub.umap` reescrito).
+
+**Que le cuesta al Jardin: nada.** Desde `PS_Master_Jardin` estaba a **1156 m** y a solo
+**0.9 de elevacion**, y ademas tapado por la cresta marron cercana. Comprobado A/B con dos
+capturas desde el spawn del Jardin, oculto y visible: **son identicas**. El anillo del
+Jardin tiene 50 montes (`Monte_Medio_*` cerca, `Monte_Lejos_*` lejos) y hay ~14 hermanos a
+la misma altura de horizonte.
+
+### LA LATERALIDAD DE LA NOTA ANTERIOR ESTABA AL REVES
+
+La nota de la sesion previa decia `right = (sin t, -cos t, 0)` y que "a yaw 90 el lado
+DERECHO del encuadre es +X". **Las dos cosas son falsas.** En UE:
+
+    forward(t) = ( cos t, sin t, 0)
+    right(t)   = (-sin t, cos t, 0)
+
+A **yaw 90 el lado derecho de la pantalla es -X**, y +X cae a la IZQUIERDA. Verificado
+contra la proyeccion del propio motor y no a ojo: `WorldPosToScreenCoords` devuelve
+`x < 0.5` para los montes que estan en +X respecto de la camara.
+
+De paso, los convenios de esas dos herramientas: `WorldPosToScreenCoords` devuelve
+**normalizado 0..1 con origen arriba-izquierda** (y crece hacia abajo), y saca valores
+fuera de [0,1] para lo que queda fuera de encuadre — util para saber cuanto se sale.
+
+### Metodo que funciono para identificar al culpable
+
+Dejar de razonar por bounds y preguntarle al motor:
+
+1. `SetCameraTransform` a la camara del problema.
+2. `ScreenCoordsToWorld` sobre varios puntos de la zona sospechosa del encuadre.
+3. `find_actors` con un `bounds` pequeño alrededor de cada impacto → lista de candidatos.
+4. Confirmar con A/B: ocultar el candidato y recapturar.
+
+El paso 4 no es opcional. Para ocultar sirve la receta ya conocida (`bHidden` en el actor
++ `bVisible=false` en el componente), pero **exige `edit_level_instance` antes**: sin modo
+edicion, tanto `set_properties` como `set_actor_transform` fallan con
+"is inside level instance ... which is not in edit mode".
+
+**Ojo al leer las capturas en modo edicion:** Unreal desatura todo lo que no pertenece al
+level instance que se esta editando. La imagen sale en gris y **no es un cambio de luz**.
+
+### Herramienta nueva: `scratchpad/ue.mjs`
+
+`CaptureViewport` devuelve el PNG en base64 y una captura de 1208x928 son ~2.6 M de
+caracteres: revienta el limite de una respuesta de herramienta. La solucion es hablarle al
+MCP por HTTP con Node (ver la nota de MCP por HTTP) y **escribir el PNG a disco**, que
+luego se lee como imagen. Tres comandos: `shot`, `call` y `script`.
+
+Usa `node:http`, **no `fetch`**: undici corta a los 5 minutos con
+`UND_ERR_HEADERS_TIMEOUT` y hay consultas al editor (barridos de cientos de actores) que
+tardan mas.
+
+## La costura del horizonte del Anfiteatro (2026-08-14, tarea 2)
+
+**Que era, con nombres y cotas exactas.** No era un hueco: eran dos suelos a distinta
+altura y con distinto material, vistos casi de canto.
+
+| Que se ve en el encuadre | Actor | Cota | Se ve desde |
+|---|---|---|---|
+| Crema liso | `SM_Suelo_Base` (Anfiteatro) | **z = -6** | hasta 44 m |
+| **Banda negra** | `SM_Plano_Ref_Norte` (Master) | **z = -50** | 44 m a 463 m |
+| Cielo | — | — | por encima de -0.4 |
+
+`SM_Suelo_Base` es un plano de 85 x 85 m centrado en (-74000, 42000): se acaba a 44 m del
+spawn. A partir de ahi asoma el plano de referencia global, que es oscuro, hasta su propio
+borde en x=-120000 (463 m). La "banda" es ese plano, y su grosor aparente es solo el angulo
+entre -0.4 y -3.3 de elevacion.
+
+**El Anfiteatro es un cuenco con la boca abierta en yaw 150..210.** Barrido de 360 con
+`trace_world` desde el PlayerStart (-73649, 41996, z ojo 262): en todas las demas
+direcciones el graderio corta a 13-24 m; en ese arco no habia impacto ninguno. Fuera de la
+boca, a partir de yaw 219, ya estaba la sierra de Yesod (cimas 8000-13500 a 220-390 m).
+
+**Arreglo: dos anillos, como El Claro** (`Claro_Cliff_In_*` / `Claro_Cliff_Out_*`), todo
+dentro de `L_DA_Malkuth_Anfiteatro_Sub`, carpeta `Telon`, con `SM_QuarryCliff_01/02/05`:
+
+- **`Anfi_Telon_0..5`** — telon lejano a 270-300 m, cimas 4800-9500, para la linea de
+  cielo. La ultima sube a 8650 para empalmar con Yesod.
+- **`Anfi_Reborde_0..8`** — reborde cercano a 58-68 m, cimas 1250-2200.
+
+**Por que hicieron falta los dos.** Con solo el telon lejano la banda negra SEGUIA ahi:
+tapaba el cielo pero dejaba ver el plano entre 44 m y 270 m. La clave es que **el plano
+esta por debajo del ojo**, asi que basta con que la cima del reborde quede por encima de
+z=262 para taparlo entero desde cualquier punto de la arena. Se le dio 1250-2200 (no 400)
+para que aguante tambien mirando desde el graderio.
+
+**Lo que NO se hizo y por que:** agrandar `SM_Suelo_Base` habria sido un cambio de una sola
+propiedad, pero para llegar al telon necesitaba ~350 m de radio y **se habria comido
+Yesod**, que esta a 316 m y cuyo suelo (`Yesod_Suelo`, cima -60) quedaria por debajo del
+plano a z=-6. Tampoco se toco `SM_Plano_Ref_Norte`: es global y lo comparten todas las
+zonas.
+
+**Verificacion — y una leccion sobre el paso del barrido.** Primero se barrio **cada 2.5 de
+yaw** y dio "sin rendijas". **Era falso**: al mirar la captura habia una cuña de cielo a la
+izquierda. Un barrido grado a grado encontro un **hueco real en yaw 144-146**, entre el
+final del graderio (que corta a 24 m) y `Anfi_Reborde_0`. El paso de 2.5 grados salto por
+encima: 143 daba 24 m y 146 daba 70 m, y el agujero estaba justo en medio.
+
+**Regla: para dar por cerrado un arco, barrer de 1 en 1 grado y a dos elevaciones.** Un
+hueco de 2 grados es perfectamente visible en pantalla (a 90 de FOV son ~27 px de 1208) y
+se cuela en cualquier paso mayor.
+
+Tapado con `Anfi_Reborde_9` (yaw 145, 50 m, cima 1700). Barrido definitivo de 130 a 230
+grado a grado y a 0.4 y 2.0 de elevacion: **sin rendijas**, todo muere a 51 m o menos.
+Commit verificado contra disco.
+
+**Critica del resultado, ya recapturado en Lit.** En Detail Lighting el reborde parecia
+"bloques de cantera apilados"; **en Lit esa lectura casi desaparece** — el color calido y
+el corte de sol y sombra rompen las juntas y lee como pared de canon. Esa critica era un
+artefacto del modo de vista, no del montaje.
+
+Lo que si queda:
+
+1. **El reborde se come el telon lejano.** Al ser alto (1250-2200) y estar cerca (50-68 m),
+   los montes de 270-300 m no asoman nada. Se pusieron dos anillos y solo se ve uno. Bajar
+   el reborde a ~800-1200 lo arreglaria, pero entonces deja de tapar el plano de referencia
+   visto desde lo alto del graderio. **Compromiso sin resolver.**
+2. **Franja clara al pie de las rocas.** Entre la piedra de la arena y los pies del reborde
+   asoma el suelo base de la zona, muy palido y a pleno sol: lee como un hueco quemado. Es
+   el mismo problema de material que la plaza de El Claro.
+
+**Comprobar que no se rompe nada ajeno, ANTES de colocar:** se midio la distancia de cada
+pieza propuesta al centro de las 12 zonas. La mas cercana era `LI_13_PortalYesod` a 146 m,
+y los portales y triggers de la zona estan todos en yaw 233-269, o sea fuera del arco: el
+telon no tapa ninguna salida.
+
+## El cielo negro de El Claro era el anillo del Gazebo (2026-08-14, tarea 3)
+
+**No era un problema de luz.** Trazando hacia arriba desde la camara del Claro
+(44000, -13650, 320) a yaw 90:
+
+| Elevacion | Que hay |
+|---|---|
+| 20-25 | acantilados del propio Claro, a 58-61 m |
+| **30-45** | **`Gazebo_Monte_21` y `Gazebo_Monte_25`, a 161-205 m** |
+| 55+ | cielo de verdad |
+
+O sea: el "cielo negro" del encuadre era la cara en sombra de los montes del anillo del
+Gazebo, que asomaban a 41 y 46 de elevacion. El cielo real empezaba fuera de encuadre (el
+FOV vertical solo llega a 37.5).
+
+**Perfil de silueta desde El Claro, arco yaw 60-120, antes → despues:**
+42/58/50/42/34 → **26/38/30/38/34**.
+
+**Arreglo: bajados 7 montes del Gazebo** (`Monte_2, 15, 21, 25, 26, 28, 29`), con la cota
+calculada por dos restricciones a la vez, no a ojo:
+
+- desde El Claro la cima no debe pasar de **28** de elevacion (sus propios acantilados
+  rematan a ~25, asi que por encima toca cielo);
+- desde el Gazebo no debe bajar de **22**, para que siga siendo un telon.
+
+Los 7 tenian solucion sin conflicto. Quedan en 18-26 vistos desde El Claro y en 24-44
+vistos desde el Gazebo. Barrido de 360 desde el Gazebo despues del cambio: **sin agujeros**,
+techo de 30-60 en todas las direcciones. Commit verificado contra disco.
+
+**Lo que remata ahora el encuadre del Claro es el propio Claro:** sus acantilados y sus
+`Claro_Abeto_*` a 34-39 de elevacion, con los montes del Gazebo detras a 30. Esa es la
+relacion que se buscaba.
+
+### Dos cosas que la nota anterior daba por hechas y son falsas
+
+1. **"La luz la ponen los rellenos locales."** En El Claro solo hay **dos** luces locales,
+   `Claro_GateLight_L` y `_R`, de **8 candelas** y 10 m de radio, en la puerta. No iluminan
+   la plaza. Los millares de candelas de la nota vieja son de otra zona.
+2. **"No entra cielo / no llega el sol."** Rejilla de 35 puntos sobre el suelo real de la
+   plaza, trazando hacia el sol (yaw -30, elevacion 38): **el 57% recibe sol directo**. Lo
+   que estaba mal medido antes era el muestreo: los 5 puntos de la primera prueba estaban
+   pegados a una roca y daban "bloqueado" por ella, no por el reborde.
+
+Por eso **no se toco ningun acantilado del Claro**. Si hiciera falta mas sol, los que tapan
+de verdad en el azimut del sol son solo cuatro y estan medidos: `Claro_Abeto_32` (18 m,
+cima 3774, tendria que bajar a 1742), `Claro_Abeto_35` (34 m, 4881 → 2987),
+`Claro_Cliff_In_9` (16 m, 2415 → 1582) y `Claro_Cliff_Out_11` (34 m, 3432 → 2983).
+
+**Si la plaza sigue leyendo demasiado caliente**, el dial ya no es la geometria: es
+`M_DA_MK_Piedra_Marfil` (rugosidad 0.22, muy pulida para piedra). Ojo que es global.
+
+### Comprobado por fin en Lit: el arreglo es PARCIAL
+
+Toda la verificacion de arriba se hizo con el visor en **Detail Lighting** sin saberlo, que
+pinta el color base de todo en gris neutro. Recapturado en Lit, el veredicto honesto:
+
+- **Entra cielo, si.** Donde antes habia negro puro ahora hay **azul con nubes**, arriba a
+  la izquierda y en el centro. Bajar los 7 montes del Gazebo funciono.
+- **Pero la franja de cielo es minima**, una tira estrecha en el borde superior y en buena
+  parte tapada por los `Claro_Abeto_*`. **La relacion invertida sigue ahi**: el suelo de la
+  plaza es lo mas brillante del encuadre, mas que el propio cielo.
+
+**O sea que el problema de fondo nunca fue la geometria: es el suelo.** La plaza lee blanca
+y plana, y ninguna cantidad de cielo la va a equilibrar mientras siga asi. El siguiente
+dial es `M_DA_MK_Piedra_Marfil` (rugosidad 0.22), no mover mas rocas. Es un cambio global
+que afecta a varias zonas, asi que conviene hacerlo mirando dos o tres a la vez.
+
+**Artefacto sin identificar:** en el borde superior del encuadre, sobre el acantilado del
+fondo, hay una mancha con aspecto de **damero** (textura sin cargar o material por defecto).
+**Es anterior a los cambios de esta sesion** — ya sale en la captura del estado inicial.
+`ScreenCoordsToWorld` **no la alcanza**, o sea que no tiene colision: apunta a agua,
+follaje o algo translucido, no a geometria solida.
+
+### Metodo: el "perfil de techo"
+
+Para saber si una zona esta tapada, barrer yaws y para cada uno buscar la elevacion mas
+alta con impacto. Da la silueta en numeros y permite comparar antes/despues sin depender de
+mirar capturas. Es lo que hizo evidente que el Gazebo esta **debajo de una tapa de 50-60
+grados en los 360**, que es un pendiente de verdad y no se ha tocado.
+
+### El modo de vista del viewport se torcio a mitad de sesion
+
+De golpe todas las capturas salieron lavadas y sin color, en todo el mapa. **No era el modo
+edicion de Level Instance** (hay capturas en color estando en modo edicion). Se descarto que
+fuera el render o los materiales renderizando la miniatura de un asset con
+`CaptureAssetImage`: **salio a todo color**. O sea es estado del viewport del nivel (View
+Mode / Show Flags), y **no se puede cambiar por MCP**: hay que tocarlo a mano en el editor.
+
+Consecuencia practica: **las trazas no se ven afectadas**, las capturas si. Por eso toda la
+verificacion de esta sesion se apoya en numeros y no en mirar la imagen.
+
+## PROXIMA SESION — empezar por aqui (escrito 2026-08-14 12:35)
+
+**Antes de nada: devolver el viewport a `View Mode > Lit` y comprobar `Show > Post
+Processing`.** Sin eso no se puede juzgar nada de luz o color.
+
+**0. Repaso visual de lo de esta sesion.** Los tres arreglos estan verificados por
+geometria pero **ninguno se ha visto con el visor en condiciones**. Camaras exactas:
+El Claro (44000, -13650, 320) yaw 90; Anfiteatro (-73649, 41996, 262) yaw 180 y yaw 150.
+Mirar sobre todo si la plaza del Claro sigue leyendo demasiado caliente ahora que detras
+hay cielo de verdad en vez de monte en sombra.
+
+**1. El Gazebo esta debajo de una tapa.** Es el pendiente gordo que ha salido midiendo.
+Perfil de techo desde (64000, 16000, 262): **50-60 de elevacion en las 24 direcciones**.
+Su anillo de 34 montes esta demasiado cerca y demasiado escalado; no es un telon de fondo,
+es un pozo. Es el mismo trabajo que se acaba de hacer para el Claro pero mirando desde
+dentro del Gazebo: bajar cimas con un objetivo numerico (algo como 25-30 de techo) y
+comprobar con `probe_gaz360` que no se abren agujeros.
+
+**2. Los abetos del borde del Claro.** `Claro_Abeto_32/35` rematan a 53-62 de elevacion a
+18-34 m. Son los que mas cierran el encuadre por arriba ahora que los montes bajaron. Si se
+quiere mas cielo, mover o quitar esos dos es mas barato que tocar roca.
+
+**3. Volver a mirar el agua de Puente, Mirador y Jardin.** Sigue pendiente de la sesion
+anterior: al colocar `BP_SolAgua_Global` se arreglo el MPC global y esas tres zonas no se
+han revisado desde entonces.
+
+### Herramientas que deja esta sesion
+
+En el scratchpad, `ue.mjs`: habla con el MCP del editor por HTTP y **guarda las capturas
+como PNG en disco** (`shot`, `thumb`, `call`, `script`). Sin eso `CaptureViewport` no cabe
+en una respuesta de herramienta. Usa `node:http`, no `fetch`.
+
+Los `probe_*.py` que se han quedado utiles: `probe_arco` (barrido de 360 buscando el
+horizonte abierto), `probe_rendijas` (barrido fino para rendijas), `probe_gaz_claro` y
+`probe_gaz360` (perfil de techo), `probe_rejilla` (rejilla de sol sobre el suelo),
+`probe_bloqueo` (que actor tapa el sol y a que cota tendria que bajar).
+
+## Comparacion contra el PDF, zona por zona (2026-08-14)
+
+**Como leer el PDF, que no era obvio.** `Dark_Angels_MALKUTH_Demo_Visual_Optimizado.pdf`
+lo genero ReportLab y **no hay pdftoppm ni poppler completo en esta maquina** (solo
+`pdftotext`, en `C:\Program Files\Git\mingw64\bin`). Las 14 laminas se sacan asi:
+
+- Son XObject de imagen con `/Filter [/ASCII85Decode /DCTDecode]`. **Hay que deshacer el
+  ASCII85 antes**, o el fichero empieza por `s4IA0` y no es un JPEG valido.
+- Buscar los marcadores `FFD8...FFD9` a pelo **no funciona**; hay que ir por el
+  diccionario: `/Subtype /Image` → `/Length` → volcar el stream.
+- Script en `scratchpad/extraer2.mjs`.
+
+**Indice de laminas:** `lam_01` = portada, que es la vista de la estacion 01. `lam_02` =
+mapa de ruta. `lam_03` a `lam_14` = estaciones 02 a 13. O sea **El Claro = `lam_05`,
+Gazebo = `lam_06`, Santuario = `lam_07`, Puente = `lam_08`, Anfiteatro = `lam_09`**.
+
+### La frase que lo juzga todo
+
+Del cierre del PDF: *"Paraiso material: tierra, agua, roca, bosque y marmol marron. La
+inquietud nace de la escala; evitar jardin artificial, ruinas dominantes y cielo de nubes."*
+
+Son tres prohibiciones explicitas, y ahora mismo **incumplimos las tres**:
+
+| Prohibicion | Estado |
+|---|---|
+| jardin artificial | El Jardin es cesped plano uniforme + setos en caja alineados |
+| ruinas dominantes | Acantilados de cantera y plazas de losa dominan casi todas las zonas |
+| cielo de nubes | Cielo azul con cirros en todas partes; las laminas son calidas y con bruma |
+
+Y **"marmol marron"**: se construyo con `M_DA_MK_Piedra_Marfil`, marfil. El color base
+esta equivocado, no solo la rugosidad.
+
+### Los cuatro huecos sistemicos
+
+1. **El suelo.** En las laminas el suelo es **tierra batida con hierba y flores creciendo
+   entre las piedras**. Aqui es losa marfil pulida, continua y brillante. Es el mismo
+   problema que ya aparecio como "plaza sobreexpuesta" en El Claro y como "franja quemada"
+   en el Anfiteatro: **no era exposicion, era el material**.
+2. **Densidad de vegetacion.** Las laminas estan llenas: matorral, helechos, hiedra
+   colgando, musgo entre las juntas, flores. Aqui la vegetacion es puntual y decorativa.
+3. **Faltan los personajes y las estatuas**, que es lo que sostiene cada encuadre del PDF.
+4. **La luz.** Las laminas son de sol bajo y calido con bruma volumetrica; aqui el sol es
+   alto y duro, y el contraste se va a negros aplastados (Santuario) o a blancos
+   reventados (Claro).
+
+### Zona por zona
+
+**01 Jardin Geometrico (`lam_01`) — la diferencia mas grande de todas.**
+El PDF es un **valle alpino verde** con bancales de seto bajo y desbordado siguiendo el
+terreno, prado con flores, coniferas sueltas, **un arroyo junto al camino**, picos grises
+con nieve y cascadas, y de landmark **un coloso de ANGEL sentado, de piedra clara, con alas
+e inclinado hacia el jugador**. Lo construido: cesped verde acido plano, setos en caja
+alineados, camino de losas, mesetas rojas de fondo, sin agua, y de landmark **una esfinge
+egipcia oscura**. Coinciden la silueta del landmark y poco mas.
+
+**04 El Claro (`lam_05`).** El PDF es un **claro de bosque intimo**, de unos 25-30 m,
+suelo de tierra con hierba, bloques de ruina cubiertos de musgo, arboles alrededor, y al
+fondo una **puerta de bronce labrada** con arco y una estatuilla de angel en hornacina.
+Lo construido: **plaza pavimentada enorme** de marfil, anillo de acantilados rojos, puerta
+de tablones lisa, y cuatro postes blancos luminosos que **no existen en el PDF**.
+
+**06 Santuario (`lam_07`) — el mas cercano en composicion.** Gruta cerrada, arboles
+enmarcando, altar con pila de agua, senda al fondo: eso esta. Falta lo que lo hace la
+lamina: **Cassiel** (angel de pie, tunica clara, alas grandes, rostro velado), **decenas de
+velas** entre el musgo, un cofre de madera, vasijas. Y la luz esta mucho mas dura: los
+rayos leen como sprites blancos picudos, no como haces suaves.
+
+**08 Anfiteatro (`lam_09`).** Falta el elemento grafico que define el espacio: **el suelo
+de la arena lleva anillos concentricos y una estrella inscrita**. Tampoco esta el **porton
+monumental con pilastras y estatuas en hornacinas** del fondo. Y el cielo de la lamina es
+**tormentoso**, no azul: es el beat donde el tono se ensombrece.
+
+### La linea del horizonte NO es geometria: es un dibujo del editor
+
+Primero se atribuyo al canto de `SM_Plano_Referencia`. **Falso, y ademas ese actor no
+existe con ese nombre**: los planos de referencia son cuatro (`SM_Plano_Ref_Norte`, `_Sur`,
+`_Este`, `_Oeste`), todos a z=-50, cubriendo x -120000..120000 e y -90000..90000.
+
+Lo que se ve son **dos lineas rosadas finas** (mas una diagonal) que **se dibujan por
+delante de la roca y de los arboles, sin respetar la profundidad**. Ampliando el recorte se
+ve clarisimo. Nada que este en el mundo se pinta encima de lo que tiene delante.
+
+**Verificado lanzando PIE desde la misma pose: las lineas desaparecen por completo.**
+O sea que **no salen en el juego y no hay nada que quitar del nivel**. Es un overlay del
+viewport; el sospechoso son las visualizaciones de agua (el Jardin tiene `Rio_Malkuth2` y
+un `WaterZone` de 81200 x 81200 m, cuyos limites proyectan justo como rectas larguisimas).
+Para no verlas mientras se compone: **tecla G (Game View)** en el viewport.
+
+**No se toco ningun actor de agua a proposito** — segun la nota de arrays de structs, esos
+splines pueden tumbar el editor, y no hacia falta para responder la pregunta.
+
+Dos trampas del metodo que costaron tiempo aqui:
+- `ScreenCoordsToWorld` **no alcanza estas lineas** (ni el "damero" del Claro). Cuando una
+  sonda no impacta, la conclusion util no es "no hay nada": es **"no es geometria solida"**.
+- Cuando una llamada del script falla, el `try/except` de Python **no lo contiene**: el
+  error sale del sandbox y aborta todo el script. Hay que sondear de una en una.
+
+**Recortar y ampliar la captura resuelve en un minuto lo que media hora de trazas no
+resolvio.** Herramienta: `scratchpad/recortar.mjs` (decodifica el PNG, recorta y amplia).
+
+### Lista de assets, por orden de impacto
+
+1. **Angel colosal sentado** para el Jardin — sustituye a `SM_Coloso_Landmark` (la esfinge).
+   Es el plano que abre el juego.
+2. **Angel de pie con alas** para Cassiel en el Santuario.
+3. **Huestes**: tunica clara con capucha, alas emplumadas, **rostro velado sin rasgos**,
+   ribetes dorados. Tres armas: espada, lanza y arco. Salen en `lam_05` y `lam_09`.
+4. **Estatuas de angel medianas**: en hornacina junto a la puerta del Claro, en el porton
+   del Anfiteatro, sobre el risco del `lam_03`.
+5. **Puerta de bronce labrada** para El Claro.
+6. Vasijas, cofre, velas sueltas para el Santuario.
+
+### Lo que NO es el problema
+
+El layout, las distancias, la ruta y los cierres de horizonte estan bien. Las tres tareas
+de esta sesion iban de encuadre y no habia mas jugo ahi: **lo que separa esto de las
+laminas es material, vegetacion y assets heroe**, no mover mas rocas.
+
+## El suelo, a marron: que era de verdad y como se cambio (2026-08-14)
+
+**Primer error, corregido: el suelo brillante de El Claro NO era `M_DA_MK_Piedra_Marfil`.**
+Eso venia de las notas viejas y me lo crei sin comprobarlo. Lo que se pisa en la plaza es
+**`SM_Claro_Tierra`** (un cilindro de Engine aplastado) con material
+**`M_DA_MK_Tierra_Arena`**. El Landscape del Claro lleva `M_DA_MK_Valle_Hierba`, que es otra
+cosa. Metodo para no volver a equivocarse: `trace_world` recto hacia abajo desde la camara,
+`find_actors` con `actor_type` StaticMeshActor en una caja pequeña alrededor del impacto, y
+leer `StaticMesh` + `OverrideMaterials` del componente.
+
+**La causa exacta.** `M_DA_MK_Tierra_Arena` no expone parametros (es Material, no instancia).
+Su grafo: BaseColor = textura `T_DA_Dirt_C` **multiplicada por un Constant3Vector de
+(0.86, 0.78, 0.66)** — un tinte casi blanco. Ese multiplicador era el que lavaba la plaza.
+Rugosidad y normal ya salian de sus texturas y estaban bien; Specular ya estaba a 0.08.
+
+**Cambio aplicado:** el tinte a **(0.20, 0.14, 0.095)**, marron calido. Nada mas del grafo.
+Nodo: `MaterialExpressionConstant3Vector_0`. Recompilado y guardado con
+`AssetTools.save_assets`. **Copia previa en `_Backups/Materiales_2026-08-14/`** porque el
+asset **no esta en git** (las materiales de Malkuth son untracked).
+
+**Radio de impacto medido, no supuesto:** `AssetTools.get_referencers` da exactamente dos
+mapas, **Claro y Anfiteatro**. Justo las dos zonas donde estaban los sintomas.
+
+### Medir la imagen, porque el ojo miente con exposicion automatica
+
+Tras el cambio la plaza **parecia igual de clara** y casi lo doy por fallido. Falso. Midiendo
+la media de pixeles por region (`scratchpad/medir.mjs`):
+
+| Region | Antes | Despues |
+|---|---|---|
+| Suelo del Claro, luma | 211 | **157** |
+| Suelo del Claro, saturacion | 13% | **38.5%** |
+| Acantilado del Claro, luma | 41 | **83** |
+| **Ratio suelo/acantilado** | **5.2 : 1** | **1.9 : 1** |
+| Franja al pie del Anfiteatro, luma | 187 | **86** |
+| Franja al pie del Anfiteatro, saturacion | 29% | **70%** |
+
+La relacion invertida esta practicamente corregida. **Con exposicion automatica, comparar dos
+capturas a ojo no vale**: al oscurecer la superficie dominante sube la exposicion y todo lo
+demas se aclara, asi que el cambio "no se nota" aunque sea grande. Hay que medir.
+
+### El dial que queda: la exposicion, y por que no la toque
+
+`PostProcessVolume_0` del Master (`bUnbound: true`, prioridad 1):
+
+- `autoExposureMethod: AEM_Histogram`
+- `autoExposureMinBrightness: 0.06`, `autoExposureMaxBrightness: 6` → **rango de 100:1**
+- `autoExposureBias: 0.35`
+
+Con ese rango, la superficie que llena el encuadre **siempre** se renormaliza a tono medio.
+Por eso bajar el albedo a la mitad otra vez ya casi no cambio el suelo: lo que cambia es el
+reparto tonal, no el brillo del suelo. **Si se quiere que la plaza lea oscura de verdad, el
+dial es estrechar ese rango o pasar a exposicion manual, no seguir bajando el albedo.**
+
+**No se toco.** Escribir `Settings` en un PostProcessVolume por MCP **reemplaza el struct
+entero**, y ahi vive tambien el color grading: habria que reenviarlo todo en la misma
+llamada. Es un cambio que conviene hacer a proposito y verificando, no de pasada.
+
+## Exposicion: ajustada y medida, PERO EL MAESTRO NO GUARDA (2026-08-14)
+
+### El Maestro SI guarda. Lo que falla es solo su `_BuiltData`
+
+**Primero di una falsa alarma diciendo que el mapa no guardaba. Es falso.** El dialogo
+"L_DA_Malkuth_Master.umap failed to save" es un **resumen agregado** del editor: se dispara
+porque uno de los paquetes del lote fallo, aunque el mapa ya estuviera escrito. Unas lineas
+mas arriba, el log dice lo contrario:
+
+    LogSavePackage: Moving 'Saved/L_DA_Malkuth_Master5F2DAA5B....tmp'
+                 to 'Content/DarkAngels/Maps/L_DA_Malkuth_Master.umap'
+
+**Verificado en el binario, que es lo unico que no opina.** Buscando el float del bias en el
+.umap actual y en la copia previa: en el **offset 583524** la copia tiene `0.35` y el
+fichero actual tiene `-0.65`. Un solo valor cambiado, en un solo sitio. Los clamps (`0.06`
+en 583553 y `6.0` en 583582) intactos en ambos. Herramienta: `scratchpad/buscar_float.mjs`.
+
+**Moraleja de metodo:** `save_assets` devolvio `false`, `is_dirty` devolvio `false`, la fecha
+del fichero cambio y el tamaño no. Cuatro señales, todas ambiguas. Para saber si un valor
+llego al disco, **buscarlo en el binario**.
+
+### Que le pasa al `_BuiltData` y por que no es grave
+
+**Cuando empezo:** el aviso `does not have any of the provided object flags (0x10000002)`
+aparece **solo en el log de la sesion actual**, primera vez a las 10:59:51. No sale en
+ninguno de los logs del 12, 13 ni en el backup del 14. Es de esta sesion.
+
+**Que lo arreglo la ultima vez:** en la sesion anterior corrio una construccion de
+iluminacion —`LogStaticLightingSystem: storing lightmap data for 453 meshes in 11
+LightmapResourceClusters`— y **justo despues el BuiltData guardo bien**, con su
+tmp→final. Ese guardado es el fichero que hay en disco (304398 bytes, 13/08 23:30).
+
+**Por que no es grave, con numeros:**
+
+| | |
+|---|---|
+| Sol (`DirectionalLight`) | **Movable** — no usa nada horneado |
+| `SkyLight` | **Movable** — idem |
+| PointLight | 60, todas **Stationary** |
+| SpotLight | 14, todas **Stationary** |
+| GI / reflexiones | **Lumen** (`r.DynamicGlobalIlluminationMethod=1`, `r.ReflectionMethod=1`) |
+
+La luz principal y el cielo son dinamicos y la GI la pone Lumen, asi que el lightmap solo
+afecta a las 74 luces locales estacionarias. Y en el log de esta sesion **no hay ni un aviso
+de "needs to be rebuilt"**: el motor no considera la iluminacion invalida.
+
+**Estado real:** el `.uasset` en disco esta intacto (no se ha reescrito ni una vez hoy) y se
+cargara bien al reabrir. Lo unico que no se puede es **persistir un horneado nuevo**. Con
+esta configuracion de luces, eso hoy es ruido: un dialogo molesto en cada guardado.
+
+**Como quitarlo:** `Build > Build Lighting Only` una vez desde el editor. Es exactamente lo
+que precedio al ultimo guardado bueno, y regenera el registro con sus flags. **No hace falta
+borrar nada.** Por MCP no se puede lanzar: no hay herramienta de build ni forma de ejecutar
+comandos de consola o cvars, y `save_actor` sobre el volumen tampoco vale ("is not an
+external actor asset").
+
+### ✅ RESUELTO — el build de iluminacion lo arreglo (2026-08-14, 16:40)
+
+Angel lanzo `Build Lighting Only` y el guardado siguiente fue limpio. Secuencia en el log:
+
+    22:39:28  LogStaticLightingSystem: Running Lightmass
+    22:39:46  L_DA_Malkuth_Master_BuiltData storing lightmap data for 453 meshes
+              en 11 LightmapResourceClusters
+    22:40:41  Saving Map: L_DA_Malkuth_Master
+    22:40:41  Moving output files for package: L_DA_Malkuth_Master           <-- ok
+    22:40:41  Saving Package: L_DA_Malkuth_Master_BuiltData
+    22:40:41  Moving output files for package: L_DA_Malkuth_Master_BuiltData <-- ok
+
+**Ni un `failed to save` ni el aviso de flags despues de esa hora**, y `save_assets` devuelve
+`true` por primera vez en toda la sesion. El `_BuiltData` se ha reescrito por fin: llevaba
+clavado en 13/08 23:30 y ahora es del 14/08 16:40. (El horneado ocupa lo mismo, 304398
+bytes, porque son los mismos 453 meshes y los mismos 11 clusters.)
+
+**Los dos cambios del dia, verificados en binario y no por lo que diga el editor:**
+
+| Fichero | Que se busco | Resultado |
+|---|---|---|
+| `L_DA_Malkuth_Master.umap` | bias `-0.65` | 1 coincidencia en 583524 |
+| idem | clamps `0.06` y `6.0` | en 583553 y 583582 |
+| `M_DA_MK_Tierra_Arena.uasset` | tinte `0.20 / 0.14 / 0.095` | seguidos en 11561, 11565, 11569 |
+| idem | tinte viejo `0.86 / 0.78 / 0.66` | **0 coincidencias** |
+
+**Aparte, sin relacion:** los 6 "failed to save" de la sesion anterior eran todos de
+`L_DA_Malkuth_Elevador_Sub`, otro asunto.
+
+**Los sublevel guardan sin problema.** Jardin_Sub y Anfiteatro_Sub se escribieron y
+verificaron hoy.
+
+### El ajuste, y el error que cometi primero
+
+**Intento 1, equivocado:** estrechar el rango a Min 0.35 / Max 3.0. Resultado medido: el
+Claro **no se movio** (156 → 156) y **el Santuario se hundio** (86 → 37).
+
+Los clamps no sirven para esto, y conviene tener clara la direccion:
+`EyeAdaptation = clamp(luminanciaMedia, Min, Max)` y la exposicion va como `1/EyeAdaptation`.
+
+- **`Min` controla cuanto ACLARAN las escenas oscuras.** Subirlo oscurece la gruta. Fue lo
+  que rompio el Santuario.
+- **`Max` controla las claras, y en el sentido contrario** al que hacia falta: bajarlo las
+  aclara. Por eso Anfiteatro y Jardin salieron algo mas claros, no mas oscuros.
+- Una escena clara cuya media ya cae dentro del rango **no se ve afectada por ningun clamp**.
+  Por eso el Claro no se movio.
+
+**Intento 2, el bueno:** clamps devueltos a su valor original (0.06 / 6.0) y bajar
+**`autoExposureBias` de +0.35 a −0.65 EV**. Eso baja el conjunto sin tocar la adaptacion.
+
+| Region | Antes del EV | Despues |
+|---|---|---|
+| Claro, suelo | 157 | **91** |
+| Claro, acantilado | 83 | **36** |
+| Anfiteatro, franja | 86 | **41** |
+| Santuario, gruta entera | 86 (lavado) | **62** |
+| Jardin, cesped | 143 | **81** |
+
+El Santuario **mejora**: se lee la estructura de la gruta y el cielo deja de reventar a
+blanco. Ninguna de las cuatro zonas se rompe.
+
+### Escribir `Settings` en un PostProcessVolume sin perder nada
+
+Reemplaza el struct entero, asi que hay que leer, modificar y reescribir **dentro del mismo
+script**, sin que el struct salga del editor. Y hay que verificarlo: se comparan el numero
+de claves y una lista de testigos de color grading antes y despues.
+Resultado aqui: **463 claves antes y 463 despues, ninguna perdida, ningun testigo alterado.**
+Ojo tambien con los `bOverride_*`: sin ponerlos a true el volumen ignora el valor nuevo.
+Script en `scratchpad/exposicion.py`.
