@@ -120,3 +120,11 @@ Content/DarkAngels/Maps/Backup/
 Content/DarkAngels/Maps/_Archivo/
 # Salida generada, se puede rehacer
 Content/DarkAngels/Maps/_GENERATED/
+
+# Las mismas fuentes descargadas, reimportadas bajo otras rutas (235 MB).
+# Se detectaron al pesar el commit: T_DA_FirBark_* son de PolyHaven,
+# T_DA_Dirt/Grass/Marble de ambientCG, el HDRI EveningRoad_PureSky de
+# PolyHaven y SM_DA_Scan_* (Esfinge, VenusCupid, Hosmer...) de Three D Scans.
+# El prefijo propio T_DA_ / SM_DA_ NO significa que sean nuestros.
+Content/DarkAngels/Textures/
+Content/DarkAngels/Meshes/Scans/

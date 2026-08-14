@@ -1,0 +1,509 @@
+Building Ruins...
+Building Sanctuary...
+Building Mirrors...
+Building Props...
+Building Angels...
+Info: Saved as "SM_Malkuth_AllKits.blend"
+Exporting FBX...
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Base.fbx'
+export finished in 0.2338 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Broken_A.fbx'
+export finished in 0.0210 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Broken_B.fbx'
+export finished in 0.0171 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Capital.fbx'
+export finished in 0.0091 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_CollapsedCluster.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Fallen_400.fbx'
+export finished in 0.0170 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Half_250.fbx'
+export finished in 0.0145 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Intact_400.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Column_Intact_600.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Dome_CapFragment.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Dome_HalfBroken_800.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Dome_Quarter_600.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Dome_Rib_400.fbx'
+export finished in 0.0074 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_InscribedSlab.fbx'
+export finished in 0.0095 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Obelisk_400.fbx'
+export finished in 0.0082 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Obelisk_700.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Obelisk_Broken.fbx'
+export finished in 0.0062 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Obelisk_Fallen.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Pedestal_Broken.fbx'
+export finished in 0.0079 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Pedestal_Round_120.fbx'
+export finished in 0.0073 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Pedestal_Square_100.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Pedestal_Square_150.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_Rotunda_Ruin_800.fbx'
+export finished in 0.0200 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_RubbleCluster_A.fbx'
+export finished in 0.0050 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_RubbleCluster_B.fbx'
+export finished in 0.0071 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_RuinedArch_300.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_StatueBase_200.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_MRK_WallFragment_300.fbx'
+export finished in 0.0071 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\RuinsKit\\SM_Malkuth_RuinsKit_ALL.fbx'
+export finished in 0.0562 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Altar_Main_300.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Altar_Minor_150.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Altar_RootBound.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_EndCap.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_Fallen.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_Post.fbx'
+export finished in 0.0071 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_RootCorner_90.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_RootStraight_300.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_StoneRoot_300.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_ThornGate.fbx'
+export finished in 0.0078 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Barrier_ThornStraight_300.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Branch_Arch_600.fbx'
+export finished in 0.0100 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Branch_Curved_400.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Branch_Fork_400.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Branch_Straight_300.fbx'
+export finished in 0.0094 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_CanopyCluster.fbx'
+export finished in 0.0095 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_FlowerCluster.fbx'
+export finished in 0.0088 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_HangingVines_Cluster.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_OfferingTable.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_RitualCircle_400.fbx'
+export finished in 0.0116 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_RootCluster_A.fbx'
+export finished in 0.0098 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_RootCluster_B.fbx'
+export finished in 0.0094 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Root_Corner_90.fbx'
+export finished in 0.0101 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Root_Fork.fbx'
+export finished in 0.0090 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Root_Straight_300.fbx'
+export finished in 0.0097 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_SacredSeedPod.fbx'
+export finished in 0.0092 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_SanctuaryArch.fbx'
+export finished in 0.0106 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_SanctuaryBasin.fbx'
+export finished in 0.0073 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_SanctuaryBasin_Water.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_StoneMarker.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Stump_150.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_TrunkBase_400.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Trunk_Hollow_500.fbx'
+export finished in 0.0090 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Trunk_Split_700.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Trunk_Straight_600.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_MSK_Trunk_Twisted_800.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\SanctuaryKit\\SM_Malkuth_SanctuaryKit_ALL.fbx'
+export finished in 0.1206 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Corner_90.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Curved_30.fbx'
+export finished in 0.0095 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_EndCap.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Junction_Cross.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Junction_T.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Straight_100.fbx'
+export finished in 0.0072 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Straight_150.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Base_Straight_200.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_CentralOculus.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_CentralOculus_MirrorSurface.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_MirrorIsland.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_MirrorIsland_MirrorSurface.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Arch_300.fbx'
+export finished in 0.0090 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Arch_300_MirrorSurface.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Broken.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Broken_MirrorSurface.fbx'
+export finished in 0.0054 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Corner_90.fbx'
+export finished in 0.0074 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Corner_90_MirrorSurface.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Cracked_A.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Cracked_A_MirrorSurface.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Cracked_B.fbx'
+export finished in 0.0095 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Cracked_B_MirrorSurface.fbx'
+export finished in 0.0045 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Curved_30.fbx'
+export finished in 0.0076 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Curved_30_MirrorSurface.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Doorway.fbx'
+export finished in 0.0092 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_DoubleSided_200.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_DoubleSided_200_MirrorSurface.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_DoubleSided_200_MirrorSurface_B.fbx'
+export finished in 0.0253 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Low_200x150.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Low_200x150_MirrorSurface.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Straight_100x300.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Straight_100x300_MirrorSurface.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Straight_150x300.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Straight_150x300_MirrorSurface.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Straight_200x300.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Mirror_Straight_200x300_MirrorSurface.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_PedestalReflector.fbx'
+export finished in 0.0090 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_PedestalReflector_MirrorSurface.fbx'
+export finished in 0.0058 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Post_Corner.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Post_Gate.fbx'
+export finished in 0.0084 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Post_Ornate.fbx'
+export finished in 0.0084 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_Post_Simple.fbx'
+export finished in 0.0055 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_ShardCluster_A.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_MMLK_ShardCluster_B.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\MirrorLabyrinthKit\\SM_Malkuth_MirrorLabyrinthKit_ALL.fbx'
+export finished in 0.0858 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_BannerPole.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_BridgeRailing_300.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_BridgeRailing_Broken.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_Anchor.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_Arch_300x900.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_BrokenHalf_A.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_BrokenHalf_B.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_EndCap.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_Pillar.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_Straight_300x1200.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_Straight_300x600.fbx'
+export finished in 0.0111 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Bridge_Wide_600x1200.fbx'
+export finished in 0.0140 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Landing_300.fbx'
+export finished in 0.0362 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Landing_600.fbx'
+export finished in 0.0125 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_PortalSteps.fbx'
+export finished in 0.0288 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_PortalSurface_Preview.fbx'
+export finished in 0.0069 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Portal_Arch_500.fbx'
+export finished in 0.0097 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Portal_Broken.fbx'
+export finished in 0.0090 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Portal_Frame_Round_400.fbx'
+export finished in 0.0087 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Portal_Keystone.fbx'
+export finished in 0.0092 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Portal_RuneRing.fbx'
+export finished in 0.0135 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Portal_Threshold.fbx'
+export finished in 0.0132 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_StairRailing_End.fbx'
+export finished in 0.0121 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_StairRailing_Straight_300.fbx'
+export finished in 0.0075 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Stair_Broken_A.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Stair_Broken_B.fbx'
+export finished in 0.0065 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Stair_Corner_90.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Stair_Straight_300x300.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Stair_Straight_300x600.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Stair_Wide_600x600.fbx'
+export finished in 0.0071 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_ThroneCanopy.fbx'
+export finished in 0.0102 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Throne_Dais_400.fbx'
+export finished in 0.0115 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Throne_Damaged.fbx'
+export finished in 0.0105 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Throne_Malkuth_Main.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_MP_Throne_RootBound.fbx'
+export finished in 0.0060 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\PropsKit\\SM_Malkuth_Props_ALL.fbx'
+export finished in 0.0679 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SM_MAP_FeatherCluster.fbx'
+export finished in 0.0070 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SM_MAP_GabrielBlade.fbx'
+export finished in 0.0080 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SM_MAP_HaloRing.fbx'
+export finished in 0.0291 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SM_MAP_ShoulderMantle.fbx'
+export finished in 0.0200 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SM_MAP_Spear_Light.fbx'
+export finished in 0.0085 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SM_MAP_Sword_Ceremonial.fbx'
+export finished in 0.0081 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Archangel.fbx'
+(bpy.data.armatures['RIG_MAP_Archangel'], 'POSE')
+export finished in 0.0095 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Archangel_Wings.fbx'
+(bpy.data.armatures['RIG_MAP_Archangel'], 'POSE')
+export finished in 0.0096 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Gabriel_Base.fbx'
+(bpy.data.armatures['RIG_MAP_Gabriel_Base'], 'POSE')
+export finished in 0.0095 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Gabriel_Base_Wings.fbx'
+(bpy.data.armatures['RIG_MAP_Gabriel_Base'], 'POSE')
+export finished in 0.0100 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Messenger.fbx'
+(bpy.data.armatures['RIG_MAP_Messenger'], 'POSE')
+export finished in 0.0101 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Messenger_Wings.fbx'
+(bpy.data.armatures['RIG_MAP_Messenger'], 'POSE')
+export finished in 0.0105 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Messenger.fbx'
+(bpy.data.armatures['RIG_MAP_Messenger'], 'POSE')
+(bpy.data.armatures['RIG_MAP_Messenger'], 'POSE')
+export finished in 0.0399 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Archangel.fbx'
+(bpy.data.armatures['RIG_MAP_Archangel'], 'POSE')
+(bpy.data.armatures['RIG_MAP_Archangel'], 'POSE')
+export finished in 0.0323 sec.
+
+FBX export starting... 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\Content\\Blender\\AngelPlaceholder\\SK_MAP_Gabriel_Base.fbx'
+(bpy.data.armatures['RIG_MAP_Gabriel_Base'], 'POSE')
+(bpy.data.armatures['RIG_MAP_Gabriel_Base'], 'POSE')
+export finished in 0.0312 sec.
+DONE {'ruins': 28, 'sanctuary': 36, 'mirrors': 44, 'props': 35, 'angels': 15, 'exported_groups': {'SM_MRK_': 29, 'SM_MSK_': 37, 'SM_MMLK_': 45, 'SM_MP_': 36, 'SM_MAP_': 6, 'SK_MAP_': 6, 'SK_': 3}, 'blend': 'd:\\Game Projects\\Unreal DA\\DarkAngelsPOC 5.8\\ArtSource\\Blender\\SM_Malkuth_AllKits.blend'}
+Blender 4.5.0 (hash 8cb6b388974a built 2025-07-15 01:36:24)
+
+Blender quit

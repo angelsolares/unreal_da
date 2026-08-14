@@ -1,0 +1,7 @@
+ruins: 28
+sanctuary: 36
+mirrors: 44
+props: 35
+angels: 15
+exported_groups: {'SM_MRK_': 29, 'SM_MSK_': 37, 'SM_MMLK_': 45, 'SM_MP_': 36, 'SM_MAP_': 6, 'SK_MAP_': 6, 'SK_': 3}
+blend: d:\Game Projects\Unreal DA\DarkAngelsPOC 5.8\ArtSource\Blender\SM_Malkuth_AllKits.blend
