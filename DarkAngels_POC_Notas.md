@@ -6171,3 +6171,61 @@ colision se deforman. Escalar el actor entero habria escalado tambien la capsula
 Colocados en El Claro sustituyendo a los `SkeletalMeshActor` estaticos, sobre las mismas
 poses. **Ojo con la cota**: el origen de un Character es el **centro de la capsula**, no los
 pies, asi que la Z del actor es la de los pies **+96**.
+
+## La puerta de El Claro (2026-08-15)
+
+Sustituye a `Claro_Puerta_Ruta` (una `SM_MedievalModularDoor3x2M` escalada 2.6). La vieja
+queda **oculta, no borrada**. Nueva: `Claro_Puerta_Bronce`, en la carpeta `Puerta`.
+
+Escala 531.9 desde una malla de 0.98 cm, para los mismos **521 cm de alto** que tenia el
+hueco. Sale **388 cm de ancho** frente a los 781 de la anterior, porque es una puerta con
+jambas en vez de un panel modular ancho.
+
+### Otra vez: 52 MB de FBX no entran como StaticMesh
+
+`StaticMeshTools.import_file` **si** devolvio un asset, pero con **84 triangulos**. La
+version skeletal del mismo fichero da **1.009.712 vertices**. O sea que aqui el importador
+estatico no falla ruidosamente como con el coloso: **devuelve algo, y es basura**.
+
+**Regla: tras importar un FBX pesado como StaticMesh, comprobar el numero de triangulos.**
+Si son decenas en vez de cientos de miles, reimportar como SkeletalMesh.
+
+### El fallo que me costo cuatro intentos: el material no compilaba
+
+La puerta salia **negra** (luma 3.5). Diagnostico correcto —metal liso sin nada que
+reflejar en un hueco a oscuras— pero **los arreglos no surtian efecto**, y tarde en ver por
+que. El error real solo aparecio al leer la salida completa en vez del traceback recortado:
+
+    Material failed to compile:
+    (Node TextureSample) Sampler type is Color, should be Masks for clarodoor_roughness
+
+Al pasar la textura a `TC_Masks` hay que cambiar **tambien el `SamplerType` del nodo**. Y no
+bastaba con el nodo que yo añadi: habia **un segundo TextureSample original**
+(`MaterialExpressionTextureSample_1`) usando la misma textura en modo Color, y era el que
+alimentaba `MP_Metallic`. Mientras uno solo estuviera mal, **el material no compilaba y
+ningun cambio se veia**.
+
+**Leccion doble:**
+1. `recompile` fallando deja el material con el shader viejo: los cambios parecen no hacer
+   nada. Si un cambio de material "no se nota", **mirar si compilo**.
+2. Al cambiar una textura a `TC_Masks`, revisar **todos** los nodos que la usan, no solo el
+   que acabas de tocar.
+
+### Estado final, medido en la misma region
+
+| | luma | saturacion |
+|---|---|---|
+| Al colocarla (negra) | 3.5 | 53% (ruido) |
+| Con las luces subidas | 52.6 | 0.3% |
+| Con el material ya compilado | **64.9** | **48.5%** |
+
+Cambios aplicados: `MP_Roughness` conectado (venia suelto), metallic atenuado a **0.15**
+—el basecolor es marron terroso, no bronce brillante, y con metallic alto se iba a gris—,
+texturas a 2048 el color y la normal y 1024 la rugosidad.
+
+**Y las luces de la puerta:** `Claro_GateLight_L` y `_R` estaban a **8 candelas**, que no
+iluminan nada. Subidas a **220** con radio 1200. Ese cambio por si solo saco la puerta del
+negro.
+
+**Pendiente:** las dos luces salen con una X roja en el editor. Son Stationary y se les
+cambio la intensidad, asi que **piden rebuild de iluminacion**.
