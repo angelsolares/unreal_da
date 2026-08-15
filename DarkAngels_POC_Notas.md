@@ -5926,3 +5926,30 @@ materiales de piedra tocados dieron menos que un volumen local bien puesto.
 
 **Ojo:** el volumen dibuja su contorno en el viewport (una linea amarilla arriba del
 encuadre). Como las lineas del agua, es solo del editor.
+
+### Correccion: el Santuario tambien tenia marcador de Cassiel
+
+Al fotografiar los NPC en juego aparecio una estatua blanca con aletas junto a Cassiel.
+**Era `SM_Cassiel`**, un marcador que ya existia —malla de `/Game/Fab/statue-retopology`,
+escala 0.72, con su propia `Luz_Cassiel` de 110 candelas— y le habia plantado el modelo a
+**50 cm**, interpenetrandose con el. En el Mirador si busque marcador previo; aqui no, y es
+el mismo patron. **Antes de colocar un NPC, buscar por su nombre en la zona.**
+
+Corregido igual que en el Mirador: `SM_Cassiel` **oculto, no borrado**, y el NPC llevado a
+su sitio y su giro (yaw -125). La `Luz_Cassiel` se mantiene, que para eso esta.
+
+**Trampa dentro de la trampa:** al reubicarlo, la traza de suelo dio z=285 y lo dejo
+flotando. **`bHidden` quita el dibujo pero NO la colision**, asi que el rayo choco con el
+marcador oculto. Se resolvio trazando desde **por debajo** de su base (z=55): suelo real a
+**8.5**. Pies a 5.7 y cabeza a 196.1.
+
+### Aviso serio visto en PIE: memoria de video agotada
+
+En la captura del Santuario en juego salio en rojo:
+
+    Video memory has been exhausted (1787.690 MB over budget).
+    Expect extremely poor performance.
+
+**1.8 GB por encima del presupuesto.** Las texturas de los NPC contribuyen: Sariel trae
+BaseColor, Metallic y Roughness a **4096x4096** cada una. Conviene bajar el `MaxTextureSize`
+de las de personaje y revisar el resto del presupuesto antes de meter mas modelos.
