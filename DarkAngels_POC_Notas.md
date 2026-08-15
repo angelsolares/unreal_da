@@ -6017,3 +6017,44 @@ que pide `lam_01` del PDF.
 texturas**, como vinieron Sariel y Cassiel. Un material dedicado con mas tiling tambien
 ayudaria, pero `Piedra_Marfil` lo comparten ~75 assets y no tiene parametros, asi que habria
 que crear uno aparte.
+
+## Coloso V2: con texturas, 990k vertices y mirando al jugador (2026-08-14)
+
+Segundo export de Tripo, este si con el paquete completo:
+`World Assets/Malkuth/angel+statue+3d+model/`, FBX de **50.5 MB** con su `.fbm`
+(basecolor, normal, roughness, metallic y rm).
+
+**Falla como StaticMesh.** `StaticMeshTools.import_file` devuelve "produced no assets".
+El motivo: **trae un hueso**, asi que Unreal lo trata como skeletal. Importado con
+`SkeletalMeshTools.import_file` entra sin problema. Es una estatua con **1 solo hueso**, o
+sea que en la practica es estatica; no pasa nada por dejarla como SkeletalMesh.
+
+| | V1 | V2 |
+|---|---|---|
+| FBX | 0.2 MB | 50.5 MB |
+| Vertices | 4.720 | **990.200** |
+| Texturas | ninguna | basecolor + normal + roughness |
+| Material | hubo que asignar piedra | el suyo propio |
+
+### La orientacion, medida y no a ojo
+
+**El modelo mira a +Y cuando su yaw es 0.** Se determino colocandolo a yaw 0 y capturando
+desde el sur (se ve la espalda y las alas) y desde el oeste (se ve de perfil mirando a +Y).
+
+Para que mire al jugador que llega por el sendero: el spawn del Jardin esta a **yaw -176.57**
+desde la estatua, y hay que restarle el desfase de 90 grados del modelo →
+**yaw aplicado 93.43**. Ahora encara el sendero de frente, con las dos alas simetricas
+detras, que es la lectura de `lam_01`.
+
+Escala 19143.2 desde una malla de 0.98 cm, para los mismos **18750 cm** de la esfinge.
+
+### Limpieza y ajustes
+
+- **`Coloso_Angel` (el V1 de 7.795 triangulos) borrado**, ya no hacia falta.
+- `SM_Coloso_Landmark`, la esfinge original, sigue **oculta y no borrada**.
+- `MaxTextureSize`: 2048 en basecolor y normal, 1024 en roughness. Es un landmark de 187 m y
+  admite mas que un NPC, pero 4K por mapa con la VRAM ya 1.8 GB pasada no se justifica.
+- El roughness entro con **`SRGB=true`**, que esta mal para un mapa de datos: corregido a
+  `SRGB=false` y `TC_Masks`. **Conviene revisarlo en cada importacion**: el importador no
+  acierta solo.
+- Metallic no se importo, y para una estatua de piedra eso es lo correcto: queda en 0.
