@@ -6114,3 +6114,60 @@ borrados**; las luces se mantienen.
   si aparece sin colocar no es un olvido, es una decision.
 
 El boss queda fuera a proposito, que ese modelo aun no existe.
+
+## Los enemigos, dentro del sistema DCS (2026-08-14)
+
+**Si se puede, y por la via facil.** La documentacion de ue4dcs.com carga por JavaScript y
+solo devuelve el indice, asi que lo util salio del propio proyecto.
+
+### Como esta montado DCS aqui
+
+    BP_WarriorAI  ->  BP_BaseAI  ->  Character      (enemigos, con su BT_WarriorAI)
+    BP_CombatCharacter  ->  Character               (el jugador)
+
+Componentes en `DCS/Blueprints/Components`: Ability, CollisionHandler, Combat, Dissolve,
+InputBuffer, Inventory, MontageManager, MovementSpeed, Rotating, StateManager, StatsManager,
+StatusEffects, TeamRelations, mas targeting y patrol. Todo eso lo hereda el Warrior.
+
+### El hallazgo: AccuRig usa la nomenclatura de UE
+
+Los huesos de AccuRig son `root`, `pelvis`, `spine_01..05`, `clavicle_l`, `upperarm_l`,
+`hand_r`... **los mismos nombres que el `SK_Mannequin` de DCS**, mas 47 huesos auxiliares
+`cc_base_*`.
+
+Por eso `SkeletalMeshTools.import_file` acepta el parametro **`skeleton`** apuntando al de
+DCS y la malla queda atada a el. Verificado comparando la ruta del esqueleto, no a ojo:
+los cinco devuelven `SK_Mannequin.SK_Mannequin`.
+
+**Consecuencia: las animaciones y montages de DCS funcionan directamente, sin IK Retargeter.**
+
+### ⚠️ Esto modifica un asset de pago que NO esta en git
+
+Atar las mallas a `SK_Mannequin` **le añade los 47 huesos `cc_base_*`**: el fichero paso de
+148.518 a 191.521 bytes. Es un cambio **aditivo** —las animaciones y mallas existentes de DCS
+no usan esos huesos y siguen igual— pero:
+
+- `Content/DynamicCombatSystem/` esta en `.gitignore` por licencia, asi que **este cambio no
+  viaja en el repo**.
+- Si se reinstala o actualiza DCS, el esqueleto vuelve a su estado original y **las cinco
+  mallas se quedan sin esqueleto valido**. La reparacion es reimportar los cinco FBX de
+  AccuRig pasando de nuevo `skeleton = SK_Mannequin`: dos minutos con `importar_dcs.ps1`.
+
+Decidido con Angel el 14/08 sabiendo esto. La alternativa era un IK Rig + IK Retargeter por
+enemigo, que el MCP no puede crear y habria que montar a mano.
+
+### Lo que quedo hecho
+
+`/Game/DarkAngels/Blueprints/Enemies/`: **BP_DA_Vigilante, BP_DA_Lancero, BP_DA_Arquero,
+BP_DA_Heraldo y BP_DA_Inspector**, duplicados de `BP_WarriorAI`, o sea que heredan su
+Behaviour Tree, su AI Controller y todos los componentes de combate.
+
+**La escala va en la malla, no en el actor.** El Warrior original tiene capsula de 96 de
+semialtura y la malla a Z −97 con escala 1. Nuestras mallas miden 98.4 cm, asi que se les
+puso **RelativeScale3D ~1.83 al componente CharacterMesh0** y se dejo la capsula intacta:
+asi el personaje mide 1.80 m dentro de la capsula estandar y ni el movimiento ni la
+colision se deforman. Escalar el actor entero habria escalado tambien la capsula.
+
+Colocados en El Claro sustituyendo a los `SkeletalMeshActor` estaticos, sobre las mismas
+poses. **Ojo con la cota**: el origen de un Character es el **centro de la capsula**, no los
+pies, asi que la Z del actor es la de los pies **+96**.
