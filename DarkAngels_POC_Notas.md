@@ -5978,3 +5978,42 @@ presupuesto entero, no las de personaje.
 
 **El .uasset en disco no encoge:** sigue guardando la imagen original. `MaxTextureSize`
 limita lo que se construye y se sube a memoria, no la fuente.
+
+## El coloso de angel sustituye a la esfinge (2026-08-14)
+
+Importado de `World Assets/Malkuth/angel+colosal/tripo_convert_44d7524f-....fbx` como
+**StaticMesh** (es una estatua: no necesita rig) a `/Game/DarkAngels/Characters/Colosos`.
+
+**Colocado exactamente donde estaba la esfinge**, calculando la escala a partir de las dos
+alturas en vez de a ojo: malla de **0.998 cm**, esfinge de **18750 cm**, factor **18786.7**.
+Misma posicion (-33000, -58400), misma cota de pies (-500) y mismo yaw (-150). Resultado
+verificado: **18750 cm de alto**, huella 173 x 176 m.
+
+`SM_Coloso_Landmark` **oculto, no borrado**, igual que los otros marcadores.
+
+### Dos cosas que trae de fabrica y conviene saber
+
+**1. El FBX no traia material ni texturas.** Su unico slot venia con `WorldGridMaterial`, o
+sea el damero por defecto: en la carpeta no habia ni `.fbm` ni imagenes, al contrario que
+los FBX de los NPC (43-48 MB con sus mapas embebidos; este pesa 0.2 MB). Se le asigno
+`M_DA_MK_Piedra_Marfil`, la piedra del proyecto.
+
+**2. Solo 7.795 triangulos y 4.720 vertices.** Para un landmark de 187 m eso deja triangulos
+de unos 2 m. La silueta aguanta bien, pero **la superficie lee lisa**, sin grano: no tiene
+detalle propio y la textura de travertino, estirada sobre 187 m, no se aprecia.
+
+### Como lee
+
+- **Desde el spawn del Jardin** esta a contraluz (el sol viene de yaw ~330 y se mira a yaw 3):
+  luma **27.5**. Sale como silueta oscura contra el cielo, y **funciona muy bien** para la
+  direccion de "divinidad que abruma".
+- **Desde el lado del sol**: luma **92.1** y saturacion 68%. Ahi si se ve que la superficie
+  es lisa y el tono tira a arena.
+
+**Es una mejora clara sobre la esfinge**: ahora es un angel sentado y monumental, que es lo
+que pide `lam_01` del PDF.
+
+**Si se quiere superficie de verdad**, la via es reexportar desde Tripo **con el paquete de
+texturas**, como vinieron Sariel y Cassiel. Un material dedicado con mas tiling tambien
+ayudaria, pero `Piedra_Marfil` lo comparten ~75 assets y no tiene parametros, asi que habria
+que crear uno aparte.
