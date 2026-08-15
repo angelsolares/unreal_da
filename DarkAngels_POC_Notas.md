@@ -6229,3 +6229,24 @@ negro.
 
 **Pendiente:** las dos luces salen con una X roja en el editor. Son Stationary y se les
 cambio la intensidad, asi que **piden rebuild de iluminacion**.
+
+### La puerta, agrandada (2026-08-15)
+
+Se escalo **por ancho** en vez de por alto, para que llene el hueco: factor **1070.2** desde
+el ancho de malla, o sea **780 x 1048 cm** (antes 388 x 521). Base sin mover en z=230, cima
+en 1278. Sobresale del hueco original y Angel lo dio por bueno.
+
+Ahora se lee lo que es: portal con jambas talladas, dintel decorado, batientes con discos y
+**dos figuras de angel flanqueandolo** — justo la hornacina con estatuilla que pide `lam_05`.
+Desde la entrada del jugador remata el fondo de la plaza y ordena el encuadre:
+sendero → hueste → puerta.
+
+**Se repitio el Error Code 32 al guardar `L_DA_Malkuth_Claro_Sub.umap`**, con su dialogo
+modal colgando el editor, igual que con el Santuario el 14/08. Reiniciar el editor volvio a
+arreglarlo. El primer intento de escalado **se perdio** con la sesion de edicion descartada;
+confirmado al reaplicarlo, que partia de 388 x 521.
+
+**Patron a vigilar:** las dos veces que ha pasado ha sido poco despues de commitear esos
+`.umap` a git. No esta demostrado —el 14/08 se descarto que fuera Unreal reteniendo los
+paquetes— pero si vuelve a ocurrir, conviene probar a no commitear hasta cerrar la tanda de
+ediciones y ver si desaparece.
