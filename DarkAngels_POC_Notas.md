@@ -5953,3 +5953,28 @@ En la captura del Santuario en juego salio en rojo:
 **1.8 GB por encima del presupuesto.** Las texturas de los NPC contribuyen: Sariel trae
 BaseColor, Metallic y Roughness a **4096x4096** cada una. Conviene bajar el `MaxTextureSize`
 de las de personaje y revisar el resto del presupuesto antes de meter mas modelos.
+
+### MaxTextureSize de las texturas de personaje
+
+Puesto en las ocho texturas de los NPC. Los originales eran mas grandes de lo que parecia:
+**Sariel BaseColor, Metallic y Roughness a 4096**, y Cassiel BaseColor tambien a 4096.
+
+| Mapa | MaxTextureSize |
+|---|---|
+| BaseColor | 1024 |
+| Normal | 1024 |
+| Metallic | 512 |
+| Roughness | 512 |
+
+Metallic y roughness bajan mas porque son mapas casi planos: no llevan detalle que perder.
+Comprobado a la distancia de juego: Sariel mantiene placas, hombreras y los tintes lilas.
+Medido, luma 147.9 → 142.4 y saturacion 15.8% → 13.8%, o sea el salto de mip y poco mas.
+
+**Cuanto ahorra de verdad, sin inflarlo:** en VRAM, unos **95 MB** de los **1787 MB** de
+exceso, poco mas del 5%. Ayuda y evita que el problema crezca con cada personaje nuevo, pero
+**no arregla el aviso**. El grueso esta en otra parte: Megascans, los escaneos de estatuas y
+las texturas de superficie a 4K. Si se quiere resolver de verdad hay que auditar el
+presupuesto entero, no las de personaje.
+
+**El .uasset en disco no encoge:** sigue guardando la imagen original. `MaxTextureSize`
+limita lo que se construye y se sube a memoria, no la fuente.
