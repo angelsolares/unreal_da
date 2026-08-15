@@ -6276,3 +6276,18 @@ mismo resultado, y se puede ajustar el radio o la cuenta sin que se descoloque t
 `lam_05`. **La vegetacion sigue siendo escasa** frente a la lamina, que tiene sotobosque
 denso; 35 plantas en 46 x 46 m se notan poco. Subir la cuenta es cambiar una constante, pero
 conviene no invadir la arena.
+
+### Segunda pasada de verde: 98 plantas mas (2026-08-15)
+
+Total en El Claro: **133 plantas y 11 bloques de ruina**. Esta vez no en anillo uniforme sino
+**agrupadas donde crecerian de verdad**:
+
+- **5 matas al pie de cada bloque de ruina**, con radio en funcion del tamaño del bloque.
+  Los 11 bloques colocados antes sirven de ancla; el script los localiza por nombre.
+- **56 en banda contra los acantilados**, a radio 2150-2750 del centro de la plaza.
+
+Se descartaron 13 posiciones por las mismas exclusiones de siempre (circulo de combate,
+corredor a la puerta, entrada del jugador). El reparto sigue siendo determinista.
+
+**Agrupar cambia mas que subir la cuenta.** Un helecho suelto en mitad de la explanada no se
+lee; cinco al pie de una piedra si, porque es donde el ojo espera encontrarlos.
