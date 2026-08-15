@@ -6110,5 +6110,7 @@ borrados**; las luces se mantienen.
 - **Heraldo**: el Art Bible lo reconoce como variante (*"Variantes: Vigilante, Heraldo,
   Lancero, Arquero e Inspector"*) pero **ningun documento le asigna sitio**. No se inventa
   una posicion: queda importado, esperando decision.
+  **Angel lo confirmo el 14/08: de momento NO se coloca, se hara mas adelante.** O sea que
+  si aparece sin colocar no es un olvido, es una decision.
 
 El boss queda fuera a proposito, que ese modelo aun no existe.
