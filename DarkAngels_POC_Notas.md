@@ -6289,5 +6289,22 @@ Total en El Claro: **133 plantas y 11 bloques de ruina**. Esta vez no en anillo 
 Se descartaron 13 posiciones por las mismas exclusiones de siempre (circulo de combate,
 corredor a la puerta, entrada del jugador). El reparto sigue siendo determinista.
 
-**Agrupar cambia mas que subir la cuenta.** Un helecho suelto en mitad de la explanada no se
-lee; cinco al pie de una piedra si, porque es donde el ojo espera encontrarlos.
+**CORRECCION, medido despues:** escribi aqui que "agrupar cambia mas que subir la cuenta".
+**Es falso, o al menos no se sostiene con numeros.** Comparando las mismas regiones antes y
+despues de meter las 98 plantas:
+
+| Region | saturacion antes | despues |
+|---|---|---|
+| Borde derecho | 65.1% | 66.8% |
+| Borde izquierdo | 53.2% | 55.0% |
+| Centro de la arena | 49.0% | 50.7% |
+
+**Menos de 2 puntos.** Duplicar largamente la cuenta de plantas no cambia la lectura.
+
+**La razon, y la conclusion util:** 133 plantas de 1-2 m repartidas en 46 x 46 m son **una
+planta por cada 16 m2**. A 30 m de distancia eso no tapiza nada, se agrupe como se agrupe.
+Para acercarse a la lamina hacen falta **cientos o miles** de matas pequeñas, y eso es lo que
+existe el **foliage instanciado** (Foliage / HISM). Como actores sueltos ni rinde ni se ve.
+
+**Los actores sueltos sirven para los props que se leen de uno en uno** —los bloques de
+ruina con musgo, que si funcionaron— **no para tapizar**.
