@@ -6308,3 +6308,67 @@ existe el **foliage instanciado** (Foliage / HISM). Como actores sueltos ni rind
 
 **Los actores sueltos sirven para los props que se leen de uno en uno** —los bloques de
 ruina con musgo, que si funcionaron— **no para tapizar**.
+
+## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
+
+### Lo que quedo a medias: el panorama 360 como telon
+
+**Objetivo:** sustituir los **196 montes de telon** (84 `Monte_Lejos`, 78 `Monte_Medio`,
+34 `Gazebo_Monte`) por una imagen equirectangular en la cupula, para acercarse a las laminas
+y de paso aliviar la VRAM, que va **1787 MB por encima**.
+
+**Hecho y guardado:**
+
+- Imagen analizada y **corregida**: `backdrops/Malkuth_Paisaje_360_8192x4096.png` era 8192 x
+  4096 y 2:1 correctos, pero **la costura no casaba** (diferencia 12,9 contra 0,6 de dos
+  columnas vecinas normales). Cosida con `scratchpad/coser_panorama.mjs` en una banda de
+  96 px: **12,95 → 0,00**. El fichero bueno es `Malkuth_Paisaje_360_8K_cosido.png`.
+- Importada como `T_DA_Malkuth_Panorama360`, `MaxTextureSize` 8192, sRGB.
+- Creado `M_DA_Panorama360`: **Unlit y TwoSided**, con la textura al emisivo.
+- Asignado al `SkyDomeMesh` del **Master** (o sea, valido para las 13 zonas de golpe).
+- La cupula venia **aplastada** (escala 1000000 x **150000** x 1000000) porque el material
+  procedural del Engine lo aprovecha. **Un equirectangular necesita esfera**: puesta a
+  1000000 uniforme.
+- Girada a **yaw -70**, que es la diferencia entre el punto mas brillante del panorama
+  (azimut 220 dentro de la imagen) y nuestro sol (yaw 150).
+
+**Lo que falta, y es el paso grande:**
+
+1. **Ocultar los 196 montes.** Ahora tapan el panorama: desde el Jardin solo asoman nubes y
+   un pico. Hacerlo por tandas y **verificando zona por zona**, porque algunos montes cierran
+   agujeros del horizonte y al quitarlos puede abrirse un hueco. Ocultar, no borrar.
+2. **Revisar la cota del horizonte.** El perfil de la imagen situa el horizonte al 45-50% de
+   altura, pero la cupula puede necesitar un desplazamiento en Z para que la linea del
+   panorama case con la del terreno.
+3. **Comprobar las 13 zonas.** Es una sola cupula para todas; lo que mejore el Jardin puede
+   estropear el Anfiteatro o el Puente.
+
+### Estado de Malkuth al cerrar
+
+- **Jardin**: coloso de angel encarando el sendero, esfinge borrada.
+- **Mirador**: Sariel sobre la base, `PP_Mirador` propio a -1.9 EV, luces bajadas.
+- **Santuario**: Cassiel junto al altar, sobre el sitio de su marcador.
+- **El Claro**: suelo de tierra marron, hueste de 4 angeles **sobre DCS**, puerta monumental
+  de 780 x 1048, 11 bloques de ruina con musgo y 133 plantas.
+- **Anfiteatro**: telon cerrado, sin rendijas.
+
+### Pendientes por orden de valor
+
+1. Terminar el telon 360 (arriba).
+2. **Auditar la VRAM**: 1787 MB de exceso. Lo de personaje ya esta acotado; el grueso son
+   Megascans, los escaneos y las texturas de superficie a 4K.
+3. **Foliage instanciado** en El Claro. Medido: 98 actores de planta mas movieron **menos de
+   2 puntos** de saturacion. Los actores sueltos no tapizan, hacen falta miles de instancias.
+4. **El Heraldo sin colocar**, por decision de Angel.
+5. **Comportamientos de combate**: los cinco enemigos heredan el Behaviour Tree del Warrior
+   tal cual. Diferenciar que el Arquero mantenga distancia y el Lancero cargue ya es diseño.
+6. Assets que faltan segun el PDF: **tableta grabada y Fragmento** del Gazebo, **llave y
+   baul** del Mirador, **angel guardian** del portal de Yesod, props del Santuario.
+
+### Dos cosas operativas
+
+- **El guardado de sublevel falla con Error Code 32** cada cierto tiempo, dejando un dialogo
+  modal que cuelga el MCP. Se arregla **reiniciando el editor** (y `ModelContextProtocol.StartServer`
+  despues). Ha pasado dos veces, las dos poco despues de commitear esos `.umap` a git; sin
+  demostrar, pero vigilarlo.
+- **Sin push todavia.** El repo es publico y llevamos ~17 commits sin subir.
