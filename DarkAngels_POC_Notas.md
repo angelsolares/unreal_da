@@ -5884,3 +5884,45 @@ barandas y base de la estatua vuelven a ser la misma familia de piedra calida.
 superficie grande a pleno sol rodeada de oscuridad, y la exposicion automatica la empuja
 arriba. Si molesta, el siguiente dial es un PostProcessVolume local para el Mirador, no
 seguir bajando albedos.
+
+## Pulido de los NPCs y volumen local del Mirador (2026-08-14)
+
+**1. Metallic de Tripo atenuado.** Se intercala un `MaterialExpressionMultiply` entre el
+TextureSample del mapa y `MP_Metallic`, con **`ConstB = 0.25`**. Asi se conserva la
+variacion del mapa pero se le quita el "todo es metal". Hecho en los dos materiales.
+**Receta a repetir con cualquier personaje que salga de Tripo.**
+
+**2. Nombres legibles.** Con `AssetTools.move`, que arregla las referencias solo:
+
+| Antes | Ahora |
+|---|---|
+| `tripo_mat_b0fc3593` | `M_DA_NPC_Sariel` |
+| `tripo_mat_b0fc3593_Diffuse` | `T_DA_Sariel_BaseColor` |
+| `tripo_mat_b0fc3593_Normal` | `T_DA_Sariel_Normal` |
+| `tripo_mat_78e80924` | `M_DA_NPC_Cassiel` |
+| `tripo_mat_78e80924_Diffuse` | `T_DA_Cassiel_BaseColor` |
+| `tripo_mat_78e80924_Normal` | `T_DA_Cassiel_Normal` |
+
+Verificado despues del renombrado: las mallas siguen apuntando a su material y las cuatro
+salidas de cada uno siguen conectadas.
+
+**3. `PP_Mirador`, volumen de post proceso local.** En `L_DA_Malkuth_Mirador_Sub`, carpeta
+`Luz`. Caja x -18200..-13800, y -25800..-21400, z -500..1700, o sea toda la zona con la
+escalera. `bUnbound=false`, **prioridad 5** (el global del Master es unbound con prioridad 1)
+y `BlendRadius=400` para que la transicion no de un salto. Unico override:
+**`autoExposureBias = -1.9`** frente al -0.65 global. El struct se leyo, modifico y
+reescribio entero: 463 claves antes y 463 despues.
+
+**Resultado medido en la misma pose:**
+
+| Region | luma | saturacion |
+|---|---|---|
+| Base de la estatua | 240.2 → **219.1** | 11.8% → **23.1%** |
+| Muro del fondo | 206.2 → **156.8** | 24.5% → **41.6%** |
+| Sariel | 178.7 → **147.9** | 21.3% → 15.8% |
+
+El muro baja 50 puntos de luma y gana 17 de saturacion. **Este era el dial correcto**: tres
+materiales de piedra tocados dieron menos que un volumen local bien puesto.
+
+**Ojo:** el volumen dibuja su contorno en el viewport (una linea amarilla arriba del
+encuadre). Como las lineas del agua, es solo del editor.
