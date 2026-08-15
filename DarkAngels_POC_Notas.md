@@ -5711,3 +5711,176 @@ de claves y una lista de testigos de color grading antes y despues.
 Resultado aqui: **463 claves antes y 463 despues, ninguna perdida, ningun testigo alterado.**
 Ojo tambien con los `bOverride_*`: sin ponerlos a true el volumen ignora el valor nuevo.
 Script en `scratchpad/exposicion.py`.
+
+## NPCs de Tripo: Sariel y Cassiel importados y colocados (2026-08-14)
+
+**Solo van dos, y lo dice el compendio.** `Dark_Angels_Compendio_Visual_NPCs_y_Modelado_3D_v1.pdf`
+da la localizacion de cada uno: Sariel "multiples esferas, siempre a distancia", Cassiel
+"Altares de Contemplacion" y **Orphan "Cueva oculta en Binah"**. Binah es otra Sefira, no
+Malkuth: Orphan no entra en este mapa.
+
+### Que se importo
+
+Con `SkeletalMeshTools.import_file` (`import_materials` + `import_textures` +
+`create_physics_asset`), a `/Game/DarkAngels/Characters/NPCs`:
+
+| | Sariel | Cassiel |
+|---|---|---|
+| Fichero | `NPCs\Sariel\sariel rigged.fbx` | `NPCs\Cassiel\Cassiel.fbx` |
+| Altura de malla | 98.4 cm | 98.3 cm |
+| **Escala aplicada** | **1.829** | **1.8309** |
+| Huesos | 118, raiz `root` | 118, raiz `root` |
+| Vertices | 45.782 | 46.495 |
+
+Los dos traen el mismo rig de Tripo, asi que deberian poder compartir animaciones.
+`import_file` **devuelve solo la malla** aunque cree tambien esqueleto, physics asset,
+material y texturas: hay que listar la carpeta para ver lo que hizo de verdad.
+
+### Donde quedaron
+
+- **Sariel**: sobre `Mirador_EstatuaBase`, en (-16000, -22850, 468), yaw -90 mirando a la
+  escalera. **Sustituye al marcador `Mirador_Estatua_Sariel`**, que **no se borro**: se
+  oculto con `bHidden` + `bVisible=false`, que es reversible. Su cima era 639.2 y la de
+  Sariel es 647.8, o sea misma silueta.
+- **Cassiel**: junto al altar del Santuario, en (44120, 48280, 169.1), yaw 195, al lado +Y
+  (la derecha del jugador que entra desde -X), como en la lamina `lam_07`.
+
+Ambos en la carpeta `NPCs` de su zona. Commits de los dos sublevel verificados contra disco.
+
+### El material esta bien; lo que falla es el suelo de la zona
+
+Los NPC leen **blancos y sin detalle**, y casi lo doy por un fallo de importacion. No lo es:
+
+- El grafo del material esta **bien cableado**: `MP_BaseColor` ← TextureSample del Diffuse,
+  `MP_Normal` ← TextureSample del Normal. Comprobado nodo a nodo.
+- La textura Diffuse esta bien importada: es un atlas de armadura gris-plata, que ademas es
+  justo lo que pide el compendio.
+- Medido en la captura: Sariel esta a **luma 168 y 23% de saturacion** — no esta reventado.
+  **El suelo de la plataforma del Mirador esta a luma 250**, o sea blanco puro. Es el que
+  se lleva la exposicion por delante.
+
+**El thumbnail del asset engana:** salio gris con **0.1% de saturacion**, porque
+`CaptureAssetImage` lo renderizo con material por defecto. No sirve para juzgar materiales.
+
+### Metallic y roughness conectados — y el mapa de Tripo no es de fiar
+
+En las carpetas `.fbm` hay `*_metallic.JPEG` y `*_roughness.JPEG` que el FBX no referencia,
+asi que la importacion los dejo fuera. Se han importado a mano y cableado:
+
+- `T_DA_Sariel_Metallic` / `_Roughness` (4096x4096) y `T_DA_Cassiel_*` (2048x2048).
+- Los cuatro con **`SRGB=false` y `CompressionSettings=TC_Masks`**, que es obligatorio: son
+  datos, no color. El Diffuse se queda en sRGB y TC_Default, como debe.
+- Cableados al canal **R** (son mapas en escala de grises, no RGB) de `MP_Metallic` y
+  `MP_Roughness`. Verificadas las cuatro salidas de cada material.
+
+**El efecto visual es pequeño, y conviene decirlo:** medido sobre el cuerpo de Sariel en la
+misma pose, luma **195.8 → 187.0** y saturacion **11.4% → 12.7%**. Una mejora modesta, no
+una transformacion.
+
+**La razon, y es un problema de origen:** el mapa metallic de Tripo esta **casi blanco en
+todo el atlas** (~0.68 de media). Esta declarando el personaje como metal de arriba abajo,
+piel y tela incluidas. Con metallic alto el difuso se apaga y todo pasa a ser especular, que
+es justo lo que aplana la lectura. **No es un mapa de fiar tal cual.** Vias: multiplicarlo
+por ~0.3, o dejar solo el roughness y poner metallic a un valor bajo a mano. Aplica
+igual a cualquier otro personaje que salga de Tripo.
+
+Pendiente aparte: el suelo del Mirador necesita el mismo tratamiento que
+`M_DA_MK_Tierra_Arena`, y los materiales quedaron con nombres de Tripo
+(`tripo_mat_b0fc3593`), que conviene renombrar.
+
+### Trampa: guardar sublevel fallaba con Error Code 32
+
+Durante un rato **ningun sublevel guardaba**: `MoveFile ... (Error Code 32)`, o sea fichero
+en uso por otro proceso, y el commit fallido **descarta la sesion de edicion** y pierde lo
+colocado. Ademas deja un **dialogo modal** que cuelga cualquier llamada MCP posterior.
+
+**Se arreglo reiniciando el editor.** Ojo con el diagnostico: probar a abrir el `.umap` en
+exclusiva **no sirve** para identificar al culpable — con el editor abierto salen bloqueados
+todos los paquetes cargados, incluido el Master y hasta `M_DA_MK_Tierra_Arena.uasset`, que
+se habia guardado perfectamente una hora antes.
+
+## El suelo del Mirador: el albedo no era la causa (2026-08-14)
+
+Se pidio "lo mismo que a `Tierra_Arena`". Se hizo, pero **el diagnostico era otro** y
+conviene dejarlo escrito para no repetirlo.
+
+**Que material es cada cosa en el Mirador:**
+
+| Pieza | Material | Referenciadores |
+|---|---|---|
+| `Mirador_Plataforma` (el suelo) | `M_DA_MK_Piedra_Calzada` | **3** |
+| Muros, barandas, base de la estatua, pedestal | `M_DA_MK_Piedra_Marfil` | **~75** |
+
+`Piedra_Marfil` lo usan el RuinsKit entero, el MirrorLabyrinthKit, todos los escaneos de
+estatuas y 8 mapas. **No se toco**: es una decision de otro calibre.
+
+**Paso 1, el albedo (hecho).** `Piedra_Calzada` tiene la misma estructura que
+`Tierra_Arena`: textura `T_DA_Travertine_C` por un Constant3Vector. Tinte de
+**(0.62, 0.50, 0.36) → (0.26, 0.20, 0.14)**. Resultado medido: el suelo solo bajo de
+**luma 239 a 229**. Casi nada.
+
+**Paso 2, la causa real.** En la plataforma hay dos luces locales:
+
+| Luz | Antes | Ahora |
+|---|---|---|
+| `Mirador_Luz_Llave` | **800 candelas** | 150 |
+| `Mirador_Luz_Estatua` | **300 candelas** | 80 |
+
+800 candelas a dos metros del suelo en una plataforma pequeña. **Para comparar, las luces de
+la puerta de El Claro son de 8.** Eso era lo que reventaba el suelo, no el color base.
+
+**Resultado total, medido en la misma pose:**
+
+| | Antes | Despues |
+|---|---|---|
+| Suelo, luma | 239.2 | **211.3** |
+| Suelo, saturacion | 12.5% | **32.9%** |
+| Sariel, luma | 187.0 | **180.5** |
+| Sariel, saturacion | 12.7% | **18.7%** |
+
+**Leccion:** antes de tocar el albedo de un suelo que lee reventado, **mirar las luces
+locales**. En El Claro la causa si era el material porque el suelo llenaba el encuadre; aqui
+el encuadre es mayormente oscuro y lo que clipa es un foco de 800 candelas.
+
+**Queda un desajuste a proposito:** el suelo ya es marron calido pero la base de la estatua,
+los muros y las barandas siguen blancos, porque son `Piedra_Marfil` y no se toco. Si se
+quiere igualar, ese cambio afecta a ~75 assets y a 8 mapas: merece hacerse mirando varias
+zonas a la vez, no de pasada.
+
+## Piedra_Marfil a marmol marron, verificado por zonas (2026-08-14)
+
+Es el material mas extendido del proyecto: **~75 referenciadores** — el RuinsKit entero, el
+MirrorLabyrinthKit, todos los escaneos de estatuas y 8 mapas. Por eso se verifico zona por
+zona en vez de mirar solo una.
+
+**Cambio:** el tinte del BaseColor de **(0.58, 0.555, 0.50) → (0.32, 0.27, 0.21)**. Nodo
+`MaterialExpressionConstant3Vector_0`, igual que en los otros dos materiales de piedra.
+Verificado en el binario: el tinte nuevo esta en el offset 13986 y el viejo ya no aparece.
+
+**Efecto por zona, medido en la misma franja del encuadre:**
+
+| Zona | luma antes → despues | saturacion antes → despues |
+|---|---|---|
+| Mirador | 178.5 → 174.3 | 33.0% → **43.2%** |
+| Gazebo | 206.7 → 194.8 | 40.0% → **46.5%** |
+| GabrielC3 | 34.8 → 33.6 | 42.0% → 43.8% |
+| Puente | 66.9 → 68.1 | 80.2% → 81.8% |
+| Yesod | 167.8 → 167.5 | 7.4% → 7.6% |
+| Elevador | 58.3 → 58.3 | 3.0% → 3.0% |
+
+**Solo se nota de verdad en Mirador y Gazebo.** En Elevador el cambio es literalmente cero y
+en Yesod y Puente es despreciable: desde esas camaras no hay superficie de `Piedra_Marfil` a
+la vista. Los 75 referenciadores son sobre todo **assets de malla** cuyo material por defecto
+es este, no piezas colocadas en todas las zonas. **Util saberlo: el numero de referenciadores
+mide el riesgo, no el impacto visual.**
+
+Tambien queda descartado que la pasarela blanca de Yesod sea `Piedra_Marfil`: no se movio.
+
+**Lo que arregla:** el desajuste que dejo el cambio anterior en el Mirador. Suelo, muros,
+barandas y base de la estatua vuelven a ser la misma familia de piedra calida.
+
+**Lo que no arregla:** la plataforma del Mirador **sigue siendo lo mas claro del encuadre**
+(base a luma 240, muro a 206). Ya no por el material ni por los focos, sino porque es una
+superficie grande a pleno sol rodeada de oscuridad, y la exposicion automatica la empuja
+arriba. Si molesta, el siguiente dial es un PostProcessVolume local para el Mirador, no
+seguir bajando albedos.
