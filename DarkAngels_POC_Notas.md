@@ -6058,3 +6058,57 @@ Escala 19143.2 desde una malla de 0.98 cm, para los mismos **18750 cm** de la es
   `SRGB=false` y `TC_Masks`. **Conviene revisarlo en cada importacion**: el importador no
   acierta solo.
 - Metallic no se importo, y para una estatua de piedra eso es lo correcto: queda en 0.
+
+## La hueste de El Claro: los cinco enemigos importados (2026-08-14)
+
+### AccuRig o `tripo_convert`: NO son lo mismo
+
+Primero se importaron los FBX que venian dentro de los `.zip` de cada carpeta
+(`tripo_convert_*.fbx`, ~1.8 MB). Entraron sin error y con sus texturas, **pero traen 1 solo
+hueso**: son mallas, no personajes. No se pueden animar.
+
+Los buenos estan en **`<enemigo>/AccuRig/<enemigo>.fbx`** (42-47 MB) y traen los **118
+huesos** del rig, el mismo que Sariel y Cassiel. Se borro la carpeta de assets entera y se
+reimporto desde ahi.
+
+**Como distinguirlos sin abrir nada:** por el peso. El export riggeado ronda los 45 MB; el
+`tripo_convert` no llega a 2 MB. Y una vez dentro, `get_bone_names` lo confirma: 118 contra 1.
+
+| | Vertices | Huesos | Altura | Escala a 1.80 |
+|---|---|---|---|---|
+| Vigilante | 46.461 | 118 | 98.5 cm | 1.8273 |
+| Lancero | 55.493 | 118 | 98.4 cm | 1.8289 |
+| Arquero | 45.774 | 118 | 98.4 cm | 1.8287 |
+| Heraldo | 47.195 | 118 | 98.2 cm | 1.8337 |
+| Inspector | 47.748 | 118 | 98.3 cm | 1.8318 |
+
+En `/Game/DarkAngels/Characters/Enemigos`, cada uno con esqueleto, physics asset, material y
+sus texturas Diffuse y Normal. `MaxTextureSize` a 1024 en las dos.
+
+### Reparto: el PDF lo dice y los marcadores ya estaban
+
+La estacion 04 dice literalmente *"Dos Vigilantes, un Lancero y un Arquero"*, y en el Claro
+habia **exactamente esos cuatro marcadores**, cada uno con su luz `*_Glow`:
+
+| Marcador | Modelo | Posicion | Cota |
+|---|---|---|---|
+| `Claro_Angel_Vigilante1` | Vigilante | 43300, -11400 | -42 |
+| `Claro_Angel_Vigilante2` | Vigilante | 44200, -11100 | -42 |
+| `Claro_Angel_Lancero` | Lancero | 44900, -11700 | -42 |
+| `Claro_Angel_Arquero` | Arquero | 45350, -12450 | **420** |
+
+El arquero estaba ya **elevado sobre un bloque**, igual que en la lamina `lam_05`. Los cuatro
+orientados hacia la camara del jugador y en la carpeta `Hueste`. Marcadores **ocultos, no
+borrados**; las luces se mantienen.
+
+### Heraldo e Inspector: no se colocan, y hay motivo
+
+- **Inspector**: el LDD lo describe como spawn **condicional**, no fijo — *"If Farsa < 20%,
+  a 5th angel spawns as 'Inspector'"*, y en la tabla de Farsa *"20-39%: Angels attack on
+  sight. Inspectors spawn."* Plantarlo en el mundo contradiria su diseño. Queda importado y
+  listo para el sistema de spawn.
+- **Heraldo**: el Art Bible lo reconoce como variante (*"Variantes: Vigilante, Heraldo,
+  Lancero, Arquero e Inspector"*) pero **ningun documento le asigna sitio**. No se inventa
+  una posicion: queda importado, esperando decision.
+
+El boss queda fuera a proposito, que ese modelo aun no existe.
