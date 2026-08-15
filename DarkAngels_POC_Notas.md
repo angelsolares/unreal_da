@@ -6250,3 +6250,29 @@ confirmado al reaplicarlo, que partia de 388 x 521.
 `.umap` a git. No esta demostrado —el 14/08 se descarto que fuera Unreal reteniendo los
 paquetes— pero si vuelve a ocurrir, conviene probar a no commitear hasta cerrar la tanda de
 ediciones y ver si desaparece.
+
+### Vegetacion y ruinas con musgo en El Claro (2026-08-15)
+
+La plaza mide **46 x 46 m** (x 41700..46300, y -14300..-9700), centro en (44000, -12000).
+Colocados **11 bloques de ruina y 35 plantas** en anillo perimetral; 18 posiciones se
+descartaron solas por caer en zona prohibida o no encontrar suelo.
+
+**Es una arena de combate, asi que el reparto respeta tres exclusiones**, no se siembra a
+voleo:
+
+- **Circulo central de 15 m libre**, que es donde se pelea.
+- **Corredor a la puerta**: nada con `y > -10400` a menos de 9 m del eje x=44245.
+- **Entrada del jugador**: nada con `y < -13300` a menos de 8 m del eje x=44000.
+
+Assets usados: `SM_MossyStoneWallA` y `_B`, `SM_IcelandicMossyRock`, `SM_MossyRocksA`,
+`SM_MRK_RubbleCluster_A` y `_B` para la ruina; `SM_DA_Fern_02`, `SM_DA_Grass_Medium` y
+`SM_DA_Flower_White` para el verde. Carpetas `Vestido/Ruinas` y `Vestido/Vegetacion`.
+
+**El reparto es reproducible a proposito**: la variacion de posicion, giro y escala sale de
+una funcion `pseudo(i, k)` deterministica, no de `random`. Volver a lanzar el script da el
+mismo resultado, y se puede ajustar el radio o la cuenta sin que se descoloque todo.
+
+**Lectura honesta:** los bloques con musgo funcionan muy bien y son lo que mas se parece a
+`lam_05`. **La vegetacion sigue siendo escasa** frente a la lamina, que tiene sotobosque
+denso; 35 plantas en 46 x 46 m se notan poco. Subir la cuenta es cambiar una constante, pero
+conviene no invadir la arena.
