@@ -34,6 +34,8 @@ BP = "/Game/DarkAngels/Blueprints/Interaccion/BP_DA_Interactuable.BP_DA_Interact
 EG = {"refPath": BP + ":EventGraph"}
 
 VAR = "Inspeccionando"
+CERRADO = "Cerrado"
+ABIERTO = "Abierto"
 CAMARA = "Camara"
 DISTANCIA = -220.0
 ALTURA = 90.0
@@ -134,8 +136,18 @@ def run():
     bp = {"refPath": BP}
     out = {}
 
-    if VAR not in str(bt("list_variables", {"blueprint": bp})):
+    variables = str(bt("list_variables", {"blueprint": bp}))
+    if VAR not in variables:
         bt("add_variable", {"blueprint": bp, "name": VAR, "type_name": "bool"})
+    # El intercambio de malla al interactuar: cerrado fuera, abierto dentro. Se
+    # dejan vacias en los interactuables que no cambian de aspecto, y el grafo
+    # las salta con un IsValid.
+    for v in (CERRADO, ABIERTO):
+        if v not in variables:
+            bt("add_object_variable", {"blueprint": bp, "name": v,
+                                       "object_class": {"refPath": "/Script/Engine.Actor"}})
+        bt("set_variable_instance_editable",
+           {"blueprint": bp, "variable_name": v, "instance_editable": True})
 
     # --- de cero: se borra todo lo que no sea un evento ---
     borrados = 0
@@ -195,7 +207,32 @@ def run():
 
     entrar = rama(pc, pawn, "true", yo, "true", 300)
     unir(sal(br, "else"), ent(girar, "execute"))
-    unir(sal(girar, "then"), ent(entrar, "execute"))
+
+    # --- el cambiazo de malla: el cerrado se esconde, el abierto aparece ---
+    # No se deshace al salir: una vez abierto, el cofre se queda abierto.
+    # Cada uno pasa por un `IsValid` porque la mayoria de interactuables dejan
+    # estas dos variables vacias y no cambian de aspecto al interactuar.
+    bloques = []
+    for i, (variable, oculto) in enumerate(((CERRADO, "true"), (ABIERTO, "false"))):
+        lee = nodo("Variables|Default|Get" + variable, -250, 560 + i * 220)
+        valido = nodo("Utilities|IsValid", -60, 500 + i * 220)
+        cambia = nodo("Rendering|SetActorHiddenInGame", 180, 500 + i * 220)
+        unir(sal(lee, variable), ent(valido, "InputObject"))
+        unir(sal(lee, variable), ent(cambia, "self"))
+        valor(ent(cambia, "bNewHidden"), oculto)
+        unir(sal(valido, "Is Valid"), ent(cambia, "execute"))
+        bloques.append({"entrada": ent(valido, "exec"),
+                        "salidas": [sal(valido, "Is Not Valid"), sal(cambia, "then")]})
+
+    # Las dos salidas de cada bloque desembocan en el siguiente: un pin de
+    # ejecucion de ENTRADA admite varias conexiones.
+    anterior = [sal(girar, "then")]
+    for b in bloques:
+        for s in anterior:
+            unir(s, b["entrada"])
+        anterior = b["salidas"]
+    for s in anterior:
+        unir(s, ent(entrar, "execute"))
 
     # --- el cartel de DCS dice "Aceptar" mientras se esta dentro ---
     bt("write_graph_dsl", {"graph": {"refPath": BP + ":GetInteractionMessage"},

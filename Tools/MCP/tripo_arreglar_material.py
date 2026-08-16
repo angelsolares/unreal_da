@@ -18,13 +18,14 @@ RAIZ = "D:/Game Projects/Unreal DA/DarkAngelsPOC 5.8/ArtSource/Downloaded/Tripo/
 
 PIEZAS = [
     {
-        "material": "tripo_mat_2b6fd363",
-        "metallic_nombre": "puerta_yesod_metallic",
-        "metallic_fichero": RAIZ + "puerta_yesod/tripo_convert_2b6fd363-fe95-4074-8e12-8aa287128a8c.fbm/gothic_cathedral_3d_model_metallic.JPEG",
-        # Piedra de templo, nada de metal. A 2048 porque es un landmark que se
-        # mira de lejos y de cerca.
-        "atenuacion": 0.15,
-        "max_textura": 2048,
+        "material": "tripo_mat_f88791cf",
+        "metallic_nombre": "baul_abierto_metallic",
+        "metallic_fichero": RAIZ + "tesoro_abierto/tripo_convert_f88791cf-c2fc-4b12-9fc8-1f5c72e42593.fbm/stone_treasure_chest_3d_model_metallic.JPEG",
+        # El cofre abierto. Mismos numeros que el cerrado (`tripo_mat_f26e5120`)
+        # para que los dos se vean identicos al intercambiarlos: piedra con
+        # herrajes, 0,25, y 1024 de textura.
+        "atenuacion": 0.25,
+        "max_textura": 1024,
     },
 ]
 
