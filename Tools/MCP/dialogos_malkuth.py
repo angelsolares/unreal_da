@@ -38,14 +38,18 @@ ZONAS = {
         "quien": [{
             "actor": "Interact_Cassiel",
             "verbo": "Observar",
+            # La segunda linea dice lo que hace Y por que importa: al no tener
+            # boca, ese gesto es lo unico con lo que puede aprobar algo. La
+            # Biblia lo usa asi —"si Malakh reza, Cassiel inclina la cabeza"—,
+            # o sea que el cabeceo ES su senial de aprobacion.
             "lineas": ["(Cassiel te mira. No tiene boca.)",
-                       "(Inclina la cabeza, muy despacio.)",
+                       "(Asiente despacio. Es toda la aprobacion que puede darte.)",
                        ""],
         }],
     },
 }
 
-CUAL = "mirador"
+CUAL = "santuario"
 
 
 def call(tool, args):
