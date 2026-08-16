@@ -128,3 +128,38 @@ Content/DarkAngels/Maps/_GENERATED/
 # El prefijo propio T_DA_ / SM_DA_ NO significa que sean nuestros.
 Content/DarkAngels/Textures/
 Content/DarkAngels/Meshes/Scans/
+
+# --- Añadido 2026-08-15 ---
+
+# Assets de terceros que aparecieron sin rastrear. Repo publico: no se
+# redistribuyen. Quien clone los instala desde su propia cuenta.
+#   Fab            2,0 GB, con ficheros sueltos de 100-360 MB (arboles USD,
+#                  el dataset CyArk de la fuente de Pirene)
+#   Sketchfab      319 MB
+#   threedscans    535 MB en STL, tres de ellos por encima de 100 MB
+#   WaterMaterials 88 MB, pack completo con sus Blueprints y Maps
+#   Landscape      material de fondo BGLandscape, llegado con un sample
+Content/Fab/
+Content/Sketchfab/
+Content/threedscans/
+Content/WaterMaterials/
+Content/Landscape/
+
+# Plugin del puente de Tripo para UE 5.8: binario de terceros.
+Plugins/
+
+# Ficheros fuente de Tripo (FBX, .fbm, .iAvatar). Misma regla que
+# ArtSource/Downloaded: lo que se sube son los .uasset ya importados.
+Content/Tripo/
+
+# La POC de Three.js arrastra node_modules y dist.
+ThreeJSPOC/node_modules/
+ThreeJSPOC/dist/
+
+# ---------------------------------------------------------------
+# GitHub rechaza cualquier fichero de mas de 100 MB, y este pesa 230:
+# el FBX de la rotonda venia SIN decimar (1.014.955 vertices, 56,8 MB
+# de fuente). El nivel del Gazebo si se sube y la referencia, asi que
+# hasta reexportarlo decimado desde Tripo hay que importarlo a mano.
+# ---------------------------------------------------------------
+Content/DarkAngels/Environment/Props/SK_DA_Rotonda_Gazebo.uasset

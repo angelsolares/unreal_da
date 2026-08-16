@@ -6309,7 +6309,7 @@ existe el **foliage instanciado** (Foliage / HISM). Como actores sueltos ni rind
 **Los actores sueltos sirven para los props que se leen de uno en uno** —los bloques de
 ruina con musgo, que si funcionaron— **no para tapizar**.
 
-## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
+## ~~PROXIMA SESION~~ — EL TELON 360 ESTA TERMINADO (cerrado 2026-08-15 15:50)
 
 ### Lo que quedo a medias: el panorama 360 como telon
 
@@ -6372,3 +6372,442 @@ y de paso aliviar la VRAM, que va **1787 MB por encima**.
   despues). Ha pasado dos veces, las dos poco despues de commitear esos `.umap` a git; sin
   demostrar, pero vigilarlo.
 - **Sin push todavia.** El repo es publico y llevamos ~17 commits sin subir.
+
+---
+
+## El telon 360, terminado (2026-08-15)
+
+### La cupula estaba 8,4 grados por debajo de donde debia
+
+Lo de "desde el Jardin solo asoman nubes" **no era culpa de los montes**, o no solo. El
+`SkyDomeMesh` es `/Engine/BasicShapes/Sphere` —radio 50 a escala 1, o sea **500 km** con la
+escala de 1000000— y venia en `z = -7.300.000`, que es el valor por defecto del template.
+
+Eso deja al jugador **0,146 radios por encima del centro de la esfera**. Mirando al frente
+se golpea la esfera a `asin(7,3/50) =` **8,4 grados de latitud**, asi que toda la imagen
+aparecia **8,4 grados por debajo** de donde le tocaba: el paisaje se hundia bajo el horizonte
+y en pantalla solo quedaba cielo.
+
+**Arreglo: cupula a `z = 0`.** Con el centro a cota de ojo, latitud de la imagen y elevacion
+de la vista coinciden. La diferencia entre z=0 y la cota real de los ojos (~160) es
+0,0002 grados sobre un radio de 50 km: da igual.
+
+Medido, no supuesto. Con la cupula centrada en la camara, en cuatro azimuts:
+
+| Azimut | Franja izquierda | Franja centro |
+|---|---|---|
+| yaw 0 | 10,3 deg | 8,7 deg |
+| yaw 270 | 19,9 deg | 4,4 deg / -2,1 deg |
+
+Son la **linea de cumbres**, no el horizonte: en un paisaje de montaña el corte cielo/tierra
+esta por encima del horizonte real, tanto como midan los picos. El minimo (**-2,1**) es lo
+mas parecido al horizonte verdadero, o sea que con la cupula en z=0 la imagen cae **a menos
+de 3 grados** de su sitio. Con `z = -7.300.000` estaba a 10.
+
+**Como se midio, que sirve para la proxima vez:** dos capturas desde el mismo punto a
+`pitch 0` y `pitch 10`. La linea del horizonte se movio de `y=457,5` a `y=560,5`, y de ahi
+salen las dos constantes del encuadre: **centro optico `y=457,5`** (no es el centro del PNG,
+porque la captura lleva margen gris) y **focal `f = 584 px`**. Con eso,
+`elevacion = atan((457,5 - y) / 584) + pitch`. Hay un decodificador de PNG sin dependencias
+en el scratchpad para sacar perfiles de luma por fila; `CaptureViewport` tambien devuelve
+`cameraFOV` en la respuesta, que es mas directo.
+
+### La nube volumetrica peleaba contra el panorama
+
+Habia una **banda horizontal dura** cruzando todas las capturas a la altura del ojo, con
+grumos blancos pegados encima de las montañas pintadas. No era la costura de la esfera:
+**no se movia al mover la cupula**, porque es el actor `VolumetricCloud` del Master visto
+casi de canto.
+
+Con un panorama que ya trae sus nubes pintadas, la capa volumetrica sobra. **Apagada**
+(`bVisible = false` en su `VolumetricCloudComponent`). Es un cambio de direccion de arte,
+no tecnico: si Angel la quiere de vuelta es volver a poner la propiedad.
+
+### Los montes eran 236, no 196
+
+Al contarlos aparecieron **40 mas** de los que decian las notas:
+
+| Zona | Level Instance | Montes | `.umap` guardado |
+|---|---|---|---|
+| Jardin | `LI_01_JardinGeometrico` | 50 | 15:37:59 |
+| El Claro | `LI_04_ElClaro` | 56 | 15:40:03 |
+| Mirador | `LI_03_MiradorSariel` | **30** | 15:40:49 |
+| Gazebo | `LI_05_RuinasGazebo` | 34 | 15:41:43 |
+| Puente | `LI_07_PuenteAscendente` | 56 | 15:43:04 |
+| Yesod | `LI_13_PortalYesod` | **10** | 15:43:31 |
+| | | **236** | |
+
+Los que faltaban en el recuento son `Mirador_Monte` (30) y `Yesod_Monte` (10): no se llaman
+`Monte_Lejos` ni `Monte_Medio`, y por eso se habian escapado.
+
+**Ocultados, no borrados**: `bVisible = false` en el `StaticMeshComponent`. Se guarda en el
+`.umap`, vale en editor y en juego, y volver atras es un booleano. La receta esta en
+`Tools/MCP/montes_ocultar.py` (editar las dos constantes de arriba).
+
+**Un solo ciclo `edit`/`commit` por Level Instance**, que es lo que dice la nota del 14/08:
+encadenar varios sobre el mismo LI filtra un handle del `.umap` y el guardado falla para
+siempre hasta reiniciar. Los seis commits se verificaron **por fecha en disco**, no por lo
+que devolvia `commit_level_instance`.
+
+**Lo que NO se toco: la colision.** Los 236 montes siguen colisionando, invisibles. Es
+deliberado —asi el juego se comporta exactamente igual que antes y nadie se cae del mapa por
+un muro que ya no se ve— pero hay que saberlo: **cualquier sonda de trazas sigue chocando
+con ellos**, asi que los `probe_*.py` que miden techo de horizonte ya no dicen lo que se ve.
+
+### Repaso zona por zona, con el visor en Lit
+
+Sin agujeros en ninguna. Y no puede haberlos: la cupula es una esfera **completa**, tambien
+cubre por debajo del horizonte, asi que donde antes un monte tapaba el vacio ahora hay
+paisaje pintado.
+
+| Zona | Como queda |
+|---|---|
+| Jardin | Lo que mas cambia. Cordillera enorme detras del seto, a la cota justa |
+| Yesod | El mejor. A 130 m de altura, el valle pintado se lee como caida real |
+| Anfiteatro | Picos asomando sobre las paredes de roca; no tenia montes, gana solo con la cota |
+| Mirador | Panorama por el hueco entre acantilados |
+| Gazebo | Se acabo la tapa: donde habia 34 montes ahora hay cordillera y cielo |
+| El Claro | Encajonado, solo asoma cielo arriba. **Sus 56 montes no se veian desde dentro** |
+| Santuario / Puente | Panorama por los huecos del dosel y a los lados del puente |
+
+**Lectura honesta:** en el Jardin la transicion **es brusca**. El cesped acaba y empieza la
+montaña pintada, sin nada en medio: falta plano intermedio. Ahora que ocultar y mostrar es
+un booleano, la prueba barata es **volver a encender media docena de montes** —los mas bajos
+y cercanos— como siluetas de termino medio, en vez de los 236.
+
+### El modo de vista del viewport se volvio a torcer
+
+Paso otra vez lo del 14/08: a mitad de sesion las capturas salieron sin color. Esta vez con
+numero: **misma camara del Jardin, saturacion media 50,7% antes y 0,2% despues**. Y esta vez
+con una correlacion util: **se torcio durante la tanda de seis ciclos `edit`/`commit` de
+Level Instance**, entre la captura del Jardin y la del Claro.
+
+Sigue sin poder arreglarse por MCP —no hay herramienta para ejecutar comandos de consola ni
+para poner `ShowFlag.*`, solo `SearchCVars` que lee— asi que **hay que pedirle a Angel que
+lo devuelva a `View Mode > Lit`**. Las trazas y las medidas numericas no se enteran; las
+capturas si.
+
+## Plano intermedio del Jardin y el coloso negro (2026-08-15, misma tarde)
+
+### Los montes bajos no valian: hubo que subir un escalon
+
+Primera eleccion, midiendo desde `PS_Master_Jardin`: seis `Monte_Medio` de cima **0,8-1,7
+grados** de elevacion, a 736-914 m, repartidos de -46 a +52 de azimut. Encendidos y
+commiteados.
+
+**No se veian.** Comparando la franja del horizonte con la captura de antes: **2,5 puntos de
+luma de diferencia y el 3% de los pixeles**. A esa altura los tapa la propia linea de arboles
+del Jardin.
+
+Los montes del Jardin no se reparten de forma continua: hay un grupo bajo (0,6-1,7) y otro
+alto (4,7-8,8), sin nada en medio. Asi que la segunda eleccion son **seis del grupo alto**:
+`Monte_Medio_45, _40, _39, _63, _60, _43`, de 4,7 a 6,8 grados y a 847-1061 m. Siguen muy por
+debajo de las cumbres pintadas, que llegan a 20-30 grados, asi que hacen de silueta
+intermedia sin volver a cerrar el horizonte. **Se evita el azimut 0-10**, que es donde esta
+el coloso (az 3,4). Receta en `Tools/MCP/jardin_planointermedio.py`.
+
+### El coloso negro eran DOS fallos, y el gordo no era el material
+
+**Fallo 1, el material.** `tripo_mat_1504baa6` tenia el **mapa de rugosidad cableado a
+`Metallic`**, y `Roughness` sin conectar. Ademas el nodo declaraba `SamplerType` **Color**
+sobre una textura `TC_Masks` / `SRGB=false`: con esa discrepancia **el material no compilaba**
+—su miniatura salia como una bola gris lisa, que es el material por defecto—. Arreglado:
+sampler a `Masks`, `Metallic` suelto (0, que es lo que toca en una estatua de piedra) y la
+rugosidad al canal **R** de `MP_Roughness`. La miniatura pasa a mostrar la piedra arenisca.
+
+**Eso mejoro el detalle pero NO el negro.** De cerca ya se distinguian alas y drapeado; desde
+el arranque del jugador seguia siendo una mancha (luma 18,6 -> 17,5, o sea nada).
+
+**Fallo 2, y este era el bueno: no le llegaba ninguna luz direccional.** La cadena de
+descartes, toda con numeros:
+
+| Prueba | Resultado | Conclusion |
+|---|---|---|
+| Relleno direccional en canal 1 | coloso 17,5 | nada |
+| El mismo relleno abierto al canal 0 | cesped 66 -> 73, **coloso igual** | la luz funciona, al coloso no le llega |
+| Relleno a intensidad 20 | cesped 66 -> 106, **coloso 17,5 -> 7,9** | se oscurece: es la auto-exposicion. Recibe **cero** |
+| Quitar el normal map | sin cambio | no son las tangentes |
+| Forzar la normal a (0,0,-1) | sin cambio | no son las normales invertidas |
+| **Foco puntual pegado al pecho** | **coloso 7,6 -> 97,6** | la malla y el material estan perfectos |
+| Relleno direccional con `CastShadows = false` | coloso 18,6 -> 37,4; cara 1,2 -> 75,8 | parecia resuelto... |
+| Lo mismo, tras recargarse el Level Instance | **cara de vuelta a 1,3** | ...pero **no aguanto** |
+| Esa direccional a intensidad 30 | cara 1,3 | cero |
+| Esa direccional abierta al canal 0, intensidad 30 | cesped 58 -> 130, **coloso 16,2 -> 7,4** | recibe cero, solo se mueve la exposicion |
+| **Foco puntual otra vez, ya en canal 1** | **coloso 17,7 -> 237; cara 1,3 -> 255** | los puntuales SI llegan |
+
+**Correccion de lo que se escribio primero:** el arreglo con `CastShadows = false` sobre una
+direccional **no se sostuvo**. Funciono en una tanda de capturas y dejo de funcionar tras el
+siguiente `commit_level_instance`, con el coloso volviendo a cara 1,3. Ya no se reproduce a
+ninguna intensidad ni con el canal 0 abierto.
+
+**Lo cierto, y verificado varias veces: a este actor NO le llega ninguna luz direccional, y
+los puntuales le llegan perfectamente.** No se ha averiguado por que. La pista es la
+distancia: esta a 266 m de la camara, mas alla de la distancia de sombra dinamica por
+defecto.
+
+**Lo que queda puesto:** `Luz_Relleno_Coloso`, un **PointLight** en el **Master**, `Movable`,
+en `(-45000, -59500, 11000)` —unos 120 m por delante y por encima del coloso—, intensidad
+**30000**, radio de atenuacion **60000**, `CastShadows = false`, 6500 K,
+**`VolumetricScatteringIntensity = 0`** y **canal de iluminacion 1 solamente**. El unico
+actor con canal 1 es el coloso, asi que el resto del Jardin no se entera. Resultado:
+**cara 1,3 -> 80,2**, coloso entero 17,7 -> 49,4, y se lee la piedra, el drapeado y las manos.
+
+Lo de `VolumetricScatteringIntensity = 0` no es capricho: **los canales de iluminacion NO
+filtran la niebla volumetrica**. Una luz de relleno «solo para un actor» le mete luz a la
+niebla de todo el nivel si no se le corta eso. Por lo mismo se **borro** la direccional de
+relleno en vez de dejarla apagada.
+
+**Calibrado de la intensidad** (la auto-exposicion enmascara, hay que ir por la cara):
+8000000 -> 254 (reventada), 500000 -> 235, 60000 -> 136, **30000 -> 80**.
+
+**Nacio `Stationary`.** `add_to_scene_from_class` crea las luces en Stationary y aqui no hay
+iluminacion horneada: hasta ponerla en `Movable` no hace absolutamente nada.
+
+### El visor del editor tiene `Show > Fog` APAGADO
+
+Angel paso una captura de PIE y **el juego va cargado de niebla**: el coloso apenas se
+adivina y el panorama sale lavado. En las capturas del editor no hay ni rastro de niebla, con
+la misma camara.
+
+**Consecuencia incomoda: todo lo que se ha juzgado a ojo en esta sesion —el telon 360
+incluido— se juzgo SIN niebla.** Hay que repasarlo con niebla antes de darlo por bueno.
+
+Valores actuales de `Fog_Malkuth`, para tenerlos a mano: `FogDensity` 0,006,
+`FogHeightFalloff` 0,35, **`FogMaxOpacity` 0,45**, `StartDistance` 0, niebla volumetrica
+**activada** con `VolumetricFogDistance` 22000 (220 m) y `VolumetricFogExtinctionScale` 0,35.
+El actor esta a z=20000. El coloso, a 266 m, queda justo detras de los 220 m de niebla
+volumetrica.
+
+### Los seis montes del plano intermedio se ven poco
+
+Medido ya en color, comparando con la captura sin ellos, en la franja del horizonte:
+
+| Franja | delta de luma | pixeles cambiados |
+|---|---|---|
+| az -46..-25 | **9,0** | **9,5%** |
+| az -25..-5 | 2,6 | 1,8% |
+| az 25..45 | 2,9 | 3,3% |
+| az 45..62 | 1,9 | 2,2% |
+
+O sea: **solo se notan en el borde izquierdo**. Estan encendidos y verificados en el mundo
+(`Monte_Medio_39, _40, _43, _45, _60, _63`), pero como plano intermedio aportan poco. Si se
+quiere que la union cesped-panorama deje de ser un corte seco, el camino no es este: o son
+mas montes, o es algo a media distancia de verdad (arboleda, ruina, un talud).
+
+### Y el visor se volvio a torcer, ya con la causa clara
+
+Tercera vez, y esta sin margen de duda: capturas a **56,1%** de saturacion, **un solo** ciclo
+`edit_level_instance` / `commit_level_instance` sobre `LI_01_JardinGeometrico`, y la
+siguiente captura a **0,2%**. No hace falta una tanda larga, con uno basta.
+
+Practica que se deduce: **capturar antes de tocar un Level Instance**, y no encadenar
+«edito, miro, edito, miro», porque cada edicion cuesta pedirle a Angel que devuelva el visor
+a `View Mode > Lit`.
+
+## Llave y baul reales, y la receta fija de Tripo (2026-08-15, noche)
+
+Primeros dos de la lista de props de objetivo. Los zip de Tripo estan en
+`D:\Game Projects\Dark Angels\World Assets\Malkuth\{llave,tesoro}\`, descomprimidos en
+`ArtSource/Downloaded/Tripo/`.
+
+### Lo importante: el importador de Tripo saca SIEMPRE los mismos tres fallos
+
+Angel aviso de que estos traen el mismo esqueleto que la puerta del Claro. Confirmado, y hay
+mas: **el material sale mal exactamente igual las tres veces** (puerta, coloso, y ahora llave
+y baul). No es mala suerte, es lo que hace el importador. Para los que vengan:
+
+1. **Cablea el mapa de RUGOSIDAD a `Metallic`** y deja `Roughness` sin conectar.
+2. **Declara `SamplerType = Color`** en ese mapa de datos **y** deja la textura en sRGB /
+   `TC_Default`. Hay que corregir **las dos cosas**: si solo se toca el nodo, el material no
+   compila y salta `Sampler type is Masks, should be Color`.
+3. **No importa el mapa metallic**, aunque venga dentro del `.fbm`. Hay que importarlo a mano.
+
+**Como se detecta de un vistazo:** con el material sin compilar, la **miniatura del material
+sale como una bola gris lisa**, que es el material por defecto. Si se ve la textura, compila.
+
+**El patron bueno es el de la puerta del Claro** (`tripo_mat_f7da7eff`): basecolor -> BaseColor,
+rugosidad por el **canal R** -> Roughness, y metallic -> **Multiply** -> Metallic. La
+atenuacion del Multiply hace falta porque el mapa de Tripo declara casi todo como metal.
+Valores usados: **0,5 en la llave** (es bronce de verdad) y **0,25 en el baul** (piedra clara
+con herrajes).
+
+Todo esto esta automatizado y es idempotente en `Tools/MCP/tripo_arreglar_material.py`:
+se cambian las constantes de arriba y se lanza.
+
+### Los dos assets
+
+| | Llave | Baul |
+|---|---|---|
+| Asset | `SK_DA_Llave_Mirador` | `SK_DA_Baul` |
+| Vertices | 33.357 | 48.009 |
+| Huesos | 1 (`tripo_node_f84cc187`) | 1 (`tripo_node_f26e5120`) |
+| Malla cruda | 0,34 x 0,12 x **0,98** uu | **0,98** x 0,68 x 0,72 uu |
+| Escala puesta | 71 | 92 |
+| Tamano final | 23 x 23 x 70 cm | 90 x 63 x 66 cm |
+
+**Dos cosas practicas de estas mallas:**
+
+- **El pivote viene en la base** (`base_local_z = 0`), asi que la z de destino es directamente
+  la cota del suelo y **la escala es el tamano en centimetros**. Muy comodo.
+- **Miden ~1 uu**, no ~98 como los personajes. La miniatura del asset **no sirve** para
+  revisarlas: salen como una mota en medio del damero. Hay que colocarlas y capturar.
+
+Texturas acotadas a `MaxTextureSize` **1024**: son props, y la VRAM sigue muy pasada.
+
+### Sustituciones hechas
+
+Habia placeholders con sitio y luz ya montados, asi que se reutilizo su transform:
+
+| Placeholder borrado | Malla que tenia | Sustituido por | Donde |
+|---|---|---|---|
+| `Mirador_Llave` | `/Game/Fab/old-rusty-key/source/OldKey` | `SK_DA_Llave_Mirador` | (-16000, -23300), yaw 45 |
+| `Mirador_Cofre` | `SM_OldWoodenChest` (Megascans) | `SK_DA_Baul` | (-15580, -22880, 317,5), yaw -155 |
+| `SM_Cofre` | `SM_OldWoodenChest` (Megascans) | `SK_DA_Baul` -> `Santuario_Cofre` | (43880, 48620, 5,6), yaw -30 |
+
+**La escala NO copia la del placeholder, a proposito.** El arcon de Megascans es ancho y bajo
+(112 x 52 x 37 en local) y este es casi cubico: copiar proporciones lo habria deformado. Se
+eligieron medidas de mundo real y el numero esta a mano en `Tools/MCP/colocar_props.py`.
+
+**La llave flotaba, y ya lo hacia antes.** Sondeado con trazas: la cara del plinto esta en
+**z=408**, el escalon de ±60 en 338 y el suelo del mirador en 318. El placeholder empezaba en
+439,8, o sea **32 uu en el aire**. Angel decidio apoyarla: **base a 408**, cima a 477,6, con el
+foco `Mirador_Luz_Llave` a 520, o sea 42 uu por encima de la cima. Verificado tras recargar el
+Level Instance.
+
+El cofre del Santuario si apoya bien; la traza vertical de su centro da 65,7 porque pega en el
+monticulo de roca de delante, no en el suelo bajo el cofre.
+
+### Dos cosas que salieron al mirarlo, y que son decision de Angel
+
+- **El cofre del Santuario esta metido en una grieta entre dos rocas.** Desde cenit se ve
+  perfecto; desde la altura del jugador, viniendo del altar, **no se ve nada**: lo tapan los
+  bloques de piedra. Viene heredado del sitio del placeholder, pero ahora pesa mas porque es
+  un objeto de objetivo. Moverlo es cambiar una coordenada.
+- **La llave se lee oscura.** Es bronce oscuro en una zona al anochecer con `PP_Mirador` a
+  -1,9 EV, y su foco esta en **150 candelas** con radio 800 (las notas del 14/08 hablaban de
+  800 cd; alguien lo bajo despues). La silueta se entiende —vastago, anillo y paleton— pero el
+  material no luce. Es el mismo tipo de decision que el relleno del coloso.
+- Las dos luces del Mirador son **`Stationary`** y salen con una ✗ roja en su icono. No estan
+  apagadas —se comprobo: `bVisible` y `bAffectsWorld` en true—: es el aviso de luz estacionaria
+  con la iluminacion sin hornear.
+
+## El Gazebo con sus tres piezas reales (2026-08-15, noche)
+
+Rotonda, tableta grabada y Fragmento, los tres de Tripo, desde
+`D:\Game Projects\Dark Angels\World Assets\Malkuth\{base para piedra,pieda con letras,fragmentos}\`.
+
+**El fallo del importador se repite por quinta, sexta y septima vez.** La rotonda incluso
+nombra sus texturas con otro esquema (`classical_ruin_columns_3d_model_*` en vez de
+`tripo_node_*`) y trae **cinco** mapas en el `.fbm`, y aun asi el grafo sale identico:
+rugosidad a `Metallic`, `Roughness` vacio, sampler en Color y el metallic sin importar.
+`tripo_arreglar_material.py` lo arregla sin tocar nada mas que las constantes.
+
+| | Fragmento | Tableta | Rotonda |
+|---|---|---|---|
+| Asset | `SK_DA_Fragmento` | `SK_DA_Tableta_Gazebo` | `SK_DA_Rotonda_Gazebo` |
+| Vertices | 36.787 | 48.544 | **1.014.955** |
+| Malla cruda | 0,62 x 0,40 x 0,98 | 0,63 x 0,37 x 0,98 | 0,98 x 0,98 x 0,81 |
+| Escala | 113 | 225 | 818 |
+| Tamano final | 83 x 74 x 110 cm | 143 x 82 x 220 cm | 800 x 799 x 665 cm |
+| Atenuacion metallic | 0,6 (montura de oro) | 0,15 (piedra) | 0,15 (marmol) |
+| `MaxTextureSize` | 1024 | **2048** | 2048 |
+
+**La tableta va a 2048 a proposito**: el objetivo de la estacion es *leerla*, y la inscripcion
+tiene que aguantar de cerca. El resto de props van a 1024.
+
+**La rotonda pesa un millon de vertices.** El zip trae el FBX sin decimar, 56,8 MB. Esta en el
+mismo orden que la puerta del Claro (1.009.712), asi que hay precedente, pero **son ya dos
+props de un millon** y la VRAM sigue muy pasada. Si hace falta recortar, Tripo permite exportar
+decimado.
+
+### Colocacion
+
+El Gazebo ya estaba compuesto con placeholders del mismo nombre y **con sus dos luces**
+(`Gazebo_Luz_Tableta` y `Gazebo_Luz_Fragmento`, las dos a z=420), asi que aqui **si se calco la
+escala del placeholder**, al contrario que con el bauil: se igualo la dimension que manda en
+cada pieza (ancho en la rotonda, alto en tableta y Fragmento).
+
+| Placeholder | Era | Ahora |
+|---|---|---|
+| `Gazebo_Rotonda` | 800 x 800 x 220, base 147 | 800 x 799 x 665, base 147, cima 812 |
+| `Gazebo_Tableta` | 120 x 42 x 220, base 202, yaw 180 | 143 x 82 x 220, mismo sitio y giro |
+| `Gazebo_Fragmento` | 64 x 63 x 110, base 282 | 83 x 74 x 110, base 282 |
+
+El yaw 180 de la tableta es el bueno: deja la cara grabada mirando a **-Y**, que es por donde
+sube el jugador desde las escaleras.
+
+**El Fragmento se movio dos veces, y la segunda con medida.** Los dos estaban en el eje
+x=64000, el Fragmento a y=16480 y la tableta a y=16920: desde la aproximacion, el Fragmento se
+ponia justo delante. En la lamina va **al lado**. Primer intento a (63830, 16650) —mismo radio
+desde el centro, 170 uu— y ahi **lo tapaba una columna**.
+
+**Como se encontro el sitio bueno, que es la parte reutilizable:** las trazas no valen, porque
+un SkeletalMesh **no colisiona** y las atraviesan. Asi que se capturo **la misma pose con la
+rotonda visible y con la rotonda oculta, y se restaron las dos imagenes**: los pixeles que
+cambian son exactamente la rotonda. Con eso sale la ocupacion de las columnas, columna de
+pixeles a columna de pixeles, a la altura del Fragmento. Luego se proyectaron con
+`WorldPosToScreenCoords` los 24 puntos del arco de radio 170 y se leyo la ocupacion de cada uno:
+
+| Angulo | Posicion | Ocupacion |
+|---|---|---|
+| 180 | (63830, 16650) | **0,85** — donde estaba, tapado |
+| 150 | (63853, 16735) | 0,19 |
+| **135** | **(63880, 16770)** | **0,01** — elegido |
+| 120 | (63915, 16797) | 0,00, pero pisa la tableta en pantalla |
+| 270 | (64000, 16480) | 0,01, pero es el sitio original: delante de la tableta |
+
+A 135 grados queda despejado de columnas **y** justo al lado de la tableta sin solaparla: en
+pantalla la tableta ocupa de x=550 a 618 y el Fragmento de 627 a 671.
+
+**Verificado con un numero, no a ojo:** contando pixeles claramente morados desde la pose de
+aproximacion, el cristal paso de **0** (tapado por la columna) a **128**, que es lo mismo que
+se ve en un primer plano sin obstaculos (126). **La tableta no se toco** en ningun momento.
+Recetas en `Tools/MCP/gazebo_fragmento_al_lado.py` y `gazebo_rotonda_visible.py`.
+
+### Truco util: capturar en color sin pedir el visor
+
+Las capturas de esta tanda se tomaron **dentro de la sesion de edicion**, antes de commitear.
+En modo edicion Unreal desatura todo **menos** el Level Instance que se esta editando, asi que
+la zona que interesa sale en color y **no hace falta pedirle a Angel que devuelva
+`View Mode > Lit`** despues del commit. Es la vuelta a lo del visor que se tuerce.
+
+**Y `commit_level_instance` tambien miente al reves:** en el Mirador devolvio error ("may not
+be in edit mode") y el `.umap` **si** se habia guardado, con el paquete limpio. Ya miente en
+las dos direcciones; lo unico fiable sigue siendo la fecha en disco.
+
+## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
+
+**El telon 360 esta cerrado.** Cupula en z=0, 230 montes ocultos y 6 encendidos como plano
+intermedio en el Jardin, nube volumetrica apagada, coloso arreglado.
+
+### Por orden de valor
+
+1. **Repasar el telon 360 CON NIEBLA.** Es lo primero porque invalida parte de lo juzgado: el
+   visor del editor tiene `Show > Fog` apagado y el juego va cargado de niebla. Decidir si se
+   toca `Fog_Malkuth` (los candidatos son `FogMaxOpacity` 0,45, `StartDistance` 0 y la niebla
+   volumetrica a 220 m) o si el panorama tiene que convivir con ella.
+2. **Plano intermedio del Jardin: los seis montes aportan poco** (9 puntos de luma en el
+   borde izquierdo, 2-3 en el resto). Decidir si mas montes o algo a media distancia de
+   verdad.
+3. **Auditar la VRAM, otra vez.** El exceso medido era de **1787 MB** con los 236 montes
+   renderizando. Ahora no renderizan: **volver a medir antes de tocar nada mas**, que el
+   numero de partida ha cambiado. Lo gordo restante son Megascans, escaneos y texturas 4K.
+4. **Foliage instanciado en El Claro.** Medido el 15/08: 98 actores de planta mas movieron
+   **menos de 2 puntos** de saturacion. Hacen falta miles de instancias, no actores sueltos.
+5. **Decidir la nube volumetrica.** Esta apagada. Si se quiere de vuelta, hay que resolver
+   antes la banda dura que dibuja a la altura del ojo.
+6. **El Heraldo sin colocar**, por decision de Angel.
+7. **Comportamientos de combate**: los cinco enemigos heredan el Behaviour Tree del Warrior
+   tal cual. Que el Arquero mantenga distancia y el Lancero cargue ya es diseño.
+8. Assets que faltan segun el PDF: **tableta grabada y Fragmento** del Gazebo, **llave y
+   baul** del Mirador, **angel guardian** del portal de Yesod, props del Santuario.
+
+### Lo operativo, sin cambios
+
+- **El guardado de sublevel falla con Error Code 32** cada cierto tiempo y deja un dialogo
+  modal que cuelga el MCP. Se arregla reiniciando el editor (y `ModelContextProtocol.StartServer`
+  despues). Esta sesion **no ha pasado**: seis commits seguidos, los seis verificados en disco.
+- **El viewport se tuerce con cada ciclo de edicion de Level Instance.** Si las capturas salen
+  grises, no buscar al actor culpable: pedir `View Mode > Lit`. Y **capturar antes de editar**,
+  no despues.
+- **Sin push todavia.** El repo es publico y seguimos con ~17 commits sin subir.

@@ -1,0 +1,19 @@
+{
+  "name": "dark-angels-malkuth-poc",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dark Angels - Malkuth: The Kingdom. Three.js Proof of Concept",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "vite": "^8.2.1"
+  }
+}

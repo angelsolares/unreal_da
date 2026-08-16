@@ -1,0 +1,22 @@
+{
+ "exported": [
+  "SM_MGK_Hedge_Straight_400",
+  "SM_MGK_Hedge_Straight_200",
+  "SM_MGK_Hedge_Corner_90",
+  "SM_MGK_Hedge_End",
+  "SM_MGK_Hedge_GateArch",
+  "SM_MGK_Hedge_Low_200",
+  "SM_MGK_Path_Straight_300",
+  "SM_MGK_Path_Plaza_600",
+  "SM_MGK_Fountain_Octagonal",
+  "SM_MGK_Fountain_Round_Small",
+  "SM_MGK_Bench_Straight_A",
+  "SM_MGK_GardenLamp",
+  "SM_MGK_Topiary_Sphere",
+  "SM_MGK_Topiary_Spiral",
+  "SM_MGK_Flowerbed_Round",
+  "SM_MGK_Trellis_Arch"
+ ],
+ "missing": [],
+ "bones": {}
+}

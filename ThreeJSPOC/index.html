@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dark Angels — Malkuth: The Kingdom (POC)</title>
+  <style>
+    :root {
+      --gold: #d4af37;
+      --pale-gold: #e8d48a;
+      --white: #ffffff;
+      --purple: #4a148c;
+      --green: #7cb342;
+      --red: #b32635;
+      --ink: rgba(8, 8, 12, 0.72);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0e; }
+    body { font-family: Georgia, 'Times New Roman', serif; color: var(--white); }
+    #app, #app canvas { position: fixed; inset: 0; }
+
+    /* ---------- HUD ---------- */
+    #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
+    .hidden { display: none !important; }
+
+    .bar-wrap { position: absolute; height: 14px; background: rgba(0,0,0,0.55); border: 1px solid rgba(212,175,55,0.5); }
+    .bar-fill { height: 100%; transition: width 0.15s ease-out; }
+    .bar-label { position: absolute; top: -18px; left: 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--pale-gold); text-shadow: 0 0 6px #000; }
+
+    #hp-bar { left: 24px; bottom: 24px; width: 300px; }
+    #hp-bar .bar-fill { background: linear-gradient(90deg, #7d1520, #d85c67); }
+    #stamina-bar { left: 24px; bottom: 46px; width: 240px; height: 10px; }
+    #stamina-bar .bar-fill { background: linear-gradient(90deg, #6f8f45, #a5d66d); }
+    #corruptio-bar { left: 24px; bottom: 62px; width: 200px; height: 8px; border-color: rgba(138,43,226,0.6); }
+    #corruptio-bar .bar-fill { background: linear-gradient(90deg, #2a0a4a, #9e4dd8); }
+
+    #tears { position: absolute; left: 24px; bottom: 84px; display: flex; gap: 6px; }
+    .tear { width: 14px; height: 18px; background: radial-gradient(circle at 50% 30%, #fff, #d4af37 70%); clip-path: polygon(50% 0, 100% 55%, 80% 100%, 20% 100%, 0 55%); opacity: 0.95; }
+    .tear.empty { background: rgba(255,255,255,0.12); }
+
+    /* Farsa meter */
+    #farsa-wrap { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 340px; text-align: center; }
+    #farsa-state { font-size: 13px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 0 8px #000; }
+    #farsa-bar { height: 8px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.35); }
+    #farsa-fill { height: 100%; width: 100%; background: #fff; transition: width 0.2s, background 0.3s; }
+
+    /* Boss bar */
+    #boss-wrap { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); width: 560px; text-align: center; }
+    #boss-name { font-size: 15px; letter-spacing: 3px; color: var(--pale-gold); text-shadow: 0 0 10px #000; }
+    #boss-phase { font-size: 11px; letter-spacing: 2px; color: #cbb; font-style: italic; margin: 2px 0 4px; }
+    #boss-bar { height: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--gold); }
+    #boss-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f3e9d2, #d4af37); transition: width 0.2s; }
+
+    /* Zone banner */
+    #zone-banner { position: absolute; top: 22%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity 1.2s; }
+    #zone-title { font-size: 34px; letter-spacing: 8px; color: var(--pale-gold); text-shadow: 0 2px 18px rgba(212,175,55,0.4), 0 0 4px #000; }
+    #zone-sub { font-size: 14px; letter-spacing: 3px; color: rgba(255,255,255,0.75); font-style: italic; margin-top: 6px; }
+
+    /* Interaction prompt */
+    #prompt { position: absolute; bottom: 32%; left: 50%; transform: translateX(-50%); font-size: 15px; letter-spacing: 1px; background: var(--ink); border: 1px solid rgba(212,175,55,0.6); padding: 8px 18px; border-radius: 3px; }
+    #prompt b { color: var(--gold); }
+
+    /* Objective line */
+    #objective { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); font-size: 12px; letter-spacing: 2px; color: rgba(255,255,255,0.65); font-style: italic; text-shadow: 0 0 6px #000; }
+
+    /* Dialogue wheel (Gabriel) */
+    #dialogue { position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%); width: 640px; background: var(--ink); border: 1px solid var(--gold); border-radius: 4px; padding: 18px 22px; pointer-events: auto; }
+    #dialogue-speaker { color: var(--gold); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; }
+    #dialogue-text { font-size: 19px; font-style: italic; margin: 8px 0 14px; color: #f3e9d2; }
+    .dlg-opt { display: block; width: 100%; text-align: left; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #eee; font-family: inherit; font-size: 15px; padding: 9px 14px; margin: 6px 0; cursor: pointer; transition: all 0.15s; }
+    .dlg-opt:hover { background: rgba(212,175,55,0.18); border-color: var(--gold); }
+    .dlg-opt .key { color: var(--gold); margin-right: 8px; }
+    #dialogue-timer { height: 3px; background: rgba(255,255,255,0.15); margin-top: 10px; }
+    #dialogue-timer-fill { height: 100%; width: 100%; background: var(--gold); }
+
+    /* Fullscreen overlays */
+    .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: radial-gradient(ellipse at center, rgba(10,10,16,0.82), rgba(5,5,8,0.96)); pointer-events: auto; z-index: 10; }
+    .overlay h1 { font-size: 44px; letter-spacing: 10px; color: var(--pale-gold); font-weight: normal; }
+    .overlay h2 { font-size: 16px; letter-spacing: 4px; color: rgba(255,255,255,0.6); margin-top: 8px; font-weight: normal; font-style: italic; }
+    .overlay .body { max-width: 620px; margin: 26px 0; font-size: 14px; line-height: 1.8; color: rgba(255,255,255,0.8); }
+    .overlay .keys { font-size: 12.5px; line-height: 2; color: rgba(255,255,255,0.65); letter-spacing: 1px; }
+    .overlay .keys b { color: var(--gold); font-weight: normal; }
+    .overlay button { margin-top: 26px; background: none; border: 1px solid var(--gold); color: var(--pale-gold); font-family: inherit; font-size: 15px; letter-spacing: 3px; padding: 12px 42px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+    .overlay button:hover { background: rgba(212,175,55,0.15); box-shadow: 0 0 24px rgba(212,175,55,0.25); }
+    #death-screen h1 { color: #8a2b3a; }
+    #end-screen h1 { color: #b593cb; }
+
+    #damage-vignette { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(179,38,53,0.0); transition: box-shadow 0.1s; }
+    #blind-flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+
+    #fps { position: fixed; top: 8px; right: 10px; font-size: 11px; color: rgba(255,255,255,0.45); font-family: monospace; }
+
+    /* Persistent menu hint */
+    #menu-hint { position: fixed; bottom: 10px; right: 14px; font-size: 11.5px; letter-spacing: 1px; color: rgba(255,255,255,0.5); pointer-events: none; }
+    #menu-hint b { color: var(--pale-gold); font-weight: normal; }
+
+    /* Pause / controls menu */
+    #pause-screen .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 34px; text-align: left; max-width: 640px; margin: 18px 0 8px; }
+    #pause-screen .controls-grid .row { display: flex; justify-content: space-between; gap: 18px; font-size: 13.5px; line-height: 1.9; color: rgba(255,255,255,0.78); }
+    #pause-screen .controls-grid .row b { color: var(--gold); font-weight: normal; white-space: nowrap; }
+    #pause-screen .section-label { grid-column: 1 / -1; margin-top: 10px; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: rgba(212,175,55,0.75); border-bottom: 1px solid rgba(212,175,55,0.25); padding-bottom: 3px; }
+    #pause-screen .brightness-row { display: flex; align-items: center; gap: 14px; margin-top: 20px; font-size: 13px; letter-spacing: 2px; color: rgba(255,255,255,0.75); }
+    #pause-screen .brightness-row label { text-transform: uppercase; font-size: 11px; letter-spacing: 3px; }
+    #pause-screen input[type="range"] { -webkit-appearance: none; width: 220px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; outline: none; cursor: pointer; }
+    #pause-screen input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px rgba(212,175,55,0.6); }
+    #pause-screen #brightness-val { color: var(--pale-gold); min-width: 36px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud" class="hidden">
+    <div id="farsa-wrap">
+      <div id="farsa-state">ACEPTADO</div>
+      <div id="farsa-bar"><div id="farsa-fill"></div></div>
+    </div>
+    <div id="objective">Asciende por el jardín. El Cielo te observa.</div>
+
+    <div id="hp-bar" class="bar-wrap"><span class="bar-label">Vida</span><div class="bar-fill" style="width:100%"></div></div>
+    <div id="stamina-bar" class="bar-wrap"><div class="bar-fill" style="width:100%"></div></div>
+    <div id="corruptio-bar" class="bar-wrap"><div class="bar-fill" style="width:0%"></div></div>
+    <div id="tears"><div class="tear"></div><div class="tear"></div><div class="tear"></div></div>
+
+    <div id="boss-wrap" class="hidden">
+      <div id="boss-name">GABRIEL DE LAS PUERTAS</div>
+      <div id="boss-phase">I — El Laberinto</div>
+      <div id="boss-bar"><div id="boss-fill"></div></div>
+    </div>
+
+    <div id="zone-banner"><div id="zone-title"></div><div id="zone-sub"></div></div>
+    <div id="prompt" class="hidden"></div>
+
+    <div id="dialogue" class="hidden">
+      <div id="dialogue-speaker">Gabriel</div>
+      <div id="dialogue-text"></div>
+      <div id="dialogue-opts"></div>
+      <div id="dialogue-timer"><div id="dialogue-timer-fill"></div></div>
+    </div>
+  </div>
+
+  <div id="damage-vignette"></div>
+  <div id="blind-flash"></div>
+  <div id="fps"></div>
+  <div id="menu-hint" class="hidden"><b>H</b> / <b>Esc</b> — Controles y brillo</div>
+
+  <div id="pause-screen" class="overlay hidden">
+    <h1>PAUSA</h1>
+    <h2>El Reino aguarda. El coro no se detiene.</h2>
+    <div id="pause-objective" style="margin-top:12px; font-size:13.5px; color:var(--pale-gold); font-style:italic; max-width:640px; line-height:1.6;"></div>
+    <div class="controls-grid">
+      <div class="section-label">Movimiento</div>
+      <div class="row"><span>Mover</span><b>W A S D</b></div>
+      <div class="row"><span>Correr</span><b>Shift</b></div>
+      <div class="row"><span>Saltar / Planear*</span><b>Espacio</b></div>
+      <div class="row"><span>Esquivar (i-frames)</span><b>C</b></div>
+      <div class="section-label">Combate</div>
+      <div class="row"><span>Ataque ligero</span><b>Click izq</b></div>
+      <div class="row"><span>Ataque pesado</span><b>Click izq mantenido</b></div>
+      <div class="row"><span>Bloqueo / Parry (0.2 s)</span><b>Click der</b></div>
+      <div class="row"><span>Umbral Lunge (30 Corruptio)</span><b>Q</b></div>
+      <div class="section-label">Sistema</div>
+      <div class="row"><span>Lágrima (curar 50)</span><b>R</b></div>
+      <div class="row"><span>Interactuar / Descansar</span><b>E</b></div>
+      <div class="row"><span>Ofrecer Lágrima en altar</span><b>F</b></div>
+      <div class="row"><span>Responder a Gabriel</span><b>1 / 2 / 3</b></div>
+      <div class="row"><span>Este menú</span><b>H / Esc</b></div>
+    </div>
+    <div style="font-size:11.5px; color:rgba(255,255,255,0.45); font-style:italic;">* El planeo se desbloquea tras vencer a Gabriel.</div>
+    <div class="brightness-row">
+      <label for="brightness">Brillo</label>
+      <input type="range" id="brightness" min="0.5" max="1.3" step="0.05" value="0.85" />
+      <span id="brightness-val">0.85</span>
+    </div>
+    <button id="resume-btn">Reanudar</button>
+  </div>
+
+  <div id="title-screen" class="overlay">
+    <h1>DARK ANGELS</h1>
+    <h2>Malkuth — El Reino · Prueba de Concepto</h2>
+    <div class="body">
+      «La gracia es un veneno. La redención, una mentira. Y tú… ya estás dentro.»
+      <br/><br/>
+      Eres <b>Malakh</b>: un demonio que viste un alma pura robada. Asciende por el paraíso
+      terrenal sin romper la Farsa… o rómpela y paga el precio.
+    </div>
+    <div class="keys">
+      <b>WASD</b> mover · <b>Shift</b> correr · <b>Espacio</b> saltar · <b>C</b> esquivar<br/>
+      <b>Click izq</b> ataque ligero · <b>Click izq mantener</b> ataque pesado · <b>Click der</b> bloqueo/parry · <b>Q</b> Umbral Lunge (30 Corruptio)<br/>
+      <b>R</b> Lágrima de Arrepentimiento (curar) · <b>E</b> interactuar · <b>F</b> rezar/ofrecer en altar<br/>
+      <b>Click</b> para capturar el mouse · <b>H</b> / <b>Esc</b> menú de controles y brillo
+    </div>
+    <button id="start-btn">Entrar al Reino</button>
+  </div>
+
+  <div id="death-screen" class="overlay hidden">
+    <h1>LA FARSA SE RESQUEBRAJA</h1>
+    <h2>Tu mancha de sombra queda donde caíste</h2>
+    <div class="body">Las Esencias perdidas yacen en tu Mancha de Sombra. La Farsa máxima se reduce un 10%.</div>
+    <button id="respawn-btn">Despertar en el Altar</button>
+  </div>
+
+  <div id="end-screen" class="overlay hidden">
+    <h1>YESOD AGUARDA</h1>
+    <h2>El Fundamento no será tan misericordioso</h2>
+    <div class="body" id="end-stats"></div>
+    <button id="restart-btn">Volver a Malkuth</button>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
