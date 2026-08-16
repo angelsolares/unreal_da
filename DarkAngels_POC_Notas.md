@@ -6888,6 +6888,88 @@ vera referencias rotas hasta reimportarlos.
 rondan el millon de vertices porque el FBX sale sin decimar, y ademas la VRAM sigue 1787 MB
 pasada.
 
+## Salto rapido de zona en el HUD: a medias, con el porque (2026-08-15)
+
+**El objetivo:** botones/teclas para saltar a cualquier zona y poder verlas en juego.
+
+**Primer hallazgo, que cambia el planteamiento:** las 13 zonas **no son mapas separados**.
+Son Level Instances dentro de `L_DA_Malkuth_Master`; los `*_Sub.umap` son sus sublevels. Asi
+que **no hay `OpenLevel` que valga**: es teletransportar al pawn dentro del mismo mapa, y
+ademas es instantaneo, que para probar es mejor.
+
+**Segundo:** el `PlayerControllerClass` del GameMode es el `PlayerController` pelado del
+motor, sin blueprint propio, asi que el cursor esta oculto y `bEnableClickEvents` en false.
+Para botones clicables harian falta los dos en true, y eso pelea con la camara al raton. Por
+eso Angel acepto **teclas 1-9 y 0**, con la leyenda dibujada en el HUD.
+
+**El HUD es `AHUD`** (`BP_DA_HUD`, con `ReceiveDrawHUD` ya implementado y asignado como
+`HUDClass` del GameMode), asi que dibujar la leyenda ahi es directo.
+
+### El bloqueo: el DSL de grafos no conecta los pines `Target`
+
+`BlueprintTools.write_graph_dsl` **no puede llamar funciones sobre otros objetos**. Probado
+de las tres formas y las tres fallan igual:
+
+```
+(Game|Player|WasInputKeyJustPressed pc :Key "One")                 ; posicional
+(Game|Player|WasInputKeyJustPressed :self pc :Key "One")           ; keyword con el nombre real del pin
+(Game|Player|WasInputKeyJustPressed :Target pc :Key "One")         ; keyword con el nombre visible
+```
+
+Las dos primeras compilan con
+`"This blueprint (self) is not a PlayerController, therefore ' Target ' must have a connection"`
+—o sea, crea el nodo pero deja `Target` sin conectar— y la tercera da
+`Unknown input pin "Target". Input pins: ['self', 'Key']`.
+
+La causa: **el DSL reserva el pin llamado `self`** y lo ata automaticamente al propio
+blueprint, asi que no hay manera de meterle otro objeto. Afecta a **todo** lo que necesite
+target: `WasInputKeyJustPressed` sobre el PlayerController y `SetActorLocation` sobre el pawn.
+
+**Dos cosas mas que se aprendieron por el camino:**
+
+- **`read_graph_dsl` no devuelve algo que `write_graph_dsl` acepte.** El lector saca los
+  pines literales como `(bind _returnvalue_1 0.5)` y el escritor los rechaza con
+  *"expression produced no output pin"*. **No se puede leer un grafo, retocarlo y
+  reescribirlo**: hay que reconstruirlo a mano, con el riesgo que eso tiene en un grafo que
+  ya funciona.
+- **El escritor compila en cada escritura**, asi que un grafo que no compila **no se puede
+  ni vaciar**: `write_graph_dsl` con el cuerpo vacio tambien falla. La salida es
+  `remove_function_graph` y volver a crearla.
+
+**Estado: `BP_DA_HUD` quedo intacto y compilando.** Se crearon dos funciones
+(`SaltoZonas_Dibujar` y `SaltoZonas_Tick`), fallo el enganche de las teclas y **se borraron
+las dos**, comprobando despues que el blueprint compila y que su `EventGraph` sigue igual.
+
+### Como terminarlo
+
+La via que si controla los pines es **construir el grafo nodo a nodo** con `create_node` +
+`connect_pins`, que trabajan con `PinID {direction, index_id, node}` y por tanto permiten
+conectar `Target` explicitamente. Son unos 32 nodos y ~70 conexiones —10 zonas x (rama +
+lectura de tecla + SetActorLocation), mas `GetPlayerController` y `GetPlayerCharacter`— pero
+se hace en un solo script con bucles.
+
+Datos ya medidos, listos para usar (traza vertical sobre cada zona, +120 para no encajar al
+jugador en el suelo):
+
+| Tecla | Zona | Destino |
+|---|---|---|
+| 1 | Jardin | (-59649, -60004, 138) |
+| 2 | Mirador | (-16000, -23800, 438) |
+| 3 | El Claro | (44000, -13650, 84) |
+| 4 | Gazebo | (64000, 15400, 184) |
+| 5 | Santuario | (43940, 47600, 118) |
+| 6 | Puente | (16000, 60000, 1532) |
+| 7 | Yesod | (-92000, 16000, 13213) |
+| 8 | Anfiteatro | (-73649, 41996, 136) |
+| 9 | Elevador | (-74000, 8000, 94) |
+| 0 | Gabriel | (-66000, -15000, 281) |
+
+La traza de Gabriel C1 dio 28774, que es un tejado o un monte y no el suelo; por eso el 0
+apunta a C2, que es el tramo central del pasillo de Gabriel.
+
+El borrador del script, con la leyenda ya escrita y las zonas en una tabla facil de tocar,
+esta en `Tools/MCP/hud_salto_zonas.py`.
+
 ## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
 
 **El telon 360 esta cerrado.** Cupula en z=0, 230 montes ocultos y 6 encendidos como plano
