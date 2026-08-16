@@ -28,7 +28,13 @@ ZONAS = [
     ("Num 7", "Anfiteatro", -73649.0,  41996.0,   136.0),   # 08
     ("Num 8", "Elevador",   -74000.0,   8000.0,    94.0),   # 09
     ("Num 9", "Gabriel",    -66000.0, -15000.0,   281.0),   # 10-12 (tramo C2)
-    ("Num 0", "Yesod",      -92000.0,  16000.0, 13213.0),   # 13, el final
+    # 13, el final. Ojo con este: la traza vertical desde 30000 daba 13093 y
+    # dejaba al jugador cayendo desde el cielo, porque **los montes ocultos
+    # siguen colisionando** y la traza chocaba con uno. El suelo de verdad sube
+    # en escalera hacia el portal: 64 en y=15200, 319 en y=16000 y 550 en la
+    # plataforma (y=16800). Se le pone al pie de la escalera, mirando al portal,
+    # como en la lamina 13.
+    ("Num 0", "Yesod",      -92000.0,  15200.0,   184.0),   # 13
 ]
 
 FILA = 34.0
