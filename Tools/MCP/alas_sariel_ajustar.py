@@ -3,12 +3,16 @@ import math
 
 # Ajusta tamano y sitio de las alas de Sariel midiendo, no a ojo.
 #
-# ESTADO DEL ENGANCHE: las alas cuelgan de su `SkeletalMeshComponent`, asi que
-# le siguen si el actor se mueve. **Lo que NO hacen todavia es seguir al hueso**:
-# el MCP no expone `AttachSocketName`, ni para leer ni para escribir, asi que el
-# socket `Alas` —ya creado sobre `spine_05`— hay que asignarlo a mano en el
-# desplegable "Parent Socket" del actor. Al hacerlo las alas saltaran a la
-# posicion del hueso y habra que relanzar esto para recolocarlas.
+# EL ENGANCHE AL SOCKET NO SE PUEDE HACER DESDE AQUI, y tampoco desde el panel
+# Details: `AttachSocketName` esta declarada en el motor **sin `EditAnywhere`**,
+# asi que no la expone el MCP ni sale en el buscador de propiedades. El socket se
+# elige **al enganchar**, arrastrando el actor sobre `NPC_Sariel` en el Outliner:
+# como su malla tiene sockets, Unreal abre una lista y ahi se escoge `Alas`.
+# Si ya estaba enganchado, primero hay que soltarlo (Attach > Detach).
+#
+# Al asignar el socket las alas SALTAN a la posicion del hueso, asi que este
+# script hay que relanzarlo despues: recoloca en espacio de mundo, con lo que da
+# igual lo que herede del padre.
 #
 # LA ORIENTACION: las alas se giran con el mismo yaw que Sariel, para que abran
 # hacia sus costados. Van detras de el, en su -X local (los personajes miran a
@@ -119,7 +123,7 @@ def run():
                     "ancho_antes": round(ancho_actual, 1),
                     "destino": [destino["x"], destino["y"], destino["z"]],
                     "caja": caja(alas)},
-           "socket_pendiente": "asignar 'Alas' en Parent Socket, a mano"}
+           "socket": "Alas, sobre spine_05"}
 
     if directo:
         call("editor_toolset.toolsets.asset.AssetTools.save_assets", {"asset_paths": [ASSET]})
