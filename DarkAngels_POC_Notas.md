@@ -7271,6 +7271,64 @@ level instance ... which is not in edit mode"*. Los scripts miran
   minimo para que el blanco no quede imposible. **Una zona por lanzamiento.**
 - `Tools/MCP/interaccion_ajustar_cajas.py` — redimensiona volumenes ya puestos.
 
+## LOS PERSONAJES DE TRIPO MIRAN A SU +Y, NO A SU +X (2026-08-16)
+
+El dato mas caro de la sesion: costo tres pasadas de colocar mal las alas de
+Sariel, y ademas habia dejado a Cassiel girado 90 grados sin darme cuenta.
+
+**Como se comprueba, sin abrir nada:** la caja del personaje. Un humano es mas
+ancho de hombros que de pecho a espalda, asi que **el eje ANCHO es el de los
+hombros**. Sariel, a yaw 180, mide **71,7 en X y 53,1 en Y**: el ancho cae en X,
+luego el que mira es el Y.
+
+Las formulas, para un personaje a `yaw`:
+
+```
+adelante = (-sin(yaw), cos(yaw))          # su +Y local
+hombros  = ( cos(yaw), sin(yaw))          # su +X local
+```
+
+Y para que su frente apunte a una direccion `(dx, dy)`:
+
+```
+yaw = atan2(-dx, dy)
+```
+
+**Lo enganioso**: con un emblema de cuatro alas —simetrico— la colocacion parece
+correcta desde casi cualquier angulo, y las capturas no delatan el error. Estuve
+tres iteraciones dando por buenas fotos en las que Sariel salia **de perfil**
+creyendo que era de frente. La comprobacion buena **no es mirar la captura, es
+medir la caja**: la envergadura tiene que caer sobre el eje ancho del personaje.
+`npc_alas_ajustar.py` lo comprueba solo y lo dice en su informe.
+
+Ojo: esa comprobacion solo vale con el personaje a yaw multiplo de 90. En
+diagonal la caja alineada a ejes se infla en los dos y no distingue.
+
+**Lo que quedo mal por esto, y ya esta corregido:** `NPC_Cassiel` en el Santuario,
+que se coloco con `atan2(dy, dx)`. Pasa de -145,8 a **124,2**. Sariel se libro
+porque su yaw venia puesto a mano de una sesion anterior.
+
+### Alas: la receta
+
+1. Exportar de Tripo **con remesh**. 45k-80k vertices; con plumas, mejor 80k
+   —las de Sariel son 81.536 y pesan 17 MB—.
+2. Importar como SkeletalMesh, arreglar el material con `tripo_arreglar_material.py`
+   y **llamar a `save_assets` despues**: el import los deja sucios y sin escribir,
+   asi que el `.uasset` no existe en disco y no entra al repo.
+3. `SkeletalMeshTools.add_socket` sobre **`spine_05`**, el alto de la espalda.
+4. Colocar el actor con `alas_sariel_colocar.py` de plantilla.
+5. **Enganchar al socket A MANO.** No hay otra: `AttachSocketName` esta declarada
+   en el motor **sin `EditAnywhere`**, asi que no la expone el MCP y **tampoco
+   aparece en el panel Details** por mucho que se busque. Se elige *al enganchar*,
+   arrastrando el actor sobre el NPC en el Outliner; si ya estaba enganchado hay
+   que soltarlo antes (Attach > Detach). Al asignarlo **las alas saltan** a la
+   posicion del hueso, y hay que relanzar el ajuste.
+6. `npc_alas_ajustar.py`, que ya lleva la tabla `NPCS` lista para el siguiente.
+
+Y una trampa de las mallas: **el pivote esta en la BASE**, como en todos los props
+de Tripo. Colocadas por su origen, las alas crecen hacia arriba y le salen de la
+cabeza. El script mide la caja ya escalada y corrige por la desviacion del centro.
+
 ## El conteo que ensena Tripo NO dice nada (2026-08-16)
 
 Aviso corto pero importante, porque ya llevo una conclusion equivocada por aqui.
