@@ -7143,3 +7143,74 @@ intermedio en el Jardin, nube volumetrica apagada, coloso arreglado.
   grises, no buscar al actor culpable: pedir `View Mode > Lit`. Y **capturar antes de editar**,
   no despues.
 - **Sin push todavia.** El repo es publico y seguimos con ~17 commits sin subir.
+
+## El cofre del Santuario: sacado, orientado y encendido (2026-08-16)
+
+Cuatro pasadas sobre el mismo prop, cada una commiteada y verificada en disco.
+
+### Donde acabo
+
+| | valor |
+|---|---|
+| Posicion | (44400, 48200), base z=12,5, tapa z=79 |
+| Yaw | **-66,5** |
+| Foco | `Luz_Cofre`, PointLight en (44207,4, 48116,3, 194) |
+
+### La orientacion: el frente del modelo es su **-Y local**
+
+El de Tripo no viene mirando a +X. La cara ancha —la del meandro y la cerradura— es el
+**-Y local**, asi que para encarar un punto:
+
+```python
+yaw = math.degrees(math.atan2(dy, dx)) + 90.0
+```
+
+Se giro dos veces. Primero a **-37,5**, encarando el punto exacto de llegada del jugador.
+Luego Angel pidio que mirase **al centro de la explanada**, que es la fuente en
+(43940, 48000): salio **-66,5**, 29 grados mas. Es la buena, porque al centro es adonde
+acaba plantandose el jugador cuando habla con Cassiel, no al punto por el que entro.
+
+### El foco: cenital NO
+
+El cofre habia caido en la sombra de la explanada y solo se distinguia por el brillo morado
+de la cerradura. Se le puso PointLight propio, como ya tienen la llave del Mirador y el
+Fragmento del Gazebo.
+
+**El primer intento, a plomo sobre el cofre (z=229), no valia**: quemaba la tapa a blanco y
+dejaba la cara frontal completamente negra —justo la que se quiere enseñar—. La captura no
+deja lugar a dudas, el cofre se leia como una mancha negra con un filo blanco arriba.
+
+Arreglado adelantandolo **210 uu hacia el centro de la explanada** (la direccion a la que
+mira el cofre) y bajandolo: queda a **28,7 grados de elevacion** en vez de a plomo. Con eso
+el frente se lee entero: paneles de piedra clara, herrajes oscuros y la gema morada al
+centro.
+
+**Regla que se saca de aqui:** un foco para *enseñar* un prop va delante de el, no encima.
+Cenital solo si lo que interesa es la silueta contra el suelo.
+
+### El presupuesto de luces estacionarias
+
+Las Stationary tienen tope: **a partir de cuatro solapandose en un punto**, las sobrantes
+caen a dinamicas y se pierde el lightmap. En el cofre ya llegaban dos —`Luz_Altar` a 502 con
+radio 520, y `Luz_Cassiel` a 333—, asi que esta se quedo con **radio corto, 420**, y van
+tres de cuatro. `santuario_luz_cofre.py` **cuenta las estacionarias que cubren el punto
+antes de crear nada** y lo saca en el informe; conviene copiar ese chequeo al poner focos en
+zonas que ya tengan iluminacion local.
+
+### Convencion de luces del Santuario
+
+Leida de las que ya habia, por si hace falta otra: `PointLight` | `Stationary` | 6500 K |
+`Candelas` | radio 520. `Luz_Altar` z=215, intensidad 220, con sombras. `Luz_Cassiel` z=320,
+intensidad 110, sin sombras. La nueva: z=194, intensidad 230, con sombras (para que el cofre
+se apoye en el suelo en vez de flotar).
+
+### Scripts
+
+- `Tools/MCP/santuario_luz_cofre.py` — crea el foco. Abre la sesion de edicion del LI y **la
+  deja abierta**.
+- `Tools/MCP/santuario_luz_cofre_ajuste.py` — lo recoloca. **No vuelve a llamar a
+  `edit_level_instance`** a proposito: encadenar ciclos edit/commit sobre el mismo LI es lo
+  que acaba bloqueando el `.umap` con el Error Code 32.
+
+Las capturas se tomaron **dentro de la sesion de edicion**, antes de commitear, que es
+cuando el viewport todavia conserva el color.
