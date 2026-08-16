@@ -25,13 +25,12 @@ ZONAS = {
     "santuario": {
         "li": "LI_06_SantuarioMalkuth",
         "asset": "/Game/DarkAngels/Maps/L_DA_Malkuth_Santuario_Sub",
-        # Cassiel no tiene animacion de hablar todavia: falta exportarla desde
-        # AccuRig contra SU esqueleto.
-        "enlaces": [],
+        "enlaces": [("Interact_Cassiel", "NPC_Cassiel",
+                     "A_DA_Hablar_Cassiel", "A_DA_Idle_Cassiel")],
     },
 }
 
-CUAL = "mirador"
+CUAL = "santuario"
 
 
 def call(tool, args):
