@@ -30,11 +30,36 @@ PACK = "Animation|Sequences|Play'AS__AS_W5_%s'"
 QUIETO = PACK % "idle_ground"
 MOVIENDO = PACK % "flapping"
 VOLANDO = PACK % "fly_idle"
+ESCUDO = PACK % "shield_up"
 
 MOV = "Moviendose"
 AIRE = "EnElAire"
+DEF = "Defendiendo"
+
+# LA DEFENSA SI NECESITA A DCS, pero sin atarse a el.
+# Bloquear no existe en `Character`: es un concepto de DCS. Lo bueno es que **su
+# propio AnimBP ya lo calcula**: `AnimInstance_BaseCharacter` expone
+# `GetIsBlockInputPressed`, junto con `GetGroundSpeed`, `GetIsFalling` y varios
+# mas. Se llega desde aqui asi:
+#     pawn -> Character -> GetMesh -> GetAnimInstance
+#          -> Cast a AnimInstance_BaseCharacter -> GetIsBlockInputPressed
+# El cast va con su rama de fallo: si quien lleva las alas no es un personaje de
+# DCS, `Defendiendo` se queda en false y las otras tres poses siguen
+# funcionando. Por eso la velocidad y el aire se siguen leyendo de `Character` y
+# no de aqui: asi lo esencial no depende de DCS.
 UMBRAL = 10.0        # a partir de que velocidad se considera que se mueve
 MEZCLA = "0.25"      # segundos de transicion entre poses
+# La defensa entra mas rapido: alzar las alas es una reaccion, no un cambio de
+# marcha, y con 0,25 llegaba tarde respecto al bloqueo del personaje.
+MEZCLA_ESCUDO = "0.12"
+
+# La pose de defensa se monta aparte. Las animaciones de escudo se copiaron al
+# proyecto **con el editor abierto**, y la base de acciones de Blueprint queda
+# cacheada: el asset existe y tiene el esqueleto bueno —se comprueba con
+# `get_asset_tags`— pero su tipo de nodo no aparece en `find_node_types` hasta
+# reiniciar el editor. Con esto en False el script deja el AnimBP funcionando
+# con tres poses; se pone a True despues de reiniciar.
+CON_ESCUDO = False
 
 
 def bt(t, a):
@@ -93,7 +118,7 @@ def run():
     out = {}
 
     ya = str(bt("list_variables", {"blueprint": bp}))
-    for v in (MOV, AIRE):
+    for v in (MOV, AIRE, DEF):
         if v not in ya:
             bt("add_variable", {"blueprint": bp, "name": v, "type_name": "bool"})
     bt("compile_blueprint", {"blueprint": bp})
@@ -136,6 +161,28 @@ def run():
     unir(sal(cae, "ReturnValue"), ent(ponAire, AIRE))
     unir(sal(ponMov, "then"), ent(ponAire, "execute"))
 
+    # Defendiendo: se le pregunta al AnimBP del propio personaje, que en DCS ya
+    # lleva la cuenta. Con rama de fallo, para que quien no sea de DCS siga
+    # teniendo las otras tres poses.
+    malla = nodo(EG, "Class|Character|GetMesh", 620, 300)
+    principal = nodo(EG, "Components|SkeletalMesh|GetAnimInstance", 820, 300)
+    castDCS = nodo(EG, "Utilities|Casting|CastToAnimInstance_BaseCharacter", 1020, 0)
+    bloquea = nodo(EG, "Class|AnimInstanceBaseCharacter|GetIsBlockInputPressed", 1280, 220)
+    ponDef = nodo(EG, "Variables|Default|Set" + DEF, 1500, 0)
+    ponDefNo = nodo(EG, "Variables|Default|Set" + DEF, 1500, 300)
+
+    unir(sal(cast, "AsCharacter"), ent(malla, "self"))
+    unir(sal(malla, "Mesh"), ent(principal, "self"))
+    unir(sal(principal, "ReturnValue"), ent(castDCS, "Object"))
+    unir(sal(ponAire, "then"), ent(castDCS, "execute"))
+
+    unir(sal(castDCS, "AsAnim Instance Base Character"), ent(bloquea, "self"))
+    unir(sal(bloquea, "IsBlockInputPressed"), ent(ponDef, DEF))
+    unir(sal(castDCS, "then"), ent(ponDef, "execute"))
+
+    valor(ent(ponDefNo, DEF), "false")
+    unir(sal(castDCS, "CastFailed"), ent(ponDefNo, "execute"))
+
     # ---------------- AnimGraph: elegir la pose ----------------
     vaciar(AG, ("Misc.|OutputPose",))
     salidaPose = buscar(AG, "Misc.|OutputPose")
@@ -164,7 +211,27 @@ def run():
     for p in ("BlendTime_0", "BlendTime_1"):
         valor(ent(b2, p), MEZCLA)
 
-    unir(sal(b2, "Pose"), ent(salidaPose, "Result"))
+    # Tercer blend: la defensa manda sobre todo lo demas. Va el ultimo, asi que
+    # si el personaje bloquea, las alas se alzan aunque este corriendo o cayendo.
+    if not CON_ESCUDO:
+        unir(sal(b2, "Pose"), ent(salidaPose, "Result"))
+        bt("compile_blueprint", {"blueprint": bp})
+        execute_tool("editor_toolset.toolsets.asset.AssetTools.save_assets",
+                     json.dumps({"asset_paths": [ABP.split(".")[0]]}))
+        out["escudo"] = "pendiente: reiniciar el editor y poner CON_ESCUDO = True"
+        out["compila"] = "SI"
+        return out
+
+    escudo = nodo(AG, ESCUDO, -700, 700)
+    getDef = nodo(AG, "Variables|Default|Get" + DEF, -400, 860)
+    b3 = nodo(AG, "Animation|Blends|BlendPosesbybool", 200, 500)
+    unir(sal(b2, "Pose"), ent(b3, "BlendPose_0"))
+    unir(sal(escudo, "Pose"), ent(b3, "BlendPose_1"))
+    unir(sal(getDef, DEF), ent(b3, "bActiveValue"))
+    for p in ("BlendTime_0", "BlendTime_1"):
+        valor(ent(b3, p), MEZCLA_ESCUDO)
+
+    unir(sal(b3, "Pose"), ent(salidaPose, "Result"))
 
     bt("compile_blueprint", {"blueprint": bp})
     execute_tool("editor_toolset.toolsets.asset.AssetTools.save_assets",
