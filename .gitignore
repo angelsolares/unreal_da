@@ -167,3 +167,11 @@ Content/DarkAngels/Environment/Props/SK_DA_Rotonda_Gazebo.uasset
 Content/DarkAngels/Environment/Props/SK_DA_Puerta_Templo.uasset
 # Y la cuarta: 238 MB, FBX sin decimar (1.128.485 vertices).
 Content/DarkAngels/Environment/Props/SK_DA_Puerta_Yesod.uasset
+
+# --- Sacados del historial con filter-branch el 2026-08-15 ---
+# Los otros dos que pasaban de 100 MB. Estaban dentro de commits que nunca se
+# habian subido, asi que reescribirlos fue seguro: nadie mas los tenia.
+# Quien clone tiene que importarlos aparte, igual que los packs de pago.
+# Copia local en _Backups/assets_fuera_de_git/.
+Content/DarkAngels/Environment/Props/SK_DA_Puerta_Claro.uasset
+Content/DarkAngels/Characters/Colosos/SK_DA_Coloso_Angel_V2.uasset
