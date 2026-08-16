@@ -27,6 +27,10 @@ NOMBRES = ["Jardin", "Mirador", "El Claro", "Gazebo", "Santuario",
 
 FILA = 34.0
 ANCHO = 330.0
+# Y de la esquina superior del panel. Empezaba en 90 y chocaba con la caja de
+# "[L] Restart Level / [K] Keybindings" de DCS, que ocupa la esquina de arriba
+# a la derecha. Bajado por debajo de ella.
+Y0 = 300.0
 
 
 def call(tool, args):
@@ -41,20 +45,21 @@ def dsl_dibujar():
          "  (bind z (Variables|Default|Get" + VAR + "))",
          "  (bind x0 (- sx %.1f))" % (ANCHO + 20.0),
          '  (HUD|DrawRect self (Utilities|Struct|MakeLinearColor 0.01 0.01 0.05 0.72)'
-         ' x0 90.0 %.1f %.1f)' % (ANCHO, alto),
+         ' x0 %.1f %.1f %.1f)' % (Y0, ANCHO, alto),
          '  (HUD|DrawText self "SALTO DE ZONA"'
          ' (Utilities|Struct|MakeLinearColor 1.0 0.88 0.45 1.0)'
-         ' (+ x0 14.0) 100.0 0 1.35)',
+         ' (+ x0 14.0) %.1f 0 1.35)' % (Y0 + 10.0),
          "  (if (>= z 0)",
          '    (HUD|DrawRect self (Utilities|Struct|MakeLinearColor 1.0 0.88 0.45 0.22)'
-         ' (+ x0 6.0) (- (+ 138.0 (* z %.1f)) 4.0) %.1f %.1f))' % (FILA, ANCHO - 12.0, FILA - 4.0)]
+         ' (+ x0 6.0) (- (+ %.1f (* z %.1f)) 4.0) %.1f %.1f))'
+         % (Y0 + 48.0, FILA, ANCHO - 12.0, FILA - 4.0)]
     for i, nombre in enumerate(NOMBRES):
         col = ('(Utilities|Struct|MakeLinearColor'
                ' (select (== z %d) 1.0 0.86)'
                ' (select (== z %d) 0.88 0.9)'
                ' (select (== z %d) 0.45 1.0) 1.0)' % (i, i, i))
         l.append('  (HUD|DrawText self "%s   %s" %s (+ x0 14.0) %.1f 0 1.2)'
-                 % (ETIQUETAS[i], nombre, col, 138.0 + i * FILA))
+                 % (ETIQUETAS[i], nombre, col, Y0 + 48.0 + i * FILA))
     l.append("  (return))")
     return "\n".join(l)
 
