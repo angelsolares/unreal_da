@@ -6812,6 +6812,43 @@ caben en GitHub**, cuyo limite duro son 100 MB por fichero:
 Los dos primeros **estan dentro de commits que aun no se han subido**, asi que el push
 entero se rechaza. Ver el apartado siguiente.
 
+### Cierre: puerta de Yesod y el coloso reutilizado
+
+| Placeholder | Era | Ahora | Escala | Tamano final |
+|---|---|---|---|---|
+| `Yesod_Portal` | caja de 552 x 96 x 644 | `SK_DA_Puerta_Yesod` | 658 | 458 x 421 x 644 cm |
+| `Puente_Angel_Gigante` | `SM_SM_DA_AngelSilueta`, recorte de 1350 de grosor estirado a 15355 | **`SK_DA_Coloso_Angel_V2`**, el mismo del Jardin | 8365 | 5830 x 5511 x 8193 cm |
+
+Lo del coloso lo propuso Angel al ver la lamina 07, y es la decision mas barata de toda la
+sesion: **es el mismo angel** y el asset ya estaba importado, asi que **no suma un solo byte**
+al proyecto. Proporciones de esa malla, por si vuelve a hacer falta: **0,735 x 0,699 x 0,979**,
+deducidas del actor del Jardin (14072 x 13387 x 18750 a escala 19143).
+
+**Ojo, hereda el problema de luz:** al coloso **no le llega ninguna luz direccional** (ver el
+apartado del Jardin). En el puente ademas el sol esta detras —yaw 270, contraluz deliberado—,
+asi que ahora mismo se lee como **silueta negra**. Si se quiere ver la piedra hay que repetir
+la receta del Jardin: un **PointLight** con `VolumetricScatteringIntensity = 0` en el **canal
+de iluminacion 1**, y activar el canal 1 en el componente del coloso del puente.
+
+### Resumen de todo lo sustituido
+
+| Zona | Placeholder | Modelo real |
+|---|---|---|
+| Mirador | `Mirador_Llave` (OldKey, Fab) | `SK_DA_Llave_Mirador` |
+| Mirador | `Mirador_Cofre` (SM_OldWoodenChest) | `SK_DA_Baul` |
+| Santuario | `SM_Cofre` (SM_OldWoodenChest) | `SK_DA_Baul` |
+| Santuario | `SM_Altar_*`, 4 piezas `GardenFountain*` | `SK_DA_Fuente_Santuario` |
+| Gazebo | `Gazebo_Rotonda` | `SK_DA_Rotonda_Gazebo` |
+| Gazebo | `Gazebo_Tableta` | `SK_DA_Tableta_Gazebo` |
+| Gazebo | `Gazebo_Fragmento` | `SK_DA_Fragmento` |
+| El Claro | `Claro_StatueAngel_L` y `_R` (`SM_DA_AngelV2`) | `SK_DA_Estatua_Angel` |
+| Puente | `Puente_Portal_L` y `_R` | `SK_DA_Puerta_Templo` |
+| Puente | `Puente_Angel_Gigante` (silueta) | `SK_DA_Coloso_Angel_V2` (reutilizado) |
+| Yesod | `Yesod_Portal` | `SK_DA_Puerta_Yesod` |
+
+**Placeholders de silueta que siguen sin sustituir:** `SM_Cassiel` y
+`Mirador_Estatua_Sariel`, los dos planos recortados junto a sus NPC de verdad.
+
 ## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
 
 ### 0. El push esta bloqueado y hay que decidir como
