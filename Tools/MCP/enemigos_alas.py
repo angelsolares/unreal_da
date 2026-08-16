@@ -148,8 +148,8 @@ def run():
         ot("set_properties", {"instance": comp, "values": json.dumps({
             "SkeletalMeshAsset": {"refPath": MALLA_ALAS},
             "AnimationMode": "AnimationBlueprint",
-            "AnimClass": {"refPath": ANIMBP},
         })})
+        ot("set_properties", {"instance": comp, "values": json.dumps({"AnimClass": ANIMBP})})
         for eje in ("x", "y", "z"):
             ot("set_properties", {"instance": comp,
                                   "values": json.dumps({"RelativeScale3D": {eje: escala}})})
@@ -197,8 +197,11 @@ def run():
         # Y la animacion: el modo se hereda solo pero **AnimClass se queda en
         # None** en las instancias ya colocadas, con lo que las alas no se
         # animarian en el nivel aunque la clase este bien.
-        ot("set_properties", {"instance": comp, "values": json.dumps(
-            {"AnimationMode": "AnimationBlueprint", "AnimClass": {"refPath": ANIMBP}})})
+        # OJO: AnimClass va como TEXTO PLANO, no como {"refPath": ...}. Con la
+        # forma de referencia el setter lo aceptaba en la clase pero lo ignoraba
+        # en las instancias sin dar error, y las alas salian quietas en el nivel.
+        ot("set_properties", {"instance": comp, "values": json.dumps({"AnimationMode": "AnimationBlueprint"})})
+        ot("set_properties", {"instance": comp, "values": json.dumps({"AnimClass": ANIMBP})})
         leido = json.loads(ot("get_properties", {"instance": comp,
                                                  "properties": ["RelativeRotation", "RelativeScale3D", "AnimClass"]}))
         out["instancias"].append({
