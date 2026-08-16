@@ -6890,7 +6890,7 @@ pasada.
 
 ## Salto rapido de zona en el HUD: TERMINADO (2026-08-15)
 
-Montado y compilando. **Teclas F1-F10** saltan a cada zona, con la leyenda dibujada pegada
+Montado y compilando. **Teclas NumPad 1-9 y 0** saltan a cada zona, con la leyenda dibujada pegada
 al borde derecho. Las dos funciones viven en `BP_DA_HUD`:
 
 - **`SaltoZonas_Dibujar`** — escrita por DSL, solo dibuja sobre `self`, que es el caso que el
@@ -6926,11 +6926,21 @@ spawner ademas mete `WBP_DA_HUD` en pantalla, que se solaparia con el HUD de DCS
 en juego es un problema de verdad, no del debug. O se coloca el spawner, o se pone
 `BP_DA_GameMode` en el World Settings del Master.
 
-### Y las teclas: los numeros ya estaban cogidos
+### Las teclas: dos familias descartadas antes de acertar
 
-1-9 y 0 estan mapeados a los hechizos en el input de DCS (`IMC_Player`). Se pasaron a
-**F1-F10**, que estan libres: asi **no hay que desactivar nada** del input de terceros y
-quitar el debug no deja rastro.
+| Familia | Que paso |
+|---|---|
+| **1-9 y 0** | Las coge DCS para los hechizos (`IMC_Player`) |
+| **F1-F10** | **Las coge el viewport de Unreal para los modos de vista.** F3 es wireframe, asi que al saltar aparecias en el escenario nuevo en wireframe |
+| **NumPad 1-9 y 0** | Libres en los dos sitios. **Es la que quedo** |
+
+Si algun dia hace falta cambiarlas —por ejemplo en un portatil sin bloque numerico— es
+editar `TECLAS` y `ETIQUETAS` en `Tools/MCP/hud_teclas.py` y relanzar; cambia las teclas del
+grafo y la leyenda a la vez. Otras familias libres: `LeftBracket`, `RightBracket`,
+`Semicolon`, `Quote`, `Comma`, `Period`, `Slash`, `Backslash`, `Hyphen`, `Equals`.
+
+**La leccion:** para un atajo de debug en PIE no valen ni las teclas que usa el juego ni las
+que usa el editor. Las F estan cogidas por el viewport aunque el foco este en el juego.
 
 ### Las cinco trampas del toolset de Blueprints, que costaron toda la tarde
 
