@@ -6849,26 +6849,46 @@ de iluminacion 1**, y activar el canal 1 en el componente del coloso del puente.
 **Placeholders de silueta que siguen sin sustituir:** `SM_Cassiel` y
 `Mirador_Estatua_Sariel`, los dos planos recortados junto a sus NPC de verdad.
 
+### El repo, desbloqueado y subido (2026-08-15 20:05)
+
+**Ya esta todo en GitHub**: `707b2b8..154e7fe`, 25 commits. El repo estuvo 19 commits sin
+subir porque `SK_DA_Puerta_Claro.uasset` (228 MB) y `SK_DA_Coloso_Angel_V2.uasset` (218 MB)
+estaban **dentro de commits antiguos** y GitHub rechaza cualquier fichero de mas de 100 MB.
+
+**Se saco con `filter-branch`, no con `filter-repo`:** `filter-repo` es un script de Python y
+en esta maquina **no hay Python** —el `python` de la PATH es el stub de la Microsoft Store—,
+asi que se uso lo que trae git de serie.
+
+Lo que hizo que fuera seguro: **ninguno de los dos ficheros aparecia en el historial ya
+publicado** (`git log origin/main -- <fichero>` daba 0). Por eso se pudo acotar la
+reescritura al rango `origin/main..HEAD` y **el push salio sin `--force`**: `origin/main`
+seguia siendo ancestro.
+
+```
+FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --index-filter \
+  "git rm --cached --ignore-unmatch '<fichero1>' '<fichero2>'" -- origin/main..HEAD
+```
+
+**Dos cosas que conviene saber si se repite:**
+
+- **`filter-branch` borra tambien el fichero del disco**, no solo del historial. Son assets
+  vivos del nivel, asi que **hay que copiarlos antes**. Aqui hay copia en
+  `_Backups/assets_fuera_de_git/`. De hecho el borrado fallo —`unable to unlink ... Invalid
+  argument`— porque **Unreal los tenia abiertos**, pero eso fue suerte, no plan.
+- Red de seguridad que quedo puesta: la rama `respaldo-antes-de-filtrar`, el tag
+  `respaldo-antes-de-filtrar-20260815` y los `refs/original/` que deja filter-branch. Se
+  pueden borrar cuando se confirme que todo esta bien.
+
+**Los cinco assets de mas de 100 MB estan fuera del repo** y documentados en el README:
+`SK_DA_Puerta_Claro`, `SK_DA_Coloso_Angel_V2`, `SK_DA_Rotonda_Gazebo`, `SK_DA_Puerta_Templo`
+y `SK_DA_Puerta_Yesod`. **Los niveles si se suben y los referencian**, asi que quien clone
+vera referencias rotas hasta reimportarlos.
+
+**La leccion, para los proximos modelos:** exportar **decimado** desde Tripo. Los cinco
+rondan el millon de vertices porque el FBX sale sin decimar, y ademas la VRAM sigue 1787 MB
+pasada.
+
 ## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
-
-### 0. El push esta bloqueado y hay que decidir como
-
-`git push` fallara mientras `SK_DA_Puerta_Claro.uasset` (227,6 MB, commit `0162ab5`) y
-`SK_DA_Coloso_Angel_V2.uasset` (217,6 MB, commit `108aafb`) sigan dentro del historial sin
-subir. Como **no se han subido nunca**, reescribir esos commits es seguro: nadie mas los
-tiene. Tres caminos:
-
-1. **Sacarlos del historial** con `git filter-repo`, añadirlos al `.gitignore` y
-   documentarlos en el README como "instalalo aparte", que es la regla que ya se sigue con
-   los packs de pago. El repo se queda pequeño. **Es lo mas coherente con como esta montado.**
-2. **Git LFS.** Migrar esos blobs. Ojo: los cuatro assets gordos suman ~900 MB y la cuota
-   gratis de GitHub es 1 GB de almacenamiento y 1 GB de trafico al mes.
-3. **Reexportar decimado desde Tripo** los cuatro y reimportar. Es lo que habria que hacer
-   de todos modos: un millon de vertices en un prop no lo justifica nada, y la VRAM sigue
-   1787 MB pasada. Resuelve el problema de raiz, pero rehace trabajo.
-
-Lo demas del repo esta commiteado y limpio: **21 commits pendientes**, sin nada de terceros
-y sin ningun fichero por encima de 90 MB entre lo nuevo.
 
 **El telon 360 esta cerrado.** Cupula en z=0, 230 montes ocultos y 6 encendidos como plano
 intermedio en el Jardin, nube volumetrica apagada, coloso arreglado.
