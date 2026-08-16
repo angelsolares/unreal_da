@@ -63,15 +63,40 @@ def valor(p, v):
 
 
 def dsl_dibujar():
+    """Una barra de fondo por linea, no un panel unico.
+
+    El fondo es el mismo de la casa —`0.01 0.01 0.05` con alfa 0,72— que ya usan
+    el mensaje de objetivo y el panel de salto de zona, para que el dialogo no
+    desentone del resto del HUD.
+
+    Se dibuja **una barra por linea, ajustada a su ancho**, y no un rectangulo
+    unico que las envuelva a las tres. Dos razones: el DSL no tiene un `max` de
+    tres valores sin encadenar `select`, y `HUD|GetTextSize` devuelve el ANCHO,
+    asi que no hay de donde sacar el alto real del texto para dimensionar el
+    panel. Con una barra por linea el alto es una constante y cada barra se
+    cinie a lo que hay, que ademas es como se ven los subtitulos.
+
+    La barra solo se pinta si la linea tiene texto: una cadena vacia mide 0 de
+    ancho, y sin el `if` saldria un tocon del tamanio del margen. Cassiel deja
+    la tercera vacia.
+    """
+    fondo = "(Utilities|Struct|MakeLinearColor 0.01 0.01 0.05 0.72)"
+    tinta = "(Utilities|Struct|MakeLinearColor 0.94 0.93 0.88 1.0)"
+    margen = 24.0
     l = ["(fn " + DIBUJAR + " ()",
          "  (bind sx (.x (Viewport|GetViewportSize)))",
-         "  (bind sy (.y (Viewport|GetViewportSize)))"]
+         "  (bind sy (.y (Viewport|GetViewportSize)))",
+         "  (bind alto (* sy %.3f))" % (INTERLINEA + 0.002)]
     for i, v in enumerate(LINEAS):
         y = ALTO + i * INTERLINEA
         l += ["  (bind t%d (Variables|Default|Get%s))" % (i, v),
               "  (bind w%d (HUD|GetTextSize self t%d 0 %.2f))" % (i, i, ESCALA),
-              '  (HUD|DrawText self t%d (Utilities|Struct|MakeLinearColor 0.94 0.93 0.88 1.0)'
-              ' (- (* sx 0.5) (* w%d 0.5)) (* sy %.3f) 0 %.2f)' % (i, i, y, ESCALA)]
+              "  (bind y%d (* sy %.3f))" % (i, y),
+              "  (if (> w%d 1.0)" % i,
+              "    (HUD|DrawRect self %s (- (* sx 0.5) (+ (* w%d 0.5) %.1f))"
+              " (- y%d 6.0) (+ w%d %.1f) alto)" % (fondo, i, margen, i, i, margen * 2.0),
+              "    (HUD|DrawText self t%d %s (- (* sx 0.5) (* w%d 0.5)) y%d 0 %.2f))"
+              % (i, tinta, i, i, ESCALA)]
     l.append("  (return))")
     return "\n".join(l)
 
@@ -113,16 +138,40 @@ def construir_tick(g):
     return "montado"
 
 
+def vaciar(g):
+    """Borra los NODOS de una funcion, no la funcion.
+
+    `remove_function_graph` + `add_function_graph` parece lo natural, pero el
+    segundo **no reutiliza el nombre**: crea `Dialogo_Dibujar_0`. De ahi salen
+    los `SaltoZonas_Dibujar_0` y `_1` que arrastra este blueprint desde otra
+    sesion. Y si el script aborta entre medias, la funcion se queda borrada y
+    las llamadas del EventGraph, colgando.
+    """
+    entrada = None
+    for n in bt("find_nodes", {"graph": g, "title": ""}):
+        if "FunctionEntry" in str(info(n)["type_id"]) or "FunctionEntry" in n["refPath"]:
+            entrada = n
+        else:
+            bt("delete_node", {"node": n})
+    return entrada
+
+
 def enganchar(bp):
     res = {}
     for marca, funcion, crear, x, y in (
             ("AddEvent|EventReceiveDrawHUD", DIBUJAR, "CallFunction|DialogoDibujar", 700, 2700),
             ("AddEvent|EventTick", TICK, "CallFunction|DialogoTick", 700, 3100)):
         ev = None
+        puesta = False
         for n in bt("find_nodes", {"graph": EG, "title": ""}):
-            if str(info(n)["type_id"]) == marca:
+            t = str(info(n)["type_id"])
+            if t == marca:
                 ev = n
-                break
+            if t == "|" + funcion:
+                puesta = True
+        if puesta:
+            res[marca] = "ya estaba enganchada"
+            continue
         if ev is None:
             res[marca] = "evento no encontrado"
             continue
@@ -148,17 +197,28 @@ def run():
         if v not in ya:
             bt("add_variable", {"blueprint": bp, "name": v, "type_name": "string"})
 
-    existentes = [g["refPath"].split(":")[-1] for g in bt("list_graphs", {"blueprint": bp})]
-    for nom in (TICK, DIBUJAR):
-        if nom in existentes:
+    # Restos de un intento anterior que borro las funciones y aborto a medias.
+    for g in bt("list_graphs", {"blueprint": bp}):
+        nom = g["refPath"].split(":")[-1]
+        if nom.startswith(DIBUJAR + "_") or nom.startswith(TICK + "_"):
             bt("remove_function_graph", {"blueprint": bp, "graph_name": nom})
+            out.setdefault("restos_borrados", []).append(nom)
 
-    bt("add_function_graph", {"blueprint": bp, "graph_name": DIBUJAR})
+    # LAS DOS FUNCIONES PRIMERO, y compilar, ANTES de escribir nada. El escritor
+    # de DSL compila en cada escritura, y si el EventGraph tiene una llamada a
+    # una funcion que no existe —porque un intento anterior la borro— la
+    # compilacion falla y no deja escribir la otra. `add_function_graph` es
+    # idempotente: si ya existe, devuelve la que hay.
+    for nom in (DIBUJAR, TICK):
+        bt("add_function_graph", {"blueprint": bp, "graph_name": nom})
+    bt("compile_blueprint", {"blueprint": bp})
+
+    vaciar({"refPath": BP + ":" + TICK})
+    out["tick"] = construir_tick({"refPath": BP + ":" + TICK})
+
+    vaciar({"refPath": BP + ":" + DIBUJAR})
     bt("write_graph_dsl", {"graph": {"refPath": BP + ":" + DIBUJAR}, "code": dsl_dibujar()})
     out["dibujar"] = "escrita por DSL"
-
-    bt("add_function_graph", {"blueprint": bp, "graph_name": TICK})
-    out["tick"] = construir_tick({"refPath": BP + ":" + TICK})
 
     out["enganche"] = enganchar(bp)
     bt("compile_blueprint", {"blueprint": bp})
