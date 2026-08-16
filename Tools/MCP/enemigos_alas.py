@@ -50,6 +50,20 @@ ENEMIGOS = [
 ESCALA_MALLA = 1.8273    # la de `CharacterMesh0`, que el componente hereda
 ALTURA = -10.0           # ajuste fino sobre el hueso, en unidades del hueso
 
+# LA ROTACION NO ES CERO, Y NO ES CAPRICHO. Los huesos de la columna del
+# Mannequin llevan su **X a lo largo del hueso**, o sea apuntando hacia la
+# cabeza. Colgadas sin rotar, las alas salen de canto: su eje de envergadura
+# —que es su X local, 215 de los 215x46x61 que miden— apunta hacia ARRIBA, y
+# queda una lamina vertical atravesando al personaje de delante atras.
+#
+# Hace falta la permutacion ciclica de ejes  X->Y, Y->Z, Z->X, que en matriz es
+#     [0 0 1]
+#     [1 0 0]
+#     [0 1 0]
+# Resolviendo esa matriz para el orden de Unreal —R = Rz(yaw)·Ry(pitch)·Rx(roll)—
+# salen pitch 0, yaw 90, roll 90.
+ROTACION = {"pitch": 0.0, "yaw": 90.0, "roll": 0.0}
+
 
 def call(tool, args):
     return execute_tool(tool, json.dumps(args))["returnValue"]
@@ -109,8 +123,20 @@ def run():
             comp = at("add_component", {"owner": bp, "name": COMPONENTE,
                                         "component_type": {"refPath": "/Script/Engine.SkeletalMeshComponent"}})
             d["componente"] = "creado"
-        if "CharacterMesh0" in tenia:
+        # SOLO SE EMPARENTA SI HACE FALTA. `set_parent_component` **borra el
+        # socket**: reengancha el componente a la raiz del padre y deja
+        # `AttachSocketName` vacio. Como el socket lo pone Angel a mano y este
+        # script se relanza para afinar rotacion y escala, llamarlo siempre le
+        # pisaba el trabajo en cada pasada —y encima sin avisar: las alas se
+        # iban a los pies y parecia un problema de rotacion.
+        padre_actual = at("get_parent_component", {"component": comp})
+        ya_colgado = (padre_actual is not None
+                      and str(padre_actual).endswith("CharacterMesh0'}"))
+        if "CharacterMesh0" in tenia and not ya_colgado:
             at("set_parent_component", {"component": comp, "parent": tenia["CharacterMesh0"]})
+            d["emparentado"] = "SI (ojo: hay que volver a poner el Parent Socket)"
+        else:
+            d["emparentado"] = "ya lo estaba, no se toca"
 
         # 3. Malla, animacion en bucle y escala. Un campo por llamada en los
         #    structs: el setter se deja campos por el camino si van juntos.
@@ -125,6 +151,9 @@ def run():
                                   "values": json.dumps({"RelativeScale3D": {eje: escala}})})
         ot("set_properties", {"instance": comp,
                               "values": json.dumps({"RelativeLocation": {"z": ALTURA}})})
+        for eje in ROTACION:
+            ot("set_properties", {"instance": comp,
+                                  "values": json.dumps({"RelativeRotation": {eje: ROTACION[eje]}})})
 
         bt("compile_blueprint", {"blueprint": bp})
         guardar.append(e["bp"])
