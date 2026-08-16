@@ -6775,7 +6775,63 @@ la zona que interesa sale en color y **no hace falta pedirle a Angel que devuelv
 be in edit mode") y el `.umap` **si** se habia guardado, con el paquete limpio. Ya miente en
 las dos direcciones; lo unico fiable sigue siendo la fecha en disco.
 
+## Estatuas, fuente y puerta del puente (2026-08-15, cierre)
+
+Tres tandas mas de Tripo, con la misma receta de siempre.
+
+| Placeholder | Era | Ahora | Escala | Tamano final |
+|---|---|---|---|---|
+| `Claro_StatueAngel_L` / `_R` | `SM_DA_AngelV2`, recorte plano de 38 uu | `SK_DA_Estatua_Angel` | 370 | 125 x 105 x 362 cm |
+| `SM_Altar_*` (4 piezas) | apilado `GardenFountain*` de Megascans | `SK_DA_Fuente_Santuario` | 281 | 200 x 275 x 155 cm |
+| `Puente_Portal_L` / `_R` | dos pilares de 216 x 216 x 1104 | `SK_DA_Puerta_Templo` | 1241 | 1216 x 543 x 692 cm |
+
+**Lo que NO se toco, y conviene que siga asi:** los cuatro
+`Claro_Angel_Vigilante1/2`, `_Lancero` y `_Arquero` comparten la malla de
+placeholder `SM_DA_AngelV2` con las estatuas, **pero son la hueste de enemigos**, no
+decoracion. Filtrar por malla habria sido un error; hay que ir por nombre.
+
+Se conservan `Luz_Altar` y `Puente_Luz_Portal_L`/`_R`: siguen iluminando el mismo punto.
+
+**Sigue habiendo placeholders de silueta sin sustituir**, por si interesan: `SM_Cassiel` es
+un `Plane` recortado junto al `NPC_Cassiel` de verdad, `Mirador_Estatua_Sariel` es otro
+recorte junto a `NPC_Sariel`, y `Puente_Angel_Gigante` es la silueta blanca de 153 m del
+fondo del puente.
+
+### El problema de tamano, que ya son cuatro piezas
+
+Tripo exporta el FBX **sin decimar** si no se le pide otra cosa, y eso da `.uasset` que **no
+caben en GitHub**, cuyo limite duro son 100 MB por fichero:
+
+| Asset | Vertices | Peso | Estado |
+|---|---|---|---|
+| `SK_DA_Puerta_Claro` | 1.009.712 | 227,6 MB | **ya commiteado** (sesion anterior) |
+| `SK_DA_Coloso_Angel_V2` | — | 217,6 MB | **ya commiteado** (sesion anterior) |
+| `SK_DA_Rotonda_Gazebo` | 1.014.955 | 230 MB | excluido hoy en `.gitignore` |
+| `SK_DA_Puerta_Templo` | 1.041.136 | 233 MB | excluido hoy en `.gitignore` |
+
+Los dos primeros **estan dentro de commits que aun no se han subido**, asi que el push
+entero se rechaza. Ver el apartado siguiente.
+
 ## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
+
+### 0. El push esta bloqueado y hay que decidir como
+
+`git push` fallara mientras `SK_DA_Puerta_Claro.uasset` (227,6 MB, commit `0162ab5`) y
+`SK_DA_Coloso_Angel_V2.uasset` (217,6 MB, commit `108aafb`) sigan dentro del historial sin
+subir. Como **no se han subido nunca**, reescribir esos commits es seguro: nadie mas los
+tiene. Tres caminos:
+
+1. **Sacarlos del historial** con `git filter-repo`, añadirlos al `.gitignore` y
+   documentarlos en el README como "instalalo aparte", que es la regla que ya se sigue con
+   los packs de pago. El repo se queda pequeño. **Es lo mas coherente con como esta montado.**
+2. **Git LFS.** Migrar esos blobs. Ojo: los cuatro assets gordos suman ~900 MB y la cuota
+   gratis de GitHub es 1 GB de almacenamiento y 1 GB de trafico al mes.
+3. **Reexportar decimado desde Tripo** los cuatro y reimportar. Es lo que habria que hacer
+   de todos modos: un millon de vertices en un prop no lo justifica nada, y la VRAM sigue
+   1787 MB pasada. Resuelve el problema de raiz, pero rehace trabajo.
+
+Lo demas del repo esta commiteado y limpio: **21 commits pendientes**, sin nada de terceros
+y sin ningun fichero por encima de 90 MB entre lo nuevo.
 
 **El telon 360 esta cerrado.** Cupula en z=0, 230 montes ocultos y 6 encendidos como plano
 intermedio en el Jardin, nube volumetrica apagada, coloso arreglado.
