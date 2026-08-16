@@ -20,7 +20,7 @@ import json
 # Se escribe **un campo por llamada**: el setter de structs solo aplica el primero.
 
 BASE = {"x": 60.0, "y": 60.0, "z": 90.0}   # la caja del blueprint sin escalar
-MARGEN = 1.25
+MARGEN = 1.6
 
 ZONAS = {
     "santuario": {"li": "LI_06_SantuarioMalkuth",
@@ -29,7 +29,7 @@ ZONAS = {
                 "asset": "/Game/DarkAngels/Maps/L_DA_Malkuth_Mirador_Sub"},
 }
 
-CUAL = "mirador"
+CUAL = "santuario"
 
 
 def call(tool, args):
