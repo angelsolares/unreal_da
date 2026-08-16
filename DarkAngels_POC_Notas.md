@@ -6888,7 +6888,47 @@ vera referencias rotas hasta reimportarlos.
 rondan el millon de vertices porque el FBX sale sin decimar, y ademas la VRAM sigue 1787 MB
 pasada.
 
-## Salto rapido de zona en el HUD: a medias, con el porque (2026-08-15)
+## Salto rapido de zona en el HUD: TERMINADO (2026-08-15)
+
+Montado y compilando. **Teclas 1-9 y 0** saltan a cada zona, con la leyenda dibujada pegada
+al borde derecho. Las dos funciones viven en `BP_DA_HUD`:
+
+- **`SaltoZonas_Dibujar`** — escrita por DSL, solo dibuja sobre `self`, que es el caso que el
+  DSL hace bien. Se llama desde `ReceiveDrawHUD`.
+- **`SaltoZonas_Tick`** — **montada nodo a nodo** (32 nodos), porque necesita targets. Se
+  llama desde `EventTick`.
+
+Recetas en `Tools/MCP/hud_salto_zonas.py` (construye las dos funciones) y
+`Tools/MCP/hud_enganchar.py` (mete las dos llamadas en el EventGraph). Quitarlo todo es
+borrar las dos funciones y sus dos nodos de llamada.
+
+### Las cinco trampas del toolset de Blueprints, que costaron toda la tarde
+
+1. **El DSL no conecta los pines `Target`.** Reserva el pin llamado `self` y lo ata al propio
+   blueprint, asi que **no puede llamar funciones sobre otros objetos**. Probado posicional,
+   `:self` y `:Target`: los dos primeros compilan con *"This blueprint (self) is not a
+   PlayerController, therefore ' Target ' must have a connection"* y el tercero da
+   *"Unknown input pin"*. La salida es `create_node` + `connect_pins`, que usan
+   `PinID {direction, index_id, node}` y si permiten conectar el target.
+2. **`read_graph_dsl` no devuelve algo que `write_graph_dsl` acepte.** El lector saca los
+   pines literales como `(bind _returnvalue_1 0.5)` y el escritor los rechaza con
+   *"expression produced no output pin"*. **No se puede leer un grafo, retocarlo y
+   reescribirlo.**
+3. **El escritor compila en cada escritura**, asi que un grafo que no compila **no se puede
+   ni vaciar**. La salida es `remove_function_graph` y volver a crearla.
+4. **Hay que usar la ruta construida a mano** (`<blueprint>:<NombreFuncion>`), **no el
+   `refPath` que devuelve `add_function_graph`**: con ese, `write_graph_dsl` no encuentra el
+   nodo de entrada y falla con *"AddEvent|<nombre> does not exist"*.
+5. **En un nodo de EVENTO el pin de ejecucion es el de indice 1**, no el 0: el 0 es el
+   `OutputDelegate`. Conectar al 0 no da error y simplemente no hace nada.
+
+Y dos detalles de nombres: el tipo para llamar a una funcion propia es
+`CallFunction|<Nombre>` **sin guiones bajos** (`SaltoZonas_Dibujar` ->
+`CallFunction|SaltoZonasDibujar`), y para el ancho de pantalla hay que usar
+**`Viewport|GetViewportSize`** —sin pines de entrada, devuelve Vector2D— porque
+`HUD|GetViewportSize` resuelve a un nodo cuyo Target es un PlayerController.
+
+## Como se llego hasta aqui (2026-08-15)
 
 **El objetivo:** botones/teclas para saltar a cualquier zona y poder verlas en juego.
 
