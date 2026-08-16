@@ -1,6 +1,6 @@
 import json
 
-ETIQUETA = "LI_07_PuenteAscendente"
+ETIQUETA = "LI_03_MiradorSariel"
 DESCARTAR = False
 
 

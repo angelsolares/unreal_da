@@ -7050,6 +7050,63 @@ apunta a C2, que es el tramo central del pasillo de Gabriel.
 El borrador del script, con la leyenda ya escrita y las zonas en una tabla facil de tocar,
 esta en `Tools/MCP/hud_salto_zonas.py`.
 
+## Sariel bajado del pedestal: HECHO PERO SIN GUARDAR (2026-08-15, cierre)
+
+**Lo que pidio Angel:** bajar a Sariel de su base, quitar la base y ponerlo junto a la llave.
+Las escalas se dejan como estan.
+
+**Antes, la medida que aclaro el malentendido.** Parecia que los NPC eran mucho mas grandes
+que el jugador, y no lo son:
+
+| | Malla base | Escala | Alto final |
+|---|---|---|---|
+| **Jugador** (`SKM_Malakh_Own`) | 99,8 | **1,70** | **170** |
+| NPC Sariel / Cassiel | 98,4 / 98,3 | 1,829 / 1,831 | 180 |
+| Enemigos Vigilante / Lancero / Arquero | ~98,4 | ~1,828 | 180 |
+
+Los cinco NPC y enemigos estan clavados en 180 y el jugador en 170: **6% de diferencia**. Lo
+que hacia parecer gigante a Sariel era **`Mirador_EstatuaBase`**, un pedestal de 200 x 200 x
+**150** sobre el que estaba subido.
+
+**Los valores nuevos** (el suelo del mirador esta a z=318 en toda esa zona):
+
+- `Mirador_EstatuaBase` — borrado
+- `NPC_Sariel` — de (-16000, -22850, **468**) a **(-16150, -23180, 322)**, junto a la llave
+- `Mirador_Luz_Estatua` — de (-16000, -23050, 620) a (-16150, -23120, 560)
+
+Receta en `Tools/MCP/mirador_bajar_sariel.py`.
+
+### Pero NO se pudo guardar: el `.umap` del Mirador esta bloqueado
+
+Se cumplio la profecia de la nota del 14/08. Tras muchos ciclos `edit`/`commit` sobre **el
+mismo** Level Instance en una sesion, Unreal filtra un handle sobre su `.umap` y a partir de
+ahi **el guardado falla para siempre hasta reiniciar el editor**:
+
+```
+MoveFile was unable to move '...L_DA_Malkuth_Mirador_Sub.umap' ... (Error Code 32)
+Error saving '...L_DA_Malkuth_Mirador_Sub.umap'
+Message dialog: The asset ... failed to save.
+```
+
+`commit_level_instance` **devuelve exito igualmente** y encima recarga el LI, asi que los
+cambios se deshacen solos y sin un solo error visible. **El ultimo guardado bueno del Mirador
+es el de las 19:02:22** (la llave apoyada en el plinto); todo lo posterior se perdio.
+
+**Para retomarlo:** reiniciar el editor, lanzar `ModelContextProtocol.StartServer` y volver a
+pasar `mirador_bajar_sariel.py`. Son treinta segundos.
+
+### Dos trampas nuevas, y las dos costaron un pase entero de trabajo
+
+1. **Nunca editar con PIE corriendo.** El primer intento se hizo con PIE activo: `find_actors`
+   devuelve entonces los actores del **mundo de PIE**, y todo lo que se les haga se pierde al
+   parar. Se detecta porque las rutas llevan `UEDPIE_0_`, y porque `is_dirty` sobre el `.umap`
+   contesta *"Asset does not exist"*.
+2. **Filtrar por la ruta del asset, no por el nombre del sublevel.** Con el LI en edicion
+   conviven dos copias de cada actor: la instanciada en `/Temp/...<Sub>_LevelInstance_...` y
+   la real en `/Game/.../<Sub>`. Un filtro tipo `if SUBNIVEL in refPath` **casa con las dos**,
+   y si toca la de `/Temp` el paquete **ni se marca sucio**: el commit recarga y todo vuelve
+   atras. La comprobacion rapida es mirar `is_dirty` **antes** de commitear.
+
 ## PROXIMA SESION — empezar por aqui (escrito 2026-08-15)
 
 **El telon 360 esta cerrado.** Cupula en z=0, 230 montes ocultos y 6 encendidos como plano
