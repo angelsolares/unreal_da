@@ -61,10 +61,16 @@ NPCS = {
         "asset": "/Game/DarkAngels/Maps/L_DA_Malkuth_Santuario_Sub",
         "npc": "NPC_Cassiel",
         "alas": "Cassiel_Alas",
+        # OJO: LAS DE CASSIEL LAS REMATO ANGEL A MANO EN EL EDITOR.
+        # Les puso escala relativa 100 (mundo 183,09, o sea ~139 de envergadura,
+        # no los 200 que dejaba el script) y una rotacion propia respecto al
+        # socket. **Relanzar este script sobre Cassiel le pisa ese trabajo**:
+        # antes de hacerlo, o se copian aqui sus valores, o se pregunta.
+        # La envergadura de abajo ya refleja lo que hay puesto.
+        #
         # Las suyas son mas ALTAS que anchas (0,76 x 0,30 x 0,98), al reves que
-        # el emblema de Sariel: con 200 de envergadura salen unos 258 de alto,
-        # frente a los 194 que mide el. Si quedan pasadas, bajar este numero.
-        "envergadura": 200.0,
+        # el emblema de Sariel; por eso pedian menos envergadura que el.
+        "envergadura": 139.0,
         "ancho_malla": 0.76,
         "altura": 0.74,
         "detras": 36.0,
