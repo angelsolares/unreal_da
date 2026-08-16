@@ -52,6 +52,7 @@ NPCS = {
         "npc": "NPC_Sariel",
         "alas": "Sariel_Alas",
         "envergadura": 230.0,    # ancho total buscado, en unidades de mundo
+        "ancho_malla": 0.98,     # lo que mide la malla en X a escala 1
         "altura": 0.74,          # que fraccion de su altura: los omoplatos
         "detras": 36.0,          # el eje de las alas cae justo sobre su espalda
     },
@@ -64,6 +65,7 @@ NPCS = {
         # el emblema de Sariel: con 200 de envergadura salen unos 258 de alto,
         # frente a los 194 que mide el. Si quedan pasadas, bajar este numero.
         "envergadura": 200.0,
+        "ancho_malla": 0.76,
         "altura": 0.74,
         "detras": 36.0,
     },
@@ -98,6 +100,22 @@ def caja(a):
     return {"min": [round(b["min"][k], 1) for k in ("x", "y", "z")],
             "max": [round(b["max"][k], 1) for k in ("x", "y", "z")],
             "tamano": [round(b["max"][k] - b["min"][k], 1) for k in ("x", "y", "z")]}
+
+
+def veredicto(yaw, eje_envergadura, eje_hombros):
+    """La comprobacion por caja SOLO vale con el personaje a yaw multiplo de 90.
+
+    En diagonal la caja alineada a ejes se infla en los dos y el eje ancho deja
+    de significar nada: a Cassiel, a yaw 124,2, le salio 83,6 x 86,2 y el
+    veredicto habria sido puro azar. Mas vale decir 'no lo se' que mentir.
+    """
+    desvio = min(abs((yaw % 90.0)), 90.0 - abs((yaw % 90.0)))
+    if desvio > 5.0:
+        return ("NO CONCLUYENTE: el personaje esta a %.1f grados, en diagonal. "
+                "La caja no distingue; hay que mirarlo en una captura." % yaw)
+    if eje_envergadura == eje_hombros:
+        return "bien: la envergadura cae sobre los hombros"
+    return "MAL: la envergadura va de pecho a espalda, revisar YAW_EXTRA"
 
 
 def run():
@@ -144,14 +162,16 @@ def run():
     ancho_y = b_s["max"]["y"] - b_s["min"]["y"]
     eje_hombros = "X" if ancho_x > ancho_y else "Y"
 
-    # Escala: se mide lo que ocupan AHORA y se corrige por regla de tres, que es
-    # inmune a como se hereden las escalas del padre.
+    # Escala: se calcula, NO se mide. Medir la caja parecia mas robusto, pero la
+    # caja va alineada a ejes: con el personaje en diagonal sobreestima el ancho
+    # —a Cassiel, a 124 grados, le daba 200 cuando de verdad median 190— y cada
+    # relanzamiento las encogia un 5%. Con el ancho de la malla a escala 1 sale
+    # exacto y a la primera, sea cual sea el angulo.
     antes = at("get_actor_bounds", {"actor": alas})
     t_a = at("get_actor_transform", {"actor": alas})
+    nueva = round(ENVERGADURA / n["ancho_malla"], 2)
     ancho_actual = max(antes["max"]["x"] - antes["min"]["x"],
                        antes["max"]["y"] - antes["min"]["y"])
-    factor = ENVERGADURA / ancho_actual if ancho_actual > 0.01 else 1.0
-    nueva = round(t_a["scale"]["x"] * factor, 2)
 
     at("set_actor_transform", {"actor": alas,
                                "xform": {"location": t_a["location"],
@@ -184,9 +204,7 @@ def run():
                     "eje_envergadura": eje_envergadura,
                     "caja": c_alas},
            "socket": "Alas, sobre spine_05",
-           "ORIENTACION": ("bien: la envergadura cae sobre los hombros"
-                           if eje_envergadura == eje_hombros
-                           else "MAL: la envergadura va de pecho a espalda, revisar YAW_EXTRA")}
+           "ORIENTACION": veredicto(yaw, eje_envergadura, eje_hombros)}
 
     if directo:
         call("editor_toolset.toolsets.asset.AssetTools.save_assets", {"asset_paths": [ASSET]})
