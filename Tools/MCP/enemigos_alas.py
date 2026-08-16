@@ -48,21 +48,23 @@ ENEMIGOS = [
 ]
 
 ESCALA_MALLA = 1.8273    # la de `CharacterMesh0`, que el componente hereda
-ALTURA = -10.0           # ajuste fino sobre el hueso, en unidades del hueso
+# La escala final de las alas, la que ajusto Angel a ojo en el editor. Con 0,5473
+# saldrian a sus 215 originales; 0,7 las deja algo mas grandes, que es como las
+# quiso.
+ESCALA_ALAS = 0.7
+ALTURA = 0.0             # sobre el hueso; el socket ya cae donde toca
 
-# LA ROTACION NO ES CERO, Y NO ES CAPRICHO. Los huesos de la columna del
-# Mannequin llevan su **X a lo largo del hueso**, o sea apuntando hacia la
-# cabeza. Colgadas sin rotar, las alas salen de canto: su eje de envergadura
-# —que es su X local, 215 de los 215x46x61 que miden— apunta hacia ARRIBA, y
-# queda una lamina vertical atravesando al personaje de delante atras.
+# LA ROTACION NO ES CERO. Los huesos de la columna del Mannequin llevan su **X a
+# lo largo del hueso**, o sea apuntando hacia la cabeza. Colgadas sin rotar, las
+# alas salen de canto: su eje de envergadura —su X local, 215 de los 215x46x61
+# que miden— apunta hacia ARRIBA, y queda una lamina vertical atravesando al
+# personaje de delante atras.
 #
-# Hace falta la permutacion ciclica de ejes  X->Y, Y->Z, Z->X, que en matriz es
-#     [0 0 1]
-#     [1 0 0]
-#     [0 1 0]
-# Resolviendo esa matriz para el orden de Unreal —R = Rz(yaw)·Ry(pitch)·Rx(roll)—
-# salen pitch 0, yaw 90, roll 90.
-ROTACION = {"pitch": 0.0, "yaw": 90.0, "roll": 0.0}
+# **pitch -90** es el valor bueno, medido en el editor, no deducido. Yo intente
+# derivarlo componiendo matrices y me sali con un yaw 90 que dejaba las alas
+# tumbadas: no merece la pena pelearse con el orden de Euler de Unreal cuando
+# arrastrar el gizmo y leer el numero tarda un minuto.
+ROTACION = {"pitch": -90.0, "yaw": 0.0, "roll": 0.0}
 
 
 def call(tool, args):
@@ -89,7 +91,7 @@ def run():
     if call("EditorToolset.EditorAppToolset.IsPIERunning", {}):
         return {"error": "PIE esta corriendo: parar antes o los cambios se pierden"}
 
-    escala = round(1.0 / ESCALA_MALLA, 4)
+    escala = ESCALA_ALAS
     out = {"escala_relativa": escala, "hechos": []}
     guardar = []
 
@@ -164,6 +166,38 @@ def run():
         d["modo"] = leido["AnimationMode"]
         d["escala"] = [round(leido["RelativeScale3D"][k], 4) for k in ("x", "y", "z")]
         out["hechos"].append(d)
+
+    # 4. LAS INSTANCIAS YA COLOCADAS NO SE ENTERAN. Un actor que ya esta en el
+    #    nivel tiene sus valores serializados ahi, asi que cambiar el valor por
+    #    defecto de la clase **no lo actualiza**: se queda con el viejo. Es lo
+    #    que hacia que el viewport del Blueprint se viera bien y el nivel mal.
+    #    Aqui se les empuja el valor de la clase a mano.
+    out["instancias"] = []
+    for a in call("editor_toolset.toolsets.scene.SceneTools.find_actors",
+                  {"name": "", "tag": "", "collision_channels": []}):
+        clase = a["refPath"].split(".")[-1]
+        if not any(clase.startswith(e["bp"].split("/")[-1] + "_C") for e in ENEMIGOS):
+            continue
+        comp = None
+        for c in at("get_components", {"actor": a}):
+            if c["refPath"].split(".")[-1] == COMPONENTE:
+                comp = c
+        if comp is None:
+            continue
+        for eje in ROTACION:
+            ot("set_properties", {"instance": comp,
+                                  "values": json.dumps({"RelativeRotation": {eje: ROTACION[eje]}})})
+        for eje in ("x", "y", "z"):
+            ot("set_properties", {"instance": comp,
+                                  "values": json.dumps({"RelativeScale3D": {eje: ESCALA_ALAS}})})
+        ot("set_properties", {"instance": comp,
+                              "values": json.dumps({"RelativeLocation": {"z": ALTURA}})})
+        leido = json.loads(ot("get_properties", {"instance": comp,
+                                                 "properties": ["RelativeRotation", "RelativeScale3D"]}))
+        out["instancias"].append({
+            at("get_label", {"actor": a}): {
+                "rot": [leido["RelativeRotation"][k] for k in ("pitch", "yaw", "roll")],
+                "esc": round(leido["RelativeScale3D"]["x"], 4)}})
 
     call("editor_toolset.toolsets.asset.AssetTools.save_assets", {"asset_paths": guardar})
     out["sucios"] = [a for a in guardar
