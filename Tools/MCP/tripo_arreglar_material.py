@@ -18,15 +18,14 @@ RAIZ = "D:/Game Projects/Unreal DA/DarkAngelsPOC 5.8/ArtSource/Downloaded/Tripo/
 
 PIEZAS = [
     {
-        "material": "tripo_mat_3a144d4c",
+        "material": "tripo_mat_68e34835",
         # Las alas no viven en Props sino con los personajes.
         "carpeta": "/Game/DarkAngels/Characters/NPCs",
-        "metallic_nombre": "alas_sariel_metallic",
-        "metallic_fichero": RAIZ + "alas_sariel/tripo_convert_3a144d4c-6050-4172-ae48-2dba04a7ee50.fbm/winged_emblem_3d_model_metallic.JPEG",
-        # Plumas mas un emblema metalico en el centro: 0,3, un pelo por encima
-        # del 0,25 de los personajes, para que el herraje central luzca. Textura
-        # a 1024, la convencion de personajes, que la VRAM sigue muy pasada.
-        "atenuacion": 0.3,
+        "metallic_nombre": "alas_cassiel_metallic",
+        "metallic_fichero": RAIZ + "alas_cassiel/tripo_convert_68e34835-f0c6-48ff-8762-7d4938a9552b.fbm/angel_wings_3d_model_metallic.JPEG",
+        # Alas de pluma, sin herraje: 0,25, la atenuacion de los personajes. Las
+        # de Sariel llevan 0,3 porque tienen un emblema metalico en el centro.
+        "atenuacion": 0.25,
         "max_textura": 1024,
     },
 ]

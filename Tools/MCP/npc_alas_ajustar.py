@@ -55,16 +55,21 @@ NPCS = {
         "altura": 0.74,          # que fraccion de su altura: los omoplatos
         "detras": 36.0,          # el eje de las alas cae justo sobre su espalda
     },
-    # Cuando Cassiel tenga las suyas:
-    # "cassiel": {
-    #     "li": "LI_06_SantuarioMalkuth",
-    #     "asset": "/Game/DarkAngels/Maps/L_DA_Malkuth_Santuario_Sub",
-    #     "npc": "NPC_Cassiel", "alas": "Cassiel_Alas",
-    #     "envergadura": 230.0, "altura": 0.74, "detras": 36.0,
-    # },
+    "cassiel": {
+        "li": "LI_06_SantuarioMalkuth",
+        "asset": "/Game/DarkAngels/Maps/L_DA_Malkuth_Santuario_Sub",
+        "npc": "NPC_Cassiel",
+        "alas": "Cassiel_Alas",
+        # Las suyas son mas ALTAS que anchas (0,76 x 0,30 x 0,98), al reves que
+        # el emblema de Sariel: con 200 de envergadura salen unos 258 de alto,
+        # frente a los 194 que mide el. Si quedan pasadas, bajar este numero.
+        "envergadura": 200.0,
+        "altura": 0.74,
+        "detras": 36.0,
+    },
 }
 
-CUAL = "sariel"
+CUAL = "cassiel"
 
 YAW_EXTRA = 0.0         # ver la nota de arriba: las alas van al mismo yaw que el
 
