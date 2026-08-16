@@ -18,13 +18,15 @@ RAIZ = "D:/Game Projects/Unreal DA/DarkAngelsPOC 5.8/ArtSource/Downloaded/Tripo/
 
 PIEZAS = [
     {
-        "material": "tripo_mat_f88791cf",
-        "metallic_nombre": "baul_abierto_metallic",
-        "metallic_fichero": RAIZ + "tesoro_abierto/tripo_convert_f88791cf-c2fc-4b12-9fc8-1f5c72e42593.fbm/stone_treasure_chest_3d_model_metallic.JPEG",
-        # El cofre abierto. Mismos numeros que el cerrado (`tripo_mat_f26e5120`)
-        # para que los dos se vean identicos al intercambiarlos: piedra con
-        # herrajes, 0,25, y 1024 de textura.
-        "atenuacion": 0.25,
+        "material": "tripo_mat_3a144d4c",
+        # Las alas no viven en Props sino con los personajes.
+        "carpeta": "/Game/DarkAngels/Characters/NPCs",
+        "metallic_nombre": "alas_sariel_metallic",
+        "metallic_fichero": RAIZ + "alas_sariel/tripo_convert_3a144d4c-6050-4172-ae48-2dba04a7ee50.fbm/winged_emblem_3d_model_metallic.JPEG",
+        # Plumas mas un emblema metalico en el centro: 0,3, un pelo por encima
+        # del 0,25 de los personajes, para que el herraje central luzca. Textura
+        # a 1024, la convencion de personajes, que la VRAM sigue muy pasada.
+        "atenuacion": 0.3,
         "max_textura": 1024,
     },
 ]
@@ -54,7 +56,8 @@ def entrada(mat, prop):
 def run():
     salida = {}
     for p in PIEZAS:
-        mat = {"refPath": PROPS + "/" + p["material"] + "." + p["material"]}
+        carpeta = p["carpeta"] if "carpeta" in p else PROPS
+        mat = {"refPath": carpeta + "/" + p["material"] + "." + p["material"]}
         nodo = lambda n: {"refPath": mat["refPath"] + ":" + n}
         pasos = []
 
@@ -78,12 +81,12 @@ def run():
         # 3. El metallic de verdad, atenuado. Solo si no se hizo ya.
         if entrada(mat, "MP_Metallic") is None or "Multiply" not in str(entrada(mat, "MP_Metallic")):
             existentes = call("editor_toolset.toolsets.asset.AssetTools.find_assets",
-                              {"folder_path": PROPS, "name": p["metallic_nombre"], "recursive": False})
+                              {"folder_path": carpeta, "name": p["metallic_nombre"], "recursive": False})
             if existentes:
                 tex = {"refPath": existentes[0] + "." + p["metallic_nombre"]}
             else:
                 tex = call("editor_toolset.toolsets.texture.TextureTools.import_file",
-                           {"folder_path": PROPS, "asset_name": p["metallic_nombre"],
+                           {"folder_path": carpeta, "asset_name": p["metallic_nombre"],
                             "source_file": p["metallic_fichero"]})[0]
             poner({"refPath": tex["refPath"]}, {"SRGB": False, "CompressionSettings": "TC_Masks",
                                                 "MaxTextureSize": p["max_textura"]})
