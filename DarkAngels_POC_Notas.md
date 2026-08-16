@@ -6890,7 +6890,7 @@ pasada.
 
 ## Salto rapido de zona en el HUD: TERMINADO (2026-08-15)
 
-Montado y compilando. **Teclas 1-9 y 0** saltan a cada zona, con la leyenda dibujada pegada
+Montado y compilando. **Teclas F1-F10** saltan a cada zona, con la leyenda dibujada pegada
 al borde derecho. Las dos funciones viven en `BP_DA_HUD`:
 
 - **`SaltoZonas_Dibujar`** — escrita por DSL, solo dibuja sobre `self`, que es el caso que el
@@ -6898,9 +6898,39 @@ al borde derecho. Las dos funciones viven en `BP_DA_HUD`:
 - **`SaltoZonas_Tick`** — **montada nodo a nodo** (32 nodos), porque necesita targets. Se
   llama desde `EventTick`.
 
-Recetas en `Tools/MCP/hud_salto_zonas.py` (construye las dos funciones) y
-`Tools/MCP/hud_enganchar.py` (mete las dos llamadas en el EventGraph). Quitarlo todo es
-borrar las dos funciones y sus dos nodos de llamada.
+Recetas en `Tools/MCP/hud_salto_zonas.py` (construye las dos funciones),
+`Tools/MCP/hud_enganchar.py` (mete las dos llamadas en el EventGraph) y
+`Tools/MCP/hud_activar_debug.py` (las teclas y el actor activador).
+
+### Por que no funcionaba a la primera: BP_DA_HUD no se instanciaba
+
+El grafo estaba bien y compilaba, pero **no corria nada**. La cadena:
+
+- El `GlobalDefaultGameMode` del proyecto es **`BP_DCSGameMode`** (`Config/DefaultEngine.ini`),
+  no `BP_DA_GameMode`.
+- El `HUDClass` de ese GameMode es el **`HUD` pelado del motor**, que no dibuja nada.
+- El `DefaultGameMode` del World Settings del Master esta en **None**, asi que no lo corrige.
+- Quien deberia arreglarlo es **`BP_DA_HUDSpawner`**, que en su BeginPlay hace
+  `CreateWidget(WBP_DA_HUD)` + `ClientSetHUD(BP_DA_HUD)`... **pero ese actor no esta puesto
+  en el mapa**.
+
+O sea que **`BP_DA_HUD` es codigo muerto en juego**, y con el se pierden tambien el texto de
+objetivo y el banner de zona que dibuja. Por eso en PIE solo se ve el HUD de DCS.
+
+**Como se arreglo:** un actor propio y minimo, `BP_DA_DebugZonas`, colocado en el Master como
+`DEBUG_SaltoZonas`, que en BeginPlay solo hace `ClientSetHUD(BP_DA_HUD_C)`. Se eligio eso y
+**no** colocar el `BP_DA_HUDSpawner` entero **para no cambiar lo que se ve en juego**: el
+spawner ademas mete `WBP_DA_HUD` en pantalla, que se solaparia con el HUD de DCS.
+
+**Pendiente de decidir, aparte del debug:** que `WBP_DA_HUD` y el HUD del proyecto no salgan
+en juego es un problema de verdad, no del debug. O se coloca el spawner, o se pone
+`BP_DA_GameMode` en el World Settings del Master.
+
+### Y las teclas: los numeros ya estaban cogidos
+
+1-9 y 0 estan mapeados a los hechizos en el input de DCS (`IMC_Player`). Se pasaron a
+**F1-F10**, que estan libres: asi **no hay que desactivar nada** del input de terceros y
+quitar el debug no deja rastro.
 
 ### Las cinco trampas del toolset de Blueprints, que costaron toda la tarde
 
