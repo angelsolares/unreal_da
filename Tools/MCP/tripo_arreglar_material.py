@@ -18,9 +18,9 @@ RAIZ = "D:/Game Projects/Unreal DA/DarkAngelsPOC 5.8/ArtSource/Downloaded/Tripo/
 
 PIEZAS = [
     {
-        "material": "tripo_mat_357bce0e",
-        "metallic_nombre": "puerta_templo_metallic",
-        "metallic_fichero": RAIZ + "puerta_templo/tripo_convert_357bce0e-7716-4088-aa06-d237ea448caa.fbm/ancient_temple_doorway_3d_model_metallic.JPEG",
+        "material": "tripo_mat_2b6fd363",
+        "metallic_nombre": "puerta_yesod_metallic",
+        "metallic_fichero": RAIZ + "puerta_yesod/tripo_convert_2b6fd363-fe95-4074-8e12-8aa287128a8c.fbm/gothic_cathedral_3d_model_metallic.JPEG",
         # Piedra de templo, nada de metal. A 2048 porque es un landmark que se
         # mira de lejos y de cerca.
         "atenuacion": 0.15,

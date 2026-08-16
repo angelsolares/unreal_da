@@ -165,3 +165,5 @@ ThreeJSPOC/dist/
 Content/DarkAngels/Environment/Props/SK_DA_Rotonda_Gazebo.uasset
 # Misma historia que la rotonda: 233 MB, FBX sin decimar (1.041.136 vertices).
 Content/DarkAngels/Environment/Props/SK_DA_Puerta_Templo.uasset
+# Y la cuarta: 238 MB, FBX sin decimar (1.128.485 vertices).
+Content/DarkAngels/Environment/Props/SK_DA_Puerta_Yesod.uasset

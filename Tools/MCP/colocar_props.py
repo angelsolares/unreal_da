@@ -5,53 +5,38 @@ import json
 #
 # Las mallas de Tripo traen el **pivote en la base** y miden ~1 uu, asi que la
 # escala es directamente el tamano en centimetros y la z de destino es la cota
-# donde se apoyaban los placeholders.
+# donde se apoyaba el placeholder.
 #
-# Aqui la escala SI se calca del placeholder, porque el Gazebo ya estaba
-# compuesto: la rotonda encaja con la plataforma, la tableta con su luz y el
-# Fragmento con la cara del pedestal. Se iguala la dimension que manda en cada
-# pieza (ancho en la rotonda, alto en tableta y Fragmento).
+# Se calca el transform del placeholder y se iguala la dimension que manda en
+# cada pieza (el ancho en las que son mas anchas que altas, el alto en el resto).
+# Editar el bloque de constantes y lanzar.
 
 ETIQUETA = "LI_07_PuenteAscendente"
 SUBNIVEL = "L_DA_Malkuth_Puente_Sub"
 
-# La puerta del fondo del puente, la que Angel marco en rojo sobre la lamina 07.
+# El angel gigante del fondo del puente. Era `SM_SM_DA_AngelSilueta`, un recorte
+# plano de 1350 uu de grosor estirado a 15355 de ancho, y en las notas del 01/08
+# ya salia como "lee como cruz blanca".
 #
-# Lo que habia eran dos pilares sueltos, `Puente_Portal_L` y `_R`, de 216 x 216 x
-# 1104, a x=15500 y x=16500 con base en z=2866. O sea, 1216 uu de vano exterior.
-# Se sustituyen los dos por la puerta entera, centrada en x=16000.
+# Angel decidio reutilizar el coloso del Jardin: es el mismo angel de la lamina y
+# el asset ya esta importado, asi que no suma ni un byte al proyecto.
 #
-# `Puente_Luz_Portal_L` y `_R` NO se tocan: siguen enmarcando el vano.
-#
-# La malla mide 0,98 x 0,438 x 0,558 con el pivote en la base. Igualando el ancho
-# de los dos pilares: 1216 / 0,98 -> escala 1241, que deja la puerta en
-# 1216 x 543 x 692 cm. Menos alta que los pilares (1104) porque aquello eran
-# columnas y esto es un portico entero.
-
-# La fuente del Santuario, la que sale en la lamina delante de Cassiel.
-#
-# Lo que habia era un kitbash de cuatro piezas `GardenFountain*` de Megascans
-# apiladas —Base 0-56, Pie 56-146, Cuenco 146-187 y Aguja 187-290—, 275 uu de
-# ancho en total. Se sustituyen las cuatro por la malla unica.
-#
-# `Luz_Altar` NO se toca: sigue iluminando el mismo punto.
-#
-# La malla mide 0,712 x 0,979 x 0,551 con el pivote en la base. Se iguala el
-# ancho del conjunto anterior: 275 / 0,979 -> escala 281, que deja la fuente en
-# 200 x 275 x 155 cm. Es mas baja que el apilado porque aquella tenia encima una
-# aguja de 100 uu; esta es una fuente de verdad, a la altura del pecho.
+# El placeholder medía 8190 de alto con base en z=2621. La malla del coloso mide
+# 0,735 x 0,699 x 0,979 (deducido del actor del Jardin: 14072 x 13387 x 18750 a
+# escala 19143). Igualando el alto: 8190 / 0,979 -> escala 8365.
 CAMBIOS = [
     {
-        "quitar": "Puente_Portal_L",
-        "poner": "/Game/DarkAngels/Environment/Props/SK_DA_Puerta_Templo",
-        "nombre": "Puente_Puerta_Templo",
-        "loc": {"x": 16000.0, "y": 66700.0, "z": 2866.0},
-        "rot": {"pitch": 0.0, "yaw": 0.0, "roll": 0.0},
-        "escala": 1241.0,
+        "quitar": "Puente_Angel_Gigante",
+        "poner": "/Game/DarkAngels/Characters/Colosos/SK_DA_Coloso_Angel_V2",
+        "nombre": "Puente_Angel_Gigante",
+        "loc": {"x": 16000.0, "y": 76000.0, "z": 2621.0},
+        "rot": {"pitch": 0.0, "yaw": -90.0, "roll": 0.0},
+        "escala": 8365.0,
     },
 ]
-# El segundo pilar se borra sin sustituto: la puerta cubre los dos.
-SOLO_BORRAR = ["Puente_Portal_R"]
+
+# Actores que se borran sin poner nada en su lugar.
+SOLO_BORRAR = []
 
 
 def call(tool, args):
@@ -79,7 +64,7 @@ def run():
     call("editor_toolset.toolsets.scene.SceneTools.edit_level_instance", {"level_instance": li})
 
     sueltos = []
-    for nom in globals().get("SOLO_BORRAR", []):
+    for nom in SOLO_BORRAR:
         for a in find(nom):
             if SUBNIVEL in a["refPath"] and label(a) == nom:
                 if call("editor_toolset.toolsets.scene.SceneTools.remove_from_scene", {"actor": a}):
