@@ -1,6 +1,6 @@
 import json
 
-ETIQUETA = "LI_05_RuinasGazebo"
+ETIQUETA = "LI_07_PuenteAscendente"
 DESCARTAR = False
 
 

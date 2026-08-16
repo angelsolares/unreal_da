@@ -12,39 +12,46 @@ import json
 # Fragmento con la cara del pedestal. Se iguala la dimension que manda en cada
 # pieza (ancho en la rotonda, alto en tableta y Fragmento).
 
-ETIQUETA = "LI_05_RuinasGazebo"
-SUBNIVEL = "L_DA_Malkuth_Gazebo_Sub"
+ETIQUETA = "LI_07_PuenteAscendente"
+SUBNIVEL = "L_DA_Malkuth_Puente_Sub"
 
+# La puerta del fondo del puente, la que Angel marco en rojo sobre la lamina 07.
+#
+# Lo que habia eran dos pilares sueltos, `Puente_Portal_L` y `_R`, de 216 x 216 x
+# 1104, a x=15500 y x=16500 con base en z=2866. O sea, 1216 uu de vano exterior.
+# Se sustituyen los dos por la puerta entera, centrada en x=16000.
+#
+# `Puente_Luz_Portal_L` y `_R` NO se tocan: siguen enmarcando el vano.
+#
+# La malla mide 0,98 x 0,438 x 0,558 con el pivote en la base. Igualando el ancho
+# de los dos pilares: 1216 / 0,98 -> escala 1241, que deja la puerta en
+# 1216 x 543 x 692 cm. Menos alta que los pilares (1104) porque aquello eran
+# columnas y esto es un portico entero.
+
+# La fuente del Santuario, la que sale en la lamina delante de Cassiel.
+#
+# Lo que habia era un kitbash de cuatro piezas `GardenFountain*` de Megascans
+# apiladas —Base 0-56, Pie 56-146, Cuenco 146-187 y Aguja 187-290—, 275 uu de
+# ancho en total. Se sustituyen las cuatro por la malla unica.
+#
+# `Luz_Altar` NO se toca: sigue iluminando el mismo punto.
+#
+# La malla mide 0,712 x 0,979 x 0,551 con el pivote en la base. Se iguala el
+# ancho del conjunto anterior: 275 / 0,979 -> escala 281, que deja la fuente en
+# 200 x 275 x 155 cm. Es mas baja que el apilado porque aquella tenia encima una
+# aguja de 100 uu; esta es una fuente de verdad, a la altura del pecho.
 CAMBIOS = [
     {
-        "quitar": "Gazebo_Rotonda",
-        "poner": "/Game/DarkAngels/Environment/Props/SK_DA_Rotonda_Gazebo",
-        "nombre": "Gazebo_Rotonda",
-        # Placeholder: 800 x 800 x 220 con base en 147. Malla: 0,978 de ancho.
-        "loc": {"x": 64000.0, "y": 16650.0, "z": 147.0},
+        "quitar": "Puente_Portal_L",
+        "poner": "/Game/DarkAngels/Environment/Props/SK_DA_Puerta_Templo",
+        "nombre": "Puente_Puerta_Templo",
+        "loc": {"x": 16000.0, "y": 66700.0, "z": 2866.0},
         "rot": {"pitch": 0.0, "yaw": 0.0, "roll": 0.0},
-        "escala": 818.0,
-    },
-    {
-        "quitar": "Gazebo_Tableta",
-        "poner": "/Game/DarkAngels/Environment/Props/SK_DA_Tableta_Gazebo",
-        "nombre": "Gazebo_Tableta",
-        # Placeholder: 120 x 42 x 220 con base en 202. Malla: 0,979 de alto.
-        "loc": {"x": 64000.0, "y": 16920.0, "z": 202.0},
-        "rot": {"pitch": 0.0, "yaw": 180.0, "roll": 0.0},
-        "escala": 225.0,
-    },
-    {
-        "quitar": "Gazebo_Fragmento",
-        "poner": "/Game/DarkAngels/Environment/Props/SK_DA_Fragmento",
-        "nombre": "Gazebo_Fragmento",
-        # Placeholder: 64 x 63 x 110 con base en 282, que es la cara del
-        # Gazebo_Pedestal (202 + 80). Malla: 0,975 de alto.
-        "loc": {"x": 64000.0, "y": 16480.0, "z": 282.0},
-        "rot": {"pitch": 0.0, "yaw": 30.0, "roll": 0.0},
-        "escala": 113.0,
+        "escala": 1241.0,
     },
 ]
+# El segundo pilar se borra sin sustituto: la puerta cubre los dos.
+SOLO_BORRAR = ["Puente_Portal_R"]
 
 
 def call(tool, args):
@@ -70,6 +77,13 @@ def run():
         return {"error": "no encontrado " + ETIQUETA}
 
     call("editor_toolset.toolsets.scene.SceneTools.edit_level_instance", {"level_instance": li})
+
+    sueltos = []
+    for nom in globals().get("SOLO_BORRAR", []):
+        for a in find(nom):
+            if SUBNIVEL in a["refPath"] and label(a) == nom:
+                if call("editor_toolset.toolsets.scene.SceneTools.remove_from_scene", {"actor": a}):
+                    sueltos.append(nom)
 
     hecho = []
     for c in CAMBIOS:
@@ -104,4 +118,4 @@ def run():
             "cima_z": round(b["max"]["z"]),
         })
 
-    return {"li": ETIQUETA, "cambios": hecho}
+    return {"li": ETIQUETA, "cambios": hecho, "borrados_sin_sustituto": sueltos}

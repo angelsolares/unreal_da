@@ -163,3 +163,5 @@ ThreeJSPOC/dist/
 # hasta reexportarlo decimado desde Tripo hay que importarlo a mano.
 # ---------------------------------------------------------------
 Content/DarkAngels/Environment/Props/SK_DA_Rotonda_Gazebo.uasset
+# Misma historia que la rotonda: 233 MB, FBX sin decimar (1.041.136 vertices).
+Content/DarkAngels/Environment/Props/SK_DA_Puerta_Templo.uasset

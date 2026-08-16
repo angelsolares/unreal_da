@@ -18,28 +18,11 @@ RAIZ = "D:/Game Projects/Unreal DA/DarkAngelsPOC 5.8/ArtSource/Downloaded/Tripo/
 
 PIEZAS = [
     {
-        "material": "tripo_mat_4081165b",
-        "metallic_nombre": "fragmento_metallic",
-        "metallic_fichero": RAIZ + "fragmento/tripo_convert_4081165b-8da2-41c9-b8e1-2102556e0133.fbm/fantasy_crystal_artifact_3d_model_metallic.JPEG",
-        # Montura de oro sobre cristal: es la pieza con mas metal de todas.
-        "atenuacion": 0.6,
-        "max_textura": 1024,
-    },
-    {
-        "material": "tripo_mat_af118a2e",
-        "metallic_nombre": "tableta_metallic",
-        "metallic_fichero": RAIZ + "tableta/tripo_convert_af118a2e-9173-46c2-b798-c18e76facb68.fbm/stone_tombstone_3d_model_metallic.JPEG",
-        # Piedra grabada, nada de metal.
-        "atenuacion": 0.15,
-        # El objetivo de la estacion es LEER la tableta: la inscripcion tiene que
-        # aguantar de cerca, asi que aqui no se recorta a 1024.
-        "max_textura": 2048,
-    },
-    {
-        "material": "tripo_mat_7f3cc299",
-        "metallic_nombre": "rotonda_metallic",
-        "metallic_fichero": RAIZ + "rotonda/tripo_convert_7f3cc299-5b24-4e87-acf1-06556b1b6ffb.fbm/classical_ruin_columns_3d_model_metallic.JPEG",
-        # Marmol erosionado.
+        "material": "tripo_mat_357bce0e",
+        "metallic_nombre": "puerta_templo_metallic",
+        "metallic_fichero": RAIZ + "puerta_templo/tripo_convert_357bce0e-7716-4088-aa06-d237ea448caa.fbm/ancient_temple_doorway_3d_model_metallic.JPEG",
+        # Piedra de templo, nada de metal. A 2048 porque es un landmark que se
+        # mira de lejos y de cerca.
         "atenuacion": 0.15,
         "max_textura": 2048,
     },
