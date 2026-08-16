@@ -25,8 +25,12 @@ ZONAS = {
     "santuario": {
         "li": "LI_06_SantuarioMalkuth",
         "asset": "/Game/DarkAngels/Maps/L_DA_Malkuth_Santuario_Sub",
+        # Cassiel usa la de ASENTIR, no la de hablar: no tiene boca, y el texto
+        # que sale al interactuar dice que inclina la cabeza. La de hablar
+        # (A_DA_Hablar_Cassiel) se queda importada, que en algun momento se
+        # usaran las dos segun el momento de la conversacion.
         "enlaces": [("Interact_Cassiel", "NPC_Cassiel",
-                     "A_DA_Hablar_Cassiel", "A_DA_Idle_Cassiel")],
+                     "A_DA_Asentir_Cassiel", "A_DA_Idle_Cassiel")],
     },
 }
 
