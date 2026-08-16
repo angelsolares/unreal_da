@@ -7271,10 +7271,101 @@ level instance ... which is not in edit mode"*. Los scripts miran
   minimo para que el blanco no quede imposible. **Una zona por lanzamiento.**
 - `Tools/MCP/interaccion_ajustar_cajas.py` — redimensiona volumenes ya puestos.
 
+## Modo inspeccion: la camara se planta delante del objeto (2026-08-16)
+
+Ya en `Interact`: al pulsar **E** sobre un interactuable la camara se pone
+delante del objeto y lo encuadra entero; **la misma E vuelve al juego**.
+Aprobado por Angel al segundo intento.
+
+### El truco: no se toca la camara del jugador
+
+El actor lleva un `CameraComponent` colgado en su **-X local**. Al entrar se
+**gira el actor** para que ese -X apunte al jugador, con lo que la camara aparece
+entre jugador y objeto, encarandolo, y despues `SetViewTargetWithBlend` hacia el
+propio actor con 0,35 s de transicion. **Girar el actor es gratis** porque no
+tiene malla visible: es solo volumen. Al salir, la vista vuelve al pawn.
+
+### Los tres fallos de la primera version, y por que
+
+1. **La camara salia siempre picada, mirando el objeto desde arriba.** Se copiaba
+   la rotacion **entera** de `FindLookAtRotation`. El origen del jugador esta a
+   la altura del pecho y el del objeto en el suelo, asi que el pitch miraba
+   siempre hacia abajo. **Arreglo: romper el rotator y copiar solo el YAW**
+   (`BreakRotator` -> `MakeRotator` con Roll y Pitch a 0). Con eso queda a nivel
+   y de frente, que es el angulo que se quiere de un objeto.
+2. **Se colaban el escudo y la espada del jugador en el encuadre.** No basta con
+   esconder el pawn: hay que recorrer `GetAttachedActors` **en recursivo** y
+   esconder tambien lo que lleve encajado.
+3. **ESC no vale como tecla de salida.** En el editor Escape **para la sesion de
+   PIE**, asi que dentro del editor no hay forma de probarlo. Se quito entero
+   —tecla y cartel— y `Interact` paso a ser un **conmutador**: la misma E entra y
+   sale.
+
+### El aviso, sin HUD propio
+
+`GetInteractionMessage` devuelve **"Aceptar"** mientras `Inspeccionando` esta a
+true, y el verbo normal si no:
+
+```
+(return (Utilities|String|SelectString "Aceptar" (GetVerbo) (GetInspeccionando)))
+```
+
+Asi el cartel de DCS pasa solo de `[E] Recoger` a `[E] Aceptar` y **sobra
+dibujar nada aparte**. Hubo un `Inspeccion_Dibujar` en `BP_DA_HUD` que pintaba
+"ESC para salir" abajo al centro, y se retiro: un sitio menos donde mirar.
+Detectaba si estabamos dentro comparando el **view target del PlayerController
+con el pawn**, que es un truco util por si vuelve a hacer falta —no necesita que
+nadie le escriba nada al HUD, y valdria con cualquier cosa que robe la camara.
+
+### El encuadre
+
+La distancia sale del tamanio de la caja `Zona` y del FOV. Con FOV 90 la mitad
+del angulo horizontal es 45 grados (tan = 1) y en vertical, con 16:9, tan =
+0,5625. **Manda casi siempre el vertical**, que es el lado corto:
+
+```
+d = max(ancho/2, alto*0.889) * 1.6
+```
+
+El margen empezo en 1,25 y se subio a 1,6 porque el cofre quedaba encima. La
+altura de la camara es 90 sin escalar, el mismo valor que la caja, que escalado
+cae justo a media altura del objeto.
+
+| Objeto | Ancho x alto | Camara a |
+|---|---|---|
+| Llave | 80 x 70 | 100 |
+| Cofre del Mirador | 129 x 70 | 104 |
+| Cofre del Santuario | 140 x 90 | 128 |
+| Sariel | 86 x 181 | 258 |
+| Cassiel | 100 x 190 | 270 |
+
+**Al anadir un interactuable nuevo hay que relanzar `interaccion_encuadre.py`**
+en su zona, o su camara se queda con los 220 por defecto.
+
+### Scripts
+
+- `Tools/MCP/interaccion_inspeccionar.py` — monta el conmutador entero. Borra
+  antes todo nodo del EventGraph que no sea un evento, asi que **es rehacer, no
+  parchear**: si se cambia algo, se cambia aqui y se relanza.
+- `Tools/MCP/interaccion_encuadre.py` — calcula la distancia de cada camara. Una
+  zona por lanzamiento.
+- `Tools/MCP/hud_quitar_inspeccion.py` — retiro del cartel de ESC del HUD.
+
+### Dos detalles mas del MCP
+
+- **Para CREAR un nodo de llamada a funcion propia el id pierde los guiones
+  bajos** (`CallFunction|InspeccionTick`), pero **el nodo ya creado se reporta
+  con ellos** (`|Inspeccion_Tick`). No son el mismo texto.
+- **El `type_id` del nodo de tick es `AddEvent|EventTick`**, no `ReceiveTick`,
+  que es como lo llama `list_events`. Nombre de evento y type_id de nodo no
+  coinciden.
+- No hay **nodo `Self`** creable: la referencia a uno mismo se saca por
+  `GetZona` -> `Components|GetOwner`.
+
 ### Pendiente
 
-- **`Interact` no hace nada todavia.** Es donde va el comportamiento: recoger la
-  llave, abrir el cofre, hablar con el NPC.
+- **`Interact` solo encuadra.** El comportamiento de verdad —que la llave se
+  recoja, que el cofre se abra, que el NPC hable— sigue sin escribir.
 - Si algun dia la llave y los cofres tienen que ir al inventario de verdad, lo
   suyo es que pasen a ser `BP_PickupActor` (o hijos suyos), que ya lo resuelve.
 
