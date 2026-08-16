@@ -7271,6 +7271,35 @@ level instance ... which is not in edit mode"*. Los scripts miran
   minimo para que el blanco no quede imposible. **Una zona por lanzamiento.**
 - `Tools/MCP/interaccion_ajustar_cajas.py` — redimensiona volumenes ya puestos.
 
+## El conteo que ensena Tripo NO dice nada (2026-08-16)
+
+Aviso corto pero importante, porque ya llevo una conclusion equivocada por aqui.
+
+**La cifra de la vista previa de Tripo es un techo fijo, igual para todo.** Dos
+modelos que no se parecen en nada:
+
+| Modelo | Caras que anuncia la web |
+|---|---|
+| Cofre abierto | 1.929.711 |
+| Alas de Cassiel | 1.929.560 |
+
+Eso no es la densidad de la malla, es el limite de la previsualizacion HD.
+
+**Y el FBX sigue saliendo SIN decimar**, como ya decia la nota de la rotonda:
+los cinco props que rondan el millon de vertices —y que por eso pesan 233-243 MB
+y se quedaron fuera del repo— salieron asi de Tripo.
+
+**El error que cometi el 16/08:** el cofre abierto importo con 47.823 vertices y
+di por hecho que Tripo exportaba decimado solo. **No: Angel le habia hecho remesh
+antes de exportar** y no me lo habia dicho. La conclusion "no hace falta remesh"
+es FALSA y el mensaje del commit `0f43202` la repite; vale esta nota, no aquel.
+
+**Lo que hay que hacer:** remesh en Tripo antes de exportar, **45.000 vertices**
+es la referencia —lo que pesan Cassiel (46.495) y el cofre cerrado (48.009)—.
+Con geometria fina, como unas alas con plumas, comprobar que la silueta
+sobrevive; si se pierde, el arreglo es SUBIR el conteo, no bajarlo: 80k siguen
+siendo unos 15 MB, nada al lado de los 230 MB de un millon.
+
 ## Modo inspeccion: la camara se planta delante del objeto (2026-08-16)
 
 Ya en `Interact`: al pulsar **E** sobre un interactuable la camara se pone
