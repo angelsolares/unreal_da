@@ -31,7 +31,10 @@ import json
 
 PACK = "/Game/Angel_wings_pack/"
 MALLA_ALAS = PACK + "Meshes/SKM_Wings5.SKM_Wings5"
-ANIM = PACK + "Animations/5/Animations/AS__AS_W5_idle_ground.AS__AS_W5_idle_ground"
+# El AnimBP propio: las alas reaccionan a lo que hace quien las lleva. Lo monta
+# `alas_animbp.py`. Antes se usaba AnimationSingleNode con idle_ground en bucle,
+# que se movia pero era siempre igual.
+ANIMBP = "/Game/DarkAngels/Blueprints/Alas/ABP_DA_Alas.ABP_DA_Alas_C"
 
 HUESO = "spine_05"
 SOCKET = "Alas"
@@ -144,9 +147,8 @@ def run():
         #    structs: el setter se deja campos por el camino si van juntos.
         ot("set_properties", {"instance": comp, "values": json.dumps({
             "SkeletalMeshAsset": {"refPath": MALLA_ALAS},
-            "AnimationMode": "AnimationSingleNode",
-            "AnimationData": {"AnimToPlay": {"refPath": ANIM},
-                               "bSavedLooping": True, "bSavedPlaying": True},
+            "AnimationMode": "AnimationBlueprint",
+            "AnimClass": {"refPath": ANIMBP},
         })})
         for eje in ("x", "y", "z"):
             ot("set_properties", {"instance": comp,
@@ -192,12 +194,18 @@ def run():
                                   "values": json.dumps({"RelativeScale3D": {eje: ESCALA_ALAS}})})
         ot("set_properties", {"instance": comp,
                               "values": json.dumps({"RelativeLocation": {"z": ALTURA}})})
+        # Y la animacion: el modo se hereda solo pero **AnimClass se queda en
+        # None** en las instancias ya colocadas, con lo que las alas no se
+        # animarian en el nivel aunque la clase este bien.
+        ot("set_properties", {"instance": comp, "values": json.dumps(
+            {"AnimationMode": "AnimationBlueprint", "AnimClass": {"refPath": ANIMBP}})})
         leido = json.loads(ot("get_properties", {"instance": comp,
-                                                 "properties": ["RelativeRotation", "RelativeScale3D"]}))
+                                                 "properties": ["RelativeRotation", "RelativeScale3D", "AnimClass"]}))
         out["instancias"].append({
             at("get_label", {"actor": a}): {
                 "rot": [leido["RelativeRotation"][k] for k in ("pitch", "yaw", "roll")],
-                "esc": round(leido["RelativeScale3D"]["x"], 4)}})
+                "esc": round(leido["RelativeScale3D"]["x"], 4),
+                "abp": str(leido["AnimClass"]).split("/")[-1].rstrip("'}")}})
 
     call("editor_toolset.toolsets.asset.AssetTools.save_assets", {"asset_paths": guardar})
     out["sucios"] = [a for a in guardar
