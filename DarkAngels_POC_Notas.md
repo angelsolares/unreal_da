@@ -7144,6 +7144,140 @@ intermedio en el Jardin, nube volumetrica apagada, coloso arreglado.
   no despues.
 - **Sin push todavia.** El repo es publico y seguimos con ~17 commits sin subir.
 
+## Interaccion: enchufada a DCS, no montada aparte (2026-08-16)
+
+Angel pidio un cartel abajo al acercarse a algo interactuable, con una tecla, y
+que fuese global para marcar cualquier objeto. **Lo que habia que hacer no era
+montarlo: era descubrir que DCS ya lo trae entero.**
+
+### Lo que ya tenia DCS
+
+| Pieza | Que es |
+|---|---|
+| `I_IsInteractable` | Interfaz con `Interact` y `GetInteractionMessage` |
+| `WB_InteractionMessage` | El cartel, **ya dentro de `WB_InGame`** |
+| `IA_Interact` | Ya mapeada, en `IMC_Player` |
+| `BP_PickupActor` | El unico que la implementaba: el recogible de DCS |
+
+La descripcion que trae escrita `GetInteractionMessage` lo dice sola: *"should
+return word describing action that will be performed on interact e.g for Items -
+Pickup, for NPC - talk etc."* O sea que **el verbo por objeto viene de serie**.
+
+### Como detecta DCS (leido de `BP_CombatCharacter`)
+
+Grafo colapsado *Interaction Events*, 34 nodos:
+
+```
+CheckForInteractable ->
+  start = GetActorLocation,  end = start + ForwardVector * dist
+  tipos = DCS|Utility|GetInteractableObjectTypes
+  Collision|CapsuleTraceForObjects -> BreakHitResult -> SetInteractionActor
+  Interaction|GetInteractionMessage (por interfaz) -> WB_InteractionMessage.UpdateWidget
+EnhancedInputActionIA_Interact -> CanOpenUI? -> Interaction|Interact
+```
+
+**Traza de capsula hacia delante contra el TIPO DE OBJETO `Interactable`.** No es
+solape ni traza contra la malla. De ahi salen los dos unicos requisitos:
+`ObjectType = ECC_GameTraceChannel2` (que en `DefaultEngine.ini` se llama
+"Interactable", con `bTraceType=False`, o sea canal de objeto) y
+`CollisionEnabled = QueryOnly`. **La malla no necesita colision**, que menos mal
+porque las de Tripo vienen sin ella.
+
+Y ojo: **el volumen es el blanco al que hay que apuntar**, no un radio de
+proximidad. La distancia la pone la traza del personaje.
+
+### La tecla: la I estaba cogida
+
+Angel pidio la **I** *"si es que aun no esta asignada para algo mas"*. Lo estaba.
+Como el MCP no serializa el array `Mappings` y el sandbox de Python del editor no
+deja `import unreal`, se decodifico **`IMC_Player.uasset` a mano** (parser en
+`Tools/MCP/`, ver abajo). Las 63 asignaciones usan:
+
+```
+A C D E F I Q R S U W X
+CapsLock LeftShift LeftControl Tab SpaceBar
+LeftMouseButton RightMouseButton ThumbMouseButton2 MouseScrollUp/Down
+```
+
+La I es del inventario. Se penso en la G, y **Angel dio con el argumento bueno**:
+si la mitad de las interacciones son recoger cosas, tener una tecla para
+"interactuar" y otra para "recoger" es absurdo. **Se quedo la E**, la que ya usa
+DCS.
+
+### Lo que se anadio
+
+`BP_DA_Interactuable` en `Content/DarkAngels/Blueprints/Interaccion/`:
+
+- `Raiz` (Scene) -> `Malla` (SkeletalMesh, sin colision) y `Zona` (Box 60x60x90 a z=90)
+- `Zona` con ObjectType `ECC_GameTraceChannel2` y `QueryOnly`
+- variable `Verbo` (String, editable por instancia) -> lo que sale en el cartel
+- `GetInteractionMessage` devuelve `Verbo`. **Ojo: la interfaz devuelve `Name`**,
+  no String; el DSL mete solo la conversion `StringToName`.
+- `Interact` se queda vacia, a proposito: el comportamiento aun no esta decidido
+
+**Va ENCIMA del prop, no en su lugar.** El prop conserva malla, escala (los
+cofres van a 92) y la animacion idle de los NPC, y el actor nuevo solo aporta
+caja e interfaz. Marcar algo nuevo es soltarle uno encima.
+
+| Actor | Zona | Sobre | Verbo |
+|---|---|---|---|
+| `Interact_Cofre` | Santuario | `Santuario_Cofre` | Abrir |
+| `Interact_Cassiel` | Santuario | `NPC_Cassiel` | Hablar |
+| `Interact_Llave` | Mirador | `Mirador_Llave` | Recoger |
+| `Interact_CofreMirador` | Mirador | `Mirador_Cofre` | Abrir |
+| `Interact_Sariel` | Mirador | `NPC_Sariel` | Hablar |
+
+### Lo que NO se hizo, y por que
+
+- **No se duplico `BP_PickupActor`**, que era la via facil para heredar la
+  interfaz ya implementada. Es un asset de DCS, de pago, y este repo es publico:
+  un duplicado suyo dentro de `/Game/DarkAngels/` acabaria subido a GitHub.
+- **No se monto el sistema por tags** que se iba a hacer al principio (cartel
+  dibujado desde `BP_DA_HUD`). Habria sido un sistema paralelo peor, con texto
+  fijo, y colgando de un HUD que **solo se instancia por el parche de debug del
+  salto de zonas**.
+
+### Cuatro trampas nuevas del MCP
+
+1. **No hay forma de declarar interfaces.** No existe herramienta, y
+   `set_properties` sobre el blueprint no vale: resuelve al CDO
+   (`Default__..._C`) y `ImplementedInterfaces` vive en el `UBlueprint`. Contesta
+   *"the following properties could not be set: ImplementedInterfaces"*. **Lo
+   marco Angel a mano** en Class Settings > Implemented Interfaces > Add.
+2. **`read_graph_dsl` no abre grafos colapsados**: *"Cannot cast type
+   'K2Node_Composite' to 'Blueprint'"*. Pero **`find_nodes` si funciona sobre
+   ellos**, y con los `type_id` y las posiciones se reconstruye lo que hace. Asi
+   se saco el `CapsuleTraceForObjects` de DCS.
+3. **`set_properties` sobre un struct Vector solo aplica el primer campo.** Pedir
+   `BoxExtent` (70,70,45) deja (70,60,90), con y/z en el valor del CDO y **sin un
+   solo error**. Se rodea escalando el ACTOR: como estos son solo volumen,
+   la escala solo toca la caja, y `RelativeLocation` escala con ella.
+4. **En una INSTANCIA de blueprint el `refPath` del componente lleva su NOMBRE,
+   no su clase.** En el CDO sale `Box_GEN_VARIABLE`, en la instancia sale `Zona`.
+   Filtrar por `"BoxComponent" in refPath` no casa nunca y el ajuste se pierde en
+   silencio.
+
+Y una del editor, no del MCP: **el nivel actual cambia solo** entre el maestro y
+un sublevel. Con el maestro abierto, tocar un actor de dentro da *"is inside
+level instance ... which is not in edit mode"*. Los scripts miran
+`get_current_level` y eligen camino.
+
+### Scripts
+
+- `Tools/MCP/interaccion_crear_bp.py` — crea el blueprint. Idempotente.
+- `Tools/MCP/interaccion_mensaje.py` — escribe `GetInteractionMessage` por DSL.
+- `Tools/MCP/interaccion_colocar.py` — coloca los volumenes de una zona. La caja
+  se dimensiona con las medidas reales del prop (`get_actor_bounds`), con un
+  minimo para que el blanco no quede imposible. **Una zona por lanzamiento.**
+- `Tools/MCP/interaccion_ajustar_cajas.py` — redimensiona volumenes ya puestos.
+
+### Pendiente
+
+- **`Interact` no hace nada todavia.** Es donde va el comportamiento: recoger la
+  llave, abrir el cofre, hablar con el NPC.
+- Si algun dia la llave y los cofres tienen que ir al inventario de verdad, lo
+  suyo es que pasen a ser `BP_PickupActor` (o hijos suyos), que ya lo resuelve.
+
 ## El cofre del Santuario: sacado, orientado y encendido (2026-08-16)
 
 Cuatro pasadas sobre el mismo prop, cada una commiteada y verificada en disco.
