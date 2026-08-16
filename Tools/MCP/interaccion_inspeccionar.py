@@ -36,6 +36,9 @@ EG = {"refPath": BP + ":EventGraph"}
 VAR = "Inspeccionando"
 CERRADO = "Cerrado"
 ABIERTO = "Abierto"
+ANIMADO = "Animado"
+HABLAR = "AnimHablar"
+REPOSO = "AnimReposo"
 CAMARA = "Camara"
 DISTANCIA = -220.0
 ALTURA = 90.0
@@ -132,6 +135,40 @@ def rama(pc, pawn, oculto, destino, marca, y):
     return ver
 
 
+def bloque_anim(cual, y):
+    """Lanza en bucle una animacion sobre el actor de `Animado`.
+
+    Devuelve el pin de entrada y los de salida, para encadenarlo. Va detras de un
+    `IsValid` porque los interactuables que no son NPC dejan `Animado` vacio.
+    """
+    lee = nodo("Variables|Default|Get" + ANIMADO, -250, y + 60)
+    valido = nodo("Utilities|IsValid", -60, y)
+    comp = nodo("Class|SkeletalMeshActor|GetSkeletalMeshComponent", -60, y + 160)
+    anim = nodo("Variables|Default|Get" + cual, -60, y + 240)
+    play = nodo("Components|Animation|PlayAnimation", 180, y)
+
+    unir(sal(lee, ANIMADO), ent(valido, "InputObject"))
+    unir(sal(lee, ANIMADO), ent(comp, "self"))
+    unir(sal(comp, "SkeletalMeshComponent"), ent(play, "self"))
+    unir(sal(anim, cual), ent(play, "NewAnimToPlay"))
+    valor(ent(play, "bLooping"), "true")
+    unir(sal(valido, "Is Valid"), ent(play, "execute"))
+    return {"entrada": ent(valido, "exec"),
+            "salidas": [sal(valido, "Is Not Valid"), sal(play, "then")]}
+
+
+def encadenar(desde, bloques, hasta):
+    """Cose una fila de bloques guardados. Las dos salidas de cada uno entran en
+    el siguiente: un pin de ejecucion de ENTRADA admite varias conexiones."""
+    anterior = desde
+    for b in bloques:
+        for s in anterior:
+            unir(s, b["entrada"])
+        anterior = b["salidas"]
+    for s in anterior:
+        unir(s, hasta)
+
+
 def run():
     bp = {"refPath": BP}
     out = {}
@@ -142,10 +179,15 @@ def run():
     # El intercambio de malla al interactuar: cerrado fuera, abierto dentro. Se
     # dejan vacias en los interactuables que no cambian de aspecto, y el grafo
     # las salta con un IsValid.
-    for v in (CERRADO, ABIERTO):
+    # Y la animacion: a que NPC hablarle y con que. Tambien vacias por defecto.
+    for v, clase in ((CERRADO, "/Script/Engine.Actor"),
+                     (ABIERTO, "/Script/Engine.Actor"),
+                     (ANIMADO, "/Script/Engine.SkeletalMeshActor"),
+                     (HABLAR, "/Script/Engine.AnimationAsset"),
+                     (REPOSO, "/Script/Engine.AnimationAsset")):
         if v not in variables:
             bt("add_object_variable", {"blueprint": bp, "name": v,
-                                       "object_class": {"refPath": "/Script/Engine.Actor"}})
+                                       "object_class": {"refPath": clase}})
         bt("set_variable_instance_editable",
            {"blueprint": bp, "variable_name": v, "instance_editable": True})
 
@@ -183,9 +225,10 @@ def run():
     unir(exec_evento(ev), ent(br, "execute"))
     unir(sal(estado, VAR), ent(br, "Condition"))
 
-    # SALIR (ya estabamos dentro): vista al pawn, se le vuelve a ver, mando suelto
+    # SALIR (ya estabamos dentro): el NPC vuelve al idle, vista al pawn, se le
+    # vuelve a ver, mando suelto
     salir = rama(pc, pawn, "false", pawn, "false", 1200)
-    unir(sal(br, "then"), ent(salir, "execute"))
+    encadenar([sal(br, "then")], [bloque_anim(REPOSO, 1600)], ent(salir, "execute"))
 
     # ENTRAR: primero girar de cara al jugador, y solo con el YAW
     locPawn = nodo("Transformation|GetActorLocation", -1100, 880)
@@ -224,15 +267,9 @@ def run():
         bloques.append({"entrada": ent(valido, "exec"),
                         "salidas": [sal(valido, "Is Not Valid"), sal(cambia, "then")]})
 
-    # Las dos salidas de cada bloque desembocan en el siguiente: un pin de
-    # ejecucion de ENTRADA admite varias conexiones.
-    anterior = [sal(girar, "then")]
-    for b in bloques:
-        for s in anterior:
-            unir(s, b["entrada"])
-        anterior = b["salidas"]
-    for s in anterior:
-        unir(s, ent(entrar, "execute"))
+    # Y detras, la animacion de hablar del NPC, si lo hay.
+    bloques.append(bloque_anim(HABLAR, 900))
+    encadenar([sal(girar, "then")], bloques, ent(entrar, "execute"))
 
     # --- el cartel de DCS dice "Aceptar" mientras se esta dentro ---
     bt("write_graph_dsl", {"graph": {"refPath": BP + ":GetInteractionMessage"},
