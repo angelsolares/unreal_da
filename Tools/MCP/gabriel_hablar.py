@@ -78,8 +78,48 @@ PIES = 280.0        # cuanto hay del origen del actor a sus pies
 BASE = {"x": 60.0, "y": 60.0, "z": 90.0}
 MARGEN = 1.6
 
+# ### DOS MENSAJES QUE SE ALTERNAN ENTRE CONVERSACIONES
+#
+# Gabriel no dice lo mismo cada vez. La primera vez pregunta, y la segunda te
+# corta por no haber respondido a lo que preguntaba:
+#
+#   A) "Que mensaje traes?"
+#   B) "No te pregunte quien pareces ser. / Te pregunte que mensaje traes."
+#
+# Y vuelve a A. En bucle.
+#
+# **OJO: `Dialogo1..3` NO son tres turnos, son tres RENGLONES a la vez.** El HUD
+# los pinta apilados en el mismo frame (`hud_dialogo.py`: `HUD|DrawText` no parte
+# el texto, por eso hay tres campos y el corte lo decide quien escribe). Asi que
+# alternar entre conversaciones no es encadenar lineas: hay que **reescribir** los
+# tres campos al terminar cada charla. Por eso B ocupa dos renglones y A uno.
+#
+# ### DONDE VIVE LA ALTERNANCIA, Y POR QUE AHI
+#
+# En `BP_DA_GiantBoss`, no en `BP_DA_Interactuable`. El sitio "natural" seria el
+# evento `Interact` del interactuable, pero **`interaccion_inspeccionar.py` lo
+# reconstruye nodo a nodo y borra todo lo que no sea un evento**: cualquier cosa
+# que se meta ahi se pierde al relanzarlo. Y es un blueprint compartido por siete
+# interactuables, asi que tocarlo arriesga las otras seis zonas.
+#
+# Gabriel ya tiene Tick (`MirarAlJugador`) y ya guarda la referencia al
+# interactuable en `Encuadre`, asi que la alternancia va ahi y no toca nada
+# compartido. `AlternarDialogo` se llama desde el mismo Tick, detras de
+# `MirarAlJugador`.
+#
+# **Detecta el FLANCO DE BAJADA de `Inspeccionando`**, o sea el momento en que
+# cierras la conversacion, y escribe entonces el set de la proxima. Al salir, no
+# al entrar: asi la primera vez que hablas ves A, no B. Como el HUD solo dibuja
+# mientras `Inspeccionando` es true, el cambio nunca se ve en pantalla.
+#
+# Variables en el jefe: `MensajeA1`, `MensajeB1`, `MensajeB2` (String, Instance
+# Editable, ahi se editan los textos) y `TurnoB` / `HablandoAntes` (estado de
+# runtime, no editables). Con `Encuadre` a null —el jefe de la arena— la funcion
+# no hace nada.
+
 VERBO = "Hablar"
-LINEAS = ["¿Quién eres?", "", ""]
+# El set A, que es con el que arranca. El B vive en las variables del jefe.
+LINEAS = ["¿Qué mensaje traes?", "", ""]
 
 
 def call(t, a):
