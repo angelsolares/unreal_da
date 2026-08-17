@@ -55,9 +55,16 @@ COLISION = [
 # la `cmap` de las fuentes empotradas, que es trabajo aparte y hara falta para el
 # laberinto de Gabriel.
 #
-# **Los acentos van tal cual.** El resto de dialogos del proyecto estan sin
-# acentuar, pero esto es una cita literal y se respeta. Si la fuente del canvas
-# no los pintase, se quitan aqui y ya.
+# **Los acentos van como `ó`, no como caracter.** El resto de dialogos del
+# proyecto estan sin acentuar, pero esto es una cita literal y se respeta. Al
+# escribirlos directos llegaban DESCOMPUESTOS al .umap —una "o" seguida del
+# acento combinante U+0301 en vez de la "o" acentuada de un solo codigo, U+00F3—
+# porque algo del camino los normaliza a NFD. Se lee igual en un editor, pero al
+# canvas de Unreal no tiene por que darle igual, y ademas hace que buscar el
+# texto en el binario para verificarlo de un falso negativo. Con el escape
+# explicito no hay ambiguedad posible.
+OA = chr(243)   # "o" acentuada precompuesta, U+00F3
+
 INTERACTUABLES = [
     {
         "nombre": "Interact_Tableta",
@@ -66,8 +73,8 @@ INTERACTUABLES = [
         "margen": 10.0,
         "dialogo": [
             "\"Antes de ti, hubo otros. Antes de otros, hubo uno.",
-            "El uno no subió. El uno bajó.",
-            "Y al bajar, se convirtió en ti.\"",
+            "El uno no subi" + OA + ". El uno baj" + OA + ".",
+            "Y al bajar, se convirti" + OA + " en ti.\"",
         ],
     },
     {
