@@ -39,7 +39,10 @@ import json
 BP = "/Game/DarkAngels/Blueprints/Level/BP_DA_Fuego.BP_DA_Fuego"
 EG = {"refPath": BP + ":EventGraph"}
 
-RADIO = 4000.0     # a que distancia de una ruta se considera que estas en ella
+RADIO = 12000.0    # a que distancia de una ruta se considera que estas en ella
+# Medido: desde el centro de cada zona su corredor mas cercano queda entre 600 y
+# 9.220, salvo el Jardin. Con 4000 —el valor de la primera version— en el Puente
+# (9.220) ya no salia nada.
 VIDA = 14.0
 
 # EL COLOR DISTINGUE LA RUTA PRINCIPAL DE LOS RAMALES: dorado calido el avance,

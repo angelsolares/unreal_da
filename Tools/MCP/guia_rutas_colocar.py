@@ -143,9 +143,37 @@ def run():
     out["variables"] = bt("list_variables", {"blueprint": bp})
 
     # --- 2. una instancia por corredor, en el Master ---
+    # LOS CORREDORES NO ENTRAN EN LAS ZONAS. Sus losas van de la salida de una a
+    # la entrada de la otra, asi que desde el centro de una zona el camino queda
+    # lejos: en el Jardin, a 34.642. Con el fuego descartandose a 12.000 de su
+    # ruta, alli no salia nada.
+    #
+    # Se le cose a cada extremo un punto de anclaje en el centro de la zona que
+    # tiene mas cerca, si es que no lo pisa ya. El tramo del ancla al corredor si
+    # es recto —dentro de una zona no hay losas que seguir— pero es campo abierto
+    # y lo que importa es que el fuego arranque donde estas.
+    zonas = []
+    for a in sc("find_actors", {"name": "", "tag": "", "collision_channels": []}):
+        if "ZoneTrigger" not in a["refPath"] or "UEDPIE" in a["refPath"]:
+            continue
+        t = at("get_actor_transform", {"actor": a})["location"]
+        zonas.append([t["x"], t["y"], t["z"]])
+
+    def ancla(p):
+        """El centro de zona mas cercano a `p`, o None si ya esta encima."""
+        if not zonas:
+            return None
+        d, z = min(((((q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2) ** 0.5), q) for q in zonas)
+        return None if d < 2500.0 else [z[0], z[1], p[2]]
+
     out["rutas"] = []
     for corredor in sorted(PUNTOS):
-        puntos = PUNTOS[corredor]
+        puntos = list(PUNTOS[corredor])
+        a0, a1 = ancla(puntos[0]), ancla(puntos[-1])
+        if a0:
+            puntos.insert(0, a0)
+        if a1:
+            puntos.append(a1)
         etiqueta = "Ruta_" + corredor
         actor = None
         for a in sc("find_actors", {"name": etiqueta, "tag": "", "collision_channels": []}):
