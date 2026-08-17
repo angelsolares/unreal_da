@@ -7835,3 +7835,234 @@ se apoye en el suelo en vez de flotar).
 
 Las capturas se tomaron **dentro de la sesion de edicion**, antes de commitear, que es
 cuando el viewport todavia conserva el color.
+
+## Gabriel no se veía en Play: se escondía él solo (2026-08-17)
+
+En el editor estaba perfecto. En Play no aparecía. Todos los indicios de siempre daban bien
+—`bHidden` false, `bVisible` true, malla y escala correctas, suelo sólido bajo él— porque
+**lo que fallaba solo existía en runtime**.
+
+### La causa: `HideUntilWaveCleared` se dispara en cualquier mapa
+
+`BP_DA_GiantBoss` llama a `HideUntilWaveCleared()` desde su `BeginPlay`. Eso se escribió para
+la arena: el jefe no debía verse hasta que la oleada de Warriors estuviera limpia. Hace
+`SetActorHiddenInGame(true)`, quita la colisión, para el `BrainComponent` y arranca un timer.
+
+Solo vuelve a aparecer si no queda ningún `BP_WarriorAI` vivo **y**
+`EnemiesSpawned >= EnemiesToSpawn`. En Malkuth eso no pasa nunca:
+
+- La instancia `GC2_Gabriel` heredó `EnemiesToSpawn = 2`.
+- El spawn va a `GetActorLocation(Array.Get(GetAllActorsOfClass(BP_AISpawner), 0))` y **en
+  Malkuth no hay ni un `BP_AISpawner`**. Con el array vacío la posición sale (0,0,0).
+- El guerrero aparece en el **origen del mundo**, a 66 km de la sala. No muere nunca, así que
+  el jefe se queda oculto para siempre.
+
+**El aviso `Accessed None ... CallFunc_Array_Get_Item` al arrancar PIE es exactamente esto.**
+No es ruido: es el síntoma.
+
+Medido en PIE, no deducido:
+
+| | Editor | PIE (5 s) |
+|---|---|---|
+| `bHidden` | false | **true** |
+| `EnemiesSpawned` | 0 | 1 de 2 |
+| Z del actor | 266 | 377,3 |
+| `BP_DA_WarriorAI` vivos | — | 1, en (0, 0, 48) |
+
+### El arreglo: `EnemiesToSpawn` como interruptor
+
+`HideUntilWaveCleared` queda con la parte de esconderse detrás de una guarda:
+
+```
+(if (> (Variables|Default|GetEnemiestoSpawn) 0)
+    (Rendering|SetActorHiddenInGame true)
+    (Collision|SetActorEnableCollision false)
+    (AI|Logic|StopLogic _braincomponent "WaitingForWave")
+    (Utilities|Time|SetTimerbyFunctionName _self "CheckWaveCleared" 0.5 true)
+    (else
+      (AI|Logic|StopLogic _braincomponent "SinOleada")))
+```
+
+**No se añadió variable nueva a propósito.** Una variable nueva no la recogen los actores ya
+colocados —es la trampa de siempre— y el jefe de la arena se habría quedado sin oleada.
+`EnemiesToSpawn` ya existía y ya era Instance Editable. Con 0 se va por la rama nueva:
+visible, con colisión, y solo `StopLogic`. Quieto, que es lo que pide la sala de los espejos.
+
+> **COMPROBAR:** el Giant de `L_DA_SeraphArena_POC` tiene que seguir con
+> `EnemiesToSpawn = 2` en su **instancia**. Ese mapa no se abrió en esta sesión.
+
+**Volvió a caer la trampa del DSL:** `SetActorHiddenInGame true` se guardó como `false` por
+quinta vez. Corregido con `set_pin_value` y releído.
+
+### Segundo bug, detrás del primero: `bHidden` no quita la colisión
+
+El placeholder `SM_Gabriel` estaba escondido con `bHidden`, pero su colisión seguía siendo
+suelo: su caja llega a **z=114,5** y la cápsula del jefe se apoyaba encima. Por eso en PIE
+subía de 266 a 377,3 —111 unidades—. En cuanto dejara de estar oculto habría aparecido
+flotando. **Borrado del todo.**
+
+Cápsula 264 de media altura contra desfase de malla −270: seis unidades de solape, correcto.
+No había nada que arreglar ahí.
+
+### Tercero: la corrección de los 186 nunca llegó al disco
+
+El commit `8cb5fc3` "Gabriel estaba enterrado: 186 bajo el suelo de la sala" **solo toca
+`L_DA_Malkuth_Master.umap`**, y Gabriel no vive ahí: vive dentro del `_Sub` de la Level
+Instance, que no se guardó. El valor bueno existía solo en la memoria del editor, y el primer
+`edit_level_instance` lo tiró: el actor volvió a z=80, que es 266−186. Repuesto y guardado.
+
+### El ciclo edit/commit de Level Instance descartó el trabajo dos veces
+
+`edit_level_instance` → cambios → `commit_level_instance` devolvió **éxito** y dejó
+`is_dirty` en **false** las dos veces, y el `.umap` del disco no cambió ni un byte. Los
+actores que devuelve `find_actors` durante esa sesión viven en un duplicado transitorio
+(`/Temp/Game/...`) y lo que se les hace no vuelve al asset.
+
+**Lo que sí funciona: cargar el `_Sub` como nivel normal**, editarlo y guardarlo. Ahí la ruta
+es la de verdad (`/Game/DarkAngels/Maps/...`), `is_dirty` se comporta y el binario cambia.
+Al terminar hay que volver a cargar el maestro.
+
+También se comió una llamada entera: un `commit_level_instance` se quedó **5 minutos** con un
+diálogo modal abierto y la llamada expiró, perdiendo el trabajo. Si el editor deja de
+responder al MCP, mirar si hay un diálogo esperando un clic.
+
+### Verificado en PIE tras el arreglo
+
+`bHidden: false` · `EnemiesToSpawn: 0` · cero guerreros spawneados · Z 275,2 (se posa 9
+unidades sobre la lámina de agua) · pies a −5,2 · cabeza a 609,7.
+
+### Scripts
+
+- `Tools/MCP/gabriel_visible.py` — el arreglo del nivel entero: repone la Z, pone
+  `EnemiesToSpawn = 0`, borra el placeholder, guarda y vuelve al maestro.
+
+### Cabos sueltos
+
+- El `NavMeshBoundsVolume` del maestro está etiquetado **`Nav_GabrielC3`**, no `Nav_GabrielC2`
+  como pone `gabriel_navmesh.py`. Mirarlo antes de que Gabriel tenga que moverse.
+- Gabriel aparece **quieto**: `StopLogic` sigue ejecutándose. Cuando toque que pelee, hay que
+  decidir qué lo despierta.
+
+## Gabriel te sigue con la mirada y se voltea (2026-08-17)
+
+### La mecánica ya existía en DCS
+
+Antes de montar nada se miró DCS, y estaba entera. `AnimInstance_BaseCharacter` —la clase
+padre de sus AnimBP— ya trae `LookAtPitch`, `LookAtYaw`, `LookAtAlpha`, las funciones
+`UpdateLookAtData` y `GetLookAtTargetRotation`, y el grafo `SkeletalControls` en
+`ABP_CombatCharacter`. El *turn in place* también: estados `TurnInPlace` dentro de cada
+`IdleSM`, `UpdateRootYawOffset`, `ProcessTurnYawCurve`.
+
+Gabriel no puede usarlo porque hereda de `BP_Giant` y corre `ABP_Giant`, del pack, cuyo
+AnimGraph es `Idle_Walk_Run` + `Death_Anim` y nada más. Así que se replica.
+
+### El AnimBP es una copia, y se asigna POR INSTANCIA
+
+`ABP_Giant` está en `GiantBossProject` y no se toca. Duplicado a
+`/Game/DarkAngels/Blueprints/Bosses/ABP_DA_Gabriel` — el duplicado **conserva el
+`TargetSkeleton`**, comprobado.
+
+**El `animClass` va en el componente `CharacterMesh0` de la INSTANCIA `GC2_Gabriel`**, no en
+`BP_DA_GiantBoss`. Si fuera en la clase, el jefe de la arena heredaría el cambio.
+
+### La cadena del AnimGraph
+
+```
+GiantStateMachine → Slot'DefaultSlot' → LocalToComponent
+  → LookAt(spine_05, alpha×0,3, clamp 40°)
+  → LookAt(neck_01,  alpha×0,5, clamp 40°)
+  → LookAt(head,     alpha×1,0, clamp 70°)
+→ ComponentToLocal → OutputPose
+```
+
+Va **detrás del Slot** para que la mirada siga durante los montages de ataque. Y repartida
+en tres huesos porque un `LookAt` solo en la cabeza da cuello de búho: el padre aporta poco
+y el hijo remata. **El eje de fábrica (0,1,0 local) es el correcto** — verificado a ojo en
+juego, no hizo falta calibrarlo.
+
+`LookAt` trabaja en Component Space, de ahí los dos nodos de conversión: **por MCP no se
+insertan solos** como al cablear en el editor.
+
+> ### `LookAtLocation` hay que exponerlo como pin
+>
+> De fábrica es solo un ajuste del panel. Se saca poniendo `bShowPin = true` en su entrada
+> de `showPinForProperties`. Dos cosas del setter de arrays:
+> - **No admite cambiar tamaño y contenido a la vez**: *"ArrayAdd: elements changed
+>   alongside the size change; insertion points are ambiguous"*. Hay que reescribir el array
+>   con el MISMO número de elementos.
+> - Con el tamaño igual **no se pierde el último elemento** (19 antes, 19 después). La regla
+>   de `unreal-mcp-arrays-de-structs` aplica al cambio de tamaño, no a la reescritura.
+
+### El giro del cuerpo
+
+En `BP_DA_GiantBoss`: variables `SigueAlJugador` (Instance Editable, **default false** para
+que la arena no se entere) y `Girando`, función `MirarAlJugador`, y un `EventTick` que la
+llama. **El Tick se enganchó por cirugía de nodos**: ese EventGraph tiene el BeginPlay,
+`TakeDamage` y `OnHit` buenos, y `write_graph_dsl` lo habría reescrito entero.
+
+El ángulo sale de **`GetHorizontalDotProductTo`**, que ya ignora la Z: 1 de frente, −1 a la
+espalda. Con histéresis, que si no se queda parado a mitad de giro: empieza por debajo de
+0,34 (~70°) y no para hasta pasar de 0,99.
+
+**Verificado en PIE:** jugador delante, yaw 180 y quieto. Jugador detrás: 180 → −60
+(`Girando` true) → −6,7 (`Girando` false).
+
+### Gabriel interactuable: "¿Quién eres?"
+
+Primera fase: no ataca, es su presentación. `Interact_Gabriel` (`BP_DA_Interactuable`)
+encima de él, `Verbo = Hablar`, `Dialogo1 = "¿Quién eres?"`. La pregunta la hace él.
+
+Caja dimensionada con las medidas **de PIE** (594 de alto), no con las del editor, que están
+corruptas. La `Zona` es de 60/60/90 de semiejes, así que escala 2,5 / 2,5 / 3,3 da 300×300
+de planta y 594 de alto, de z=−14 a 580. Cámara de inspección a 845 (`RelativeLocation.x =
+−338`), con la fórmula de `interaccion_encuadre.py`.
+
+> ### Editando el `_Sub` suelto, los actores están en coordenadas DEL SUBMAPA
+>
+> Gabriel está en **(520, 0)** dentro del `_Sub` y en **(−65480, −15000)** en el maestro: la
+> Level Instance suma (−66000, −15000, 0). Copiar X/Y del actor de referencia en vez de
+> escribir números del maestro, y **verificar la posición final con el maestro cargado**.
+
+### Dos horas perdidas persiguiendo un fantasma del editor
+
+Tras cambiar el AnimBP, Gabriel se veía **despatarrado en el viewport del editor**: bounds de
+782 de alto bajando a z=−216. En PIE está perfecto: **594, de −19 a 575**.
+
+Se descartó, en este orden, la cadena de `LookAt` (puenteada, sigue igual), el AnimGraph
+entero (restaurado al original, sigue igual), las variables (`speed` 0 y `death_anim` false,
+correctas) y la pose de referencia de `SK_DA_Gabriel` (limpia, con `CaptureAssetImage`).
+**Sigue sin causa conocida.** Solo afecta a la previsualización.
+
+**`CaptureViewport` devuelve el viewport del EDITOR aunque PIE esté corriendo.** Por eso las
+capturas parecían confirmar el problema en juego cuando no era así: lo que decide son los
+`get_actor_bounds` del actor `UEDPIE`. La nota de `unreal-artefactos-de-viewport` ya lo
+avisaba y aun así se cayó en ello.
+
+### Scripts
+
+- `Tools/MCP/gabriel_mirada.py` — el AnimBP entero y el giro del cuerpo.
+- `Tools/MCP/gabriel_hablar.py` — el interactuable y su línea.
+
+### El encuadre gira con él
+
+**El yaw del interactuable es el del personaje + 180.** La cámara vive en el **−X local** del
+`Interact_` y mira hacia su +X, así que su frente apunta al contrario que la cara del
+personaje. En el primer intento le copié el yaw a Gabriel y la cámara quedaba **a su
+espalda**. La regla se sacó midiendo los que ya funcionaban: `Interact_Sariel` está a yaw 0 y
+Sariel a 180.
+
+> **`Interact_Cassiel` también está a 0 pero Cassiel a 124,2**, o sea que ese encuadre lleva
+> 55 grados torcido desde que se montó. No se ha tocado, pero queda anotado.
+
+Y como Gabriel gira, el encuadre gira con él: `MirarAlJugador` mantiene el interactuable a
+`yaw_de_Gabriel + 180` en cada tick, a través de la variable `Encuadre` de
+`BP_DA_GiantBoss` (referencia a Actor, Instance Editable, **default null** para que ningún
+otro jefe se entere). Así la cámara está bien mires cuando mires, no solo al hablar.
+
+**Verificado en PIE:** jugador detrás, Gabriel gira a yaw −6,7 y el interactuable se pone a
+173,3; la cámara cae en (−64641, −15098), del mismo lado que el jugador.
+
+### Pendiente
+
+- Sigue sin comprobarse `EnemiesToSpawn = 2` en el Giant de `L_DA_SeraphArena_POC`.
+- El encuadre torcido de `Interact_Cassiel`.
