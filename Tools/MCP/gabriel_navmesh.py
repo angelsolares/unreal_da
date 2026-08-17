@@ -13,8 +13,8 @@ import json
 # ella igual, y de paso nos ahorramos un ciclo de edit/commit de la LI.
 
 MAESTRO = "/Game/DarkAngels/Maps/L_DA_Malkuth_Master"
-ETIQUETA = "Nav_GabrielC3"
-SUELO = "GC3_Piso"
+ETIQUETA = "Nav_GabrielC2"
+SUELO = "SM_Piso_Camara"
 
 # El volumen por defecto mide 200x200x200, asi que la escala es la medida que se
 # quiere entre 200. Se le da aire de sobra por arriba: la malla solo se genera
