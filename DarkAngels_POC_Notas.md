@@ -7329,6 +7329,93 @@ Y una trampa de las mallas: **el pivote esta en la BASE**, como en todos los pro
 de Tripo. Colocadas por su origen, las alas crecen hacia arriba y le salen de la
 cabeza. El script mide la caja ya escalada y corrige por la desviacion del centro.
 
+## Alas animadas para los enemigos (2026-08-16)
+
+Los cuatro enemigos de El Claro llevan alas del pack **Angel Wings** (Nikita00,
+Fab, de pago, ya en `.gitignore`), y se animan segun lo que hace el personaje.
+
+### Por que estas alas valen para cualquiera
+
+`SKM_Wings5` trae **su propio esqueleto** (`SK_Wings5_Skeleton`, 27 huesos) y sus
+animaciones. No es un anadido al rig del personaje: es una malla aparte colgada
+de un socket que se anima sola. Da igual el esqueleto de quien las lleve.
+
+### Lo montado
+
+| | |
+|---|---|
+| Socket | `Alas` sobre `spine_05` de cada malla |
+| Componente | `SkeletalMeshComponent` `Alas` bajo `CharacterMesh0` |
+| Rotacion | `pitch -90` |
+| Escala | `0,7` |
+| AnimBP | `ABP_DA_Alas` |
+
+`ABP_DA_Alas`: cuatro secuencias y tres blends encadenados —quieto/flapping
+segun `Moviendose`, o `fly_idle` si `EnElAire`, o `shield_up` si `Defendiendo`—.
+La defensa va la ultima porque manda sobre el resto, y entra en 0,12 s frente a
+los 0,25 de las demas: alzar las alas es una reaccion, no un cambio de marcha.
+
+### La decision de diseno: `Character`, no `BP_BaseAI`
+
+Se pidio castear a `BP_BaseAI`. **No se hizo, y por buenas razones:**
+
+- `BP_BaseAI` casi no expone nada: `BehaviorTreeAsset`, `BaseAIController`,
+  `TargetActor`, `HeadSocketName`. El estado de combate vive en componentes.
+- **`BP_BaseAI` y `BP_CombatCharacter` no tienen antepasado comun**: los dos
+  cuelgan directamente de `Character`. Castear a `BP_BaseAI` dejaria al jugador
+  fuera para siempre.
+
+Velocidad y "en el aire" se leen de `Character`, que si comparten. Y el bloqueo,
+que si es de DCS, se pide **al AnimBP del propio personaje**:
+`AnimInstance_BaseCharacter` ya expone `GetIsBlockInputPressed` —y tambien
+`GetGroundSpeed`, `GetIsFalling`, `GetIsShieldEquipped`, `GetIsinCombat`—. Se
+llega por `pawn -> Character -> GetMesh -> GetAnimInstance -> Cast`. **El cast
+lleva rama de fallo**: quien no sea de DCS conserva las otras tres poses.
+
+Tampoco se porto `ABP_Wings5` del pack: su maquina de estados es de vuelo —dash,
+planning, takeoff, scream— y sobra casi entera para un enemigo de tierra, y
+arrastraria las 26 animaciones mas `BP_ThirdPersonCharacter` con su input y game
+mode.
+
+### Cinco trampas, todas silenciosas
+
+1. **`set_parent_component` BORRA el socket.** El script lo llamaba en cada
+   pasada, asi que cada relanzamiento deshacia el Parent Socket puesto a mano —y
+   sin error: las alas se iban del pecho a los pies y parecia un problema de
+   rotacion. Ahora se comprueba el padre antes con `get_parent_component`.
+2. **Las instancias ya colocadas NO heredan los cambios de la clase.** Un actor
+   en el nivel tiene sus valores serializados en el `.umap`; cambiar el valor por
+   defecto no lo actualiza. Tres de cuatro seguian con `pitch 0` mientras las
+   clases ya tenian `-90`, y por eso el viewport del Blueprint se veia bien y el
+   juego no. El script recorre los actores del nivel y les empuja los valores.
+3. **`AnimClass` no acepta la forma `{"refPath": ...}`** —la toma en la clase y
+   la ignora en las instancias— **y ademas hay que mandarla SOLA**: junto a
+   `AnimationMode` en la misma llamada se pierde. Sintoma: alas quietas.
+4. **Copiar assets con el editor abierto deja cacheada la base de acciones.** El
+   asset existe y `get_asset_tags` lo confirma, pero su tipo de nodo no sale en
+   `find_node_types` hasta reiniciar. Paso `CON_ESCUDO` en el script para eso.
+5. **El MCP no asigna el esqueleto de un AnimBlueprint**: `TargetSkeleton` vive
+   en el `UAnimBlueprint` y el setter resuelve al CDO. El asset lo crea Angel.
+
+### Lo que sigue haciendo falta a mano
+
+Por cada enemigo nuevo: anadirlo a `ENEMIGOS` en `enemigos_alas.py`, lanzar, y
+**poner el Parent Socket** en su Blueprint. En el editor de Blueprints el
+desplegable esta en Details > **Sockets > Parent Socket** —no lo encuentra el
+buscador del panel porque no es una propiedad normal—. En actores de nivel no
+existe: alli hay que arrastrar en el Outliner.
+
+### Scripts
+
+`enemigos_alas.py` (socket, componente, transform y AnimBP, con tabla de
+enemigos) y `alas_animbp.py` (monta el AnimBP entero).
+
+### Pendiente
+
+`GetIsBlockInputPressed` es **la tecla pulsada**, no el bloqueo efectivo: si DCS
+cancela la guardia por rotura o aturdimiento, las alas seguirian alzadas. Si se
+nota, combinar con `GetIsShieldEquipped` o `GetIsinCombat`.
+
 ## El conteo que ensena Tripo NO dice nada (2026-08-16)
 
 Aviso corto pero importante, porque ya llevo una conclusion equivocada por aqui.
