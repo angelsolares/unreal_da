@@ -59,7 +59,7 @@ MEZCLA_ESCUDO = "0.12"
 # `get_asset_tags`— pero su tipo de nodo no aparece en `find_node_types` hasta
 # reiniciar el editor. Con esto en False el script deja el AnimBP funcionando
 # con tres poses; se pone a True despues de reiniciar.
-CON_ESCUDO = False
+CON_ESCUDO = True
 
 
 def bt(t, a):
