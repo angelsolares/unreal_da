@@ -7943,6 +7943,140 @@ unidades sobre la lámina de agua) · pies a −5,2 · cabeza a 609,7.
 - Gabriel aparece **quieto**: `StopLogic` sigue ejecutándose. Cuando toque que pelee, hay que
   decidir qué lo despierta.
 
+## DA Debug HUD, fase 1: arquitectura + sección WORLD (2026-08-17)
+
+Herramienta central de desarrollo, construida sobre el salto de zona que ya existía **sin
+tocarlo**: las teclas NumPad 1-9 y 0 siguen funcionando exactamente igual.
+
+### Cómo se abre
+
+**Tecla `.` (Period) o el `.` del teclado numérico (Decimal).** No es F8, y no por capricho:
+en PIE **F8 es Eject/Possess del editor** (te saca del pawn) y F1-F10 las captura el viewport
+para los modos de vista — el mismo motivo por el que el salto de zona acabó en el NumPad.
+
+### Los assets
+
+| Asset | Qué es |
+|---|---|
+| `/Game/DarkAngels/Debug/BP_DA_DebugDestinos` | Clase de datos (hija de `PrimaryDataAsset`), un array `Destinos` de string |
+| `/Game/DarkAngels/Debug/DA_DA_DebugDestinos` | El Data Asset con los 10 destinos |
+| `/Game/DarkAngels/Debug/BP_DA_DebugHUD` | **Hijo de `BP_DA_HUD`**. Aquí vive todo el Debug HUD |
+| `BP_DA_HUD` (ya existía) | Sólo se le añaden 2 funciones vacías, `DbgTick` y `DbgDibujar`, y sus 2 llamadas |
+| `BP_DA_DebugZonas` (ya existía) | Ahora instala el hijo, por referencia **blanda** |
+
+### Un destino es una línea de texto
+
+```
+Nombre | Categoria | X=.. Y=.. Z=.. | P=.. Y=.. R=.. | Descripcion
+```
+
+Añadir un destino = añadir una línea al array del Data Asset. Ni un botón nuevo, ni tocar
+ningún grafo: la lista y su zona de clic se dibujan a partir del número de líneas.
+
+**Por qué texto y no un Data Table o un struct**, que sería lo normal en Unreal:
+
+1. El MCP **no puede crear structs de usuario** (no hay toolset de structs), y
+   `DataTableTools.create` exige un struct hijo de `TableRowBase`: los únicos que hay son de
+   motor y ninguno sirve.
+2. De los padres de blueprint posibles, `DataAsset` **no** se puede crear por MCP;
+   `PrimaryDataAsset` sí. `GameInstanceSubsystem` tampoco: no hay subsistema.
+3. `ObjectTools.set_properties` **escribe los structs a medias y sin avisar** (ya conocido).
+   Un array de `Transform` habría quedado corrupto en silencio. Los arrays de tipos simples
+   sí se escriben enteros — comprobado leyendo de vuelta las 10 líneas.
+
+`Utilities|String|StringToVector` y `StringToRotator` convierten los campos 3 y 4 con un solo
+nodo, y **`COPY TRANSFORM` imprime exactamente una línea de ese formato**, lista para pegar.
+
+### Cómo se extiende sin romper el HUD del juego
+
+En 5.8 **no existe nodo "call to parent function"** (comprobado con `find_node_types`), así
+que sobreescribir `ReceiveDrawHUD` en el hijo habría perdido lo que dibuja el padre. La salida:
+el padre declara dos funciones vacías y el hijo las **sobreescribe**.
+
+**El truco que lo hace posible:** una función del padre **sin valor de retorno** se hereda con
+"forma de evento" y el toolset la rechaza (*"must be placed as an event node rather than a
+function graph"*), y escribirla como evento tampoco vale (*"AddEvent|DbgTick does not exist"*).
+Dándole un valor de retorno (`Hecho`, bool) deja de tener forma de evento y **el hijo ya puede
+sobreescribirla como función normal**.
+
+### El panel encima de todo: hay que apagar los widgets de DCS
+
+Primera prueba en juego: las barras de vida y estamina y los slots de arma/escudo/objeto de
+DCS salían **sobre** el panel. **No es un problema de orden de dibujado y no se arregla
+moviendo las llamadas**: Slate compone los widgets UMG siempre por encima del canvas del HUD.
+
+La salida es `DbgOcultarJuego(bool)`, que al abrir el panel coge los widgets **de nivel
+superior** (`GetAllWidgetsOfClass` con `TopLevelOnly = true`), esconde los que estuvieran
+visibles y **se guarda cuáles fueron** en `DbgOcultadas`; al cerrar restaura sólo esos.
+
+Dos detalles que importan:
+
+- `TopLevelOnly` **tiene que ser true**. Con false entran también los widgets hijos, y
+  devolverlos todos a `Visible` le cambiaría el modo de hit test a los que fueran
+  `HitTestInvisible` — o sea, empezarían a comerse los clics.
+- **El lector del DSL omite los valores por defecto**, así que releyendo el grafo no se
+  distingue `TopLevelOnly=true` de no haberlo puesto. Hay que mirar el pin con
+  `get_pin_value`. Verificado: `true`, `Hidden` y `Visible`.
+
+Lo que dibuja el HUD del juego en el canvas (objetivo, banner, panel de salto) sigue pintándose
+después del panel, pero no se solapan porque el panel va pegado al borde izquierdo.
+
+### La rotación que vale es la de la cámara, y el DSL casi la estropea
+
+Primera versión: se leía `GetActorRotation` del pawn, y salía siempre `P=0 Y=0 R=0` — en DCS
+el pawn **no gira con la cámara**, así que `COPY TRANSFORM` escribía una orientación que no era
+hacia donde mirabas. Ahora se usa la rotación de control en los cuatro sitios (info, copiar,
+guardar, punto de inicio) y al teletransportar se aplica también con `Pawn|SetControlRotation`.
+
+**La trampa:** `Pawn|GetControlRotation` tiene **dos variantes** con el mismo `type_id`, una
+sobre Pawn y otra sobre Controller. Pasándole el pawn, el DSL eligió la de Controller **y se
+sacó un Controller de donde pudo**: metió un `Class|Pawn|GetLastHitBy` por medio, que es nulo.
+Compilaba sin quejarse y en juego soltaba *"Accessed None trying to read property LastHitBy"*.
+Se arregla dándole el `PlayerController` explícito. Es el mismo fallo silencioso del resolver
+que ya mordió con `WBPDAHUD` vs `BPDAHUD`: **si un `type_id` aparece dos veces en
+`find_node_types`, no dejarle elegir**.
+
+### Los clics no usan hit boxes
+
+`HUD|AddHitBox` pide dos `Vector2D` y en este build **no existe ningún nodo `MakeVector2D`**.
+Los clics se resuelven a mano: `WasInputKeyJustPressed(LeftMouseButton)` + `GetMousePosition`
+contra los rectángulos. Sale mejor: la geometría se calcula una sola vez en Python y de ahí
+salen a la vez el dibujado y el enrutado, así que no pueden descuadrarse, y la lista de
+destinos se resuelve con **un solo rectángulo** dividiendo la Y — por eso puede crecer sin
+tocar el grafo.
+
+### Shipping: no es un `if`, es que no está
+
+`Development|GetBuildConfiguration` **no se puede cablear a nada desde Blueprint por esta API**.
+Falla de las tres formas — `==` directo, dentro de un `and`, y por el pin comodín de
+`EnumtoString` — y **también cableando a mano con `connect_pins`**. No existe
+`SwitchonEBuildConfiguration` ni getter de console variable.
+
+La protección es más fuerte que un `if`:
+
+- `/Game/DarkAngels/Debug` está en `DirectoriesToNeverCook` (`Config/DefaultGame.ini`): en un
+  build empaquetado **estos assets no existen**.
+- `BP_DA_DebugZonas` pide la clase con `LoadClassAssetBlocking` sobre una ruta **blanda**, la
+  castea a `HUD` del motor (no a la clase de debug, para no conocerla) y si no está **se cae al
+  HUD normal del juego**. El nivel no tiene ni una referencia dura a la carpeta de debug.
+- Y queda `DbgHabilitado` en el CDO como interruptor manual.
+
+### Scripts
+
+- `Tools/MCP/debughud_datos.py` — la clase de datos y el Data Asset con los 10 destinos
+- `Tools/MCP/debughud_montar.py` — los ganchos del padre y los 17 grafos del hijo
+- `Tools/MCP/debughud_activar.py` — el actor del nivel, con la carga blanda
+- `Tools/MCP/debughud_probar.py` — fuerza el panel visible para verlo sin teclear
+
+### Cabos sueltos
+
+- **Sin probar en juego.** El editor tenía abierto `L_DA_Malkuth_Gabriel_Sub`, no el maestro, y
+  no se le cambió el nivel: ahí estaba el guardado que había fallado. Compila, está enganchado
+  y verificado contra el grafo, pero falta abrir el maestro y darle a `.`.
+- `DbgCampo` reparte la línea con `ParseIntoArray` cada vez: con el panel abierto son ~4
+  parseos por destino y frame. Con 10 destinos da igual; si la lista crece mucho, cachear.
+- Las otras cinco pestañas dibujan un cartel de "todavía no construida".
+
 ## Gabriel te sigue con la mirada y se voltea (2026-08-17)
 
 ### La mecánica ya existía en DCS
