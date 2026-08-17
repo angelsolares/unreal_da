@@ -45,6 +45,14 @@ RADIO = 12000.0    # a que distancia de una ruta se considera que estas en ella
 # (9.220) ya no salia nada.
 VIDA = 14.0
 
+# COMO SE HACE VER. Una luz puntual sola no se lee sobre cesped iluminado: se ve
+# brillar al jugador cuando nace, y luego un manchurron que se pierde. La escena
+# tiene niebla, asi que se usa: con dispersion volumetrica la luz se ve como una
+# bola de luz EN EL AIRE y no como un reflejo en el suelo. Mas radio para que
+# alcance, y sin sombras porque es una luz que se mueve y no vale la pena.
+LUZ = {"attenuationRadius": 5000.0, "volumetricScatteringIntensity": 12.0,
+       "castShadows": False, "sourceRadius": 40.0}
+
 # EL COLOR DISTINGUE LA RUTA PRINCIPAL DE LOS RAMALES: dorado calido el avance,
 # azulado y a media luz los ramales. Asi orienta sin ocultar que el Mirador y el
 # Gazebo existen, que es lo que pide el PDF del Gazebo —explorarlo sin volverlo
@@ -54,10 +62,10 @@ CODIGO = """
   (Actor|SetLifeSpan self 14.0)
   (if (Variables|Default|GetPrincipal)
     (Rendering|Components|Light|SetLightColor (Variables|Default|GetLuz) "(R=1.0,G=0.78,B=0.36,A=1.0)" false)
-    (Rendering|Components|Light|SetIntensity (Variables|Default|GetLuz) 9000.0)
+    (Rendering|Components|Light|SetIntensity (Variables|Default|GetLuz) 90000.0)
     (else
       (Rendering|Components|Light|SetLightColor (Variables|Default|GetLuz) "(R=0.42,G=0.55,B=0.85,A=1.0)" false)
-      (Rendering|Components|Light|SetIntensity (Variables|Default|GetLuz) 3500.0))))
+      (Rendering|Components|Light|SetIntensity (Variables|Default|GetLuz) 35000.0))))
 
 (event EventTick (DeltaSeconds)
   (bind _puntos (Class|BPDARuta|GetPuntos (Variables|Default|GetRuta)))
@@ -125,8 +133,16 @@ def run():
     # las propiedades recien creadas. `Indice` a -1 es lo que dispara la busqueda
     # del punto de entrada.
     cdo = bt("get_default_object", {"blueprint": bp})
-    for k, v in (("Indice", -1), ("Radio", RADIO)):
+    for k, v in (("Indice", -1), ("Radio", RADIO), ("Velocidad", 700.0)):
         ot("set_properties", {"instance": cdo, "values": json.dumps({k: v})})
+
+    # La luz, campo a campo: el setter de structs se deja los demas.
+    for c in execute_tool("editor_toolset.toolsets.actor.ActorTools.get_components",
+                          json.dumps({"actor": cdo}))["returnValue"]:
+        if "Luz" not in c["refPath"]:
+            continue
+        for k in LUZ:
+            ot("set_properties", {"instance": c, "values": json.dumps({k: LUZ[k]})})
     bt("compile_blueprint", {"blueprint": bp})
     execute_tool("editor_toolset.toolsets.asset.AssetTools.save_assets",
                  json.dumps({"asset_paths": [BP.split(".")[0]]}))
@@ -134,4 +150,10 @@ def run():
     return {"defaults": json.loads(ot("get_properties", {
                 "instance": bt("get_default_object", {"blueprint": bp}),
                 "properties": ["Indice", "Radio", "Velocidad", "Altura", "Cerca"]})),
+            "luz": [json.loads(ot("get_properties", {"instance": c,
+                                                     "properties": list(LUZ)}))
+                    for c in execute_tool(
+                        "editor_toolset.toolsets.actor.ActorTools.get_components",
+                        json.dumps({"actor": bt("get_default_object", {"blueprint": bp})})
+                    )["returnValue"] if "Luz" in c["refPath"]],
             "grafo": bt("read_graph_dsl", {"graph": EG})}
