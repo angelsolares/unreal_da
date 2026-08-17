@@ -56,14 +56,23 @@ def run():
     if ya is not None:
         return {"estado": "ya estaba enganchada"}
 
-    # El tipo de nodo para llamar a una funcion propia NO es `CallFunction|<x>`
-    # —eso es solo como lo escribe el DSL al leer—: hay que preguntarselo.
-    tipos = bt("find_node_types", {"graph": EG, "type_id_filter": NUEVA,
-                                   "context_pins": []})
-    if not tipos:
-        return {"error": "no hay tipo de nodo para " + NUEVA}
-    nuevo = bt("create_node", {"graph": EG, "type_id": tipos[0],
-                               "pos": {"x": 400, "y": 1800}})
+    # EL TIPO DE UNA FUNCION PROPIA ES `|<Nombre>`: barra delante y categoria
+    # vacia. No es `CallFunction|<Nombre>` —eso es solo como lo escribe el DSL al
+    # leer— y **`find_node_types` no las lista**, ni reiniciando el editor: no
+    # entran en ese indice. Se comprobo leyendo el `type_id` de las llamadas que
+    # ya habia en el grafo, que salen como `|Dialogo_Tick`, `|SaltoZonas_Tick`.
+    nuevo = None
+    fallos = []
+    for tipo in ("Class|BPDAHUD|" + NUEVA, "|" + NUEVA, "CallFunction|" + NUEVA,
+                 "Default|" + NUEVA, NUEVA):
+        try:
+            nuevo = bt("create_node", {"graph": EG, "type_id": tipo,
+                                       "pos": {"x": 400, "y": 1800}})
+            break
+        except Exception as e:
+            fallos.append(tipo)
+    if nuevo is None:
+        return {"error": "ningun type_id vale", "probados": fallos}
 
     p = salida(anterior, "then")
     detras = list(p.get("connected_pins") or [])
