@@ -45,10 +45,19 @@ COLISION = [
 # Cada interactuable: sobre que actor va, que verbo sale en el cartel, cuanto
 # margen se le da a la caja por encima del objeto, y que dice al leerlo.
 #
-# EL TEXTO DE LA TABLETA ES PROVISIONAL. No esta sacado de la Biblia Narrativa
-# —el PDF no se deja extraer con lo que hay aqui— sino escrito al tono de las
-# lineas que si son literales (Sariel, Cassiel) y del nombre del beat, "Cenizas
-# y Verdad". Cambiarlo aqui en cuanto Angel pase el texto bueno.
+# EL TEXTO DE LA TABLETA ES LITERAL DE LA BIBLIA NARRATIVA, pasado por Angel. Se
+# reparte en tres lineas porque el panel del HUD dibuja una barra de fondo por
+# linea; los cortes van donde la cita respira, no por longitud.
+#
+# El PDF no se pudo leer desde aqui: esta hecho con XeLaTeX y sus paginas llevan
+# 11.825 cadenas hexadecimales y cero literales de texto —son identificadores de
+# glifo de fuentes subconjunto, sin tabla `ToUnicode`—. Se decodifica invirtiendo
+# la `cmap` de las fuentes empotradas, que es trabajo aparte y hara falta para el
+# laberinto de Gabriel.
+#
+# **Los acentos van tal cual.** El resto de dialogos del proyecto estan sin
+# acentuar, pero esto es una cita literal y se respeta. Si la fuente del canvas
+# no los pintase, se quitan aqui y ya.
 INTERACTUABLES = [
     {
         "nombre": "Interact_Tableta",
@@ -56,9 +65,9 @@ INTERACTUABLES = [
         "verbo": "Leer",
         "margen": 10.0,
         "dialogo": [
-            "Aqui se dijo la verdad una sola vez, y ardio todo.",
-            "Lo que queda no es ceniza: es lo que la verdad deja cuando nadie la sostiene.",
-            "Llevate el Fragmento. Ya no protege nada.",
+            "\"Antes de ti, hubo otros. Antes de otros, hubo uno.",
+            "El uno no subió. El uno bajó.",
+            "Y al bajar, se convirtió en ti.\"",
         ],
     },
     {
@@ -122,17 +131,10 @@ def componente(actor, nombre):
 
 
 def traza(x, y, z, dx, dy, largo):
-    a = {"x": x, "y": y, "z": z}
-    b = {"x": x + dx * largo, "y": y + dy * largo, "z": z}
-    r = sc("trace_world", {"start": a, "end": b})
-    if not r:
-        return None
-    golpe = r[0] if isinstance(r, list) else r
-    act = golpe.get("actor") or golpe.get("hitActor")
-    try:
-        return at("get_label", {"actor": act}) if act else str(golpe)[:80]
-    except Exception:
-        return str(act)[:80]
+    """`trace_world` devuelve la DISTANCIA al impacto, o None si no toca nada."""
+    return sc("trace_world", {"start": {"x": x, "y": y, "z": z},
+                              "end": {"x": x + dx * largo, "y": y + dy * largo,
+                                      "z": z}})
 
 
 def run():
