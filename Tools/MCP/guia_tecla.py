@@ -11,10 +11,19 @@ import json
 # W, X, Tab, Shift, Ctrl, Space y los botones del raton; y el HUD ya usa K, L y
 # el bloque numerico.
 #
-# **HAY QUE CASTEAR LO QUE DEVUELVE `GetAllActorsOfClass`.** Devuelve `Actor` a
-# secas aunque le pidas una clase concreta, y entonces `Class|BPDARuta|GetPuntos`
-# no traga: "Could not connect pin ReturnValue to Puntos". Es el mismo tropiezo
-# que con el inventario de DCS.
+# DOS COSAS QUE EL DSL NO HACE, Y LA SEGUNDA CAMBIA EL DISENIO:
+#
+# 1. **Hay que castear lo que devuelve `GetAllActorsOfClass`**: da `Actor` a
+#    secas aunque le pidas una clase concreta.
+#
+# 2. **No sabe cablear pines de ARRAY entre nodos.** Pasarle la polilinea al
+#    fuego con `SetPuntos _f (GetPuntos _r)` falla con "Could not connect pin
+#    ReturnValue to Puntos" aunque los dos lados sean arrays de vectores, y el
+#    cast no tiene nada que ver —lo probe con y sin el—. La vuelta es **no pasar
+#    el array**: se le da al fuego una **referencia al actor de la ruta** y que
+#    lea sus puntos el solo. Las referencias a objeto si se conectan sin
+#    problema, es como estan atados `Animado`, `MallaMundo` e `ItemAlRecoger`.
+#    De paso sale mas barato: no se copia una lista de 71 vectores por fuego.
 
 BP = "/Game/DarkAngels/Blueprints/UI/BP_DA_HUD.BP_DA_HUD"
 FN = "Guia_Tick"
@@ -31,7 +40,7 @@ CODIGO = """
   (if (Game|Player|WasInputKeyJustPressed _pc "%(tecla)s")
     (Variables|Default|SetGuiaBloqueada false)
     (for _az (Actor|GetAllActorsOfClass "%(zona)s")
-      (bind _z (Utilities|Casting|CastToBP_DA_ZoneTrigger _az))
+      (bind _z (."AsBP DA Zone Trigger" (Utilities|Casting|CastToBP_DA_ZoneTrigger _az)))
       (if (not (Class|BPDAZoneTrigger|GetPermiteGuia _z))
         (if (< (Math|Vector|Distance(Vector)
                  (Transformation|GetActorLocation _az)
@@ -40,10 +49,10 @@ CODIGO = """
           (Variables|Default|SetGuiaBloqueada true))))
     (if (not (Variables|Default|GetGuiaBloqueada))
       (for _ar (Actor|GetAllActorsOfClass "%(ruta)s")
-        (bind _r (Utilities|Casting|CastToBP_DA_Ruta _ar))
+        (bind _r (."AsBP DA Ruta" (Utilities|Casting|CastToBP_DA_Ruta _ar)))
         (bind _f (Game|SpawnActorfromClass "%(fuego)s"
                    (Transformation|GetActorTransform _pj)))
-        (Class|BPDAFuego|SetPuntos _f (Class|BPDARuta|GetPuntos _r))
+        (Class|BPDAFuego|SetRuta _f _r)
         (Class|BPDAFuego|SetPrincipal _f (Class|BPDARuta|GetEsPrincipal _r))
         (Class|BPDAFuego|SetListo _f true)))))
 """ % {"tecla": TECLA, "zona": ZONA, "ruta": RUTA, "fuego": FUEGO,
@@ -62,13 +71,19 @@ def run():
     if call("EditorToolset.EditorAppToolset.IsPIERunning", {}):
         return {"error": "PIE esta corriendo"}
 
-    # `Principal` en el fuego: lo lee para pintarse dorado o apagado.
+    # En el fuego: `Principal` para pintarse dorado o apagado, y `Ruta` para
+    # leerse los puntos el solo en vez de que se los pasen.
     fuego = {"refPath": FUEGO[:-2]}
-    if "Principal" not in str(bt("list_variables", {"blueprint": fuego})):
+    variables = str(bt("list_variables", {"blueprint": fuego}))
+    if "Principal" not in variables:
         bt("add_variable", {"blueprint": fuego, "name": "Principal", "type_name": "bool"})
+    if "Ruta" not in variables:
+        bt("add_object_variable", {"blueprint": fuego, "name": "Ruta",
+                                   "object_class": {"refPath": RUTA}})
+    for v in ("Principal", "Ruta"):
         bt("set_variable_instance_editable",
-           {"blueprint": fuego, "variable_name": "Principal", "instance_editable": True})
-        bt("compile_blueprint", {"blueprint": fuego})
+           {"blueprint": fuego, "variable_name": v, "instance_editable": True})
+    bt("compile_blueprint", {"blueprint": fuego})
 
     bp = {"refPath": BP}
     if "GuiaBloqueada" not in str(bt("list_variables", {"blueprint": bp})):

@@ -19,8 +19,14 @@ import json
 # `Math|Vector|GetUnitDirection(Vector)` da el vector unitario de A a B en un
 # solo nodo: ahorra el restar y el normalizar.
 #
+# LOS PUNTOS NO SE LE PASAN, SE LOS BUSCA. El fuego guarda una referencia al
+# actor `BP_DA_Ruta` y le pide la polilinea. Es asi por obligacion —el DSL no
+# sabe cablear pines de array entre nodos, y `SetPuntos _f (GetPuntos _r)` no
+# compila— pero sale mejor de todas formas: no se copia una lista de 71 vectores
+# cada vez que nace un fuego.
+#
 # `Listo` ES UN CERROJO, no un adorno. Quien suelta el fuego lo crea primero y le
-# pasa la ruta despues, asi que sin el, el primer Tick veria `Puntos` vacio y el
+# pasa la ruta despues, asi que sin el, el primer Tick veria `Ruta` vacia y el
 # fuego se destruiria antes de nacer.
 #
 # Y EL FUEGO SE BUSCA LA VIDA. Con `Indice` a -1 —su valor por defecto— en el
@@ -41,7 +47,7 @@ CODIGO = """
   (Actor|SetLifeSpan self 14.0))
 
 (event EventTick (DeltaSeconds)
-  (bind _puntos (Variables|Default|GetPuntos))
+  (bind _puntos (Class|BPDARuta|GetPuntos (Variables|Default|GetRuta)))
   (if (Variables|Default|GetListo)
     (if (< (Variables|Default|GetIndice) 0)
       (Variables|Default|SetMejorDist 100000000.0)
