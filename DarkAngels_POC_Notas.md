@@ -8043,6 +8043,72 @@ de volver a reducirlo. Por eso el defecto es 1.15 y no más.
 `PY = 92` tampoco es arbitrario: deja libre la franja donde el HUD del juego dibuja el banner de
 objetivo, que ahora comparte el centro de la pantalla con el panel.
 
+## DA Debug HUD, fase 4: pestaña AI y spawner (2026-08-17)
+
+### Los enemigos son los que existen, comprobados uno a uno
+
+Heredan de `BP_BaseAI`, que es lo que los hace IA de DCS y no un prop:
+**Vigilante, Lancero, Arquero, Heraldo, Inspector** (`/Game/DarkAngels/Blueprints/Enemies/`)
+y **`BP_DA_WarriorAI`** (→ `BP_WarriorAI` → `BP_BaseAI`).
+
+Quedan fuera a propósito: `BP_Angel_Messenger` y `BP_Archangel` son `Character` pelados (NPCs
+sin IA de combate) y `BP_LightShield` es un `Actor`. Los nombres del encargo —Escudero
+Celestial, Lancero del Alba, Arquero del Firmamento, Portador del Estandarte— **no existen como
+blueprints**, así que los tipos usan los nombres reales y no se creó ninguno falso.
+
+### Cómo añadir un Enemy Type
+
+Una línea en el array `Tipos` del Data Asset `DA_DA_DebugEnemigos`:
+
+```
+Nombre visible | /Game/Ruta/Al/BP_Enemigo.BP_Enemigo_C
+```
+
+Ojo con el sufijo `_C`: es la CLASE, no el blueprint. La lista y su zona de clic salen del
+número de líneas, así que no hay que tocar ningún grafo.
+
+### Cómo crear un Encounter Preset
+
+Una línea en el array `Encuentros`:
+
+```
+Nombre del preset | indiceDeTipo:cantidad, indiceDeTipo:cantidad
+```
+
+El índice es la posición en `Tipos` (0 = el primero). `TEST Mixto a distancia | 0:2, 2:1` son
+dos Vigilantes y un Arquero. Los dos presets que hay van marcados **TEST** a propósito: sirven
+para probar la mecánica, no son diseño de encuentros de Malkuth.
+
+### CLEAR no puede tocar nada narrativo
+
+Los enemigos generados se apuntan en `DbgSpawned`, un array de Actor del HUD. `CLEAR` recorre
+**ese array y nada más**, así que aunque haya un Lancero colocado a mano en el nivel es
+imposible que lo borre. Se eligió el registro en vez de etiquetar porque no depende de leer
+bien una etiqueta.
+
+### Spawn seguro
+
+Posición del jugador → avanzar por su vector *forward* la distancia elegida → desplazar cada
+unidad de lado para que no salgan apiladas → **`ProjectPointToNavigation`**, que es lo que evita
+que aparezcan dentro de geometría. Si la proyección falla se usa el punto crudo, para no
+quedarse sin spawn.
+
+Dos tropiezos de la API por el camino: la ruta de clase llega como **texto** (viene del Data
+Asset) y hay que pasarla por `MakeSoftClassPath` → `ToSoftClassReference` antes de
+`LoadClassAssetBlocking`; y `CastToActorClass` **tiene pines de ejecución**, no es puro, así que
+el spawn va dentro de su rama `:then`.
+
+### AI Controls, con el sistema que ya hay
+
+- **Freeze / Unfreeze** → `StopLogic` / `RestartLogic` sobre el Behavior Tree de cada
+  `BP_BaseAI`, vía `GetAIController`.
+- **Disable / Enable** → lo anterior más apagar el tick del actor.
+- **Ignore Player / Restore Aggro** → `ForgetAll` sobre el `AIPerceptionComponent`. Con el
+  interruptor puesto se repite desde el tick, porque si no volverían a percibirte al instante.
+
+**Limitación:** los enemigos que aparezcan después de pulsar Freeze/Disable nacen despiertos;
+hay que volver a pulsarlo.
+
 ## DA Debug HUD, fase 3: pestaña COMBAT (2026-08-17)
 
 ### Cómo funcionan los multiplicadores de daño y dónde se aplican

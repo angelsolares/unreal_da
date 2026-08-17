@@ -81,6 +81,12 @@ VARIABLES = [
     # --- PLAYER ---
     ("DbgGod", "bool", None), ("DbgManaInf", "bool", None),
     ("DbgMovMult", "float", None),
+    # --- AI ---
+    ("DbgTipos", "string", "ARRAY"), ("DbgEncuentros", "string", "ARRAY"),
+    ("DbgTipoSel", "int", None), ("DbgCantSel", "int", None),
+    ("DbgDistSel", "float", None),
+    ("DbgCongelada", "bool", None), ("DbgApagada", "bool", None),
+    ("DbgIgnorar", "bool", None),
     # --- COMBAT ---
     ("DbgDmgMult", "float", None), ("DbgEnemyMult", "float", None),
     ("DbgOneHit", "bool", None), ("DbgLogOn", "bool", None),
@@ -99,6 +105,8 @@ DCS_STATS = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/StatsManager/"
              "BP_StatsManagerComponent.BP_StatsManagerComponent_C")
 DCS_TARGET = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/"
               "BP_DynamicTargetingComponent.BP_DynamicTargetingComponent_C")
+DATOS_ENEM = CARPETA + "/DA_DA_DebugEnemigos.DA_DA_DebugEnemigos"
+FILA_AI = 24.0
 DCS_AI = "/Game/DynamicCombatSystem/DCS/Blueprints/AI/BP_BaseAI.BP_BaseAI_C"
 DCS_COLL = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/CollisionHandler/"
             "BP_CollisionHandlerComponent.BP_CollisionHandlerComponent_C")
@@ -364,6 +372,7 @@ def dsl_tick():
     # solo cuando hace falta (dentro comprueba los tres interruptores).
     l.append('  (CallFunction|DbgMantener)')
     l.append('  (CallFunction|DbgLogTick)')
+    l.append('  (CallFunction|DbgOlvidarTick)')
     l.append('  (if (or %s)' % cond)
     l.append('    (CallFunction|DbgToggle))')
     # El clic se resuelve a mano; ver la cabecera del fichero.
@@ -386,9 +395,11 @@ def dsl_dibujar():
          '  (CallFunction|DbgCargar)',
          BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))',
-         # WORLD crece con la lista de destinos; PLAYER tiene alto fijo.
+         # WORLD crece con la lista de destinos; las demas tienen alto fijo, y
+         # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
-         ' (+ 440.0 (* n %.1f)) 660.0) esc))' % FILA,
+         ' (+ 440.0 (* n %.1f))'
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 660.0)) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -409,10 +420,10 @@ def dsl_dibujar():
         l.append('    (else')
         # Dos cierres: uno para el (else y otro para el (if.
         l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
-        # WORLD, PLAYER y COMBAT ya estan; el resto siguen pendientes.
-        etiqueta = '"%s"' % nombre if i < 3 else '"%s  --"' % nombre
+        # WORLD, PLAYER, COMBAT y AI ya estan; BOSS y STORY pendientes.
+        etiqueta = '"%s"' % nombre if i < 4 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
-                       ORO if i < 3 else GRIS, 1.0))
+                       ORO if i < 4 else GRIS, 1.0))
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
@@ -422,7 +433,10 @@ def dsl_dibujar():
     l.append('          (if (== (Variables|Default|GetDbgTab) 2)')
     l.append('            (CallFunction|DbgTabCombat)')
     l.append('            (else')
-    l.append('              (CallFunction|DbgTabPendiente)))))))')
+    l.append('              (if (== (Variables|Default|GetDbgTab) 3)')
+    l.append('                (CallFunction|DbgTabAI)')
+    l.append('                (else')
+    l.append('                  (CallFunction|DbgTabPendiente)))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -805,6 +819,214 @@ def dsl_tab_world():
                    '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
     l.append('  (return false))')
     return "\n".join(l)
+
+
+# ------------------------------------------------------------- AI: acciones
+#
+# Los enemigos generados aqui se apuntan en `DbgSpawned`, un array de Actor.
+# CLEAR recorre ESE array y nada mas: por construccion no puede tocar un enemigo
+# narrativo ni uno colocado a mano en el nivel, aunque sea de la misma clase.
+# Es mas fiable que etiquetar, que dependeria de leer bien la etiqueta.
+
+def dsl_cargar_enem():
+    return ('(fn DbgCargarEnem ()\n'
+            '  (if (> (Utilities|Array|Length (Variables|Default|GetDbgTipos)) 0)\n'
+            '    (return))\n'
+            '  (bind d (Variables|Default|GetDbgDatosEnem))\n'
+            '  (Utilities|IsValid d\n'
+            '    (:"Is Valid"\n'
+            '      (Variables|Default|SetDbgTipos'
+            ' (Class|BPDADebugEnemigos|GetTipos :self d))\n'
+            '      (Variables|Default|SetDbgEncuentros'
+            ' (Class|BPDADebugEnemigos|GetEncuentros :self d)))\n'
+            '    (:"Is Not Valid")))')
+
+
+def dsl_trozo():
+    """Campo N de una linea "a | b | c"."""
+    return ('(fn DbgTrozo (Linea Campo)\n'
+            '  (bind partes (Utilities|String|ParseIntoArray Linea "|" true))\n'
+            '  (if (not (Utilities|Array|IsValidIndex partes Campo))\n'
+            '    (return ""))\n'
+            '  (return (Utilities|String|Trim (Utilities|Array|Get(acopy) partes Campo))))')
+
+
+def dsl_campo_enem():
+    """Campo N de la entrada I de una de las dos listas.
+
+    `Cual` es 0 para tipos y 1 para encuentros. Se elige con un indice y no
+    pasando el array como argumento porque **un parametro de funcion no puede
+    ser un array por esta API**: el pin no conecta."""
+    return ('(fn DbgCampoEnem (Cual Indice Campo)\n'
+            '  (if (== Cual 0)\n'
+            '    (return (CallFunction|DbgTrozo :Campo Campo'
+            ' :Linea (Utilities|Array|Get(acopy)'
+            ' (Variables|Default|GetDbgTipos) Indice)))\n'
+            '    (else\n'
+            '      (return (CallFunction|DbgTrozo :Campo Campo'
+            ' :Linea (Utilities|Array|Get(acopy)'
+            ' (Variables|Default|GetDbgEncuentros) Indice))))))')
+
+
+def dsl_spawn_uno():
+    """Genera UN enemigo delante del jugador y lo apunta en el registro.
+
+    Sitio seguro: se parte de la posicion del jugador, se avanza por su vector
+    hacia delante y se desplaza de lado segun el indice para que no salgan
+    apilados; despues se PROYECTA AL NAVMESH, que es lo que evita que aparezcan
+    dentro de geometria. Si la proyeccion falla se usa el punto crudo, para no
+    quedarse sin spawn."""
+    return ('(fn DbgSpawnUno (RutaClase Lado)\n'
+            '  (bind pawn (Game|GetPlayerPawn 0))\n'
+            '  (bind base (+ (Transformation|GetActorLocation :self pawn)\n'
+            '    (+ (* (Transformation|GetActorForwardVector :self pawn)'
+            ' (Variables|Default|GetDbgDistSel))\n'
+            '       (* (Transformation|GetActorRightVector :self pawn)'
+            ' (* Lado 120.0)))))\n'
+            '  (bind (destino ok) (AI|Navigation|ProjectPointtoNavigation'
+            ' :Point base :QueryExtent'
+            ' (Math|Vector|MakeVector :X 600.0 :Y 600.0 :Z 600.0)))\n'
+            # La ruta llega como TEXTO (viene del Data Asset), y el pin de carga
+            # pide una referencia blanda: hay que pasar por MakeSoftClassPath y
+            # ToSoftClassReference. Un string suelto no conecta ahi.
+            '  (bind clase (Utilities|LoadClassAssetBlocking'
+            ' :AssetClass (Utilities|ToSoftClassReference'
+            ' :SoftClassPath (Utilities|MakeSoftClassPath :PathString RutaClase))))\n'
+            # CastToActorClass tiene pines de ejecucion (no es puro), asi que el
+            # spawn va DENTRO de su rama :then.
+            '  (bind ac (Utilities|Casting|CastToActorClass :Class clase)\n'
+            '    (:then\n'
+            '      (bind nuevo (Game|SpawnActorfromClass :Class ac'
+            ' :SpawnTransform (Math|Transform|MakeTransform'
+            ' :Location (select ok destino base))'
+            ' :CollisionHandlingOverride "AdjustIfPossibleButAlwaysSpawn"))\n'
+            '      (Utilities|Array|Add :TargetArray (Variables|Default|GetDbgSpawned)'
+            ' :NewItem nuevo))\n'
+            '    (:CastFailed)))')
+
+
+def dsl_spawn():
+    return ('(fn DbgSpawn ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (CallFunction|DbgCargarEnem)\n'
+            '  (bind ruta (CallFunction|DbgCampoEnem'
+            ' :Cual 0'
+            ' :Indice (Variables|Default|GetDbgTipoSel) :Campo 1))\n'
+            '  (for i (range (Variables|Default|GetDbgCantSel))\n'
+            '    (CallFunction|DbgSpawnUno :RutaClase ruta :Lado (- i 1)))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Spawn: "'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|ToString(Integer) (Variables|Default|GetDbgCantSel))'
+            ' (Utilities|String|Append " x "'
+            ' (CallFunction|DbgCampoEnem :Cual 0'
+            ' :Indice (Variables|Default|GetDbgTipoSel) :Campo 0))))))')
+
+
+def dsl_encuentro():
+    """Lanza un preset: "0:2, 2:1" = dos del tipo 0 y uno del tipo 2."""
+    return ('(fn DbgEncuentro (Indice)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (CallFunction|DbgCargarEnem)\n'
+            '  (bind grupos (Utilities|String|ParseIntoArray'
+            ' (CallFunction|DbgCampoEnem :Cual 1'
+            ' :Indice Indice :Campo 1) "," true))\n'
+            '  (for g grupos\n'
+            '    (bind par (Utilities|String|ParseIntoArray'
+            ' (Utilities|String|Trim g) ":" true))\n'
+            '    (bind tipo (Utilities|String|StringToInteger'
+            ' (Utilities|Array|Get(acopy) par 0)))\n'
+            '    (bind cuantos (Utilities|String|StringToInteger'
+            ' (Utilities|Array|Get(acopy) par 1)))\n'
+            '    (bind ruta (CallFunction|DbgCampoEnem'
+            ' :Cual 0 :Indice tipo :Campo 1))\n'
+            '    (for j (range cuantos)\n'
+            '      (CallFunction|DbgSpawnUno :RutaClase ruta :Lado (- j 1))))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Encuentro: "'
+            ' (CallFunction|DbgCampoEnem :Cual 1'
+            ' :Indice Indice :Campo 0))))')
+
+
+def dsl_limpiar():
+    return ('(fn DbgLimpiar ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind lista (Variables|Default|GetDbgSpawned))\n'
+            '  (bind n (Utilities|Array|Length lista))\n'
+            '  (for e lista\n'
+            '    (Actor|DestroyActor :self e))\n'
+            '  (Utilities|Array|Clear :TargetArray (Variables|Default|GetDbgSpawned))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Enemigos de debug borrados: "'
+            ' (Utilities|String|ToString(Integer) n))))')
+
+
+def dsl_ia_logica():
+    """Freeze/Unfreeze usando la IA que ya hay: StopLogic / RestartLogic sobre
+    el Behavior Tree de cada `BP_BaseAI`."""
+    return ('(fn DbgIALogica (Congelar)\n'
+            '  (Variables|Default|SetDbgCongelada Congelar)\n'
+            '  (for e (Actor|GetAllActorsOfClass :ActorClass "' + DCS_AI + '")\n'
+            '    (bind c (AI|GetAIController :ControlledActor e))\n'
+            '    (if Congelar\n'
+            '      (AI|Logic|StopLogic :self c :Reason "DA Debug HUD")\n'
+            '      (else\n'
+            '        (AI|Logic|RestartLogic :self c))))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|SelectString "IA congelada" "IA reanudada" Congelar)))')
+
+
+def dsl_ia_apagar():
+    # Disable AI va un paso mas alla que Freeze: ademas de parar el arbol, deja
+    # de tickear el actor entero.
+    return ('(fn DbgIAApagar (Apagar)\n'
+            '  (Variables|Default|SetDbgApagada Apagar)\n'
+            '  (for e (Actor|GetAllActorsOfClass :ActorClass "' + DCS_AI + '")\n'
+            '    (Actor|Tick|SetActorTickEnabled :self e :bEnabled (not Apagar)))\n'
+            '  (CallFunction|DbgIALogica :Congelar Apagar)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|SelectString "IA apagada" "IA encendida" Apagar)))')
+
+
+def dsl_ignorar():
+    """Ignore Player: se le borra la percepcion a cada IA.
+
+    Con el interruptor puesto se repite desde el tick, porque si no volverian a
+    verte al instante siguiente. Restore Aggro lo apaga y ellos vuelven a
+    percibir solos."""
+    return ('(fn DbgIgnorarToggle (Ignorar)\n'
+            '  (Variables|Default|SetDbgIgnorar Ignorar)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|SelectString "Los enemigos te ignoran"'
+            ' "Aggro restaurado" Ignorar)))')
+
+
+def dsl_olvidar_tick():
+    return ('(fn DbgOlvidarTick ()\n'
+            '  (if (not (Variables|Default|GetDbgIgnorar))\n'
+            '    (return))\n'
+            '  (for e (Actor|GetAllActorsOfClass :ActorClass "' + DCS_AI + '")\n'
+            '    (bind c (AI|GetAIController :ControlledActor e))\n'
+            '    (bind p (AI|Perception|GetAIPerceptionComponent :self c))\n'
+            '    (Utilities|IsValid p\n'
+            '      (:"Is Valid"\n'
+            '        (AI|Perception|ForgetAll :self p))\n'
+            '      (:"Is Not Valid")))\n'
+            '  (return))')
+
+
+def dsl_reset_arena():
+    return ('(fn DbgResetArena ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (CallFunction|DbgLimpiar)\n'
+            '  (CallFunction|DbgIAApagar :Apagar false)\n'
+            '  (CallFunction|DbgIgnorarToggle :Ignorar false)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "Arena limpia: enemigos de debug fuera y IA restaurada"))')
 
 
 # --------------------------------------------------------- COMBAT: acciones
@@ -1195,6 +1417,171 @@ def dsl_click_combat():
     return "\n".join(l)
 
 
+# ---------------------------------------------------------------- AI: pintar
+#
+# Las listas de tipos y de encuentros son dinamicas (salen del Data Asset), asi
+# que van como filas con UN solo rectangulo de clic cada una, igual que la lista
+# de teleports: anadir un enemigo o un preset no obliga a tocar el grafo.
+
+AI_TIPOS_Y = 152.0
+AI_ENC_Y = 552.0
+
+
+def filas_ai():
+    x0, w3, w5 = 8.0, 182.0, 108.0
+    cant = lambda n: "(Variables|Default|SetDbgCantSel %s)" % n
+    dist = lambda d: "(Variables|Default|SetDbgDistSel %s)" % d
+    return [
+        ("QUANTITY", 306.0, 326.0, [
+            (x0 + i * 112.0, w5, e, cant(v),
+             "(== (Variables|Default|GetDbgCantSel) %s)" % v)
+            for i, (e, v) in enumerate([("1", "1"), ("2", "2"), ("3", "3"),
+                                        ("5", "5"), ("10", "10")])
+        ]),
+        ("SPAWN DISTANCE", 362.0, 382.0, [
+            (x0 + i * 142.0, 138.0, e, dist(v),
+             "(== (Variables|Default|GetDbgDistSel) %s)" % v)
+            for i, (e, v) in enumerate([("3m", "300.0"), ("5m", "500.0"),
+                                        ("10m", "1000.0"), ("20m", "2000.0")])
+        ]),
+        ("", None, 418.0, [
+            (x0, 278.0, "SPAWN", "(CallFunction|DbgSpawn)", "false"),
+            (x0 + 286.0, 278.0, "CLEAR DEBUG ENEMIES", "(CallFunction|DbgLimpiar)",
+             "false"),
+        ]),
+        ("AI CONTROLS", 452.0, 472.0, [
+            (x0, w3, "FREEZE AI", "(CallFunction|DbgIALogica :Congelar true)",
+             "(Variables|Default|GetDbgCongelada)"),
+            (x0 + 190.0, w3, "DISABLE AI", "(CallFunction|DbgIAApagar :Apagar true)",
+             "(Variables|Default|GetDbgApagada)"),
+            (x0 + 380.0, w3, "IGNORE PLAYER",
+             "(CallFunction|DbgIgnorarToggle :Ignorar true)",
+             "(Variables|Default|GetDbgIgnorar)"),
+        ]),
+        ("", None, 502.0, [
+            (x0, w3, "UNFREEZE AI", "(CallFunction|DbgIALogica :Congelar false)",
+             "false"),
+            (x0 + 190.0, w3, "ENABLE AI", "(CallFunction|DbgIAApagar :Apagar false)",
+             "false"),
+            (x0 + 380.0, w3, "RESTORE AGGRO",
+             "(CallFunction|DbgIgnorarToggle :Ignorar false)", "false"),
+        ]),
+        ("", None, 700.0, [
+            (x0, 564.0, "CLEAR DEBUG ARENA", "(CallFunction|DbgResetArena)", "false"),
+        ]),
+    ]
+
+
+def dsl_tab_ai():
+    l = ['(fn DbgTabAI ()', BIND_GEO, '  (CallFunction|DbgCargarEnem)',
+         '  (bind tipos (Variables|Default|GetDbgTipos))',
+         '  (bind nt (Utilities|Array|Length tipos))']
+    l.append(texto(X(16.0), Y(130.0), '"ENEMY TYPE"', ORO, 1.05))
+    l.append('  (for i (range nt)')
+    l.append('    (bind ty (+ %s (* i %s)))' % (Y(AI_TIPOS_Y), SC(FILA_AI)))
+    l.append('    (bind sel (== i (Variables|Default|GetDbgTipoSel)))')
+    l.append('    (if sel')
+    l.append('    ' + rect(X(8.0), "ty", SC(PW - 16.0), SC(FILA_AI - 3.0),
+                           BOTON_ON).strip())
+    l.append('      (else')
+    l.append('    ' + rect(X(8.0), "ty", SC(PW - 16.0), SC(FILA_AI - 3.0),
+                           BOTON).strip() + '))')
+    l.append('    ' + texto(X(18.0), "(+ ty %s)" % SC(2.0),
+                            '(CallFunction|DbgCampoEnem :Cual 0'
+                            ' :Indice i :Campo 0)', HUESO, 0.95).strip())
+    l.append('    )')
+
+    for titulo, y_tit, y_bot, botones in filas_ai():
+        if y_tit:
+            l.append(texto(X(16.0), Y(y_tit), '"%s"' % titulo, ORO, 1.05))
+        for x, w, etiqueta, _accion, encendido in botones:
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
+                     ' :Etiqueta "%s" :Encendido %s)'
+                     % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
+
+    # Encuentros (presets), lista dinamica igual que los tipos.
+    l.append(texto(X(16.0), Y(532.0), '"ENCOUNTER PRESETS"', ORO, 1.05))
+    l.append('  (bind encs (Variables|Default|GetDbgEncuentros))')
+    l.append('  (bind ne (Utilities|Array|Length encs))')
+    l.append('  (for i (range ne)')
+    l.append('    (bind ey (+ %s (* i %s)))' % (Y(AI_ENC_Y), SC(FILA_AI)))
+    l.append('    ' + rect(X(8.0), "ey", SC(PW - 16.0), SC(FILA_AI - 3.0),
+                           BOTON).strip())
+    l.append('    ' + texto(X(18.0), "(+ ey %s)" % SC(2.0),
+                            '(CallFunction|DbgCampoEnem :Cual 1'
+                            ' :Indice i :Campo 0)', HUESO, 0.95).strip())
+    l.append('    )')
+
+    # --- SELECTED ENEMY DEBUG: el objetivo actual del jugador ---
+    l.append(texto(X(16.0), Y(614.0), '"SELECTED ENEMY"', ORO, 1.05))
+    l.append('  (bind pawn (Game|GetPlayerPawn 0))')
+    l.append('  (bind tc (Actor|GetComponentbyClass :self pawn'
+             ' :ComponentClass "%s"))' % DCS_TARGET)
+    l.append('  (bind obj (Class|BPDynamicTargetingComponent|GetSelectedActor'
+             ' :self tc))')
+    l.append('  (Utilities|IsValid obj')
+    l.append('    (:"Is Valid"')
+    l.append('      (bind smo (Actor|GetComponentbyClass :self obj'
+             ' :ComponentClass "%s"))' % DCS_STATS)
+    l.append('      ' + texto(X(16.0), Y(636.0),
+                              '(Utilities|String|Append "Name:  "'
+                              ' (Utilities|String|ToString(Object) obj))',
+                              HUESO, 0.9).strip())
+    l.append('      ' + texto(X(16.0), Y(656.0),
+                              '(Utilities|String|Append'
+                              ' (Utilities|String|Append "HP:  "'
+                              ' (Utilities|String|ToString(Integer)'
+                              ' (Math|Float|Truncate ' + leer(TAG_HP, "smo") + ')))'
+                              ' (Utilities|String|Append "     Dist:  "'
+                              ' (Utilities|String|ToString(Integer)'
+                              ' (Math|Float|Truncate (/ (Math|Vector|VectorLength'
+                              ' (- (Transformation|GetActorLocation :self obj)'
+                              ' (Transformation|GetActorLocation :self pawn)))'
+                              ' 100.0)))))', HUESO, 0.9).strip())
+    l.append('      ' + texto(X(16.0), Y(676.0),
+                              '(Utilities|String|Append "Controller:  "'
+                              ' (Utilities|String|ToString(Object)'
+                              ' (AI|GetAIController :ControlledActor obj)))',
+                              HUESO, 0.9).strip())
+    l.append('      )')
+    l.append('    (:"Is Not Valid"')
+    l.append('      ' + texto(X(16.0), Y(636.0),
+                              '"Sin objetivo: fija a un enemigo para verlo aqui."',
+                              GRIS, 0.85).strip())
+    # Sin `(return false)` al final: el IsValid es multi-exec y cierra el flujo.
+    l.append('      )))')
+    return "\n".join(l)
+
+
+def dsl_click_ai():
+    l = ['(fn DbgClickAI (MX MY)', BIND_GEO,
+         '  (bind nt (Utilities|Array|Length (Variables|Default|GetDbgTipos)))',
+         '  (bind ne (Utilities|Array|Length (Variables|Default|GetDbgEncuentros)))']
+    # Lista de tipos: un rectangulo, la fila sale de la Y del raton.
+    l.append('  (bind fint (+ %s (* nt %s)))' % (Y(AI_TIPOS_Y), SC(FILA_AI)))
+    l.append('  (if (and (and (>= MX %s) (< MX %s))'
+             ' (and (>= MY %s) (< MY fint)))'
+             % (X(8.0), X(PW - 8.0), Y(AI_TIPOS_Y)))
+    l.append('    (Variables|Default|SetDbgTipoSel'
+             ' (Math|Float|Truncate (/ (- MY %s) %s)))' % (Y(AI_TIPOS_Y), SC(FILA_AI)))
+    l.append('    (return))')
+    l.append('  (bind fine (+ %s (* ne %s)))' % (Y(AI_ENC_Y), SC(FILA_AI)))
+    l.append('  (if (and (and (>= MX %s) (< MX %s))'
+             ' (and (>= MY %s) (< MY fine)))'
+             % (X(8.0), X(PW - 8.0), Y(AI_ENC_Y)))
+    l.append('    (CallFunction|DbgEncuentro :Indice'
+             ' (Math|Float|Truncate (/ (- MY %s) %s)))' % (Y(AI_ENC_Y), SC(FILA_AI)))
+    l.append('    (return))')
+    for _t, _yt, y_bot, botones in filas_ai():
+        for x, w, _etiqueta, accion, _enc in botones:
+            l.append('  (if %s' % caja("MX", "MY", X(x), Y(y_bot),
+                                       SC(w), SC(BOTON_H)))
+            l.append('    ' + accion)
+            l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
 def caja(mx, my, x, y, w, h):
     return ('(and (and (>= %s %s) (< %s (+ %s %s))) (and (>= %s %s) (< %s (+ %s %s))))'
             % (mx, x, mx, x, w, my, y, my, y, h))
@@ -1225,7 +1612,10 @@ def dsl_click():
     l.append('        (CallFunction|DbgClickPlayer :MX MX :MY MY)')
     l.append('        (else')
     l.append('          (if (== (Variables|Default|GetDbgTab) 2)')
-    l.append('            (CallFunction|DbgClickCombat :MX MX :MY MY))))))')
+    l.append('            (CallFunction|DbgClickCombat :MX MX :MY MY)')
+    l.append('            (else')
+    l.append('              (if (== (Variables|Default|GetDbgTab) 3)')
+    l.append('                (CallFunction|DbgClickAI :MX MX :MY MY))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -1334,6 +1724,15 @@ def run():
     bp("add_object_variable", {"blueprint": hijo, "name": "DbgOcultadas",
                                "object_class": {"refPath": "/Script/UMG.UserWidget"},
                                "container_type": "ARRAY"})
+    # El registro de enemigos generados por la herramienta. CLEAR borra ESTO y
+    # nada mas: por construccion no puede tocar un enemigo del nivel.
+    bp("add_object_variable", {"blueprint": hijo, "name": "DbgSpawned",
+                               "object_class": {"refPath": "/Script/Engine.Actor"},
+                               "container_type": "ARRAY"})
+    bp("add_object_variable", {"blueprint": hijo, "name": "DbgDatosEnem",
+                               "object_class": {"refPath": CARPETA +
+                                                "/BP_DA_DebugEnemigos."
+                                                "BP_DA_DebugEnemigos_C"}})
     bp("compile_blueprint", {"blueprint": hijo})
     cdo = bp("get_default_object", {"blueprint": hijo})
     obj("set_properties", {"instance": cdo,
@@ -1342,7 +1741,10 @@ def run():
                                                  "DbgEscala": ESCALA_DEF,
                                                  "DbgMovMult": 1.0,
                                                  "DbgDmgMult": 1.0,
-                                                 "DbgEnemyMult": 1.0})})
+                                                 "DbgEnemyMult": 1.0,
+                                                 "DbgDatosEnem": DATOS_ENEM,
+                                                 "DbgCantSel": 1,
+                                                 "DbgDistSel": 500.0})})
     out["datos_enlazados"] = json.loads(obj("get_properties",
                                             {"instance": cdo,
                                              "properties": ["DbgDatos"]}))
@@ -1377,6 +1779,23 @@ def run():
         ("DbgMov", dsl_mov, [("Mult", "float", True)]),
         ("DbgMantener", dsl_mantener, []),
         ("DbgResetPlayer", dsl_reset_player, []),
+        # --- AI ---
+        ("DbgCargarEnem", dsl_cargar_enem, []),
+        ("DbgTrozo", dsl_trozo, [("Linea", "string", True), ("Campo", "int", True), ("Valor", "string", False)]),
+        ("DbgCampoEnem", dsl_campo_enem, [("Cual", "int", True),
+                                          ("Indice", "int", True),
+                                          ("Campo", "int", True),
+                                          ("Valor", "string", False)]),
+        ("DbgSpawnUno", dsl_spawn_uno, [("RutaClase", "string", True),
+                                        ("Lado", "int", True)]),
+        ("DbgSpawn", dsl_spawn, []),
+        ("DbgEncuentro", dsl_encuentro, [("Indice", "int", True)]),
+        ("DbgLimpiar", dsl_limpiar, []),
+        ("DbgIALogica", dsl_ia_logica, [("Congelar", "bool", True)]),
+        ("DbgIAApagar", dsl_ia_apagar, [("Apagar", "bool", True)]),
+        ("DbgIgnorarToggle", dsl_ignorar, [("Ignorar", "bool", True)]),
+        ("DbgOlvidarTick", dsl_olvidar_tick, []),
+        ("DbgResetArena", dsl_reset_arena, []),
         # --- COMBAT (el orden importa: primero las que llaman las demas) ---
         ("DbgDanoJugador", dsl_dano_jugador, [("Mult", "float", True)]),
         ("DbgDanoEnemigo", dsl_dano_enemigo, [("Mult", "float", True)]),
@@ -1390,6 +1809,7 @@ def run():
         ("DbgTabPendiente", dsl_pendiente, []),
         ("DbgTabPlayer", dsl_tab_player, []),
         ("DbgTabCombat", dsl_tab_combat, []),
+        ("DbgTabAI", dsl_tab_ai, []),
         ("DbgTabWorld", dsl_tab_world, []),
         ("DbgClickWorld", dsl_click_world, [("MX", "float", True),
                                             ("MY", "float", True)]),
@@ -1397,6 +1817,8 @@ def run():
                                               ("MY", "float", True)]),
         ("DbgClickCombat", dsl_click_combat, [("MX", "float", True),
                                               ("MY", "float", True)]),
+        ("DbgClickAI", dsl_click_ai, [("MX", "float", True),
+                                      ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
