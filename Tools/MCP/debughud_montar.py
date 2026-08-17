@@ -37,19 +37,38 @@ DATOS = CARPETA + "/DA_DA_DebugDestinos.DA_DA_DebugDestinos"
 # Diagnostico: abre el panel solo en el primer frame y cuenta los widgets que
 # encuentra. Sirve para probar el ciclo completo de abrir/ocultar sin poder
 # teclear. Dejar en False para el uso normal.
-AUTO_ABRIR = True
+AUTO_ABRIR = False
 
 TECLAS = ["Period", "Decimal"]
 PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY"]
 
-# --- Geometria del panel. De aqui salen A LA VEZ el dibujado y los clics, para
-# --- que no puedan desincronizarse.
-PX, PY, PW = 40.0, 60.0, 580.0
+# --- Geometria del panel.
+#
+# NADA de aqui es una coordenada final: son medidas en "unidades de panel" que
+# se convierten en cada frame con dos cosas de tiempo de ejecucion:
+#
+#   `esc` = DbgEscala, el zoom del panel, ajustable desde el propio HUD
+#   `px`  = borde izquierdo, calculado del ancho del viewport para centrarlo
+#
+# Todo pasa por los ayudantes X() / Y() / SC(), y de ahi salen A LA VEZ el
+# dibujado y el enrutado de clics: por construccion no se pueden descuadrar.
+PY, PW = 92.0, 580.0        # PY es fijo: deja hueco al banner de objetivo
 TAB_W, TAB_H, TAB_SEP = 186.0, 28.0, 191.0
-TAB_Y0 = PY + 46.0
-FILA = 26.0          # alto de fila de la lista de destinos
+TAB_Y0 = 46.0               # desplazamiento desde el borde superior del panel
+FILA = 26.0                 # alto de fila de la lista de destinos
 BOTON_H = 26.0
-LISTA_Y0 = PY + 262.0
+LISTA_Y0 = 236.0
+# Tamano por defecto: un paso por encima del anterior, que se leia justo.
+#
+# El techo no es el gusto sino la pantalla. Para que 1.30 siguiera cabiendo se
+# apretaron los espaciados verticales (bloque de informacion y filas de
+# botones): el contenido paso de ~750 a ~700 unidades, que a 1.30 son ~910 px
+# mas los 92 del margen superior. En un viewport de 964 el boton de cerrar
+# entra; lo unico que puede quedar rozando el borde es la linea de mensaje.
+# Para eso estan los botones de tamano, y viven en la CABECERA justo por esto.
+ESCALA_DEF = 1.30
+ESCALA_MIN, ESCALA_MAX, ESCALA_PASO = 0.8, 2.2, 0.15
+TAM_MENOS, TAM_MAS = 400.0, 440.0   # botones de zoom, en la cabecera
 
 VARIABLES = [
     ("DbgVisible", "bool", None), ("DbgTab", "int", None),
@@ -58,7 +77,37 @@ VARIABLES = [
     ("DbgTieneGuardada", "bool", None), ("DbgInicioLoc", "Vector", None),
     ("DbgInicioRot", "Rotator", None), ("DbgTieneInicio", "bool", None),
     ("DbgMensaje", "string", None), ("DbgHabilitado", "bool", None),
+    ("DbgEscala", "float", None),
+    # --- PLAYER ---
+    ("DbgGod", "bool", None), ("DbgManaInf", "bool", None),
+    ("DbgMovMult", "float", None),
+    # --- COMBAT ---
+    ("DbgDmgMult", "float", None), ("DbgEnemyMult", "float", None),
+    ("DbgOneHit", "bool", None), ("DbgLogOn", "bool", None),
+    ("DbgLog", "string", "ARRAY"),
+    ("DbgLastHP", "float", None), ("DbgLastHPObj", "float", None),
+    ("DbgTrazas", "bool", None), ("DbgColisiones", "bool", None),
 ]
+
+# --- API de DCS que usa la pestana PLAYER -----------------------------------
+#
+# NADA de esto toca variables internas: son las funciones publicas del propio
+# DCS, que se ofrecen como MENSAJES DE INTERFAZ (`Interface|GetStatValue`,
+# `Reactions|Kill`...). Las funciones de los componentes NO son invocables por
+# esta API — solo sus accesores de variable— asi que la via buena es esta.
+DCS_STATS = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/StatsManager/"
+             "BP_StatsManagerComponent.BP_StatsManagerComponent_C")
+DCS_TARGET = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/"
+              "BP_DynamicTargetingComponent.BP_DynamicTargetingComponent_C")
+DCS_AI = "/Game/DynamicCombatSystem/DCS/Blueprints/AI/BP_BaseAI.BP_BaseAI_C"
+DCS_COLL = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/CollisionHandler/"
+            "BP_CollisionHandlerComponent.BP_CollisionHandlerComponent_C")
+TAG_DMG = "Stat.Damage"
+LOG_MAX = 8
+TAG_HP = "Stat.Health.Current"
+TAG_HP_MAX = "Stat.Health.Max"
+TAG_MANA = "Stat.Mana.Current"
+TAG_MANA_MAX = "Stat.Mana.Max"
 
 ORO = "(Utilities|Struct|MakeLinearColor 1.0 0.86 0.42 1.0)"
 HUESO = "(Utilities|Struct|MakeLinearColor 0.88 0.91 0.97 1.0)"
@@ -83,20 +132,42 @@ def obj(t, a):
                         json.dumps(a))["returnValue"]
 
 
+def SC(v):
+    """Una medida (ancho, alto, tamano de letra) escalada."""
+    return "(* %.2f esc)" % v
+
+
+def X(desplazamiento):
+    """X final desde el borde izquierdo del panel."""
+    return "(+ px %s)" % SC(desplazamiento)
+
+
+def Y(desplazamiento):
+    """Y final desde el borde superior del panel."""
+    return "(+ %.1f %s)" % (PY, SC(desplazamiento))
+
+
 def texto(x, y, cadena, color=HUESO, escala=1.0):
     """DrawText posicional: self, Text, Color, X, Y, Font=0, Scale.
 
     El Font va a 0 a proposito: con una fuente distance-field el canvas no
     dibuja nada (ya paso), y con 0 cae a la del motor, que si sale."""
-    return '  (HUD|DrawText self %s %s %s %s 0 %.2f)' % (cadena, color, x, y, escala)
+    return '  (HUD|DrawText self %s %s %s %s 0 %s)' % (cadena, color, x, y, SC(escala))
 
 
 def rect(x, y, w, h, color):
     return '  (HUD|DrawRect self %s %s %s %s %s)' % (color, x, y, w, h)
 
 
+# Cabecera obligatoria de toda funcion que dibuje o que resuelva clics: define
+# el zoom y el borde izquierdo del panel.
+BIND_GEO = ('  (bind esc (Variables|Default|GetDbgEscala))\n'
+            '  (bind px (- (* (.x (Viewport|GetViewportSize)) 0.5) %s))' % SC(PW / 2.0))
+
+
 def tab_pos(i):
-    return (PX + 6.0 + (i % 3) * TAB_SEP, TAB_Y0 + (i // 3) * 32.0)
+    """(desplazamiento en X, desplazamiento en Y) desde la esquina del panel."""
+    return (6.0 + (i % 3) * TAB_SEP, TAB_Y0 + (i // 3) * 32.0)
 
 
 # ---------------------------------------------------------------- grafos
@@ -122,13 +193,26 @@ def dsl_permitido():
 
 
 def dsl_boton():
+    # Recibe X/Y/W ya en pixeles; el alto y el texto los escala ella misma.
     return ('(fn DbgBoton (X Y W Etiqueta Encendido)\n'
+            '  (bind esc (Variables|Default|GetDbgEscala))\n'
             '  (if Encendido\n'
-            + rect("X", "Y", "W", "%.1f" % BOTON_H, BOTON_ON) + '\n'
+            + rect("X", "Y", "W", SC(BOTON_H), BOTON_ON) + '\n'
             '    (else\n'
-            + rect("X", "Y", "W", "%.1f" % BOTON_H, BOTON) + '))\n'
-            + texto("(+ X 10.0)", "(+ Y 4.0)", "Etiqueta") + '\n'
+            + rect("X", "Y", "W", SC(BOTON_H), BOTON) + '))\n'
+            + texto("(+ X %s)" % SC(10.0), "(+ Y %s)" % SC(4.0), "Etiqueta") + '\n'
             '  (return))')
+
+
+def dsl_escalar():
+    """Cambia el zoom del panel desde el propio panel, con tope arriba y abajo."""
+    return ('(fn DbgEscalar (Delta)\n'
+            '  (bind v (+ (Variables|Default|GetDbgEscala) Delta))\n'
+            '  (Variables|Default|SetDbgEscala'
+            ' (select (< v %.2f) %.2f (select (> v %.2f) %.2f v)))\n'
+            '  (Variables|Default|SetDbgMensaje "Tamano del panel cambiado")\n'
+            '  (return))'
+            % (ESCALA_MIN, ESCALA_MIN, ESCALA_MAX, ESCALA_MAX))
 
 
 def dsl_cargar():
@@ -180,7 +264,21 @@ def dsl_ocultar_juego():
              ' (Utilities|Array|Length (Variables|Default|GetDbgOcultadas))))'
              ' :bPrintToScreen false :bPrintToLog true :Duration 8.0)\n'
              if AUTO_ABRIR else '')
+    # Sonda incondicional: mide a la vez el parametro que llega y cuantos
+    # widgets encuentra, sin depender de en que rama entre ni del orden de
+    # pines de SelectString (que ya me ha enganado hoy).
+    entrada = ('  (Development|PrintString :InString'
+               ' (Utilities|String|Append'
+               ' (Utilities|String|Append "DBG entra Ocultar="'
+               ' (Utilities|String|ToString(Boolean) Ocultar))'
+               ' (Utilities|String|Append "  widgets="'
+               ' (Utilities|String|ToString(Integer) (Utilities|Array|Length'
+               ' (Widget|GetAllWidgetsOfClass :WidgetClass "/Script/UMG.UserWidget"'
+               ' :TopLevelOnly true)))))'
+               ' :bPrintToScreen false :bPrintToLog true :Duration 8.0)\n'
+               if AUTO_ABRIR else '')
     return ('(fn DbgOcultarJuego (Ocultar)\n'
+            + entrada +
             '  (if Ocultar\n'
             '    (bind ws (Widget|GetAllWidgetsOfClass'
             ' :WidgetClass "/Script/UMG.UserWidget" :TopLevelOnly true))\n'
@@ -200,18 +298,36 @@ def dsl_ocultar_juego():
 
 
 def dsl_toggle():
+    sonda = ('  (Development|PrintString :InString "DBG toggle"'
+             ' :bPrintToScreen false :bPrintToLog true :Duration 5.0)\n'
+             if AUTO_ABRIR else '')
+    # OJO CON EL ORDEN, que aqui hubo un fallo de los silenciosos:
+    #
+    # Antes se calculaba `v = (not DbgVisible)` y se usaba en varios sitios
+    # DESPUES de haber hecho `SetDbgVisible(v)`. Pero `not` y el getter son
+    # nodos PUROS: **se reevaluan cada vez que alguien tira de su salida**, no
+    # se calculan una vez. Asi que el primer consumidor recibia `true` y el
+    # segundo —ya con la variable cambiada— recibia `false`. Resultado:
+    # `DbgOcultarJuego` se llamaba con Ocultar=false y no escondia nada, sin
+    # error ninguno. Se cazo imprimiendo el parametro dentro de la funcion.
+    #
+    # La regla: escribir la variable PRIMERO y que todos los demas LEAN LA
+    # VARIABLE, que ya no cambia. Un `bind` sobre un nodo puro no cachea nada.
     return ('(fn DbgToggle ()\n'
+            + sonda +
             '  (if (not (CallFunction|DbgPermitido))\n'
             '    (return))\n'
-            '  (bind v (not (Variables|Default|GetDbgVisible)))\n'
-            '  (Variables|Default|SetDbgVisible v)\n'
-            '  (CallFunction|DbgOcultarJuego :Ocultar v)\n'
+            '  (Variables|Default|SetDbgVisible'
+            ' (not (Variables|Default|GetDbgVisible)))\n'
+            '  (CallFunction|DbgOcultarJuego'
+            ' :Ocultar (Variables|Default|GetDbgVisible))\n'
             '  (bind pc (Game|GetPlayerController 0))\n'
-            '  (Class|PlayerController|SetShowMouseCursor :self pc :bShowMouseCursor v)\n'
+            '  (Class|PlayerController|SetShowMouseCursor :self pc'
+            ' :bShowMouseCursor (Variables|Default|GetDbgVisible))\n'
             '  (bind pawn (Game|GetPlayerPawn 0))\n'
             '  (Utilities|IsValid pawn\n'
             '    (:"Is Valid"\n'
-            '      (if v\n'
+            '      (if (Variables|Default|GetDbgVisible)\n'
             '        (Input|DisableInput :self pawn :PlayerController pc)\n'
             '        (else\n'
             '          (Input|EnableInput :self pawn :PlayerController pc))))\n'
@@ -220,29 +336,9 @@ def dsl_toggle():
 
 def dsl_tick():
     # Sobreescribe la funcion vacia del padre. Se llama desde EventTick.
-    l = ['(fn DbgTick ()']
-    if AUTO_ABRIR:
-        # Sonda: donde se corta la cadena. Se imprime el permiso, el delta y si
-        # el pawn es valido, que son las tres puertas antes del auto-abrir.
-        l.append('  (Development|PrintString :InString'
-                 ' (Utilities|String|Append "DBG permitido="'
-                 ' (Utilities|String|SelectString "SI" "NO"'
-                 ' (CallFunction|DbgPermitido)))'
-                 ' :bPrintToScreen false :bPrintToLog true :Duration 1.0)')
-        l.append('  (Development|PrintString :InString'
-                 ' (Utilities|String|Append "DBG dt="'
-                 ' (Utilities|String|ToString(Float)'
-                 ' (Utilities|Time|GetWorldDeltaSeconds)))'
-                 ' :bPrintToScreen false :bPrintToLog true :Duration 1.0)')
-        l.append('  (Utilities|IsValid (Game|GetPlayerPawn 0)')
-        l.append('    (:"Is Valid"')
-        l.append('      (Development|PrintString :InString "DBG pawn OK"'
-                 ' :bPrintToScreen false :bPrintToLog true :Duration 1.0))')
-        l.append('    (:"Is Not Valid"')
-        l.append('      (Development|PrintString :InString "DBG pawn NULO"'
-                 ' :bPrintToScreen false :bPrintToLog true :Duration 1.0)))')
-    l += ['  (if (not (CallFunction|DbgPermitido))',
-          '    (return false))',
+    l = ['(fn DbgTick ()',
+         '  (if (not (CallFunction|DbgPermitido))',
+         '    (return false))',
          '  (bind dt (Utilities|Time|GetWorldDeltaSeconds))',
          '  (if (> dt 0.0)',
          '    (Variables|Default|SetDbgFps',
@@ -258,10 +354,16 @@ def dsl_tick():
          '        (Variables|Default|SetDbgInicioRot'
          ' (Pawn|GetControlRotation :self (Game|GetPlayerController 0)))',
          '        (Variables|Default|SetDbgTieneInicio true)'
-         + ('\n        (CallFunction|DbgToggle)' if AUTO_ABRIR else '') + ')',
+         + ('\n        (Development|PrintString :InString "DBG primer frame"'
+            ' :bPrintToScreen false :bPrintToLog true :Duration 5.0)'
+            '\n        (CallFunction|DbgToggle)' if AUTO_ABRIR else '') + ')',
          '      (:"Is Not Valid")))']
     cond = " ".join('(Game|Player|WasInputKeyJustPressed :self pc :Key "%s")' % k
                     for k in TECLAS)
+    # God Mode / recurso infinito / velocidad: se mantienen desde el tick, y
+    # solo cuando hace falta (dentro comprueba los tres interruptores).
+    l.append('  (CallFunction|DbgMantener)')
+    l.append('  (CallFunction|DbgLogTick)')
     l.append('  (if (or %s)' % cond)
     l.append('    (CallFunction|DbgToggle))')
     # El clic se resuelve a mano; ver la cabecera del fichero.
@@ -282,40 +384,55 @@ def dsl_dibujar():
          '  (if (not (CallFunction|DbgPermitido))',
          '    (return false))',
          '  (CallFunction|DbgCargar)',
+         BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))',
-         '  (bind alto (+ 518.0 (* n %.1f)))' % FILA,
-         rect("%.1f" % PX, "%.1f" % PY, "%.1f" % PW, "alto", FONDO),
-         rect("%.1f" % PX, "%.1f" % PY, "%.1f" % PW, "3.0", ORO),
-         texto("%.1f" % (PX + 14.0), "%.1f" % (PY + 12.0),
-               '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
-         texto("%.1f" % (PX + 400.0), "%.1f" % (PY + 16.0),
-               '"[ . ] cerrar"', GRIS, 0.9)]
+         # WORLD crece con la lista de destinos; PLAYER tiene alto fijo.
+         '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
+         ' (+ 440.0 (* n %.1f)) 660.0) esc))' % FILA,
+         rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
+         rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
+         texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
+         # Zoom del panel: los dos botones viven en la CABECERA a proposito,
+         # para que se puedan alcanzar aunque el panel se salga por abajo.
+         rect(X(TAM_MENOS), Y(10.0), SC(30.0), SC(24.0), BOTON),
+         texto(X(TAM_MENOS + 10.0), Y(13.0), '"-"', ORO, 1.1),
+         rect(X(TAM_MAS), Y(10.0), SC(30.0), SC(24.0), BOTON),
+         texto(X(TAM_MAS + 9.0), Y(13.0), '"+"', ORO, 1.1),
+         texto(X(TAM_MENOS - 34.0), Y(14.0), '"TAM"', GRIS, 0.85),
+         texto(X(500.0), Y(14.0), '"[ . ]"', GRIS, 0.85)]
     # Pestanas: WORLD activa, el resto marcadas como pendientes.
     for i, nombre in enumerate(PESTANAS):
         x, y = tab_pos(i)
         l.append('  (bind act%d (== (Variables|Default|GetDbgTab) %d))' % (i, i))
         l.append('  (if act%d' % i)
-        l.append(rect("%.1f" % x, "%.1f" % y, "%.1f" % TAB_W, "%.1f" % TAB_H, BOTON_ON))
+        l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON_ON))
         l.append('    (else')
         # Dos cierres: uno para el (else y otro para el (if.
-        l.append(rect("%.1f" % x, "%.1f" % y, "%.1f" % TAB_W, "%.1f" % TAB_H, BOTON) + '))')
-        etiqueta = '"%s"' % nombre if i == 0 else '"%s  --"' % nombre
-        l.append(texto("%.1f" % (x + 12.0), "%.1f" % (y + 4.0), etiqueta,
-                       ORO if i == 0 else GRIS, 1.0))
+        l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
+        # WORLD, PLAYER y COMBAT ya estan; el resto siguen pendientes.
+        etiqueta = '"%s"' % nombre if i < 3 else '"%s  --"' % nombre
+        l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
+                       ORO if i < 3 else GRIS, 1.0))
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
-    l.append('      (CallFunction|DbgTabPendiente)))')
+    l.append('      (if (== (Variables|Default|GetDbgTab) 1)')
+    l.append('        (CallFunction|DbgTabPlayer)')
+    l.append('        (else')
+    l.append('          (if (== (Variables|Default|GetDbgTab) 2)')
+    l.append('            (CallFunction|DbgTabCombat)')
+    l.append('            (else')
+    l.append('              (CallFunction|DbgTabPendiente)))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
 
 def dsl_pendiente():
-    y = PY + 200.0
     return ('(fn DbgTabPendiente ()\n'
-            + texto("%.1f" % (PX + 20.0), "%.1f" % y,
+            + BIND_GEO + '\n'
+            + texto(X(20.0), Y(200.0),
                     '"Esta seccion todavia no esta construida."', GRIS, 1.1) + '\n'
-            + texto("%.1f" % (PX + 20.0), "%.1f" % (y + 26.0),
+            + texto(X(20.0), Y(226.0),
                     '"Fase 1: solo WORLD."', GRIS, 1.0) + '\n'
             '  (return false))')
 
@@ -450,6 +567,152 @@ def dsl_respawn():
             '    (:"Is Not Valid")))')
 
 
+# ---------------------------------------------------------- PLAYER: acciones
+#
+# Todo pasa por la API publica de DCS. Se usan tres mensajes de interfaz:
+#   Interface|GetStatValue (self, StatTag, IncludeModifiers) -> Value
+#   Interface|ModifyStat   (self, StatTag, Value)   <- suma un delta
+#   Reactions|Kill         (self)
+# y el componente se saca con GetComponentByClass, sin castear a clases de DCS.
+
+def stats(var="sm"):
+    """Coge el StatsManager del jugador."""
+    return ('  (bind %s (Actor|GetComponentbyClass :self (Game|GetPlayerPawn 0)'
+            ' :ComponentClass "%s"))' % (var, DCS_STATS))
+
+
+def leer(tag, comp="sm"):
+    return ('(Interface|GetStatValue :self %s'
+            ' :StatTag (GameplayTags|MakeLiteralGameplayTag :Value "%s")'
+            ' :IncludeModifiers true)' % (comp, tag))
+
+
+def sumar(tag, valor, comp="sm"):
+    return ('  (Interface|ModifyStat :self %s'
+            ' :StatTag (GameplayTags|MakeLiteralGameplayTag :Value "%s")'
+            ' :Value %s)' % (comp, tag, valor))
+
+
+def dsl_vida():
+    """Pone la vida a una fraccion del maximo, con la API de stats de DCS.
+
+    ModifyStat suma un delta, asi que el objetivo se alcanza sumando
+    (max * fraccion - actual). No se escribe la stat a pelo ni se tocan
+    valores internos."""
+    return ('(fn DbgVida (Fraccion)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            + stats() + '\n'
+            '  (bind maxv ' + leer(TAG_HP_MAX) + ')\n'
+            '  (bind act ' + leer(TAG_HP) + ')\n'
+            + sumar(TAG_HP, "(- (* maxv Fraccion) act)") + '\n'
+            '  (Variables|Default|SetDbgMensaje "Vida ajustada"))')
+
+
+def dsl_matar():
+    """Kill Player: deja la vida a 0 por la via de stats de DCS.
+
+    DCS tiene su muerte oficial (`Reactions|Kill`), pero **no se puede llamar
+    desde aqui**: el pin `self` de un mensaje de interfaz esta tipado como la
+    interfaz y solo acepta un objeto de una clase que la implemente. Para
+    conseguir esa referencia haria falta castear el Pawn a `BP_CombatCharacter`,
+    y por esta API **no existe ningun nodo de cast a clases de DCS** (probado:
+    ni CastToBPCombatCharacter ni conversiones a interfaz).
+    Con los COMPONENTES si se puede, porque `GetComponentByClass` con la clase
+    fijada ya devuelve el tipo concreto — de ahi que el resto de PLAYER si use
+    la API oficial.
+
+    Poner la vida a 0 es la mejor aproximacion disponible. Queda por comprobar
+    en juego si DCS dispara la muerte al llegar a 0 por esta via o solo dentro
+    de su TakeDamage."""
+    return ('(fn DbgMatar ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            + stats() + '\n'
+            '  (bind act ' + leer(TAG_HP) + ')\n'
+            + sumar(TAG_HP, "(- 0.0 act)") + '\n'
+            '  (Variables|Default|SetDbgMensaje "Vida a 0"))')
+
+
+def dsl_god():
+    return ('(fn DbgGodToggle ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetDbgGod (not (Variables|Default|GetDbgGod)))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "God Mode: "'
+            ' (Utilities|String|ToString(Boolean) (Variables|Default|GetDbgGod)))))')
+
+
+def dsl_mana_inf():
+    return ('(fn DbgManaToggle ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetDbgManaInf (not (Variables|Default|GetDbgManaInf)))\n'
+            '  (Variables|Default|SetDbgMensaje "Recurso infinito cambiado"))')
+
+
+def dsl_mov():
+    return ('(fn DbgMov (Mult)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetDbgMovMult Mult)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Velocidad de movimiento x"'
+            ' (Utilities|String|ToString(Float) Mult))))')
+
+
+def dsl_mantener():
+    """God Mode y recurso infinito, llamado desde el tick.
+
+    NO intercepta el dano: DCS aplica el golpe normalmente —con su reaccion,
+    su sonido y su animacion— y aqui se repone la vida al maximo. Es la unica
+    via sin modificar el pipeline de combate de DCS, que era el requisito.
+    Ver la limitacion en las notas: un golpe mayor que la vida MAXIMA puede
+    matar antes de que llegue esta reposicion.
+
+    Tambien mantiene la velocidad de movimiento: el componente de DCS reescribe
+    MaxWalkSpeed cada frame, asi que el multiplicador hay que reaplicarlo."""
+    return ('(fn DbgMantener ()\n'
+            '  (bind pawn (Game|GetPlayerPawn 0))\n'
+            '  (Utilities|IsValid pawn\n'
+            '    (:"Is Valid"\n'
+            + stats() + '\n'
+            '      (if (Variables|Default|GetDbgGod)\n'
+            '        (bind mx ' + leer(TAG_HP_MAX) + ')\n'
+            '        (bind ac ' + leer(TAG_HP) + ')\n'
+            '        (if (< ac mx)\n'
+            + sumar(TAG_HP, "(- mx ac)") + '))\n'
+            '      (if (Variables|Default|GetDbgManaInf)\n'
+            '        (bind mmx ' + leer(TAG_MANA_MAX) + ')\n'
+            '        (bind mac ' + leer(TAG_MANA) + ')\n'
+            '        (if (< mac mmx)\n'
+            + sumar(TAG_MANA, "(- mmx mac)") + '))\n'
+            '      (if (!= (Variables|Default|GetDbgMovMult) 1.0)\n'
+            # GetCharacterMovement pide un Character, no un Pawn: hay que
+            # cogerlo con GetPlayerCharacter, no con GetPlayerPawn.
+            '        (bind cm (Class|Character|GetCharacterMovement'
+            ' :self (Game|GetPlayerCharacter 0)))\n'
+            '        (Class|CharacterMovementComponent|SetMaxWalkSpeed :self cm'
+            ' :MaxWalkSpeed (* 600.0 (Variables|Default|GetDbgMovMult)))))\n'
+            # Sin `(return)` detras: el IsValid es multi-exec y TERMINA el flujo,
+            # asi que cualquier cosa despues es codigo inalcanzable y se rechaza.
+            '    (:"Is Not Valid")))')
+
+
+def dsl_reset_player():
+    return ('(fn DbgResetPlayer ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetDbgGod false)\n'
+            '  (Variables|Default|SetDbgManaInf false)\n'
+            '  (Variables|Default|SetDbgMovMult 1.0)\n'
+            '  (Utilities|Time|SetGlobalTimeDilation :TimeDilation 1.0)\n'
+            '  (CallFunction|DbgVida :Fraccion 1.0)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "Reset: vida, velocidad, god mode y dilatacion"))')
+
+
 # ------------------------------------------------- la pestana WORLD y clics
 #
 # La geometria de los botones se calcula UNA vez aqui y de ella salen tanto el
@@ -458,29 +721,36 @@ def dsl_respawn():
 # `yb` es la Y donde acaba la lista de destinos, que depende de cuantos haya:
 # en DSL es una expresion, no un numero.
 
+def desde_yb(yb, off):
+    """Y final a `off` unidades por debajo del final de la lista."""
+    return "(+ %s %s)" % (yb, SC(off))
+
+
 def filas_botones(yb):
-    """[(y_expr, [(x, w, etiqueta, accion_dsl, encendido_expr)]), ...]"""
-    x0 = PX + 8.0
+    """[(titulo, y_titulo, y_botones, [(x, w, etiqueta, accion, encendido)]), ...]
+
+    Las X y anchos son unidades de panel: quien dibuje los pasa por X()/SC()."""
+    x0 = 8.0
     return [
-        ("PLAYER POSITION", "(+ %s 8.0)" % yb, "(+ %s 30.0)" % yb, [
+        ("PLAYER POSITION", desde_yb(yb, 4.0), desde_yb(yb, 22.0), [
             (x0, 182.0, "SAVE POSITION", "(CallFunction|DbgGuardarPos)", "false"),
             (x0 + 190.0, 182.0, "GO TO SAVED", "(CallFunction|DbgIrAGuardada)",
              "(Variables|Default|GetDbgTieneGuardada)"),
             (x0 + 380.0, 182.0, "COPY TRANSFORM", "(CallFunction|DbgCopiarTransform)",
              "false"),
         ]),
-        ("GAME SPEED", "(+ %s 70.0)" % yb, "(+ %s 92.0)" % yb, [
+        ("GAME SPEED", desde_yb(yb, 54.0), desde_yb(yb, 72.0), [
             (x0 + i * 112.0, 108.0, e, "(CallFunction|DbgVelocidad :Valor %s)" % v, "false")
             for i, (e, v) in enumerate([("0.1x", "0.1"), ("0.25x", "0.25"),
                                         ("0.5x", "0.5"), ("1x", "1.0"),
                                         ("2x", "2.0")])
         ]),
-        ("LEVEL", "(+ %s 132.0)" % yb, "(+ %s 154.0)" % yb, [
+        ("LEVEL", desde_yb(yb, 104.0), desde_yb(yb, 122.0), [
             (x0, 278.0, "RESTART LEVEL", "(CallFunction|DbgReiniciarNivel)", "false"),
             (x0 + 286.0, 278.0, "RESPAWN AT START", "(CallFunction|DbgRespawnInicio)",
              "false"),
         ]),
-        ("", None, "(+ %s 200.0)" % yb, [
+        ("", None, desde_yb(yb, 152.0), [
             (x0, 564.0, "CLOSE DEBUG HUD", "(CallFunction|DbgToggle)", "false"),
         ]),
     ]
@@ -488,51 +758,439 @@ def filas_botones(yb):
 
 def dsl_tab_world():
     l = ['(fn DbgTabWorld ()',
+         BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))',
          '  (bind pawn (Game|GetPlayerPawn 0))',
          '  (bind loc (Transformation|GetActorLocation :self pawn))',
          '  (bind rot (Pawn|GetControlRotation :self (Game|GetPlayerController 0)))',
          '  (bind nivel (Game|GetCurrentLevelName true))']
-    y = PY + 130.0
-    l.append(texto("%.1f" % (PX + 16.0), "%.1f" % y, '"INFORMACION"', ORO, 1.05))
+    y = 122.0
+    l.append(texto(X(16.0), Y(y), '"INFORMACION"', ORO, 1.05))
     datos = [
-        ('(Utilities|String|Append "Level:  " nivel)', 24.0),
-        ('(Utilities|String|Append "Loc:  " (Utilities|String|ToString(Vector) loc))', 46.0),
+        ('(Utilities|String|Append "Level:  " nivel)', 22.0),
+        ('(Utilities|String|Append "Loc:  " (Utilities|String|ToString(Vector) loc))', 42.0),
         ('(Utilities|String|Append "Rot camara:  "'
-         ' (Utilities|String|ToString(Rotator) rot))', 68.0),
+         ' (Utilities|String|ToString(Rotator) rot))', 62.0),
         ('(Utilities|String|Append'
          ' (Utilities|String|Append "FPS:  "'
          ' (Utilities|String|ToString(Float) (Variables|Default|GetDbgFps)))'
          ' (Utilities|String|Append "     Time Dilation:  "'
-         ' (Utilities|String|ToString(Float) (Utilities|Time|GetGlobalTimeDilation))))', 90.0),
+         ' (Utilities|String|ToString(Float) (Utilities|Time|GetGlobalTimeDilation))))', 82.0),
     ]
     for expr, dy in datos:
-        l.append(texto("%.1f" % (PX + 16.0), "%.1f" % (y + dy), expr, HUESO, 0.95))
+        l.append(texto(X(16.0), Y(y + dy), expr, HUESO, 0.95))
 
-    l.append(texto("%.1f" % (PX + 16.0), "%.1f" % (LISTA_Y0 - 26.0),
-                   '"TELEPORT"', ORO, 1.05))
+    l.append(texto(X(16.0), Y(LISTA_Y0 - 26.0), '"TELEPORT"', ORO, 1.05))
     l.append('  (for i (range n)')
-    l.append('    (bind fy (+ %.1f (* i %.1f)))' % (LISTA_Y0, FILA))
-    l.append('    ' + rect("%.1f" % (PX + 8.0), "fy", "%.1f" % (PW - 16.0),
-                           "%.1f" % (FILA - 3.0), BOTON).strip())
-    l.append('    ' + texto("%.1f" % (PX + 18.0), "(+ fy 3.0)",
+    l.append('    (bind fy (+ %s (* i %s)))' % (Y(LISTA_Y0), SC(FILA)))
+    l.append('    ' + rect(X(8.0), "fy", SC(PW - 16.0), SC(FILA - 3.0), BOTON).strip())
+    l.append('    ' + texto(X(18.0), "(+ fy %s)" % SC(3.0),
                             '(CallFunction|DbgCampo :Indice i :Campo 0)', HUESO, 1.0).strip())
-    l.append('    ' + texto("%.1f" % (PX + 210.0), "(+ fy 4.0)",
+    l.append('    ' + texto(X(210.0), "(+ fy %s)" % SC(4.0),
                             '(CallFunction|DbgCampo :Indice i :Campo 1)', GRIS, 0.85).strip())
-    l.append('    ' + texto("%.1f" % (PX + 320.0), "(+ fy 4.0)",
+    l.append('    ' + texto(X(320.0), "(+ fy %s)" % SC(4.0),
                             '(CallFunction|DbgCampo :Indice i :Campo 4)', GRIS, 0.8).strip())
     l.append('    )')
 
-    yb = '(+ %.1f (* n %.1f))' % (LISTA_Y0, FILA)
+    yb = '(+ %s (* n %s))' % (Y(LISTA_Y0), SC(FILA))
     for titulo, y_tit, y_bot, botones in filas_botones(yb):
         if y_tit:
-            l.append(texto("%.1f" % (PX + 16.0), y_tit, '"%s"' % titulo, ORO, 1.05))
+            l.append(texto(X(16.0), y_tit, '"%s"' % titulo, ORO, 1.05))
         for x, w, etiqueta, _accion, encendido in botones:
-            l.append('  (CallFunction|DbgBoton :X %.1f :Y %s :W %.1f'
+            # X y W tienen que ir ya en pixeles: el boton solo escala su alto.
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
                      ' :Etiqueta "%s" :Encendido %s)'
-                     % (x, y_bot, w, etiqueta, encendido))
-    l.append(texto("%.1f" % (PX + 16.0), "(+ %s 236.0)" % yb,
+                     % (X(x), y_bot, SC(w), etiqueta, encendido))
+    l.append(texto(X(16.0), desde_yb(yb, 180.0),
                    '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+# --------------------------------------------------------- COMBAT: acciones
+#
+# COMO FUNCIONA EL MULTIPLICADOR DE DANO, que es lo que importa entender:
+#
+# NO se toca el pipeline de combate de DCS ni se intercepta el golpe. Lo que se
+# mueve es la STAT de la que DCS saca el dano: `Stat.Damage`, con la misma API
+# publica que PLAYER (`Interface|ModifyStat`). El calculo del golpe, el bloqueo,
+# el parry y las reacciones siguen siendo los de DCS, intactos.
+#
+# Y no hace falta guardar el valor base de nadie: el ajuste se hace SIEMPRE
+# relativo al multiplicador anterior. Si ahora la stat vale `base * anterior` y
+# se quiere `base * nuevo`, el delta es `valor_actual * (nuevo/anterior - 1)`.
+# Volver a x1 devuelve exactamente el valor original, tambien en los enemigos,
+# cada uno con el suyo.
+
+def dsl_dano_jugador():
+    return ('(fn DbgDanoJugador (Mult)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            + stats() + '\n'
+            '  (bind d ' + leer(TAG_DMG) + ')\n'
+            '  (bind ant (Variables|Default|GetDbgDmgMult))\n'
+            + sumar(TAG_DMG, "(* d (- (/ Mult ant) 1.0))") + '\n'
+            '  (Variables|Default|SetDbgDmgMult Mult)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Dano del jugador x"'
+            ' (Utilities|String|ToString(Float) Mult))))')
+
+
+def dsl_one_hit():
+    # One Hit Kill no es un sistema aparte: es el mismo multiplicador puesto muy
+    # alto, asi que se apaga volviendo a x1 y no deja rastro.
+    return ('(fn DbgOneHitToggle ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetDbgOneHit (not (Variables|Default|GetDbgOneHit)))\n'
+            '  (if (Variables|Default|GetDbgOneHit)\n'
+            '    (CallFunction|DbgDanoJugador :Mult 999.0)\n'
+            '    (else\n'
+            '      (CallFunction|DbgDanoJugador :Mult 1.0)))\n'
+            '  (return))')
+
+
+def dsl_dano_enemigo():
+    """Mismo ajuste relativo, pero recorriendo los enemigos vivos.
+
+    Los que aparezcan DESPUES nacen con su dano normal: hay que volver a pulsar
+    el multiplicador. Reengancharlo al spawner es cosa de la fase AI."""
+    return ('(fn DbgDanoEnemigo (Mult)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind ant (Variables|Default|GetDbgEnemyMult))\n'
+            '  (bind enemigos (Actor|GetAllActorsOfClass :ActorClass "' + DCS_AI + '"))\n'
+            '  (for e enemigos\n'
+            '    (bind sm (Actor|GetComponentbyClass :self e'
+            ' :ComponentClass "' + DCS_STATS + '"))\n'
+            '    (bind d ' + leer(TAG_DMG, "sm") + ')\n'
+            '    ' + sumar(TAG_DMG, "(* d (- (/ Mult ant) 1.0))", "sm").strip() + ')\n'
+            '  (Variables|Default|SetDbgEnemyMult Mult)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|Append "Dano enemigo x"'
+            ' (Utilities|String|ToString(Float) Mult))'
+            ' (Utilities|String|Append "  en "'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|ToString(Integer)'
+            ' (Utilities|Array|Length enemigos)) " enemigos")))))')
+
+
+def dsl_log_toggle():
+    return ('(fn DbgLogToggle ()\n'
+            '  (Variables|Default|SetDbgLogOn (not (Variables|Default|GetDbgLogOn)))\n'
+            '  (Utilities|Array|Clear :TargetArray (Variables|Default|GetDbgLog))\n'
+            '  (Variables|Default|SetDbgMensaje "Combat log cambiado"))')
+
+
+def dsl_trazas():
+    """Enciende el debug QUE YA TRAE DCS, no uno nuevo.
+
+    `BP_CollisionHandlerComponent` es quien hace las trazas de arma, y tiene su
+    propia variable `Debug` que dibuja la traza. Se activa en el jugador y en
+    todos los enemigos vivos."""
+    return ('(fn DbgTrazasToggle ()\n'
+            '  (Variables|Default|SetDbgTrazas (not (Variables|Default|GetDbgTrazas)))\n'
+            '  (bind v (Variables|Default|GetDbgTrazas))\n'
+            '  (bind ch (Actor|GetComponentbyClass :self (Game|GetPlayerPawn 0)'
+            ' :ComponentClass "' + DCS_COLL + '"))\n'
+            '  (Class|BPCollisionHandlerComponent|SetDebug :self ch :Debug v)\n'
+            '  (bind enemigos (Actor|GetAllActorsOfClass :ActorClass "' + DCS_AI + '"))\n'
+            '  (for e enemigos\n'
+            '    (bind che (Actor|GetComponentbyClass :self e'
+            ' :ComponentClass "' + DCS_COLL + '"))\n'
+            '    (Class|BPCollisionHandlerComponent|SetDebug :self che :Debug v))\n'
+            '  (Variables|Default|SetDbgMensaje "Trazas de arma (debug de DCS)"))')
+
+
+def dsl_colisiones():
+    # Las capsulas de colision las dibuja el propio motor: no hace falta nada
+    # nuestro, solo el show flag.
+    return ('(fn DbgColisionesToggle ()\n'
+            '  (Variables|Default|SetDbgColisiones'
+            ' (not (Variables|Default|GetDbgColisiones)))\n'
+            '  (Development|ExecuteConsoleCommand :Command "show Collision")\n'
+            '  (Variables|Default|SetDbgMensaje "Capsulas de colision (show Collision)"))')
+
+
+def dsl_reset_combat():
+    return ('(fn DbgResetCombat ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (CallFunction|DbgDanoJugador :Mult 1.0)\n'
+            '  (CallFunction|DbgDanoEnemigo :Mult 1.0)\n'
+            '  (Variables|Default|SetDbgOneHit false)\n'
+            '  (Variables|Default|SetDbgLogOn false)\n'
+            '  (Utilities|Array|Clear :TargetArray (Variables|Default|GetDbgLog))\n'
+            '  (Utilities|Time|SetGlobalTimeDilation :TimeDilation 1.0)\n'
+            '  (if (Variables|Default|GetDbgTrazas)\n'
+            '    (CallFunction|DbgTrazasToggle))\n'
+            '  (if (Variables|Default|GetDbgColisiones)\n'
+            '    (CallFunction|DbgColisionesToggle))\n'
+            '  (Variables|Default|SetDbgMensaje "Reset del debug de combate"))')
+
+
+def dsl_log_linea():
+    return ('(fn DbgLogLinea (Texto)\n'
+            '  (Utilities|Array|Add :TargetArray (Variables|Default|GetDbgLog)'
+            ' :NewItem Texto)\n'
+            '  (if (> (Utilities|Array|Length (Variables|Default|GetDbgLog)) %d)\n'
+            '    (Utilities|Array|RemoveIndex'
+            ' :TargetArray (Variables|Default|GetDbgLog) :IndexToRemove 0))\n'
+            '  (return))' % LOG_MAX)
+
+
+def dsl_log_tick():
+    """El log NO engancha eventos de combate: los observa.
+
+    No hay forma de suscribirse al dano de DCS desde aqui (ver las notas), asi
+    que se vigila la vida del jugador y la de su objetivo, y cada bajada se
+    anota. Por eso el log dice victima, dano y vida restante, pero NO puede
+    decir atacante, nombre del ataque, bloqueo, parry ni critico.
+
+    Solo corre con el log encendido: apagado no cuesta nada."""
+    return ('(fn DbgLogTick ()\n'
+            '  (if (not (Variables|Default|GetDbgLogOn))\n'
+            '    (return))\n'
+            + stats() + '\n'
+            '  (bind hp ' + leer(TAG_HP) + ')\n'
+            '  (bind ant (Variables|Default|GetDbgLastHP))\n'
+            '  (if (and (< hp ant) (> ant 0.0))\n'
+            '    (CallFunction|DbgLogLinea :Texto'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|Append "Malakh  |  Damage "'
+            ' (Utilities|String|ToString(Integer)'
+            ' (Math|Float|Truncate (- ant hp))))'
+            ' (Utilities|String|Append "  |  HP "'
+            ' (Utilities|String|ToString(Integer) (Math|Float|Truncate hp))))))\n'
+            '  (Variables|Default|SetDbgLastHP hp)\n'
+            '  (bind tc (Actor|GetComponentbyClass :self (Game|GetPlayerPawn 0)'
+            ' :ComponentClass "' + DCS_TARGET + '"))\n'
+            '  (bind obj (Class|BPDynamicTargetingComponent|GetSelectedActor :self tc))\n'
+            '  (Utilities|IsValid obj\n'
+            '    (:"Is Valid"\n'
+            '      (bind smo (Actor|GetComponentbyClass :self obj'
+            ' :ComponentClass "' + DCS_STATS + '"))\n'
+            '      (bind hpo ' + leer(TAG_HP, "smo") + ')\n'
+            '      (bind anto (Variables|Default|GetDbgLastHPObj))\n'
+            '      (if (and (< hpo anto) (> anto 0.0))\n'
+            '        (CallFunction|DbgLogLinea :Texto'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|Append "Malakh -> "'
+            ' (Utilities|String|ToString(Object) obj))'
+            ' (Utilities|String|Append "  |  Damage "'
+            ' (Utilities|String|ToString(Integer)'
+            ' (Math|Float|Truncate (- anto hpo)))))'
+            ' (Utilities|String|Append "  |  HP "'
+            ' (Utilities|String|ToString(Integer) (Math|Float|Truncate hpo))))))\n'
+            '      (Variables|Default|SetDbgLastHPObj hpo))\n'
+            '    (:"Is Not Valid")))')
+
+
+# ------------------------------------------------------------ PLAYER: pintar
+#
+# Igual que en WORLD: la geometria se define UNA vez aqui y de ella salen el
+# dibujado y los clics.
+
+def filas_player():
+    """[(titulo, y_titulo, y_botones, [(x, w, etiqueta, accion, encendido)])]"""
+    x0, w3, w5 = 8.0, 182.0, 108.0
+    pct = lambda f: "(CallFunction|DbgVida :Fraccion %s)" % f
+    return [
+        ("HEALTH", 130.0, 176.0, [
+            (x0, w3, "HEAL FULL", pct("1.0"), "false"),
+            (x0 + 190.0, w3, "SET HP 75%", pct("0.75"), "false"),
+            (x0 + 380.0, w3, "SET HP 50%", pct("0.5"), "false"),
+        ]),
+        ("", None, 208.0, [
+            (x0, w3, "SET HP 25%", pct("0.25"), "false"),
+            (x0 + 190.0, w3, "SET HP 10%", pct("0.1"), "false"),
+            (x0 + 380.0, w3, "KILL PLAYER", "(CallFunction|DbgMatar)", "false"),
+        ]),
+        ("GOD MODE", 244.0, 266.0, [
+            (x0, 278.0, "GOD MODE", "(CallFunction|DbgGodToggle)",
+             "(Variables|Default|GetDbgGod)"),
+            (x0 + 286.0, 278.0, "INFINITE RESOURCE", "(CallFunction|DbgManaToggle)",
+             "(Variables|Default|GetDbgManaInf)"),
+        ]),
+        ("MOVEMENT", 302.0, 324.0, [
+            (x0 + i * 112.0, w5, e, "(CallFunction|DbgMov :Mult %s)" % v,
+             "(== (Variables|Default|GetDbgMovMult) %s)" % v)
+            for i, (e, v) in enumerate([("x0.5", "0.5"), ("x1", "1.0"),
+                                        ("x1.5", "1.5"), ("x2", "2.0"),
+                                        ("RESET", "1.0")])
+        ]),
+        # ABILITIES: DCS SI tiene sistema de habilidades (BP_AbilityComponent),
+        # pero no tiene desbloqueo ni cooldowns: la habilidad viene del objeto
+        # equipado y su coste se paga en Stat.Mana. Asi que lo unico real es el
+        # recurso infinito, que ya esta arriba. El resto se deja a la vista,
+        # apagado, y sin inventar un sistema paralelo.
+        ("ABILITIES", 360.0, 404.0, [
+            (x0, w3, "-- UNLOCK ALL", "(CallFunction|DbgNadaAun)", "false"),
+            (x0 + 190.0, w3, "-- RESET ABILITIES", "(CallFunction|DbgNadaAun)", "false"),
+            (x0 + 380.0, w3, "-- NO COOLDOWNS", "(CallFunction|DbgNadaAun)", "false"),
+        ]),
+        ("", None, 470.0, [
+            (x0, 564.0, "RESET PLAYER STATE", "(CallFunction|DbgResetPlayer)", "false"),
+        ]),
+    ]
+
+
+def dsl_nada_aun():
+    return ('(fn DbgNadaAun ()\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "Sin sistema detras todavia: ver ABILITIES en las notas"))')
+
+
+def dsl_tab_player():
+    l = ['(fn DbgTabPlayer ()',
+         BIND_GEO,
+         '  (bind pawn (Game|GetPlayerPawn 0))',
+         stats(),
+         '  (bind hp ' + leer(TAG_HP) + ')',
+         '  (bind hpmax ' + leer(TAG_HP_MAX) + ')']
+    # Linea de vida: actual / maximo y porcentaje.
+    l.append(texto(X(16.0), Y(152.0),
+                   '(Utilities|String|Append'
+                   ' (Utilities|String|Append "HP:  "'
+                   ' (Utilities|String|Append (Utilities|String|ToString(Float) hp)'
+                   ' (Utilities|String|Append "  /  "'
+                   ' (Utilities|String|ToString(Float) hpmax))))'
+                   ' (Utilities|String|Append "     "'
+                   ' (Utilities|String|Append'
+                   ' (Utilities|String|ToString(Integer)'
+                   ' (Math|Float|Truncate (* (/ hp hpmax) 100.0))) "%")))',
+                   HUESO, 1.0))
+    for titulo, y_tit, y_bot, botones in filas_player():
+        if y_tit:
+            l.append(texto(X(16.0), Y(y_tit), '"%s"' % titulo, ORO, 1.05))
+        for x, w, etiqueta, _accion, encendido in botones:
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
+                     ' :Etiqueta "%s" :Encendido %s)'
+                     % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
+    l.append(texto(X(16.0), Y(382.0),
+                   '"El coste de habilidad se paga en Mana: usa INFINITE RESOURCE."',
+                   GRIS, 0.8))
+
+    # --- PLAYER DEBUG INFO ---
+    l.append(texto(X(16.0), Y(506.0), '"PLAYER DEBUG INFO"', ORO, 1.05))
+    l.append('  (bind vel (Transformation|GetVelocity :self pawn))')
+    # IsFalling/IsCrouching viven en el COMPONENTE de movimiento, no en el
+    # Character ni en el Pawn.
+    l.append('  (bind cm (Class|Character|GetCharacterMovement'
+             ' :self (Game|GetPlayerCharacter 0)))')
+    l.append('  (bind obj (Actor|GetComponentbyClass :self pawn'
+             ' :ComponentClass "%s"))' % DCS_TARGET)
+    filas = [
+        ('(Utilities|String|Append "Velocity:  "'
+         ' (Utilities|String|ToString(Float) (Math|Vector|VectorLength vel)))', 528.0),
+        ('(Utilities|String|Append "Movement:  "'
+         ' (Utilities|String|Append'
+         ' (Utilities|String|SelectString "cayendo" "en suelo"'
+         ' (Movement|IsFalling :self cm))'
+         ' (Utilities|String|SelectString "  agachado" ""'
+         ' (Movement|IsCrouching :self cm))))', 548.0),
+        ('(Utilities|String|Append "Target:  "'
+         ' (Utilities|String|ToString(Object)'
+         ' (Class|BPDynamicTargetingComponent|GetSelectedActor :self obj)))', 568.0),
+        # "Vivo" se deduce de la vida y no de `CanBeAttacked|IsAlive`, por el
+        # mismo motivo que Kill: el pin de interfaz no acepta el Pawn.
+        ('(Utilities|String|Append "Is Dead:  "'
+         ' (Utilities|String|SelectString "SI" "NO" (<= hp 0.0)))', 588.0),
+        ('(Utilities|String|Append "God Mode:  "'
+         ' (Utilities|String|Append'
+         ' (Utilities|String|ToString(Boolean) (Variables|Default|GetDbgGod))'
+         ' (Utilities|String|Append "     Mov x"'
+         ' (Utilities|String|ToString(Float) (Variables|Default|GetDbgMovMult)))))', 608.0),
+    ]
+    for expr, y in filas:
+        l.append(texto(X(16.0), Y(y), expr, HUESO, 0.95))
+    l.append(texto(X(16.0), Y(636.0),
+                   '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
+    # Aviso bien visible mientras God Mode este puesto.
+    l.append('  (if (Variables|Default|GetDbgGod)')
+    l.append(texto(X(300.0), Y(244.0), '"[ ACTIVO ]"', ORO, 1.0))
+    l.append('    )')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+# ------------------------------------------------------------ COMBAT: pintar
+
+def filas_combat():
+    x0 = 8.0
+    dmg = lambda v: "(CallFunction|DbgDanoJugador :Mult %s)" % v
+    ene = lambda v: "(CallFunction|DbgDanoEnemigo :Mult %s)" % v
+    act = lambda v: "(== (Variables|Default|GetDbgDmgMult) %s)" % v
+    acte = lambda v: "(== (Variables|Default|GetDbgEnemyMult) %s)" % v
+    return [
+        ("PLAYER DAMAGE", 130.0, 152.0, [
+            (x0 + i * 94.0, 90.0, e, dmg(v), act(v))
+            for i, (e, v) in enumerate([("x0", "0.0"), ("x0.5", "0.5"), ("x1", "1.0"),
+                                        ("x2", "2.0"), ("x5", "5.0"), ("x10", "10.0")])
+        ]),
+        ("", None, 190.0, [
+            (x0, 278.0, "ONE HIT KILL", "(CallFunction|DbgOneHitToggle)",
+             "(Variables|Default|GetDbgOneHit)"),
+            (x0 + 286.0, 278.0, "COMBAT LOG", "(CallFunction|DbgLogToggle)",
+             "(Variables|Default|GetDbgLogOn)"),
+        ]),
+        ("ENEMY DAMAGE", 228.0, 250.0, [
+            (x0 + i * 112.0, 108.0, e, ene(v), acte(v))
+            for i, (e, v) in enumerate([("x0", "0.0"), ("x0.5", "0.5"), ("x1", "1.0"),
+                                        ("x2", "2.0"), ("x5", "5.0")])
+        ]),
+        ("COMBAT SPEED", 288.0, 310.0, [
+            (x0 + i * 142.0, 138.0, e, "(CallFunction|DbgVelocidad :Valor %s)" % v,
+             "false")
+            for i, (e, v) in enumerate([("0.1x", "0.1"), ("0.25x", "0.25"),
+                                        ("0.5x", "0.5"), ("1x", "1.0")])
+        ]),
+        ("VISUAL DEBUG", 348.0, 370.0, [
+            (x0, 278.0, "WEAPON TRACES", "(CallFunction|DbgTrazasToggle)",
+             "(Variables|Default|GetDbgTrazas)"),
+            (x0 + 286.0, 278.0, "COLLISION CAPSULES",
+             "(CallFunction|DbgColisionesToggle)",
+             "(Variables|Default|GetDbgColisiones)"),
+        ]),
+        ("", None, 408.0, [
+            (x0, 564.0, "RESET COMBAT DEBUG", "(CallFunction|DbgResetCombat)", "false"),
+        ]),
+    ]
+
+
+def dsl_tab_combat():
+    l = ['(fn DbgTabCombat ()', BIND_GEO]
+    for titulo, y_tit, y_bot, botones in filas_combat():
+        if y_tit:
+            l.append(texto(X(16.0), Y(y_tit), '"%s"' % titulo, ORO, 1.05))
+        for x, w, etiqueta, _accion, encendido in botones:
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
+                     ' :Etiqueta "%s" :Encendido %s)'
+                     % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
+    # El log, ultimas lineas.
+    l.append(texto(X(16.0), Y(452.0), '"COMBAT LOG"', ORO, 1.05))
+    l.append('  (bind lg (Variables|Default|GetDbgLog))')
+    l.append('  (bind nl (Utilities|Array|Length lg))')
+    l.append('  (for i (range nl)')
+    l.append('    ' + texto(X(16.0), "(+ %s (* i %s))" % (Y(474.0), SC(20.0)),
+                            '(Utilities|Array|Get(acopy) lg i)', HUESO, 0.9).strip())
+    l.append('    )')
+    l.append(texto(X(16.0), Y(636.0),
+                   '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_click_combat():
+    l = ['(fn DbgClickCombat (MX MY)', BIND_GEO]
+    for _t, _yt, y_bot, botones in filas_combat():
+        for x, w, _etiqueta, accion, _enc in botones:
+            l.append('  (if %s' % caja("MX", "MY", X(x), Y(y_bot),
+                                       SC(w), SC(BOTON_H)))
+            l.append('    ' + accion)
+            l.append('    (return))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -544,27 +1202,64 @@ def caja(mx, my, x, y, w, h):
 
 def dsl_click():
     l = ['(fn DbgClick (MX MY)',
+         BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))']
+    # Los dos botones de tamano, en la cabecera.
+    for off, delta in [(TAM_MENOS, -ESCALA_PASO), (TAM_MAS, ESCALA_PASO)]:
+        l.append('  (if %s' % caja("MX", "MY", X(off), Y(10.0),
+                                   SC(30.0), SC(24.0)))
+        l.append('    (CallFunction|DbgEscalar :Delta %.2f)' % delta)
+        l.append('    (return))')
     for i, _nombre in enumerate(PESTANAS):
         x, y = tab_pos(i)
-        l.append('  (if %s' % caja("MX", "MY", "%.1f" % x, "%.1f" % y,
-                                   "%.1f" % TAB_W, "%.1f" % TAB_H))
+        l.append('  (if %s' % caja("MX", "MY", X(x), Y(y),
+                                   SC(TAB_W), SC(TAB_H)))
         l.append('    (Variables|Default|SetDbgTab %d)' % i)
         l.append('    (return))')
+    # Cada pestana resuelve sus propios clics, igual que dibuja los suyos: asi
+    # los botones de WORLD no responden estando en PLAYER.
+    l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
+    l.append('    (CallFunction|DbgClickWorld :MX MX :MY MY)')
+    l.append('    (else')
+    l.append('      (if (== (Variables|Default|GetDbgTab) 1)')
+    l.append('        (CallFunction|DbgClickPlayer :MX MX :MY MY)')
+    l.append('        (else')
+    l.append('          (if (== (Variables|Default|GetDbgTab) 2)')
+    l.append('            (CallFunction|DbgClickCombat :MX MX :MY MY))))))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_click_world():
+    l = ['(fn DbgClickWorld (MX MY)',
+         BIND_GEO,
+         '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))']
     # La lista de destinos: un solo rectangulo y la fila se saca de la Y del
     # raton, para que anadir destinos no obligue a tocar este grafo.
-    l.append('  (bind fin (+ %.1f (* n %.1f)))' % (LISTA_Y0, FILA))
-    l.append('  (if (and (and (>= MX %.1f) (< MX %.1f))'
-             ' (and (>= MY %.1f) (< MY fin)))'
-             % (PX + 8.0, PX + PW - 8.0, LISTA_Y0))
+    l.append('  (bind fin (+ %s (* n %s)))' % (Y(LISTA_Y0), SC(FILA)))
+    l.append('  (if (and (and (>= MX %s) (< MX %s))'
+             ' (and (>= MY %s) (< MY fin)))'
+             % (X(8.0), X(PW - 8.0), Y(LISTA_Y0)))
     l.append('    (CallFunction|DbgTeleport :Indice'
-             ' (Math|Float|Truncate (/ (- MY %.1f) %.1f)))' % (LISTA_Y0, FILA))
+             ' (Math|Float|Truncate (/ (- MY %s) %s)))' % (Y(LISTA_Y0), SC(FILA)))
     l.append('    (return))')
-    yb = '(+ %.1f (* n %.1f))' % (LISTA_Y0, FILA)
+    yb = '(+ %s (* n %s))' % (Y(LISTA_Y0), SC(FILA))
     for _titulo, _y_tit, y_bot, botones in filas_botones(yb):
         for x, w, _etiqueta, accion, _enc in botones:
-            l.append('  (if %s' % caja("MX", "MY", "%.1f" % x, y_bot,
-                                       "%.1f" % w, "%.1f" % BOTON_H))
+            l.append('  (if %s' % caja("MX", "MY", X(x), y_bot,
+                                       SC(w), SC(BOTON_H)))
+            l.append('    ' + accion)
+            l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_click_player():
+    l = ['(fn DbgClickPlayer (MX MY)', BIND_GEO]
+    for _titulo, _y_tit, y_bot, botones in filas_player():
+        for x, w, _etiqueta, accion, _enc in botones:
+            l.append('  (if %s' % caja("MX", "MY", X(x), Y(y_bot),
+                                       SC(w), SC(BOTON_H)))
             l.append('    ' + accion)
             l.append('    (return))')
     l.append('  (return false))')
@@ -643,7 +1338,11 @@ def run():
     cdo = bp("get_default_object", {"blueprint": hijo})
     obj("set_properties", {"instance": cdo,
                            "values": json.dumps({"DbgDatos": DATOS,
-                                                 "DbgHabilitado": True})})
+                                                 "DbgHabilitado": True,
+                                                 "DbgEscala": ESCALA_DEF,
+                                                 "DbgMovMult": 1.0,
+                                                 "DbgDmgMult": 1.0,
+                                                 "DbgEnemyMult": 1.0})})
     out["datos_enlazados"] = json.loads(obj("get_properties",
                                             {"instance": cdo,
                                              "properties": ["DbgDatos"]}))
@@ -653,6 +1352,7 @@ def run():
     # --- escribir antes que las que llama.
     grafos = [
         ("DbgPermitido", dsl_permitido, [("Permitido", "bool", False)]),
+        ("DbgEscalar", dsl_escalar, [("Delta", "float", True)]),
         ("DbgBoton", dsl_boton, [("X", "float", True), ("Y", "float", True),
                                  ("W", "float", True), ("Etiqueta", "string", True),
                                  ("Encendido", "bool", True)]),
@@ -668,8 +1368,35 @@ def run():
         ("DbgVelocidad", dsl_velocidad, [("Valor", "float", True)]),
         ("DbgReiniciarNivel", dsl_reiniciar, []),
         ("DbgRespawnInicio", dsl_respawn, []),
+        # --- PLAYER ---
+        ("DbgNadaAun", dsl_nada_aun, []),
+        ("DbgVida", dsl_vida, [("Fraccion", "float", True)]),
+        ("DbgMatar", dsl_matar, []),
+        ("DbgGodToggle", dsl_god, []),
+        ("DbgManaToggle", dsl_mana_inf, []),
+        ("DbgMov", dsl_mov, [("Mult", "float", True)]),
+        ("DbgMantener", dsl_mantener, []),
+        ("DbgResetPlayer", dsl_reset_player, []),
+        # --- COMBAT (el orden importa: primero las que llaman las demas) ---
+        ("DbgDanoJugador", dsl_dano_jugador, [("Mult", "float", True)]),
+        ("DbgDanoEnemigo", dsl_dano_enemigo, [("Mult", "float", True)]),
+        ("DbgOneHitToggle", dsl_one_hit, []),
+        ("DbgLogToggle", dsl_log_toggle, []),
+        ("DbgLogLinea", dsl_log_linea, [("Texto", "string", True)]),
+        ("DbgLogTick", dsl_log_tick, []),
+        ("DbgTrazasToggle", dsl_trazas, []),
+        ("DbgColisionesToggle", dsl_colisiones, []),
+        ("DbgResetCombat", dsl_reset_combat, []),
         ("DbgTabPendiente", dsl_pendiente, []),
+        ("DbgTabPlayer", dsl_tab_player, []),
+        ("DbgTabCombat", dsl_tab_combat, []),
         ("DbgTabWorld", dsl_tab_world, []),
+        ("DbgClickWorld", dsl_click_world, [("MX", "float", True),
+                                            ("MY", "float", True)]),
+        ("DbgClickPlayer", dsl_click_player, [("MX", "float", True),
+                                              ("MY", "float", True)]),
+        ("DbgClickCombat", dsl_click_combat, [("MX", "float", True),
+                                              ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
@@ -712,13 +1439,22 @@ def enganchar():
     def tipo(n):
         return bp("get_node_infos", {"nodes": [n]})[0]["type_id"]
 
+    # OJO CON EL type_id DE UNA LLAMADA A FUNCION PROPIA: es `|DbgTick`, con la
+    # CATEGORIA VACIA, no `CallFunction|DbgTick`. Por creer lo segundo, la
+    # limpieza no reconocia nada y cada pasada del script **encadenaba un par de
+    # llamadas mas** sin borrar las anteriores: se juntaron 16.
+    #
+    # Y no es cosmetico. Con 16 llamadas, `DbgTick` corre 16 veces por frame y
+    # `WasInputKeyJustPressed` devuelve true en todas: una sola pulsacion abria y
+    # cerraba el panel 16 veces. Numero par, no se veia nada.
+    def es_dbg(n):
+        t = tipo(n)
+        return t.endswith("|DbgTick") or t.endswith("|DbgDibujar")
+
+    nuevos = []
+
     for marca, funcion, y in [("AddEvent|EventReceiveDrawHUD", "DbgDibujar", 2000),
                               ("AddEvent|EventTick", "DbgTick", 2400)]:
-        # Se borra la llamada anterior si la hay: si el gancho del padre se
-        # rehizo, el nodo viejo apunta a una funcion que ya no existe.
-        for n in bp("find_nodes", {"graph": eg, "title": ""}):
-            if tipo(n) == "CallFunction|" + funcion:
-                bp("delete_node", {"node": n})
         ev = None
         for n in bp("find_nodes", {"graph": eg, "title": "", "entry_points_only": True}):
             if tipo(n) == marca:
@@ -727,17 +1463,34 @@ def enganchar():
         if ev is None:
             res[marca] = "evento no encontrado"
             continue
+
+        # Se recorre la cadena desde el evento saltando los nodos Dbg que haya
+        # acumulados, para quedarse con el primer nodo DEL JUEGO. Ese es el que
+        # hay que volver a enganchar; borrar los Dbg sin esto partiria la cadena
+        # y el HUD del juego dejaria de dibujar.
+        #
+        # OJO: en un nodo de EVENTO el pin de ejecucion es el indice 1 (el 0 es
+        # el OutputDelegate). En una llamada a funcion, el 0.
+        def sigue_de(nodo, indice):
+            for p in bp("get_node_infos", {"nodes": [nodo]})[0]["output_pins"]:
+                if p["pin_id"]["index_id"] == indice and p["connected_pins"]:
+                    return p["connected_pins"][0]
+            return None
+
+        seguia = sigue_de(ev, 1)
+        viejos = []
+        while seguia is not None:
+            nodo = {"refPath": seguia["node"]["refPath"]}
+            if not es_dbg(nodo):
+                break
+            viejos.append(nodo)
+            seguia = sigue_de(nodo, 0)
+        for v in viejos:
+            bp("delete_node", {"node": v})
+        res[marca + "_duplicados_borrados"] = len(viejos)
+
         llamada = bp("create_node", {"graph": eg, "type_id": "CallFunction|" + funcion,
                                      "pos": {"x": 400, "y": y}})
-        # OJO: en un nodo de EVENTO el pin de ejecucion es el indice 1. El 0 es
-        # el OutputDelegate, y conectarlo ahi no da error: simplemente no hace
-        # nada. Ya mordio al montar el salto de zona.
-        info = bp("get_node_infos", {"nodes": [ev]})
-        seguia = None
-        for p in info[0]["output_pins"]:
-            if p["pin_id"]["index_id"] == 1 and p["connected_pins"]:
-                seguia = p["connected_pins"][0]
-                break
         def pin(nodo, direccion, indice):
             return {"direction": direccion, "index_id": indice,
                     "node": {"refPath": nodo["refPath"]}}
@@ -747,5 +1500,18 @@ def enganchar():
             bp("connect_pins", {"output_pin": pin(llamada, "EGPD_Output", 0),
                                 "input_pin": seguia})
         res[marca] = "enganchado" + ("" if seguia is None else " y reencadenado")
+        nuevos.append(llamada["refPath"])
+
+    # Barrido final: los duplicados que quedaron sueltos fuera de la cadena en
+    # pasadas anteriores. No ejecutan nada, pero ensucian el grafo y confunden
+    # a la siguiente limpieza.
+    sueltos = 0
+    for n in bp("find_nodes", {"graph": eg, "title": ""}):
+        if n["refPath"] in nuevos or not es_dbg(n):
+            continue
+        bp("delete_node", {"node": n})
+        sueltos += 1
+    res["huerfanos_barridos"] = sueltos
+
     bp("compile_blueprint", {"blueprint": {"refPath": PADRE}})
     return res

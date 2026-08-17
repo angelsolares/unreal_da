@@ -8021,6 +8021,197 @@ Dos detalles que importan:
 Lo que dibuja el HUD del juego en el canvas (objetivo, banner, panel de salto) sigue pintándose
 después del panel, pero no se solapan porque el panel va pegado al borde izquierdo.
 
+### Centrado y zoom: nada de coordenadas fijas
+
+El panel se dibujaba pegado al borde izquierdo y con letra de 1.0, ilegible en pantalla
+grande. Ahora **ninguna medida del generador es una coordenada final**: son "unidades de
+panel" que se convierten en cada frame con dos valores de runtime —
+
+- `px` = borde izquierdo, sacado del ancho del viewport, para centrarlo
+- `esc` = `DbgEscala`, el zoom, **ajustable desde el propio panel** con los botones `- +`
+
+Todo pasa por tres ayudantes en `debughud_montar.py` (`X()`, `Y()`, `SC()`), y de ahí salen a
+la vez el dibujado y el enrutado de clics: por construcción no pueden descuadrarse. La primera
+versión del centrado sí se descuadró —los botones se quedaron dibujándose en x≈8 mientras los
+clics ya iban al centro— justo por saltarse ese paso en una llamada.
+
+**Los botones de tamaño van en la cabecera a propósito.** El contenido mide ~750 unidades de
+alto: a escala 1.15 ocupa ~860 px y con el panel empezando en y=92 cabe en un viewport de 964.
+Más grande se sale por abajo, y si los controles de tamaño estuvieran al final no habría forma
+de volver a reducirlo. Por eso el defecto es 1.15 y no más.
+
+`PY = 92` tampoco es arbitrario: deja libre la franja donde el HUD del juego dibuja el banner de
+objetivo, que ahora comparte el centro de la pantalla con el panel.
+
+## DA Debug HUD, fase 3: pestaña COMBAT (2026-08-17)
+
+### Cómo funcionan los multiplicadores de daño y dónde se aplican
+
+**No se intercepta el golpe ni se toca el pipeline de DCS.** Lo que se mueve es la stat de la
+que DCS saca el daño — **`Stat.Damage`** — con la misma API pública que PLAYER
+(`Interface|ModifyStat` sobre el `BP_StatsManagerComponent`). El cálculo del golpe, el bloqueo,
+el parry y las reacciones siguen siendo los de DCS.
+
+| Control | Dónde se aplica |
+|---|---|
+| Player Damage | `Stat.Damage` del StatsManager de Malakh |
+| Enemy Damage | `Stat.Damage` del StatsManager de **cada `BP_BaseAI` vivo**, vía `GetAllActorsOfClass` |
+| One Hit Kill | El mismo multiplicador del jugador puesto a **x999**; se apaga volviendo a x1 |
+| Combat Speed | `SetGlobalTimeDilation`, el mismo de WORLD |
+
+**El truco para que sea de verdad temporal:** el ajuste es siempre **relativo al multiplicador
+anterior**. Si la stat vale `base * anterior` y se quiere `base * nuevo`, el delta es
+`valor_actual * (nuevo/anterior - 1)`. Volver a x1 devuelve el valor exacto de partida — y en
+cada enemigo el suyo—, sin guardar ninguna tabla de valores base.
+
+**Límite:** los enemigos que aparezcan DESPUÉS nacen con su daño normal; hay que volver a pulsar
+el multiplicador. Engancharlo al spawner es cosa de la fase AI.
+
+### El Combat Log observa, no engancha
+
+No hay forma de suscribirse al daño de DCS desde aquí (mismo muro que en PLAYER: no se puede
+referenciar el personaje). Así que `DbgLogTick` vigila la vida de Malakh y la de su objetivo y
+anota cada bajada. Da **víctima, daño y HP restante**; **no puede dar atacante, nombre del
+ataque, block, parry ni crítico** — eso vive en el pipeline de combate, fuera de alcance.
+
+Solo corre con el log encendido, y guarda 8 líneas (`RemoveIndex` la más vieja — ojo, el pin se
+llama `IndexToRemove`).
+
+### Las visualizaciones son las de DCS, no unas nuevas
+
+`BP_CollisionHandlerComponent` es quien hace las trazas de arma y **ya trae su propia variable
+`Debug`**, que además es escribible (`Class|BPCollisionHandlerComponent|SetDebug`). WEAPON
+TRACES la enciende en el jugador y en todos los enemigos vivos. Casi todos los componentes de
+DCS tienen la suya (`BPCombatComponent`, `BPStatsManagerComponent`, `BPStateManagerComponent`,
+`BPDynamicTargetingComponent`…), así que ampliar esto es trivial.
+
+Las cápsulas de colisión las dibuja el motor: `show Collision` por consola.
+
+## DA Debug HUD, fase 2: pestaña PLAYER (2026-08-17)
+
+Segunda pestaña, sobre la misma arquitectura: funciones nuevas en el mismo
+`BP_DA_DebugHUD` generado, y el enrutado de clics partido por pestaña
+(`DbgClickWorld` / `DbgClickPlayer`) para que los botones de WORLD no respondan estando en
+PLAYER.
+
+### Qué API de DCS se usa, y por qué esa
+
+Las funciones públicas de DCS **no se ofrecen como `Class|BP...|Fn`, sino como MENSAJES DE
+INTERFAZ**: `Interface|GetStatValue`, `Interface|ModifyStat`, `Reactions|Kill`,
+`CanBeAttacked|IsAlive`, `Actions|Respawn`, `State|IsinState`. Las funciones de los
+componentes (`GetStatValue` del StatsManager, etc.) **no son invocables** directamente; de
+esos solo se ofrecen los accesores de variable.
+
+La vida se toca con la API oficial y con los tags reales del proyecto
+(`DT_DCSTags_Stats`): **`Stat.Health.Current` / `Stat.Health.Max`**, y `Stat.Mana.*` para el
+recurso. `ModifyStat` suma un delta, así que para poner la vida al 75% se suma
+`max*0.75 - actual`. No se escribe ninguna variable interna.
+
+### La limitación grande: se puede hablar con los componentes, no con el personaje
+
+`GetComponentByClass` **con la clase fijada ya devuelve el tipo concreto**, así que el
+`BP_StatsManagerComponent` y el `BP_DynamicTargetingComponent` son accesibles sin castear.
+
+Pero para `Reactions|Kill`, `CanBeAttacked|IsAlive` o `Actions|Respawn` hace falta pasar el
+personaje a un pin tipado como interfaz, y el Pawn no vale. Haría falta castearlo a
+`BP_CombatCharacter` y **por esta API no existe ningún nodo de cast a clases de DCS**
+(comprobado: ni `CastToBPCombatCharacter`, ni variantes `(Message)`, ni conversiones a
+interfaz). Consecuencias:
+
+- **Kill Player** pone la vida a 0 por la vía de stats en vez de llamar a la muerte oficial.
+  Falta comprobar en juego si DCS dispara la muerte por ese camino.
+- **Is Dead** se deduce de la vida.
+- **Is In Combat** y **Current Weapon** quedan fuera: viven en el personaje y en el
+  `EquipmentComponent`, tras funciones no invocables.
+
+### God Mode: no intercepta el daño, lo repone
+
+No hay forma de engancharse al pipeline de daño de DCS sin modificarlo, y eso estaba vetado.
+Así que `DbgMantener` (llamado desde el tick) repone la vida al máximo mientras God Mode esté
+puesto. **El golpe entra**: se ve la reacción, el sonido y la animación, que era justo lo que
+se pedía, y no se altera ninguna estadística de forma permanente.
+
+**Límite honesto:** un golpe mayor que la vida MÁXIMA puede matar antes de que llegue la
+reposición del siguiente frame.
+
+### ABILITIES: hay sistema, pero no de desbloqueo
+
+DCS trae `BP_AbilityComponent`, `BP_Ability`, efectos e indicador de hechizo — pero **no tiene
+desbloqueo ni cooldowns**: la habilidad viene del objeto equipado en los *SpellSlots* del
+`BP_EquipmentComponent`, y su coste se paga en `Stat.Mana`. Por eso lo único con sistema real
+detrás es **Infinite Resource**; los otros tres botones se dejan a la vista y apagados.
+
+Integración futura, cuando haga falta: *Unlock All* = meter los items de hechizo en los
+SpellSlots del EquipmentComponent; *No Cooldowns* = no existe cooldown como tal, se emula con
+mana infinito; *Reset Abilities* = vaciar esos slots.
+
+### Ojo con los tipos al pedir cosas del jugador
+
+Tres errores seguidos por lo mismo, y los tres dan el mismo mensaje inútil
+(*"Could not connect pin ReturnValue to self"*):
+
+- `GetCharacterMovement` pide un **Character**, no el Pawn de `GetPlayerPawn`.
+- `Movement|IsFalling` / `IsCrouching` piden el **componente de movimiento**, no el Character.
+- Los mensajes de interfaz piden un objeto de una clase que implemente esa interfaz.
+
+### El gancho multiplicado por 16
+
+Síntoma: pulsar `.` no hacía nada, sin un solo error en el log.
+
+Causa: el `type_id` de una llamada a **función propia** es `|DbgTick` — con la **categoría
+vacía**—, no `CallFunction|DbgTick`. La rutina que debía borrar el gancho anterior buscaba el
+nombre largo, no encontraba nada, y **cada pasada del script encadenaba un par de llamadas más**.
+Se juntaron 16.
+
+Y no era suciedad cosmética: con 16 llamadas `DbgTick` corre 16 veces por frame y
+`WasInputKeyJustPressed` devuelve `true` en las 16, así que **una pulsación abría y cerraba el
+panel dieciséis veces**. Número par, no se veía nada. También explica que funcionara a ratos:
+con un número impar de copias sí abría.
+
+El arreglo recorre la cadena desde el evento saltando los nodos `Dbg` acumulados hasta el primer
+nodo del juego, borra los duplicados, engancha **uno** y vuelve a atar el resto. Hacerlo así y no
+a lo bruto importa: borrarlos sin reencadenar habría partido el dibujado del HUD del juego.
+
+### Dos fallos silenciosos que costaron toda la depuración
+
+**1. Un `bind` sobre un nodo PURO no cachea nada.** `DbgToggle` hacía:
+
+```
+(bind v (not (GetDbgVisible)))
+(SetDbgVisible v)
+(DbgOcultarJuego :Ocultar v)      <- aquí v YA vale lo contrario
+```
+
+`not` y el getter son nodos puros: **se reevalúan cada vez que alguien tira de su
+salida**. El primer consumidor recibía `true`; el segundo, ya con la variable
+cambiada, recibía `false`. Así que el ocultado se llamaba con `Ocultar=false` y no
+hacía nada, sin un solo error. La regla: **escribir la variable primero y que todos
+lean la variable**, no el cálculo.
+
+Se cazó imprimiendo el parámetro *dentro* de la función. Desde fuera era invisible:
+el grafo se leía correcto, los pines estaban conectados y compilaba.
+
+**2. `write_graph_dsl` no reemplaza el cuerpo de una función: añade otra copia.**
+Tras cinco pasadas del script había **cinco copias** de cada función, todas
+huérfanas menos la última, y el asset pesaba 11 MB. Por eso `debughud_montar.py`
+ahora **borra y regenera el blueprint entero** en cada pasada (2,3 MB). Borrar las
+funciones una a una no vale: en cuanto falta una, las que la llaman no compilan.
+
+Consecuencia: **`BP_DA_DebugHUD` es generado**. Lo que se toque a mano dentro se
+pierde en la siguiente pasada del script.
+
+### Para probar sin poder teclear
+
+`AUTO_ABRIR` en `debughud_montar.py` abre el panel solo en el primer frame y mete
+sondas de log. Con eso se puede lanzar PIE por MCP y leer el resultado en el log,
+sin depender de que alguien pulse una tecla. Dos cosas que hicieron falta:
+
+- Con el editor **minimizado** el mundo tickea a 3 FPS y el viewport no dibuja. Se
+  desactiva `bThrottleCPUWhenNotForeground` en `EditorPerformanceSettings`
+  (**y se vuelve a dejar como estaba** al terminar).
+- **No recompilar el blueprint con PIE corriendo**: reinstancia el HUD a media
+  sesión y el log queda ilegible, con el primer frame repetido.
+
 ### La rotación que vale es la de la cámara, y el DSL casi la estropea
 
 Primera versión: se leía `GetActorRotation` del pawn, y salía siempre `P=0 Y=0 R=0` — en DCS
@@ -8200,3 +8391,56 @@ otro jefe se entere). Así la cámara está bien mires cuando mires, no solo al 
 
 - Sigue sin comprobarse `EnemiesToSpawn = 2` en el Giant de `L_DA_SeraphArena_POC`.
 - El encuadre torcido de `Interact_Cassiel`.
+
+## Gabriel alterna dos mensajes entre conversaciones (2026-08-17)
+
+Fase 1, su presentación. La primera vez que le hablas pregunta; la segunda te corta por no
+haber respondido a lo que preguntaba. Y vuelve a empezar, en bucle.
+
+| | |
+|---|---|
+| A | *¿Qué mensaje traes?* |
+| B | *No te pregunté quién pareces ser. / Te pregunté qué mensaje traes.* |
+
+### `Dialogo1..3` no son tres turnos, son tres renglones a la vez
+
+Esto es lo que condiciona todo el montaje. El HUD los pinta **apilados en el mismo frame**
+(`hud_dialogo.py`: `HUD|DrawText` no parte el texto ni hay nodo de ajuste de línea, por eso
+hay tres campos y el corte lo decide quien escribe el diálogo).
+
+Así que alternar entre conversaciones **no es encadenar líneas**: hay que reescribir los tres
+campos al terminar cada charla. Por eso B ocupa dos renglones y A uno, y el tercero se limpia
+siempre.
+
+### La alternancia vive en el jefe, no en el interactuable
+
+El sitio natural sería el evento `Interact` de `BP_DA_Interactuable`. **No vale:**
+
+- `interaccion_inspeccionar.py` **reconstruye ese EventGraph nodo a nodo y borra todo lo que
+  no sea un evento**. Cualquier cosa que se meta ahí se pierde al relanzarlo.
+- Es un blueprint compartido por **siete** interactuables; tocarlo arriesga las otras seis
+  zonas para resolver lo de una.
+
+Gabriel ya tiene Tick (`MirarAlJugador`) y ya guarda la referencia al interactuable en
+`Encuadre`, así que la alternancia va ahí y no toca nada compartido:
+
+```
+EventTick → MirarAlJugador → AlternarDialogo
+```
+
+`AlternarDialogo` detecta el **flanco de bajada de `Inspeccionando`** —el momento en que
+cierras la conversación— y escribe entonces el set de la próxima. **Al salir, no al entrar:**
+así la primera vez que hablas ves A, no B. Y como el HUD solo dibuja mientras
+`Inspeccionando` es true, el cambio nunca se ve en pantalla.
+
+Variables nuevas en `BP_DA_GiantBoss`: `MensajeA1`, `MensajeB1`, `MensajeB2` (String,
+Instance Editable — ahí se editan los textos) y `TurnoB` / `HablandoAntes` (estado de
+runtime). Con `Encuadre` a null, que es el caso del jefe de la arena, la función no hace nada.
+
+### No se pudo probar por MCP
+
+**`set_properties` aplica el candado de Level Instance incluso a los actores de PIE**
+(*"is inside level instance 'LI_11_GabrielC2' which is not in edit mode"*), así que no hay
+forma de forzar `Inspeccionando` para simular una conversación desde el script. Verificado lo
+estático —la cadena del Tick, los textos en las dos instancias, el set A cargado de salida— y
+la alternancia queda pendiente de probarla a mano, hablándole dos veces seguidas.
