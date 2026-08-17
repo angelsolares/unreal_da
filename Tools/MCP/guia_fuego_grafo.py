@@ -42,9 +42,19 @@ EG = {"refPath": BP + ":EventGraph"}
 RADIO = 4000.0     # a que distancia de una ruta se considera que estas en ella
 VIDA = 14.0
 
+# EL COLOR DISTINGUE LA RUTA PRINCIPAL DE LOS RAMALES: dorado calido el avance,
+# azulado y a media luz los ramales. Asi orienta sin ocultar que el Mirador y el
+# Gazebo existen, que es lo que pide el PDF del Gazebo —explorarlo sin volverlo
+# obligatorio—.
 CODIGO = """
 (event EventBeginPlay
-  (Actor|SetLifeSpan self 14.0))
+  (Actor|SetLifeSpan self 14.0)
+  (if (Variables|Default|GetPrincipal)
+    (Rendering|Components|Light|SetLightColor (Variables|Default|GetLuz) "(R=1.0,G=0.78,B=0.36,A=1.0)" false)
+    (Rendering|Components|Light|SetIntensity (Variables|Default|GetLuz) 9000.0)
+    (else
+      (Rendering|Components|Light|SetLightColor (Variables|Default|GetLuz) "(R=0.42,G=0.55,B=0.85,A=1.0)" false)
+      (Rendering|Components|Light|SetIntensity (Variables|Default|GetLuz) 3500.0))))
 
 (event EventTick (DeltaSeconds)
   (bind _puntos (Class|BPDARuta|GetPuntos (Variables|Default|GetRuta)))

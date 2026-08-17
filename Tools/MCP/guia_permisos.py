@@ -1,21 +1,21 @@
 import json
 
-# Donde se puede pedir la guia y donde no.
+# Donde se puede pedir la guia y donde no, mas la limpieza de lo que quedo suelto.
 #
 # `PermiteGuia` es un bool por instancia de `BP_DA_ZoneTrigger`, a true por
-# defecto. Se pone a false en las zonas donde la guia estorbaria —la arena de
-# Gabriel— y `Guia_Tick` lo consulta antes de soltar nada.
+# defecto. Se pone a false en las camaras de Gabriel, que es donde la guia
+# estorbaria.
 #
-# NO SE TOCA EL GRAFO DEL TRIGGER. Solo se le anade la variable: quien decide es
-# el HUD, que recorre los triggers y mira si hay alguno cerca que lo prohiba. El
-# `FireZoneEntry` del trigger ya funciona y no merece la pena arriesgarlo por
-# esto.
+# LOS TRIGGERS VIVEN DENTRO DE LEVEL INSTANCES, asi que para escribirles hay que
+# entrar en modo edicion de su LI y commitear al salir. Se hace uno por uno y
+# solo con los que hay que apagar: los demas se quedan con el valor por defecto
+# de la clase, que ya es el bueno.
 
 TRIGGER = "/Game/DarkAngels/Blueprints/Level/BP_DA_ZoneTrigger.BP_DA_ZoneTrigger"
-RUTA = "/Game/DarkAngels/Blueprints/Level/BP_DA_Ruta.BP_DA_Ruta"
+HUD = "/Game/DarkAngels/Blueprints/UI/BP_DA_HUD.BP_DA_HUD"
 
-# Zonas donde la guia se apaga. Se busca por el `ZoneName` de cada trigger.
-SIN_GUIA = ["Gabriel"]
+# etiqueta del trigger -> trozo del nombre de su Level Instance
+APAGAR = {"GC1_Trigger": "GabrielC1", "GC3_Trigger": "GabrielC3"}
 
 
 def call(tool, args):
@@ -38,54 +38,55 @@ def ot(t, a):
     return call("editor_toolset.toolsets.object.ObjectTools." + t, a)
 
 
+def buscar(etiqueta):
+    for a in sc("find_actors", {"name": etiqueta, "tag": "", "collision_channels": []}):
+        if "UEDPIE" in a["refPath"]:
+            continue
+        if at("get_label", {"actor": a}) == etiqueta:
+            return a
+    return None
+
+
 def run():
     if call("EditorToolset.EditorAppToolset.IsPIERunning", {}):
         return {"error": "PIE esta corriendo"}
-    out = {}
+    out = {"apagados": [], "huerfana": None}
 
-    # --- 1. la variable en el trigger ---
-    bp = {"refPath": TRIGGER}
-    if "PermiteGuia" not in str(bt("list_variables", {"blueprint": bp})):
-        bt("add_variable", {"blueprint": bp, "name": "PermiteGuia", "type_name": "bool"})
-    bt("set_variable_instance_editable",
-       {"blueprint": bp, "variable_name": "PermiteGuia", "instance_editable": True})
-    bt("compile_blueprint", {"blueprint": bp})
-    ot("set_properties", {"instance": bt("get_default_object", {"blueprint": bp}),
-                          "values": json.dumps({"PermiteGuia": True})})
-    bt("compile_blueprint", {"blueprint": bp})
-    out["trigger_vars"] = bt("list_variables", {"blueprint": bp})
+    # --- 1. fuera la funcion que quedo sin usar en el HUD ---
+    # `Guia_Tick` se monto ahi antes de descubrir que no hay forma de crear el
+    # nodo que la llame. Ahora la tecla vive en `BP_DA_Ruta` y esta sobra.
+    hud = {"refPath": HUD}
+    if "Guia_Tick" in str(bt("list_functions", {"blueprint": hud})):
+        bt("remove_function_graph", {"blueprint": hud, "graph_name": "Guia_Tick"})
+        bt("compile_blueprint", {"blueprint": hud})
+        call("editor_toolset.toolsets.asset.AssetTools.save_assets",
+             {"asset_paths": [HUD.split(".")[0]]})
+        out["huerfana"] = "borrada"
+    else:
+        out["huerfana"] = "ya no estaba"
 
-    # --- 2. apagarla donde toque ---
-    #
-    # LOS TRIGGERS QUE VIVEN DENTRO DE UN LEVEL INSTANCE SE SALTAN. Escribirles
-    # exige entrar en modo edicion de su LI una por una, y ademas el valor por
-    # defecto de la clase ya es `true`, que es lo que quieren todas menos las de
-    # Gabriel. Esas se apagan aparte, con su pasada de edit/commit.
-    out["zonas"] = []
-    out["en_level_instance"] = []
-    for a in sc("find_actors", {"name": "", "tag": "", "collision_channels": []}):
-        if "ZoneTrigger" not in a["refPath"] or "UEDPIE" in a["refPath"]:
+    # --- 2. apagar la guia en las camaras de Gabriel ---
+    for etiqueta in APAGAR:
+        li = None
+        for a in sc("find_actors", {"name": "LI_", "tag": "", "collision_channels": []}):
+            if "UEDPIE" in a["refPath"]:
+                continue
+            if APAGAR[etiqueta] in at("get_label", {"actor": a}):
+                li = a
+                break
+        if li is None:
+            out["apagados"].append({etiqueta: "no encuentro su Level Instance"})
             continue
-        if "_LevelInstance_" in a["refPath"]:
-            out["en_level_instance"].append(at("get_label", {"actor": a}))
+        sc("edit_level_instance", {"level_instance": li})
+        t = buscar(etiqueta)
+        if t is None:
+            sc("commit_level_instance", {"level_instance": li, "discard": True})
+            out["apagados"].append({etiqueta: "no esta dentro del LI"})
             continue
-        zona = json.loads(ot("get_properties", {"instance": a,
-                                                "properties": ["ZoneName"]}))["ZoneName"]
-        permite = not any(x.lower() in str(zona).lower() for x in SIN_GUIA)
-        ot("set_properties", {"instance": a,
-                              "values": json.dumps({"PermiteGuia": permite})})
-        leido = json.loads(ot("get_properties", {"instance": a,
+        ot("set_properties", {"instance": t, "values": json.dumps({"PermiteGuia": False})})
+        leido = json.loads(ot("get_properties", {"instance": t,
                                                  "properties": ["ZoneName", "PermiteGuia"]}))
-        out["zonas"].append({str(leido["ZoneName"]): leido["PermiteGuia"]})
+        sc("commit_level_instance", {"level_instance": li, "discard": False})
+        out["apagados"].append({etiqueta: leido})
 
-    # --- 3. fuera la variable de pruebas ---
-    rbp = {"refPath": RUTA}
-    if "Prueba" in str(bt("list_variables", {"blueprint": rbp})):
-        bt("remove_variable", {"blueprint": rbp, "name": "Prueba"})
-        bt("compile_blueprint", {"blueprint": rbp})
-    out["ruta_vars"] = bt("list_variables", {"blueprint": rbp})
-
-    call("editor_toolset.toolsets.asset.AssetTools.save_assets",
-         {"asset_paths": [TRIGGER.split(".")[0], RUTA.split(".")[0],
-                          "/Game/DarkAngels/Maps/L_DA_Malkuth_Master"]})
     return out
