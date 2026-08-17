@@ -7445,6 +7445,228 @@ Con geometria fina, como unas alas con plumas, comprobar que la silueta
 sobrevive; si se pierde, el arreglo es SUBIR el conteo, no bajarlo: 80k siguen
 siendo unos 15 MB, nada al lado de los 230 MB de un millon.
 
+## Colision en el Gazebo: los SkeletalMesh NO colisionan (2026-08-16)
+
+### Lo que ya colisionaba
+
+Todos los `StaticMeshActor` de la zona —plataforma, muros, escaleras, columnas
+caidas y rotas, escombro, domo, obelisco, pedestal, suelo— ya venian con
+`QueryAndPhysics` y perfil `BlockAll`. No habia nada que tocar ahi.
+
+### Un SkeletalMeshComponent sin PhysicsAsset no colisiona, y punto
+
+Los tres modelos de Tripo —rotonda, tableta, Fragmento— tenian perfil
+`PhysicsActor`, que **no sirve de nada**: sin PhysicsAsset y sin
+`bEnablePerPolyCollision` no hay geometria de colision que valga, por muy
+bloqueante que diga ser el perfil.
+
+Y **`bEnablePerPolyCollision = true` tampoco funciona**. Se puso en la tableta y
+el Fragmento, se comprobo que la propiedad quedaba guardada, y se midio con
+`trace_world`: no para nada. Ni recargando el nivel entero. Los controles del
+mismo test —una traza vertical al suelo (396,5) y una horizontal al pedestal
+(77,5)— si dan, o sea que el problema no era la traza.
+
+Aunque funcionase, la rotonda tiene **1.014.955 vertices**: cocinar eso como
+trimesh es absurdo para un adorno.
+
+**La solucion son cajas invisibles** (`/Engine/BasicShapes/Cube.Cube` con perfil
+`BlockAll` y `bVisible = false`; un componente invisible sigue colisionando).
+
+### El Fragmento no necesita ninguna
+
+Medido: su huella es 63838..63922 x 16733..16807 y la del pedestal 63830..63930 x
+16720..16820. **Cae entera dentro.** El pedestal bloquea, asi que el jugador no
+puede llegar al volumen del Fragmento. Y ademas el Fragmento se destruye al
+recogerlo: una caja suelta se quedaria ahi de muro invisible.
+
+### Encontrar las columnas costo cuatro intentos
+
+Merece la pena anotarlo porque el error se repetira con cualquier ruina.
+
+1. **De frente, los fustes van PAREADOS.** Confundi la gemela de al lado con una
+   fila mas lejana, monte dos ecuaciones con dos incognitas y me salio radio 253.
+   Mal.
+2. **En la cenital los fustes se ABREN.** La camara estaba a z=620 y el remate de
+   la columna a ~600: a 20 de la camara la perspectiva lo dispara fuera del
+   encuadre. Lo unico legible es la **basa**, que apoya en el suelo y por tanto
+   cae donde el mapeo dice. Radio real: 138.
+3. Con cuatro cajas de 60 seguia asomando piedra, y al medirla salio **otra fila
+   mas adelantada**, sobre y=16450, con las basas escondidas bajo los helechos.
+4. Dejar de perseguirlas: **una caja de 154 x 260 por costado** se las traga
+   todas y deja un pasillo central de 216 para entrar a la tableta.
+
+**El mapeo de la captura cenital**, por si hay que repetirlo. Camara en
+(64000, 16650, 620) mirando abajo; el viewport coincide con la captura de
+1195x928. Comprobado proyectando puntos conocidos con `WorldPosToScreenCoords`:
+
+```
+worldY = 16650 + (px/1195 - 0.5) * 835.9
+worldX = 64000 - (py/928  - 0.5) * 649.2
+```
+
+**`WorldPosToScreenCoords` devuelve coordenadas normalizadas de 0 a 1**, no
+pixeles. Y `ScreenCoordsToWorld` las quiere igual: pasarle pixeles da
+"Invalid viewport coords".
+
+### La verificacion, con controles a los dos lados
+
+| traza | esperado | medido |
+|---|---|---|
+| abajo al suelo (control) | ~398 | 396,5 |
+| al pedestal (control) | ~70 | 77,5 |
+| costado este | ~109 | 109,0 |
+| costado oeste | ~107 | 107,0 |
+| a la tableta | ~179 | 178,85 |
+| pasillo central | nada | nada |
+
+La de la tableta cae en 16878,85, que es su cara sur exacta.
+
+### Las dos interacciones
+
+`Interact_Tableta` (**Leer**, con tres lineas) e `Interact_Fragmento`
+(**Recoger**, con el item `DA_Fragmento_Malkuth`). Dimensionadas con las medidas
+del actor y no a ojo: la escala del actor sale de dividir el tamanio del objeto
+entre la caja del blueprint, y la camara se aleja **1,4 alturas**, que es la
+proporcion de las cinco aprobadas antes (la llave: 70 de alto, camara a 100).
+
+**El texto de la tableta es provisional y NO es de la Biblia Narrativa**: ese PDF
+no se deja extraer con lo que hay aqui —los streams no inflan con `node:zlib` y
+el Read de PDF necesita poppler, que no esta instalado—. Esta escrito al tono de
+las lineas que si son literales (Sariel, Cassiel) y del nombre del beat, "Cenizas
+y Verdad". Cambiarlo en `gazebo_interactuables.py` en cuanto llegue el bueno.
+
+### Scripts
+
+`gazebo_interactuables.py` (los dos interactuables) y
+`gazebo_rotonda_bloqueos.py` (las cajas; con `VISIBLE = True` se ven para
+alinearlas por captura y con `False` se apagan).
+
+### Trampa del MCP, de propina
+
+`find_actors` devuelve **tambien los actores del mundo de PIE**, con `UEDPIE_0_`
+en la ruta, y siguen apareciendo un rato despues de parar la sesion —ya
+invalidos: `get_label` revienta con ellos—. Hay que colarlos siempre. Y las
+propiedades de componente van en **camelCase** (`bodyInstance`, `bVisible`), con
+la colision **dentro de `bodyInstance`**, no como campo suelto; pedir varias de
+golpe revienta la llamada entera si una no existe en ese tipo de componente.
+
+## Recoger: al salir de la inspeccion, el objeto se va a la mochila (2026-08-16)
+
+Segunda E sobre un interactuable con item: vuelve la camara, el objeto entra en
+el inventario de DCS y desaparece de la escena. Montado sobre el inventario del
+pack, sin sistema paralelo.
+
+### El inventario de DCS, en corto
+
+Un item **no es un blueprint**: es un **asset de datos** —`PrimaryDataAsset`— de
+clase `BP_DA_Item_Base`, con un unico campo `Item` (`F_Item`):
+
+| campo | |
+|---|---|
+| `name` | lo que se lee en la mochila |
+| `description` | |
+| `type` | `E_ItemType`: MeleeWeapon, RangeWeapon, Spell, Shield, Head, Top, Legs, Hands, Feet, Arrows, Ammo, **Tool**, Material, Ring, Necklace |
+| `isStackable` / `isDroppable` / `isConsumable` | |
+| `image` | **Texture2D. El icono.** |
+
+El `BP_InventoryComponent` del personaje guarda pares (asset, cantidad) y su
+`AddItem(ItemToAdd, Amount)` es toda la API que hace falta. Avisa solo a la UI
+por sus dispatchers `OnItemAdded` / `OnInventoryChanged`.
+
+Cuidado con los nombres: en `BP_DA_Item_Base` el `DA` es de **DataAsset**, no de
+DarkAngels. Y por eso `list_variables` revienta con los `DA_*` de `Instances/`
+—no son blueprints—: hay que leerlos con `ObjectTools.get_properties`
+**nombrando** la propiedad, que con `properties: []` devuelve un dict vacio.
+
+### Por que NO se usa `BP_PickupActor`
+
+Es el actor de recogida del pack y hace justo esto, pero al interactuar **abre
+su propia ventana de botin** (`WB_Pickup`, con su pila de navegacion de
+widgets). Encima del modo inspeccion serian dos UI peleandose. Nuestro
+`BP_DA_Interactuable` llama a `AddItem` y ya.
+
+Aun asi merece leerselo: de ahi salio como se hace (`GetComponentByClass` sobre
+el `Caller` -> `AddItem` -> `DestroyActor`).
+
+### Como queda montado
+
+Tres variables nuevas en `BP_DA_Interactuable`, todas editables por instancia y
+**vacias por defecto**, asi que los NPC y los cofres ni se enteran:
+
+- `ItemAlRecoger` — el asset de item. Si esta vacio, no se recoge nada.
+- `MallaMundo` — el actor que se ve y hay que borrar. Hace falta porque
+  `Interact_Llave` **no tiene malla propia**: la llave es `Mirador_Llave`, un
+  SkeletalMeshActor suelto al lado.
+- `CantidadItem` — cuantos. Por defecto 1.
+
+### Dos detalles del orden que no son cosmeticos
+
+1. **Hay que castear.** `GetComponentByClass` devuelve `ActorComponent` a secas
+   y `AddItem` pide un `BP_InventoryComponent`. Poner la clase en el pin
+   reetiqueta la salida cuando se hace a mano en el editor, pero **no cuando se
+   monta por MCP**: la conexion se rechaza. Con
+   `Utilities|Casting|CastToBP_InventoryComponent` en medio, resuelto.
+2. **Lo que se ve es inmediato; lo que se borra, con retraso.**
+   `SetViewTargetWithBlend` no cambia de vista al momento: durante la mezcla el
+   `ViewTarget` sigue siendo el actor viejo. Destruirlo a media mezcla deja a la
+   camara sin origen y **corta en vez de mezclar**. De ahi el `Delay` de 0,45 s,
+   un pelo mas que los 0,35 de la mezcla. Pero durante esa espera el objeto
+   seguiria en pie y respondiendo a la E, y una segunda pulsacion meteria la
+   camara en un actor a punto de morir: asi que nada mas recoger se le quita la
+   colision a `Zona` —DCS deja de encontrarlo y el cartel se apaga— y se esconde
+   la malla. Para el jugador desaparece en el acto.
+
+### El icono sale de la foto de referencia, no del editor
+
+`F_Item.image` es una textura, y **el editor no puede generarla**:
+
+- la miniatura del asset (`CaptureAssetImage`) sale casi vacia: la llave mide
+  menos de una unidad y en el nivel va escalada x71, asi que en la escena de
+  previsualizacion es una mota;
+- la captura del viewport trae los adornos del editor —cajas de seleccion,
+  rejilla, el widget de ejes— y lo que se cruce por delante (en la prueba, el
+  ala de Sariel tapando media pantalla).
+
+Asi que se saca de la **misma foto con la que se genero el modelo en Tripo**,
+que ya esta en el disco de trabajo. `Tools/MCP/icono.mjs` la convierte:
+
+```bash
+node Tools/MCP/icono.mjs <foto.png> ArtSource/Iconos/T_DA_Icono_Llave.png 256
+```
+
+Le saca el alfa, deshace la mezcla del borde con el fondo —si no, queda un halo
+claro que canta sobre la UI oscura—, recorta a la caja del objeto, cuadra y
+reduce por promedio de area. Sin dependencias de npm: PNG de 8 bits sin
+entrelazar es cabecera, `node:zlib` y cinco filtros por linea.
+
+**EL FONDO NO ES BLANCO AUNQUE LO PAREZCA.** La primera version lo daba por
+hecho y salio un icono con el 60% de la imagen pintada: el fondo de `llave.png`
+es **gris 198**. Ahora se mide la mediana del marco de la imagen, que es fondo
+por definicion, y el alfa va por distancia a ese color. Vale para cualquier foto
+de producto sobre fondo liso.
+
+Formato que usa DCS y que pone el script al importar: `TC_EditorIcon`, sRGB,
+`TEXTUREGROUP_Pixels2D`, sin mipmaps, `NeverStream`. Sin icono el item funciona
+igual: solo sale el hueco en blanco.
+
+**Pendiente de aclarar:** de donde sale `llave.png`. Esta en la carpeta de
+trabajo junto a un `antique+key+3d+model.zip`, o sea que puede ser una foto de
+stock descargada y no material propio. El repo es publico: si es de stock, el
+icono no deberia subirse y hay que rehacerlo desde un render del modelo.
+
+### Scripts
+
+`interaccion_inspeccionar.py` monta el grafo entero —incluida la recogida— y
+**se borra y se rehace en cada pasada**, asi que todo lo del interactuable va
+ahi y no en parches sueltos. `items_recoger.py` crea los iconos y los assets de
+item (`CATALOGO`) y los engancha a sus interactuables del nivel (`ZONAS`).
+`icono.mjs` es el conversor de fotos a iconos.
+
+### Trampa del MCP
+
+`BlueprintTools.find_node_types` **exige `context_pins`** aunque su esquema lo
+pinte opcional; con la lista vacia vale. El error que da no lo dice.
+
 ## Modo inspeccion: la camara se planta delante del objeto (2026-08-16)
 
 Ya en `Interact`: al pulsar **E** sobre un interactuable la camara se pone

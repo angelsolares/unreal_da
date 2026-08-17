@@ -24,6 +24,9 @@ import json
 # tecla de salida. Se sale con la misma E, y mientras se esta dentro el cartel de
 # DCS dice "Aceptar" en vez del verbo (ver `GetInteractionMessage`).
 #
+# AL SALIR SE RECOGE, si el interactuable lleva item: el objeto entra en el
+# inventario de DCS y desaparece del mundo. Ver `bloque_recoger`.
+#
 # DOS COSAS QUE CONDICIONAN EL MONTAJE:
 #   1. **No hay nodo `Self` creable.** La referencia a uno mismo se saca por
 #      `GetZona` -> `Components|GetOwner`.
@@ -39,10 +42,20 @@ ABIERTO = "Abierto"
 ANIMADO = "Animado"
 HABLAR = "AnimHablar"
 REPOSO = "AnimReposo"
+ITEM = "ItemAlRecoger"
+CANTIDAD = "CantidadItem"
+MUNDO = "MallaMundo"
 CAMARA = "Camara"
 DISTANCIA = -220.0
 ALTURA = 90.0
 MEZCLA = "0.35"
+
+DCS = "/Game/DynamicCombatSystem/DCS/Blueprints/"
+CLASE_INVENTARIO = DCS + "Components/Inventory/BP_InventoryComponent.BP_InventoryComponent_C"
+CLASE_ITEM = DCS + "Items/ObjectItems/BP_DA_Item_Base.BP_DA_Item_Base_C"
+# Se espera a que la camara termine de volver antes de destruir nada. Ver
+# `bloque_recoger` para el porque.
+ESPERA = "0.45"
 
 
 def bt(t, a):
@@ -97,7 +110,11 @@ def exec_evento(n):
 
 
 def rama(pc, pawn, oculto, destino, marca, y):
-    """Una de las dos mitades del conmutador. Devuelve (primer nodo, ultimo)."""
+    """Una de las dos mitades del conmutador.
+
+    Devuelve un dict con el primer nodo —para engancharle la entrada— y el
+    ultimo, que hace falta para colgar la recogida detras de la salida.
+    """
     esconde = nodo("Rendering|SetActorHiddenInGame", 200, y)
     pegados = nodo("Actor|GetAttachedActors", 200, y + 260)
     bucle = nodo("Utilities|Array|ForEachLoop", 450, y)
@@ -132,7 +149,7 @@ def rama(pc, pawn, oculto, destino, marca, y):
     valor(ent(quietoL, "bNewLookInput"), marca)
     unir(sal(quietoL, "then"), ent(marcar, "execute"))
     valor(ent(marcar, VAR), marca)
-    return ver
+    return {"inicio": ver, "fin": marcar}
 
 
 def bloque_anim(cual, y):
@@ -155,6 +172,90 @@ def bloque_anim(cual, y):
     unir(sal(valido, "Is Valid"), ent(play, "execute"))
     return {"entrada": ent(valido, "exec"),
             "salidas": [sal(valido, "Is Not Valid"), sal(play, "then")]}
+
+
+def bloque_recoger(evento, yo, y):
+    """Mete el item en el inventario de DCS y borra el objeto del mundo.
+
+    Cuelga del final de la rama de SALIR: se recoge al aceptar, no al enfocar,
+    que es lo que se ve en pantalla —vuelves a la vista normal y el objeto ya no
+    esta—. Si `ItemAlRecoger` esta vacio no hace nada, asi que los NPC y los
+    cofres pasan de largo sin enterarse.
+
+    QUIEN RECOGE: el pin `Caller` del evento, que es a quien DCS le pasa la
+    interaccion. No `GetPlayerCharacter`: asi vale igual si algun dia recoge otro.
+
+    HAY UN CAST, no basta con `GetComponentByClass`: el nodo devuelve
+    `ActorComponent` a secas y `AddItem` pide un `BP_InventoryComponent`. Poner
+    la clase en el pin no reetiqueta la salida cuando se monta por MCP —en el
+    editor a mano si—, asi que la conexion se rechazaria.
+
+    LO QUE SE VE ES INMEDIATO Y LO QUE SE BORRA ES CON RETRASO, y por dos razones
+    distintas:
+      - `SetViewTargetWithBlend` **no cambia de vista al momento**: durante toda
+        la mezcla el `ViewTarget` sigue siendo el actor viejo y solo al final
+        pasa a ser el nuevo. Destruirlo a mitad de camino deja a la camara sin
+        origen y en vez de mezclar, corta. Por eso el `Delay`, un pelo mas largo
+        que la mezcla.
+      - Pero durante esa espera el objeto seguiria en pie y respondiendo a la E,
+        y una segunda pulsacion meteria la camara en un actor a punto de morir.
+        Asi que nada mas recoger se le quita la colision a `Zona` —DCS deja de
+        encontrarlo y el cartel se apaga— y se esconde la malla. Para el jugador
+        el objeto desaparece en el acto; el borrado de verdad viene detras.
+    """
+    lee = nodo("Variables|Default|Get" + ITEM, -250, y + 60)
+    valido = nodo("Utilities|IsValid", -60, y)
+    comp = nodo("Actor|GetComponentbyClass", 150, y + 240)
+    casteo = nodo("Utilities|Casting|CastToBP_InventoryComponent", 400, y)
+    cuanto = nodo("Variables|Default|Get" + CANTIDAD, 600, y + 300)
+    mete = nodo("Modify|AddItem", 700, y)
+    zona = nodo("Variables|Default|GetZona", 900, y + 200)
+    sorda = nodo("Collision|SetCollisionEnabled", 950, y)
+    leeMundo = nodo("Variables|Default|Get" + MUNDO, 1150, y + 260)
+    validoEsconde = nodo("Utilities|IsValid", 1200, y)
+    esconde = nodo("Rendering|SetActorHiddenInGame", 1420, y)
+    espera = nodo("Utilities|FlowControl|Delay", 1650, y)
+    validoBorra = nodo("Utilities|IsValid", 1850, y)
+    borraMundo = nodo("Actor|DestroyActor", 2080, y)
+    borraYo = nodo("Actor|DestroyActor", 2320, y)
+
+    unir(sal(lee, ITEM), ent(valido, "InputObject"))
+    unir(sal(lee, ITEM), ent(mete, "ItemToAdd"))
+
+    unir(sal(evento, "Caller"), ent(comp, "self"))
+    valor(ent(comp, "ComponentClass"), CLASE_INVENTARIO)
+    unir(sal(comp, "ReturnValue"), ent(casteo, "Object"))
+    unir(sal(valido, "Is Valid"), ent(casteo, "execute"))
+
+    unir(sal(casteo, "then"), ent(mete, "execute"))
+    unir(sal(casteo, "AsBP Inventory Component"), ent(mete, "self"))
+    unir(sal(cuanto, CANTIDAD), ent(mete, "Amount"))
+
+    unir(sal(mete, "then"), ent(sorda, "execute"))
+    unir(sal(zona, "Zona"), ent(sorda, "self"))
+    valor(ent(sorda, "NewType"), "NoCollision")
+
+    unir(sal(leeMundo, MUNDO), ent(validoEsconde, "InputObject"))
+    unir(sal(leeMundo, MUNDO), ent(esconde, "self"))
+    unir(sal(leeMundo, MUNDO), ent(validoBorra, "InputObject"))
+    unir(sal(leeMundo, MUNDO), ent(borraMundo, "self"))
+
+    unir(sal(sorda, "then"), ent(validoEsconde, "exec"))
+    unir(sal(validoEsconde, "Is Valid"), ent(esconde, "execute"))
+    valor(ent(esconde, "bNewHidden"), "true")
+
+    # Las dos salidas del IsValid caen en el mismo sitio: haya o no malla suelta,
+    # se espera igual.
+    unir(sal(validoEsconde, "Is Not Valid"), ent(espera, "execute"))
+    unir(sal(esconde, "then"), ent(espera, "execute"))
+    valor(ent(espera, "Duration"), ESPERA)
+
+    unir(sal(espera, "then"), ent(validoBorra, "exec"))
+    unir(sal(validoBorra, "Is Valid"), ent(borraMundo, "execute"))
+    unir(sal(validoBorra, "Is Not Valid"), ent(borraYo, "execute"))
+    unir(sal(borraMundo, "then"), ent(borraYo, "execute"))
+    unir(sal(yo, "ReturnValue"), ent(borraYo, "self"))
+    return ent(valido, "exec")
 
 
 def encadenar(desde, bloques, hasta):
@@ -180,16 +281,25 @@ def run():
     # dejan vacias en los interactuables que no cambian de aspecto, y el grafo
     # las salta con un IsValid.
     # Y la animacion: a que NPC hablarle y con que. Tambien vacias por defecto.
+    # `ItemAlRecoger` y `MallaMundo` son la recogida: que item de DCS entra en el
+    # inventario y que actor hay que borrar del mundo con el. Vacias en todo lo
+    # que no se recoge.
     for v, clase in ((CERRADO, "/Script/Engine.Actor"),
                      (ABIERTO, "/Script/Engine.Actor"),
                      (ANIMADO, "/Script/Engine.SkeletalMeshActor"),
                      (HABLAR, "/Script/Engine.AnimationAsset"),
-                     (REPOSO, "/Script/Engine.AnimationAsset")):
+                     (REPOSO, "/Script/Engine.AnimationAsset"),
+                     (ITEM, CLASE_ITEM),
+                     (MUNDO, "/Script/Engine.Actor")):
         if v not in variables:
             bt("add_object_variable", {"blueprint": bp, "name": v,
                                        "object_class": {"refPath": clase}})
         bt("set_variable_instance_editable",
            {"blueprint": bp, "variable_name": v, "instance_editable": True})
+    if CANTIDAD not in variables:
+        bt("add_variable", {"blueprint": bp, "name": CANTIDAD, "type_name": "int"})
+    bt("set_variable_instance_editable",
+       {"blueprint": bp, "variable_name": CANTIDAD, "instance_editable": True})
 
     # --- de cero: se borra todo lo que no sea un evento ---
     borrados = 0
@@ -228,7 +338,10 @@ def run():
     # SALIR (ya estabamos dentro): el NPC vuelve al idle, vista al pawn, se le
     # vuelve a ver, mando suelto
     salir = rama(pc, pawn, "false", pawn, "false", 1200)
-    encadenar([sal(br, "then")], [bloque_anim(REPOSO, 1600)], ent(salir, "execute"))
+    encadenar([sal(br, "then")], [bloque_anim(REPOSO, 1600)],
+              ent(salir["inicio"], "execute"))
+    # ...y al final de esa rama, la recogida.
+    unir(sal(salir["fin"], "then"), bloque_recoger(ev, yo, 1900))
 
     # ENTRAR: primero girar de cara al jugador, y solo con el YAW
     locPawn = nodo("Transformation|GetActorLocation", -1100, 880)
@@ -248,7 +361,7 @@ def run():
     unir(sal(romper, "Yaw"), ent(hacer, "Yaw"))      # Roll y Pitch se quedan a 0
     unir(sal(hacer, "ReturnValue"), ent(girar, "NewRotation"))
 
-    entrar = rama(pc, pawn, "true", yo, "true", 300)
+    entrar = rama(pc, pawn, "true", yo, "true", 300)["inicio"]
     unir(sal(br, "else"), ent(girar, "execute"))
 
     # --- el cambiazo de malla: el cerrado se esconde, el abierto aparece ---
@@ -279,8 +392,16 @@ def run():
                                    " (Variables|Default|Get" + VAR + "))))"})
 
     bt("compile_blueprint", {"blueprint": bp})
+    # La cantidad por defecto: uno. Se pone DESPUES de compilar, que hasta
+    # entonces el CDO no tiene la propiedad recien creada.
+    ot("set_properties", {"instance": bt("get_default_object", {"blueprint": bp}),
+                          "values": json.dumps({CANTIDAD: 1})})
+    bt("compile_blueprint", {"blueprint": bp})
     execute_tool("editor_toolset.toolsets.asset.AssetTools.save_assets",
                  json.dumps({"asset_paths": [BP.split(".")[0]]}))
     out["mensaje"] = bt("read_graph_dsl", {"graph": {"refPath": BP + ":GetInteractionMessage"}})
+    out["cantidad_por_defecto"] = json.loads(ot("get_properties", {
+        "instance": bt("get_default_object", {"blueprint": bp}),
+        "properties": [CANTIDAD]}))
     out["compila"] = "SI"
     return out
