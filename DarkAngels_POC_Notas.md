@@ -8510,3 +8510,84 @@ runtime). Con `Encuadre` a null, que es el caso del jefe de la arena, la funció
 forma de forzar `Inspeccionando` para simular una conversación desde el script. Verificado lo
 estático —la cadena del Tick, los textos en las dos instancias, el set A cargado de salida— y
 la alternancia queda pendiente de probarla a mano, hablándole dos veces seguidas.
+
+## Gabriel, fase 1 punto 1: el guion termina y enciende el ritual (2026-08-17)
+
+La presentación deja de repetirse. Cuatro pantallas, final, y la última línea arma la fase de
+los espejos.
+
+### De interruptor a índice
+
+Antes `AlternarDialogo` conmutaba un booleano en el flanco de bajada de `Inspeccionando`:
+con dos estados nunca había una tercera conversación. Ahora es un índice `Paso` sobre tres
+arrays paralelos, con salida al final de la cuenta. **El detector de flanco, el sitio donde
+vive y el reparto con el HUD no se tocaron**: lo único que cambió es qué cuenta.
+
+| Pantalla | Renglón 1 | Renglón 2 |
+|---|---|---|
+| 01 | ¿Qué mensaje traes? | |
+| 02 | No te pregunté quién pareces ser. | Te pregunté qué mensaje traes. |
+| 03 | Estos espejos guardan tus actos. | Todos menos uno. |
+| 04 | No respondas con la boca. | Cruza, y que responda tu conducta. |
+
+01 y 02 son literales del PDF; 03 y 04 son redacción propia sobre lo que el PDF describe.
+`Guion1[i]`, `Guion2[i]` y `Guion3[i]` son los tres **renglones** de la pantalla i — no tres
+turnos. Añadir una pantalla es añadir un elemento a los tres arrays, desde el panel de
+detalles.
+
+**Tres arrays paralelos y no un array de structs** porque el MCP no puede crear structs de
+usuario y `set_properties` los escribe a medias sin avisar. Los arrays de tipos simples sí se
+escriben enteros: los cuatro elementos de los tres arrays entraron y se releyeron bien.
+
+### La estructura, en cuatro funciones
+
+`AlternarDialogo` decide; `EscribirPantalla` vuelca la pantalla `Paso`; `CerrarPresentacion`
+vacía los tres campos y apaga la colisión del interactuable; `ArmarRitual` pone
+`FaseRitual = 1`, lanza el montage y cambia el objetivo del HUD.
+
+**Las ayudantes van sin parámetros**, leyendo `Paso` y `Encuadre`, que son variables miembro.
+El diseño pedía `EscribirPantalla(Paso, Quien)`, pero `add_function_param` es otra superficie
+del MCP sin verificar y el reparto de responsabilidades es el mismo.
+
+### Cuatro trampas, tres nuevas
+
+1. **Para CREAR una llamada a función propia el id es `CallFunction|Nombre`.** `|Nombre` es
+   solo cómo lo reporta el lector. Con `|EscribirPantalla` falla con *"does not exist"*.
+2. **`remove_variable` toma `name`, no `variable_name`.** Casi todas las demás del toolset de
+   Blueprints usan `variable_name`, así que engaña.
+3. **`SetObjective` acepta `Text`, no `String`.** El DSL insertó solo un
+   `Utilities|Text|ToText(String)`. Y ojo con el id: `Class|BPDAHUD|SetObjective` es el del
+   AHUD —el bueno—; `Class|WBPDAHUD|SetObjective` es el del widget UMG.
+4. **El `false` de `SetActorEnableCollision` no se ve al releer el grafo** porque es el valor
+   por defecto del pin. Se comprueba con `get_node_infos` sobre el pin: salió
+   `bNewActorEnableCollision = "false"`. Correcto.
+
+### Sobre si `write_graph_dsl` duplica el cuerpo
+
+El documento de diseño avisaba de que **añade otra copia** en vez de reemplazar. En esta
+sesión se reescribió `MirarAlJugador` tres veces y la relectura devolvió siempre un cuerpo
+limpio. **No queda claro si el comportamiento cambió o si el caso de `hud_dialogo.py` era
+distinto.** El script vacía el grafo nodo a nodo de todos modos —es inofensivo en ambos
+supuestos— y reporta cuántos nodos borró, que es la forma de detectarlo si vuelve a pasar.
+
+### La trampa del nodo puro, esquivada
+
+`SetPaso` escribe primero y la comparación hace un `GetPaso` **nuevo**, sin reutilizar la
+salida del `+1`. Verificado en el grafo releído. Si se reutilizara, el `if` compararía contra
+un valor distinto del guardado, compilaría perfecto y fallaría en silencio.
+
+### Pendiente de probar a mano
+
+`set_properties` aplica el candado de Level Instance incluso a los actores de PIE, así que no
+hay forma de forzar `Inspeccionando` desde un script. **Hay que hablarle cuatro veces
+seguidas** y comprobar que salen 01→04 sin repetir, que después no aparece el cartel, que
+clava la lanza y que el objetivo del HUD cambia.
+
+Sin verificar tampoco: que el Giant de `L_DA_SeraphArena_POC` tenga `Encuadre` a null. Debería
+—las variables nuevas nacen nulas en los actores ya colocados, y con `Encuadre` null la
+función entera no hace nada—, pero ese mapa no se ha abierto.
+
+### Scripts
+
+- `Tools/MCP/gabriel_guion.py` — regenera las cuatro funciones, añade las variables, borra las
+  viejas (`TurnoB`, `MensajeA1/B1/B2`) y escribe los textos en la instancia.
