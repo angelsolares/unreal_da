@@ -8098,6 +8098,43 @@ Asset) y hay que pasarla por `MakeSoftClassPath` → `ToSoftClassReference` ante
 `LoadClassAssetBlocking`; y `CastToActorClass` **tiene pines de ejecución**, no es puro, así que
 el spawn va dentro de su rama `:then`.
 
+### El valor de retorno de una función propia no llega a la salida
+
+Los nombres de los enemy types salían **vacíos**. Las filas se dibujaban bien (seis, el número
+correcto), así que el array estaba cargado; lo que devolvía vacío era la extracción del campo.
+
+Aislado en juego imprimiendo las piezas por separado:
+
+- leer el array daba `crudo=[Vigilante | /Game/.../BP_DA_Vigilante_C]` ✔
+- trocear un literal daba `trozo=[Uno ]` ✔
+
+O sea que las dos mitades funcionaban. **Lo que falla es `(return (CallFunction|OtraFuncion …))`:
+el valor de una llamada a otra función propia no llega al nodo de resultado.** El grafo se lee
+perfecto —`(bind _valor (CallFunction|DbgCampoTipo _index))`— y devuelve cadena vacía, sin error.
+
+La forma que SÍ funciona es la de `DbgCampo` (la de WORLD, en pie desde la fase 1): **trocear en
+línea, sin delegar**. Por eso `DbgCampoTipo` y `DbgCampoEnc` duplican el mismo cuerpo en vez de
+compartir un ayudante. La duplicación es el precio de que funcione.
+
+Antes de esto probé también con una sola función que elegía lista con
+`(if (== Cual 0) (return A) (else (return B)))` — también vacío, y **di por buena esa hipótesis
+sin verificarla aislada**, así que el primer arreglo no tocó la causa real. La lección: aislar
+la pieza concreta antes de dar un arreglo por bueno.
+
+**Y `Trim` en Unreal solo quita los espacios de DELANTE.** Los de detrás los quita
+`TrimTrailing`, y hay que encadenar los dos. Por eso salía `"Uno "`.
+
+### Regenerar el blueprint entero tiene un riesgo: la ventana entre borrar y crear
+
+El editor se reinició justo en mitad de una regeneración y el asset quedó **a medias** (4 MB en
+vez de 11, sin `DbgTick` ni `DbgDibujar`, o sea sin responder a la tecla). Peor: el registro de
+assets quedó con una entrada fantasma —*"asset exists but not in registry"*— y a partir de ahí
+ni el borrado ni la creación funcionaban. Dos intentos seguidos fallaron.
+
+**Lo único que lo arregla es cerrar y reabrir el editor.** Después, una pasada del generador lo
+reconstruye entero. No se pierde nada porque el blueprint es generado, pero conviene no lanzar
+una regeneración con otro script tocando el mismo editor a la vez.
+
 ### AI Controls, con el sistema que ya hay
 
 - **Freeze / Unfreeze** → `StopLogic` / `RestartLogic` sobre el Behavior Tree de cada

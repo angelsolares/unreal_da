@@ -829,7 +829,18 @@ def dsl_tab_world():
 # Es mas fiable que etiquetar, que dependeria de leer bien la etiqueta.
 
 def dsl_cargar_enem():
+    sonda = ('  (Development|PrintString :InString'
+             ' (Utilities|String|Append'
+             ' (Utilities|String|Append "DBG tipos="'
+             ' (Utilities|String|ToString(Integer)'
+             ' (Utilities|Array|Length (Variables|Default|GetDbgTipos))))'
+             ' (Utilities|String|Append "  nombre0=["'
+             ' (Utilities|String|Append'
+             ' (CallFunction|DbgCampoTipo :Indice 0 :Campo 0) "]")))'
+             ' :bPrintToScreen false :bPrintToLog true :Duration 8.0)\n'
+             if AUTO_ABRIR else '')
     return ('(fn DbgCargarEnem ()\n'
+            + sonda +
             '  (if (> (Utilities|Array|Length (Variables|Default|GetDbgTipos)) 0)\n'
             '    (return))\n'
             '  (bind d (Variables|Default|GetDbgDatosEnem))\n'
@@ -842,30 +853,45 @@ def dsl_cargar_enem():
             '    (:"Is Not Valid")))')
 
 
-def dsl_trozo():
-    """Campo N de una linea "a | b | c"."""
-    return ('(fn DbgTrozo (Linea Campo)\n'
-            '  (bind partes (Utilities|String|ParseIntoArray Linea "|" true))\n'
+# POR QUE EL TROCEO ESTA DUPLICADO EN DOS FUNCIONES Y NO EN UNA COMPARTIDA:
+#
+# Se intentaron las dos formas "limpias" y las dos devuelven cadena vacia, sin
+# error ni aviso:
+#
+#   1. Una funcion con `(if (== Cual 0) (return A) (else (return B)))`.
+#   2. Una funcion que delega en otra: `(return (CallFunction|DbgTrozo ...))`.
+#
+# En la 2 el grafo se lee perfecto —`(bind _valor (CallFunction|DbgCampoTipo
+# _index))`— pero **el valor de retorno de una llamada a otra funcion propia no
+# llega a la salida**. Comprobado en juego que las piezas sueltas SI funcionan:
+# leer el array da "Vigilante | /Game/..." y trocear un literal da "Uno".
+#
+# Lo que si funciona es la forma de `DbgCampo` (la de WORLD, que lleva
+# funcionando desde la fase 1): trocear EN LINEA, sin llamar a nadie. Asi que
+# se copia esa forma tal cual. La duplicacion es el precio de que funcione.
+#
+# OJO CON `Trim`: en Unreal **solo quita los espacios de DELANTE**; los de
+# detras los quita `TrimTrailing`, y hay que encadenar los dos.
+
+def _troceo(nombre, variable):
+    return ('(fn %s (Indice Campo)\n'
+            '  (bind lineas (Variables|Default|Get%s))\n'
+            '  (if (not (Utilities|Array|IsValidIndex lineas Indice))\n'
+            '    (return ""))\n'
+            '  (bind partes (Utilities|String|ParseIntoArray'
+            ' (Utilities|Array|Get(acopy) lineas Indice) "|" true))\n'
             '  (if (not (Utilities|Array|IsValidIndex partes Campo))\n'
             '    (return ""))\n'
-            '  (return (Utilities|String|Trim (Utilities|Array|Get(acopy) partes Campo))))')
+            '  (return (Utilities|String|TrimTrailing (Utilities|String|Trim'
+            ' (Utilities|Array|Get(acopy) partes Campo)))))' % (nombre, variable))
 
 
-def dsl_campo_enem():
-    """Campo N de la entrada I de una de las dos listas.
+def dsl_campo_tipo():
+    return _troceo("DbgCampoTipo", "DbgTipos")
 
-    `Cual` es 0 para tipos y 1 para encuentros. Se elige con un indice y no
-    pasando el array como argumento porque **un parametro de funcion no puede
-    ser un array por esta API**: el pin no conecta."""
-    return ('(fn DbgCampoEnem (Cual Indice Campo)\n'
-            '  (if (== Cual 0)\n'
-            '    (return (CallFunction|DbgTrozo :Campo Campo'
-            ' :Linea (Utilities|Array|Get(acopy)'
-            ' (Variables|Default|GetDbgTipos) Indice)))\n'
-            '    (else\n'
-            '      (return (CallFunction|DbgTrozo :Campo Campo'
-            ' :Linea (Utilities|Array|Get(acopy)'
-            ' (Variables|Default|GetDbgEncuentros) Indice))))))')
+
+def dsl_campo_enc():
+    return _troceo("DbgCampoEnc", "DbgEncuentros")
 
 
 def dsl_spawn_uno():
@@ -910,8 +936,7 @@ def dsl_spawn():
             '  (if (not (CallFunction|DbgPermitido))\n'
             '    (return))\n'
             '  (CallFunction|DbgCargarEnem)\n'
-            '  (bind ruta (CallFunction|DbgCampoEnem'
-            ' :Cual 0'
+            '  (bind ruta (CallFunction|DbgCampoTipo'
             ' :Indice (Variables|Default|GetDbgTipoSel) :Campo 1))\n'
             '  (for i (range (Variables|Default|GetDbgCantSel))\n'
             '    (CallFunction|DbgSpawnUno :RutaClase ruta :Lado (- i 1)))\n'
@@ -920,7 +945,7 @@ def dsl_spawn():
             ' (Utilities|String|Append'
             ' (Utilities|String|ToString(Integer) (Variables|Default|GetDbgCantSel))'
             ' (Utilities|String|Append " x "'
-            ' (CallFunction|DbgCampoEnem :Cual 0'
+            ' (CallFunction|DbgCampoTipo'
             ' :Indice (Variables|Default|GetDbgTipoSel) :Campo 0))))))')
 
 
@@ -931,7 +956,7 @@ def dsl_encuentro():
             '    (return))\n'
             '  (CallFunction|DbgCargarEnem)\n'
             '  (bind grupos (Utilities|String|ParseIntoArray'
-            ' (CallFunction|DbgCampoEnem :Cual 1'
+            ' (CallFunction|DbgCampoEnc'
             ' :Indice Indice :Campo 1) "," true))\n'
             '  (for g grupos\n'
             '    (bind par (Utilities|String|ParseIntoArray'
@@ -940,13 +965,13 @@ def dsl_encuentro():
             ' (Utilities|Array|Get(acopy) par 0)))\n'
             '    (bind cuantos (Utilities|String|StringToInteger'
             ' (Utilities|Array|Get(acopy) par 1)))\n'
-            '    (bind ruta (CallFunction|DbgCampoEnem'
-            ' :Cual 0 :Indice tipo :Campo 1))\n'
+            '    (bind ruta (CallFunction|DbgCampoTipo'
+            ' :Indice tipo :Campo 1))\n'
             '    (for j (range cuantos)\n'
             '      (CallFunction|DbgSpawnUno :RutaClase ruta :Lado (- j 1))))\n'
             '  (Variables|Default|SetDbgMensaje'
             ' (Utilities|String|Append "Encuentro: "'
-            ' (CallFunction|DbgCampoEnem :Cual 1'
+            ' (CallFunction|DbgCampoEnc'
             ' :Indice Indice :Campo 0))))')
 
 
@@ -1487,7 +1512,7 @@ def dsl_tab_ai():
     l.append('    ' + rect(X(8.0), "ty", SC(PW - 16.0), SC(FILA_AI - 3.0),
                            BOTON).strip() + '))')
     l.append('    ' + texto(X(18.0), "(+ ty %s)" % SC(2.0),
-                            '(CallFunction|DbgCampoEnem :Cual 0'
+                            '(CallFunction|DbgCampoTipo'
                             ' :Indice i :Campo 0)', HUESO, 0.95).strip())
     l.append('    )')
 
@@ -1508,7 +1533,7 @@ def dsl_tab_ai():
     l.append('    ' + rect(X(8.0), "ey", SC(PW - 16.0), SC(FILA_AI - 3.0),
                            BOTON).strip())
     l.append('    ' + texto(X(18.0), "(+ ey %s)" % SC(2.0),
-                            '(CallFunction|DbgCampoEnem :Cual 1'
+                            '(CallFunction|DbgCampoEnc'
                             ' :Indice i :Campo 0)', HUESO, 0.95).strip())
     l.append('    )')
 
@@ -1780,12 +1805,9 @@ def run():
         ("DbgMantener", dsl_mantener, []),
         ("DbgResetPlayer", dsl_reset_player, []),
         # --- AI ---
+        ("DbgCampoTipo", dsl_campo_tipo, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),
+        ("DbgCampoEnc", dsl_campo_enc, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),
         ("DbgCargarEnem", dsl_cargar_enem, []),
-        ("DbgTrozo", dsl_trozo, [("Linea", "string", True), ("Campo", "int", True), ("Valor", "string", False)]),
-        ("DbgCampoEnem", dsl_campo_enem, [("Cual", "int", True),
-                                          ("Indice", "int", True),
-                                          ("Campo", "int", True),
-                                          ("Valor", "string", False)]),
         ("DbgSpawnUno", dsl_spawn_uno, [("RutaClase", "string", True),
                                         ("Lado", "int", True)]),
         ("DbgSpawn", dsl_spawn, []),
