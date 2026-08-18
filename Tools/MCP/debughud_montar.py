@@ -2249,22 +2249,45 @@ def dsl_fin_indice():
 CFG = "/Game/DarkAngels/Debug/BP_DA_DebugConfig.BP_DA_DebugConfig_C"
 RANURA = "DA_DebugPanel"
 
-# (variable del SaveGame, variable del HUD). Las Fin_* viven en BP_DA_HUD, el
-# padre, que es de donde las lee el finisher en caliente.
-CFG_PARES = [("Dilatacion", "FinDilatacion"), ("MatarEn", "FinMatarEn"),
-             ("CamaraLado", "FinCamaraLado"), ("CamaraAlto", "FinCamaraAlto"),
-             ("CamaraFrente", "FinCamaraFrente"), ("CamaraFOV", "FinCamaraFOV"),
-             ("Escala", "DbgEscala")]
-CFG_ENTEROS = [("Indice", "FinIndice"), ("Tab", "DbgTab")]
+# (variable del SaveGame, variable del HUD). Se guardan TODAS; lo que cambia es
+# como se restauran, y por eso estan en tres grupos.
+CFG_TODO = [
+    # FINISHERS y presentacion del panel
+    ("Dilatacion", "FinDilatacion"), ("MatarEn", "FinMatarEn"),
+    ("CamaraLado", "FinCamaraLado"), ("CamaraAlto", "FinCamaraAlto"),
+    ("CamaraFrente", "FinCamaraFrente"), ("CamaraFOV", "FinCamaraFOV"),
+    ("Indice", "FinIndice"), ("Escala", "DbgEscala"), ("Tab", "DbgTab"),
+    # selecciones de AI, BOSS y STORY
+    ("TipoSel", "DbgTipoSel"), ("CantSel", "DbgCantSel"),
+    ("DistSel", "DbgDistSel"), ("BossSel", "DbgBossSel"),
+    ("CheckSel", "DbgCheckSel"),
+    # banderas que el tick LEE: basta con escribirlas
+    ("God", "DbgGod"), ("ManaInf", "DbgManaInf"), ("LogOn", "DbgLogOn"),
+    ("OneHit", "DbgOneHit"),
+    # checkpoint temporal de debug
+    ("TieneGuardada", "DbgTieneGuardada"), ("GuardadaLoc", "DbgGuardadaLoc"),
+    ("GuardadaRot", "DbgGuardadaRot"),
+    # estos se guardan pero NO se escriben al cargar: se reaplican (ver abajo)
+    ("MovMult", "DbgMovMult"), ("DmgMult", "DbgDmgMult"),
+    ("EnemyMult", "DbgEnemyMult"), ("Trazas", "DbgTrazas"),
+    ("Colisiones", "DbgColisiones"), ("Congelada", "DbgCongelada"),
+    ("Apagada", "DbgApagada"), ("Ignorar", "DbgIgnorar"),
+]
+
+# Lo que NO se restaura escribiendo la variable, porque el boton no guarda un
+# numero: CAMBIA el juego. Escribir el booleano dejaria el boton encendido y el
+# efecto apagado, que es peor que no guardarlo.
+CFG_SOLO_GUARDAR = {"MovMult", "DmgMult", "EnemyMult", "Trazas", "Colisiones",
+                    "Congelada", "Apagada", "Ignorar"}
 
 
 def dsl_cfg_guardar():
     l = ['(fn DbgCfgGuardar ()',
          '  (bind sg (SaveGame|CreateSaveGameObject :SaveGameClass "%s"))' % CFG,
          '  (bind cfg (Utilities|Casting|CastToBP_DA_DebugConfig sg))']
-    for destino, origen in CFG_PARES + CFG_ENTEROS:
-        # El DSL RESERVA el pin `self`, asi que los posicionales empiezan
-        # despues: sin nombrarlo, `cfg` se iba al pin del valor y no conectaba.
+    for destino, origen in CFG_TODO:
+        # El DSL RESERVA el pin `self`: sin nombrarlo, `cfg` se va al pin del
+        # valor y la pasada revienta a mitad.
         l.append('  (Class|BPDADebugConfig|Set%s :self cfg :%s'
                  ' (Variables|Default|Get%s))' % (destino, destino, origen))
     l.append('  (SaveGame|SaveGametoSlot :SaveGameObject cfg'
@@ -2274,7 +2297,7 @@ def dsl_cfg_guardar():
 
 
 def dsl_cfg_cargar():
-    """Se llama una sola vez, con guarda: leer disco cada frame seria absurdo."""
+    """Una sola vez, con guarda: leer disco cada frame seria absurdo."""
     l = ['(fn DbgCfgCargar ()',
          '  (if (Variables|Default|GetDbgCfgLista)',
          '    (return))',
@@ -2283,9 +2306,32 @@ def dsl_cfg_cargar():
          '    (return))',
          '  (bind sg (SaveGame|LoadGamefromSlot :SlotName "%s" :UserIndex 0))' % RANURA,
          '  (bind cfg (Utilities|Casting|CastToBP_DA_DebugConfig sg))']
-    for origen, destino in CFG_PARES + CFG_ENTEROS:
+    # 1) los que se restauran escribiendo
+    for origen, destino in CFG_TODO:
+        if origen in CFG_SOLO_GUARDAR:
+            continue
         l.append('  (Variables|Default|Set%s (Class|BPDADebugConfig|Get%s cfg))'
                  % (destino, origen))
+    # 2) los que hay que REAPLICAR llamando a la misma accion del boton.
+    #    Los multiplicadores modifican stats, asi que se les pasa el valor.
+    l.append('  (CallFunction|DbgMov :Mult (Class|BPDADebugConfig|GetMovMult cfg))')
+    l.append('  (CallFunction|DbgDanoJugador'
+             ' :Mult (Class|BPDADebugConfig|GetDmgMult cfg))')
+    l.append('  (CallFunction|DbgDanoEnemigo'
+             ' :Mult (Class|BPDADebugConfig|GetEnemyMult cfg))')
+    #    La AI ya recibe el valor por parametro.
+    l.append('  (CallFunction|DbgIALogica'
+             ' :Congelar (Class|BPDADebugConfig|GetCongelada cfg))')
+    l.append('  (CallFunction|DbgIAApagar'
+             ' :Apagar (Class|BPDADebugConfig|GetApagada cfg))')
+    l.append('  (CallFunction|DbgIgnorarToggle'
+             ' :Ignorar (Class|BPDADebugConfig|GetIgnorar cfg))')
+    #    Estos dos son toggles sin parametro: solo se llaman si estaban puestos,
+    #    porque arrancan apagados y la llamada los enciende.
+    l.append('  (if (Class|BPDADebugConfig|GetTrazas cfg)')
+    l.append('    (CallFunction|DbgTrazasToggle))')
+    l.append('  (if (Class|BPDADebugConfig|GetColisiones cfg)')
+    l.append('    (CallFunction|DbgColisionesToggle))')
     l.append('  (Variables|Default|SetDbgMensaje'
              ' "Config del panel recuperada del disco")')
     l.append('  (return))')
@@ -2473,9 +2519,6 @@ def run():
         ("DbgBoton", dsl_boton, [("X", "float", True), ("Y", "float", True),
                                  ("W", "float", True), ("Etiqueta", "string", True),
                                  ("Encendido", "bool", True)]),
-        ("DbgCfgGuardar", dsl_cfg_guardar, []),
-        ("DbgCfgCargar", dsl_cfg_cargar, []),
-        ("DbgCargar", dsl_cargar, []),
         ("DbgCampo", dsl_campo, [("Indice", "int", True), ("Campo", "int", True),
                                  ("Valor", "string", False)]),
         ("DbgOcultarJuego", dsl_ocultar_juego, [("Ocultar", "bool", True)]),
@@ -2540,6 +2583,12 @@ def run():
         ("DbgFinCamaraFOV", lambda n='CamaraFOV': dsl_fin_delta(n), [("Delta", "float", True)]),
         ("DbgFinIndice", dsl_fin_indice, [("Delta", "int", True)]),
         ("DbgFinReset", dsl_fin_reset, []),
+        # Estas tres van aqui y no arriba: DbgCfgCargar llama a las
+        # acciones de PLAYER, AI y COMBAT, y el generador exige que
+        # lo llamado exista ANTES que quien llama.
+        ("DbgCfgGuardar", dsl_cfg_guardar, []),
+        ("DbgCfgCargar", dsl_cfg_cargar, []),
+        ("DbgCargar", dsl_cargar, []),
         ("DbgTabPendiente", dsl_pendiente, []),
         ("DbgTabPlayer", dsl_tab_player, []),
         ("DbgTabCombat", dsl_tab_combat, []),

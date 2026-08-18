@@ -208,3 +208,25 @@ lo que despista: el mismo patrón funciona para leer y falla para escribir.
 > solo aparece al conectar los pines dentro del editor, a mitad de la regeneración, con el
 > blueprint ya borrado. Antes de una pasada larga con nodos nuevos, conviene probar **un solo
 > grafo suelto** en un blueprint de usar y tirar y ver que compila.
+
+### Antes de lanzar: comprobar el ORDEN de la lista `grafos`
+
+El generador crea los grafos en el orden de la lista, así que **una función no puede llamar a
+otra que se registre después**: el DSL falla con *"CallFunction|X does not exist"* y **tumba la
+pasada entera**, dejando el panel sin `DbgTick` ni `DbgDibujar`.
+
+Pasó el 2026-08-18 con `DbgCfgCargar`, que reaplica `DbgMov`, `DbgDanoJugador` y las de AI: se
+registró al principio y esas acciones se crean mucho después.
+
+La comprobación es barata y se hace sin tocar el editor: recorrer la lista, generar el DSL de
+cada entrada y verificar que cada `CallFunction|X` apunta a algo registrado antes.
+
+> **Ojo con los nombres calculados.** Las entradas tipo `("DbgFin%s" % n, ...)` no las ve un
+> lector que solo busque literales, y las marcará como "no registrada". La primera versión de
+> este chequeo dio **seis falsos positivos** por eso. Si el chequeo señala algo, confirma que
+> el nombre no venga de una expresión antes de "arreglar" nada.
+
+**Y una limitación que conviene saber:** probar un grafo suelto en un blueprint desechable
+—que es la forma de validar nodos y pines nuevos— **no detecta esto**, porque en un blueprint
+suelto no hay funciones propias a las que llamar. Son dos comprobaciones distintas y hacen
+falta las dos.
