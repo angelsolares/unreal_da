@@ -8702,5 +8702,25 @@ socket de mano y ajustarlo a su escala 5,5.
 `GiantBossProject`, el mismo esqueleto que usa Gabriel, así que `ABP_DA_Gabriel` —duplicado
 del ABP del pack— reproduce los montages del jefe sin retargeting.
 
-Sigue sin comprobarse si el cartel `[E] Hablar` desaparece tras la cuarta y si el objetivo del
-HUD cambia.
+### Verificado entero, y la arena no se entera de nada
+
+Probado en juego por Angel: **las cuatro pantallas salen en orden, el cartel `[E] Hablar`
+desaparece tras la cuarta, Gabriel golpea el suelo y el objetivo del HUD cambia.** La lista de
+comprobacion del documento de diseno queda cerrada.
+
+Y el jefe de la arena, leido directamente de su instancia:
+
+| | valor |
+|---|---|
+| `Encuadre` | **None** — `AlternarDialogo` no hace nada |
+| `SigueAlJugador` | **false** — `MirarAlJugador` no hace nada |
+| `EnemiesToSpawn` | **2** — su oleada sigue intacta |
+| `AnimClass` | **`ABP_Giant_C`** — sigue con el del pack, no con el de Gabriel |
+
+Las cuatro guardas aguantaron. Poner los defectos en false/null y asignar el AnimBP por
+instancia fue lo que aisló el otro mapa.
+
+> **El mapa de la arena esta archivado.** No esta en `Maps/` sino en
+> `Maps/Backup/L_DA_SeraphArena_POC`, movido el 12/08, y **no esta trackeado en git**. El
+> "pendiente de la arena" que arrastraban estas notas se refiere a un mapa que ya no forma
+> parte del proyecto activo. Conviene decidir si se recupera o se da por jubilado.
