@@ -89,6 +89,8 @@ VARIABLES = [
     ("DbgIgnorar", "bool", None),
     # --- BOSS ---
     ("DbgBosses", "string", "ARRAY"), ("DbgBossSel", "int", None),
+    # --- STORY ---
+    ("DbgCheckSel", "int", None),
     # --- COMBAT ---
     ("DbgDmgMult", "float", None), ("DbgEnemyMult", "float", None),
     ("DbgOneHit", "bool", None), ("DbgLogOn", "bool", None),
@@ -107,6 +109,7 @@ DCS_STATS = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/StatsManager/"
              "BP_StatsManagerComponent.BP_StatsManagerComponent_C")
 DCS_TARGET = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/"
               "BP_DynamicTargetingComponent.BP_DynamicTargetingComponent_C")
+RESPAWN = "/Game/DarkAngels/Blueprints/World/BP_RespawnVolume.BP_RespawnVolume_C"
 DATOS_ENEM = CARPETA + "/DA_DA_DebugEnemigos.DA_DA_DebugEnemigos"
 FILA_AI = 24.0
 DCS_AI = "/Game/DynamicCombatSystem/DCS/Blueprints/AI/BP_BaseAI.BP_BaseAI_C"
@@ -423,9 +426,9 @@ def dsl_dibujar():
         # Dos cierres: uno para el (else y otro para el (if.
         l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
         # WORLD, PLAYER, COMBAT y AI ya estan; BOSS y STORY pendientes.
-        etiqueta = '"%s"' % nombre if i < 5 else '"%s  --"' % nombre
+        etiqueta = '"%s"' % nombre if i < 6 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
-                       ORO if i < 5 else GRIS, 1.0))
+                       ORO if i < 6 else GRIS, 1.0))
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
@@ -441,7 +444,10 @@ def dsl_dibujar():
     l.append('                  (if (== (Variables|Default|GetDbgTab) 4)')
     l.append('                    (CallFunction|DbgTabBoss)')
     l.append('                    (else')
-    l.append('                      (CallFunction|DbgTabPendiente)))))))))))')
+    l.append('                      (if (== (Variables|Default|GetDbgTab) 5)')
+    l.append('                        (CallFunction|DbgTabStory)')
+    l.append('                        (else')
+    l.append('                          (CallFunction|DbgTabPendiente)))))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -476,6 +482,14 @@ def dsl_teleport():
             # asi que sin esto aterrizas mirando a donde mirabas antes.
             '        (Pawn|SetControlRotation :self (Game|GetPlayerController 0)'
             ' :NewRotation r)\n'
+            # STATE PRESET: si la linea del destino trae un SEXTO campo, se
+            # aplica como objetivo del HUD al llegar. Asi un destino puede
+            # dejarte el estado de prueba puesto ("boss listo para pelear")
+            # sin tocar ningun SaveGame: ObjectiveIndex es estado de sesion.
+            '        (bind obj (CallFunction|DbgCampo :Indice Indice :Campo 5))\n'
+            '        (if (> (Utilities|String|Len obj) 0)\n'
+            '          (Variables|Default|SetObjectiveIndex'
+            ' (Utilities|String|StringToInteger obj)))\n'
             '        (Variables|Default|SetDbgMensaje'
             ' (Utilities|String|Append "Teleport: " (CallFunction|DbgCampo :Indice Indice :Campo 0)))\n'
             '        (else\n'
@@ -692,7 +706,15 @@ def dsl_mantener():
 
     Tambien mantiene la velocidad de movimiento: el componente de DCS reescribe
     MaxWalkSpeed cada frame, asi que el multiplicador hay que reaplicarlo."""
+    # SALIDA TEMPRANA, de la revision final: esto corre en CADA frame, y sin la
+    # guarda hacia un GetComponentByClass por frame aunque los tres
+    # interruptores estuvieran apagados — que es el caso normal. Con la guarda,
+    # apagado no cuesta mas que tres lecturas de bool.
     return ('(fn DbgMantener ()\n'
+            '  (if (and (and (not (Variables|Default|GetDbgGod))\n'
+            '                (not (Variables|Default|GetDbgManaInf)))\n'
+            '           (== (Variables|Default|GetDbgMovMult) 1.0))\n'
+            '    (return))\n'
             '  (bind pawn (Game|GetPlayerPawn 0))\n'
             '  (Utilities|IsValid pawn\n'
             '    (:"Is Valid"\n'
@@ -1139,6 +1161,93 @@ def dsl_boss_vida():
             '          (Variables|Default|SetDbgMensaje'
             ' "No hay ningun actor de ese boss en el nivel"))))\n'
             '    (:CastFailed)))')
+
+
+# ---------------------------------------------------------- STORY: acciones
+#
+# NO HAY QUEST SYSTEM NI REGISTRO DE FLAGS EN EL PROYECTO. Comprobado: el estado
+# narrativo vive repartido por actor en el nivel — `HasFired` en cada
+# `BP_DA_ZoneTrigger`, `Abierto`/`Cerrado` en los interactuables, `bDone` en el
+# portal, `bInteractPrev` en el altar— y esos son inalcanzables desde aqui,
+# porque haria falta una referencia TIPADA al actor.
+#
+# El unico flag GLOBAL y real es el objetivo del HUD: `ObjectiveIndex`,
+# `ObjectiveText` y `GuiaBloqueada`. Y esos SI se pueden tocar, porque el Debug
+# HUD **hereda de BP_DA_HUD**: son variables propias, no ajenas.
+#
+# Se escribe `ObjectiveIndex` a pelo y no por `SetObjective` a proposito: esa
+# funcion solo avanza (progresion monotona, para que volver atras no te cambie
+# el objetivo), y para probar hace falta poder RETROCEDER.
+
+def dsl_objetivo():
+    return ('(fn DbgObjetivo (Delta)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind n (+ (Variables|Default|GetObjectiveIndex) Delta))\n'
+            '  (Variables|Default|SetObjectiveIndex (select (< n 0) 0 n))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Objetivo del HUD: "'
+            ' (Utilities|String|ToString(Integer)'
+            ' (Variables|Default|GetObjectiveIndex)))))')
+
+
+def dsl_guia():
+    return ('(fn DbgGuiaToggle ()\n'
+            '  (Variables|Default|SetGuiaBloqueada'
+            ' (not (Variables|Default|GetGuiaBloqueada)))\n'
+            '  (Variables|Default|SetDbgMensaje "Guia bloqueada cambiada"))')
+
+
+def dsl_checkpoint():
+    """Recorre los BP_RespawnVolume del nivel y lleva al seleccionado.
+
+    Su variable `RespawnLocation` no es alcanzable (referencia tipada), pero la
+    POSICION DEL ACTOR si, y es donde esta el checkpoint. Esto no toca ningun
+    save: es solo un teleport."""
+    return ('(fn DbgCheckpoint (Delta Ir)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind vols (Actor|GetAllActorsOfClass :ActorClass "' + RESPAWN + '"))\n'
+            '  (bind n (Utilities|Array|Length vols))\n'
+            '  (if (== n 0)\n'
+            '    (Variables|Default|SetDbgMensaje'
+            ' "No hay ningun BP_RespawnVolume en el nivel abierto")\n'
+            '    (return))\n'
+            '  (bind i (+ (Variables|Default|GetDbgCheckSel) Delta))\n'
+            '  (Variables|Default|SetDbgCheckSel'
+            ' (select (< i 0) (- n 1) (select (>= i n) 0 i)))\n'
+            '  (if Ir\n'
+            '    (bind v (Utilities|Array|Get(acopy) vols'
+            ' (Variables|Default|GetDbgCheckSel)))\n'
+            '    (bind pawn (Game|GetPlayerPawn 0))\n'
+            '    (Transformation|SetActorLocationAndRotation :self pawn'
+            ' :NewLocation (+ (Transformation|GetActorLocation :self v)'
+            ' (Math|Vector|MakeVector :X 0.0 :Y 0.0 :Z 120.0))'
+            ' :NewRotation (Pawn|GetControlRotation'
+            ' :self (Game|GetPlayerController 0))'
+            ' :bSweep false :bTeleport true))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append'
+            ' (Utilities|String|Append "Checkpoint "'
+            ' (Utilities|String|ToString(Integer)'
+            ' (Variables|Default|GetDbgCheckSel)))'
+            ' (Utilities|String|Append " de "'
+            ' (Utilities|String|ToString(Integer) n)))))')
+
+
+def dsl_reset_story():
+    """Limpia SOLO los overrides de debug.
+
+    No toca `ObjectiveIndex`, que es progresion real del juego, ni ningun
+    SaveGame: aqui no se escribe ninguno. Lo unico que hay que limpiar es el
+    checkpoint temporal de debug y el indice de recorrido."""
+    return ('(fn DbgResetStory ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetDbgTieneGuardada false)\n'
+            '  (Variables|Default|SetDbgCheckSel 0)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "Overrides de debug limpiados (el progreso real no se toca)"))')
 
 
 # --------------------------------------------------------- COMBAT: acciones
@@ -1828,6 +1937,101 @@ def dsl_click_boss():
     return "\n".join(l)
 
 
+# ------------------------------------------------------------- STORY: pintar
+
+def filas_story():
+    x0, w3, w5 = 8.0, 182.0, 108.0
+    nada = "(CallFunction|DbgNadaAun)"
+    return [
+        ("STORY FLAGS   (el objetivo del HUD es el unico flag global real)",
+         130.0, 174.0, [
+             (x0, w3, "OBJETIVO  -1", "(CallFunction|DbgObjetivo :Delta -1)", "false"),
+             (x0 + 190.0, w3, "OBJETIVO  +1", "(CallFunction|DbgObjetivo :Delta 1)",
+              "false"),
+             (x0 + 380.0, w3, "GUIA BLOQUEADA", "(CallFunction|DbgGuiaToggle)",
+              "(Variables|Default|GetGuiaBloqueada)"),
+         ]),
+        ("CHECKPOINTS   (BP_RespawnVolume del nivel)", 212.0, 234.0, [
+            (x0, w3, "ANTERIOR",
+             "(CallFunction|DbgCheckpoint :Delta -1 :Ir false)", "false"),
+            (x0 + 190.0, w3, "SIGUIENTE",
+             "(CallFunction|DbgCheckpoint :Delta 1 :Ir false)", "false"),
+            (x0 + 380.0, w3, "IR AL CHECKPOINT",
+             "(CallFunction|DbgCheckpoint :Delta 0 :Ir true)", "false"),
+        ]),
+        ("CHECKPOINT TEMPORAL DE DEBUG   (nunca toca un save)", 272.0, 294.0, [
+            (x0, 278.0, "SET DEBUG CHECKPOINT", "(CallFunction|DbgGuardarPos)",
+             "(Variables|Default|GetDbgTieneGuardada)"),
+            (x0 + 286.0, 278.0, "RESPAWN AT DEBUG CP",
+             "(CallFunction|DbgIrAGuardada)", "false"),
+        ]),
+        # Sin sistema detras: a la vista y apagados, sin inventar nada.
+        ("PUZZLES   (sin sistema de puzzles todavia)", 332.0, 354.0, [
+            (x0, w5, "-- RESET", nada, "false"),
+            (x0 + 112.0, w5, "-- COMPLETE", nada, "false"),
+            (x0 + 224.0, w5, "-- ADVANCE", nada, "false"),
+            (x0 + 336.0, w5, "-- PREVIOUS", nada, "false"),
+            (x0 + 448.0, w5, "-- ESPEJOS", nada, "false"),
+        ]),
+        ("COLLECTIBLES   (sin contador de lore ni de cofres)", 392.0, 414.0, [
+            (x0, w3, "-- LORE", nada, "false"),
+            (x0 + 190.0, w3, "-- COFRES", nada, "false"),
+            (x0 + 380.0, w3, "-- NEXT MISSING", nada, "false"),
+        ]),
+        ("", None, 452.0, [
+            (x0, 564.0, "RESET STORY DEBUG", "(CallFunction|DbgResetStory)", "false"),
+        ]),
+    ]
+
+
+def dsl_tab_story():
+    l = ['(fn DbgTabStory ()', BIND_GEO]
+    for titulo, y_tit, y_bot, botones in filas_story():
+        if y_tit:
+            l.append(texto(X(16.0), Y(y_tit), '"%s"' % titulo, ORO, 0.95))
+        for x, w, etiqueta, _accion, encendido in botones:
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
+                     ' :Etiqueta "%s" :Encendido %s)'
+                     % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
+    # Estado real, leido de las variables heredadas del HUD del juego.
+    l.append(texto(X(16.0), Y(152.0),
+                   '(Utilities|String|Append'
+                   ' (Utilities|String|Append "ObjectiveIndex:  "'
+                   ' (Utilities|String|ToString(Integer)'
+                   ' (Variables|Default|GetObjectiveIndex)))'
+                   ' (Utilities|String|Append "     "'
+                   ' (Utilities|String|ToString(Text)'
+                   ' (Variables|Default|GetObjectiveText))))', HUESO, 0.9))
+    l.append('  (bind vols (Actor|GetAllActorsOfClass :ActorClass "%s"))' % RESPAWN)
+    l.append(texto(X(16.0), Y(486.0),
+                   '(Utilities|String|Append'
+                   ' (Utilities|String|Append "Checkpoints en el nivel:  "'
+                   ' (Utilities|String|ToString(Integer)'
+                   ' (Utilities|Array|Length vols)))'
+                   ' (Utilities|String|Append "     seleccionado:  "'
+                   ' (Utilities|String|ToString(Integer)'
+                   ' (Variables|Default|GetDbgCheckSel))))', HUESO, 0.9))
+    l.append(texto(X(16.0), Y(508.0),
+                   '"Un destino de WORLD puede llevar objetivo: sexto campo de su linea."',
+                   GRIS, 0.8))
+    l.append(texto(X(16.0), Y(534.0),
+                   '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_click_story():
+    l = ['(fn DbgClickStory (MX MY)', BIND_GEO]
+    for _t, _yt, y_bot, botones in filas_story():
+        for x, w, _etiqueta, accion, _enc in botones:
+            l.append('  (if %s' % caja("MX", "MY", X(x), Y(y_bot),
+                                       SC(w), SC(BOTON_H)))
+            l.append('    ' + accion)
+            l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
 def caja(mx, my, x, y, w, h):
     return ('(and (and (>= %s %s) (< %s (+ %s %s))) (and (>= %s %s) (< %s (+ %s %s))))'
             % (mx, x, mx, x, w, my, y, my, y, h))
@@ -1864,7 +2068,10 @@ def dsl_click():
     l.append('                (CallFunction|DbgClickAI :MX MX :MY MY)')
     l.append('                (else')
     l.append('                  (if (== (Variables|Default|GetDbgTab) 4)')
-    l.append('                    (CallFunction|DbgClickBoss :MX MX :MY MY))))))))))')
+    l.append('                    (CallFunction|DbgClickBoss :MX MX :MY MY)')
+    l.append('                    (else')
+    l.append('                      (if (== (Variables|Default|GetDbgTab) 5)')
+    l.append('                        (CallFunction|DbgClickStory :MX MX :MY MY))))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -2056,11 +2263,17 @@ def run():
         ("DbgCampoBoss", dsl_campo_boss, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),
         ("DbgCargarBoss", dsl_cargar_boss, []),
         ("DbgBossVida", dsl_boss_vida, [("Fraccion", "float", True)]),
+        # --- STORY ---
+        ("DbgObjetivo", dsl_objetivo, [("Delta", "int", True)]),
+        ("DbgGuiaToggle", dsl_guia, []),
+        ("DbgCheckpoint", dsl_checkpoint, [("Delta", "int", True), ("Ir", "bool", True)]),
+        ("DbgResetStory", dsl_reset_story, []),
         ("DbgTabPendiente", dsl_pendiente, []),
         ("DbgTabPlayer", dsl_tab_player, []),
         ("DbgTabCombat", dsl_tab_combat, []),
         ("DbgTabAI", dsl_tab_ai, []),
         ("DbgTabBoss", dsl_tab_boss, []),
+        ("DbgTabStory", dsl_tab_story, []),
         ("DbgTabWorld", dsl_tab_world, []),
         ("DbgClickWorld", dsl_click_world, [("MX", "float", True),
                                             ("MY", "float", True)]),
@@ -2070,6 +2283,7 @@ def run():
                                               ("MY", "float", True)]),
         ("DbgClickAI", dsl_click_ai, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickBoss", dsl_click_boss, [("MX", "float", True), ("MY", "float", True)]),
+        ("DbgClickStory", dsl_click_story, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).

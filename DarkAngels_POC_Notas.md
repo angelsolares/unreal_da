@@ -8724,3 +8724,116 @@ instancia fue lo que aisló el otro mapa.
 > `Maps/Backup/L_DA_SeraphArena_POC`, movido el 12/08, y **no esta trackeado en git**. El
 > "pendiente de la arena" que arrastraban estas notas se refiere a un mapa que ya no forma
 > parte del proyecto activo. Conviene decidir si se recupera o se da por jubilado.
+
+## Navegación para la sala de los espejos (2026-08-17)
+
+Punto 2 del plan de Gabriel: el bloqueo era que la sala no tenía malla de navegación. Sin
+ella el `MoveTo` de los Behaviour Trees no va a ningún sitio y los enemigos aparecerían y se
+quedarían plantados.
+
+### Hay un `SM_Piso_Camara` por cámara, y todos se llaman igual
+
+`gabriel_navmesh.py` buscaba `SM_Piso_Camara` a secas y se quedaba con el primero. Le tocó el
+de la Cámara III y **plantó la navegación a 26 km de donde hacía falta**: `Nav_GabrielC3` en
+(−92000, −15000) y la sala de los espejos, en (−66000, −15000), sin nada.
+
+Costó verlo porque el volumen estaba perfectamente construido — solo estaba en otra sala. Y
+el nombre lo delataba desde el principio.
+
+**Arreglado desambiguando por cercanía a la Level Instance**: de todos los pisos que se
+llamen igual, gana el que tenga su centro más cerca de la LI de la zona. El script ahora
+lleva un diccionario `ZONAS` y reporta los candidatos y la distancia del elegido.
+
+| | valor |
+|---|---|
+| Piso de la C2 | centro (−66000, −15000, −14), 4200 × 4200 |
+| `Nav_GabrielC2` | 5400 × 5400 × 1500, de z −214 a 1286 |
+
+`Nav_GabrielC3` se deja donde está: no molesta y el punto 4 lo necesita.
+
+### La generación era `Static`, que es por lo que no aparecía nada
+
+Poner el volumen no bastó: la malla siguió cubriendo solo la C3. La causa es que los dos
+`RecastNavMesh` tenían `RuntimeGeneration = Static`, o sea que la malla se **hornea** en el
+editor con `Build > Build Paths` y no se reconstruye sola. **El MCP no puede lanzar un Build**,
+igual que con la iluminación.
+
+Decisión de Angel: **los dos agentes pasan a `Dynamic`**. Para una POC donde los volúmenes se
+mueven cada dos por tres quita fricción recurrente, y de paso esquiva el problema conocido de
+que `L_DA_Malkuth_Master_BuiltData` no se deja guardar. Cuesta algo de CPU en juego.
+
+**Verificado en PIE:** las bounds de los dos `RecastNavMesh` pasaron de (−93860 … −89908),
+z −49…−19, a (−93860 … −63232), z −49…1091. Cubren la sala de los espejos.
+
+### Dos agentes, y el del jefe ya está bien dimensionado
+
+| Agente | Radio | Alto |
+|---|---|---|
+| `RecastNavMesh-Default` | 35 | 144 |
+| `RecastNavMesh-Giant` | **102** | **528** |
+
+La cápsula de Gabriel es radio 102 y media altura 264 — o sea alto 528. El agente `Giant`
+coincide exactamente, así que la navegación del punto 4 ya está servida sin tocar nada más.
+
+### Lo que esto NO demuestra
+
+Que las bounds cubran la sala no prueba que la malla cubra el **anillo caminable**: hay lámina
+de agua a z=9 y nichos elevados. Eso se comprueba soltando enemigos y viendo si se mueven, que
+es el primer paso de la lista del documento y necesita el Debug HUD.
+
+### Decisiones tomadas para el punto 2
+
+- Al cruzar el espejo, el jugador reaparece **en el centro de la sala** (no en la entrada, que
+  era la propuesta del documento).
+- Si te matan: vuelves a la entrada y la ronda se reinicia, sin pantalla de muerte.
+- Primera prueba con **tres enemigos**: dos Vigilantes y un Lancero, el preset `"0:2, 2:1"`.
+
+## DA Debug HUD, fase 6: pestaña STORY y revisión final (2026-08-17)
+
+### No hay quest system, y eso decide la pestaña entera
+
+Comprobado antes de escribir nada: **el estado narrativo vive repartido por actor en el nivel**
+—`HasFired` de cada `BP_DA_ZoneTrigger`, `Abierto`/`Cerrado` de los interactuables, `bDone` del
+portal, `bInteractPrev` del altar— y ninguno es alcanzable desde el HUD, porque haría falta una
+referencia tipada al actor.
+
+El único flag **global** es el objetivo del HUD (`ObjectiveIndex`, `ObjectiveText`,
+`GuiaBloqueada`), y ese **sí** se toca: el Debug HUD hereda de `BP_DA_HUD`, así que son
+variables propias. Se escribe `ObjectiveIndex` a pelo y no por `SetObjective` a propósito —esa
+función sólo avanza, y para probar hace falta poder retroceder.
+
+Para exponer el resto haría falta centralizarlos en un `BP_DA_GameState` (o un componente del
+GameMode) con `GetFlag`/`SetFlag`. En cuanto exista, STORY lo lee igual que el objetivo.
+
+### Lo funcional de STORY
+
+- Objetivo del HUD: ±1 y bloqueo de guía.
+- Checkpoints: recorre los `BP_RespawnVolume` del nivel y teleporta. Su variable interna no es
+  alcanzable, pero **la posición del actor sí**, que es donde está el checkpoint.
+- Checkpoint temporal de debug: memoria de sesión, **no toca ningún SaveGame** (aquí no se
+  escribe ninguno).
+- **State presets de teleport**: un destino puede llevar un sexto campo con el objetivo a
+  aplicar al llegar.
+
+Puzzles y collectibles quedan a la vista y apagados: no existe sistema detrás.
+
+### Revisión final del sistema
+
+Lo único que se cambió: **salida temprana en `DbgMantener`**. Corría cada frame y hacía un
+`GetComponentByClass` aunque God Mode, el recurso infinito y el multiplicador estuvieran
+apagados —el caso normal—; ahora sale en tres lecturas de bool.
+
+Lo demás se revisó y está bien, con el porqué:
+
+- **Delegates**: no se bindea ninguno en todo el sistema, así que **no hay fugas posibles**.
+- **Referencias fuertes**: enemigos y bosses se cargan por ruta blanda; el nivel no conoce la
+  carpeta de debug. Los dos Data Assets son duros pero viven dentro de `/Debug`.
+- **UMG**: ninguno; todo canvas.
+- **Duplicación** del troceo en cuatro funciones: **obligada**, delegar devuelve vacío.
+- **Level Travel**: `RESTART LEVEL` destruye el mundo y el estado de debug se pierde. Es lo
+  deseable: no se arrastran trampas a la sesión nueva.
+- **Input**: reiniciar el nivel **con el panel abierto** deja el pawn nuevo con input activo y
+  el panel dibujado. Ciérralo antes de reiniciar; no se arregló con una llamada por frame
+  porque el coste no compensa el caso.
+
+Documento de arquitectura en `Tools/MCP/DEBUG_HUD.md`.
