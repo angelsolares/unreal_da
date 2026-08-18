@@ -8837,3 +8837,649 @@ Lo demás se revisó y está bien, con el porqué:
   porque el coste no compensa el caso.
 
 Documento de arquitectura en `Tools/MCP/DEBUG_HUD.md`.
+
+## El espejo cruzable, primera rebanada (2026-08-17)
+
+Punto 2 del plan. Cruzar un espejo funciona: el umbral se marca gastado, el cristal se rompe
+y el jugador reaparece en el centro mirando al espejo que acaba de atravesar.
+
+**Falta** la ronda de enemigos, la línea de Gabriel al limpiarla, el fundido y la afirmación
+en pantalla. `Afirmacion` y `Encuentro` ya se guardan en la instancia.
+
+### La sala, medida
+
+Once espejos en un anillo de **radio 1260** alrededor de (0, 0) del submapa, cada 30°. **Falta
+el de 180°: ese hueco es la entrada**, y Gabriel está en (520, 0) mirando justo hacia ella. En
+el mundo, el centro es (−66000, −15000).
+
+### El espejo son dos actores
+
+| | |
+|---|---|
+| `Espejo_N` | `SM_MMLK_Mirror_Straight_200x300` — el **marco** de piedra |
+| `EspejoSup_N` | `..._MirrorSurface` — el **cristal**, con `M_DA_MK_Espejo` |
+
+El diseño decía que la variable apuntara al `Espejo_N`. Es al `EspejoSup_N`.
+
+### Tres trampas que costaron la tarde
+
+**`Rendering|SetMaterial` no es el de las mallas.** Ese id resuelve al de
+`VolumetricCloudComponent`, y **ni con `declaring_class` se puede forzar**: no existe para
+`MeshComponent`. El bueno es **`Rendering|Material|SetMaterial`**, con `Material` en medio.
+
+> Se encuentra pasando **`context_pins`** a `find_node_types` con el pin del componente. Ese
+> parámetro es el que desambigua entre homónimos, y hasta ahora se llamaba siempre con la
+> lista vacía. Es la respuesta a la trampa de `Class|BPDAHUD` vs `Class|WBPDAHUD`.
+
+**`SetMaterialByName` no falla: no hace nada.** El nombre que devuelve `get_material_slots`
+es el *importado*, y `SetMaterialByName` compara contra el `MaterialSlotName`, que puede ser
+otro. Sin error, sin aviso, y el material se queda igual. Por índice funciona a la primera.
+Si hace falta el nombre real, existe `Rendering|Material|GetMaterialSlotNames`.
+
+**Un cast fallido se lleva la función por delante, en silencio.** `CastToStaticMeshActor` es un
+cast con ejecución: al fallar sale por su rama de fallo, sin conectar, y la función termina.
+Como el evento seguía luego con `Cruzar`, el teletransporte funcionaba y el espejo no —
+síntoma que despista muchísimo. Sustituido por `Actor|GetComponentByClass`.
+
+### Regla nueva del DSL
+
+**Un nodo multi-exec termina el flujo que lo contiene.** No se pueden encadenar dos `IsValid`
+en el mismo cuerpo: el segundo da *"Unreachable code after branch/return"*. Por eso
+`RomperEspejo` y `Cruzar` son funciones aparte.
+
+### Diagnosticar sin poder mirar la pantalla
+
+Una variable `Diag` entera puesta a 1/2/3 en los tres puntos de la función, leída desde PIE con
+`get_properties`. Es el sustituto del `PrintString`. `Diag = 2` demostró que el componente sí
+se encontraba y que el que no hacía nada era el `SetMaterialByName` — sin eso se habrían
+seguido probando hipótesis a ciegas.
+
+### Verificado en PIE
+
+Jugador a (−66000, −15000, 107) — el centro exacto —, yaw 90 mirando al espejo cruzado,
+`Activo` false, `EspejoSup_3` con `M_DA_MK_Espejo_Roto` y `EspejoSup_4` intacto.
+
+### Scripts
+
+- `Tools/MCP/espejo_umbral.py` — crea `BP_DA_Umbral`, lo coloca midiendo desde el espejo y
+  pone el punto de reaparición.
+
+### La afirmación va por el objetivo del HUD
+
+Decisión de Angel: **reutilizar el objetivo en vez de abrir un canal nuevo**. El HUD ya lo
+pinta —arriba-centro, dorado, escala 2— y no hay que tocar `hud_dialogo.py`, que solo sabe
+leer del interactuable que estás inspeccionando.
+
+Montaje en `BP_DA_GiantBoss`:
+
+- Variable **`UmbralActivo`** (Actor, Instance Editable). Apunta al umbral que ofrece su
+  afirmación. En el punto 3 pasa a ser el que elija el director del ritual.
+- Función **`MostrarObjetivo`** — saca `ObjetivoTexto` por el HUD. Suelta a propósito, para
+  poder reusarla al limpiar la ronda sin duplicar el cast.
+- **`ArmarRitual`**: si hay umbral activo, su `Afirmacion` **manda** sobre el texto por
+  defecto. Es lo que el espejo afirma de ti, y es lo que debe leerse al armarse el ritual.
+
+Así que la secuencia completa de hoy es: hablas cuatro veces → Gabriel golpea el suelo →
+en pantalla aparece **«Eres humano.»** → cruzas ese espejo → apareces en el centro mirándolo
+y el cristal está roto.
+
+`ObjetivoIndice` sigue en 11, y el HUD solo avanza si el índice sube — o sea que la afirmación
+de la segunda vuelta necesitará 12, o quitar la comprobación monotónica. **Apuntado para el
+punto 3**, que es cuando habrá segunda vuelta.
+
+### El nicho se enciende: no bastaba con el texto
+
+Probado en juego: **«Eres humano.» sale en el HUD**, así que el canal funciona. Pero Angel no
+supo a qué espejo entrar — los once son idénticos. El documento decía *«los nichos se
+encienden»* y solo se había montado el texto.
+
+**Los seis `Haz` de la sala no valen para marcar.** Están a 60° con un desfase de 23°, o sea
+**entre** espejos, no sobre ellos: son iluminación general. (Blancos, 600–1200 de intensidad,
+radio 2200–2600, cono 22–30°, Stationary.)
+
+Así que `BP_DA_Umbral` lleva ahora un componente **`Foco`**, PointLight propio:
+
+| | valor | por qué |
+|---|---|---|
+| Movilidad | **Movable** | las estacionarias tienen tope de cuatro solapándose, y la sala ya lleva siete focos |
+| Color | cálido (255, 216, 140) | la sala es blanca; el cálido lee como *este*, no como *más luz* |
+| Intensidad · radio | 2500 · 800 | radio corto para que no bañe a los vecinos |
+| Altura | z = 250 | media altura del cristal, que mide 525 |
+| Visible | **false** de salida | lo enciende `ArmarRitual` y lo apaga `RomperEspejo` |
+
+`ArmarRitual` de Gabriel llama a `Encender` del umbral activo; al cruzar, `RomperEspejo` lo
+apaga: el nicho deja de ofrecer y el cristal se rompe, las dos cosas a la vez.
+
+> **Las instancias no heredan el componente nuevo.** `Umbral_3` ya estaba colocado, así que su
+> `Foco` nació con los valores de fábrica (5000 / 1000 / z=0) en vez de con los de la clase.
+> Hubo que escribir intensidad, radio, color, movilidad **y altura** también en la instancia.
+> Es la misma trampa de las variables, pero con componentes.
+
+**Sin verificar cómo se ve.** El sub-mapa sin iluminación construida sale plano en el viewport
+y no representa el juego, y `CaptureViewport` no enseña PIE. Los números están puestos con
+criterio, no medidos: si el foco no se distingue o deslumbra, es un solo valor.
+
+**Si con la luz no basta**, la alternativa que encaja con el vocabulario del proyecto es un
+`TextRenderComponent` flotando en el nicho con la afirmación — como los `Rotulo_*` de las
+zonas. Ahí el espejo *habla*, y no hay forma de confundirse.
+
+### Corrección: poner la navegación en Dynamic dejó la partida sin jugador
+
+**El cambio a `RuntimeGeneration = Dynamic` rompió el spawn del jugador en todo el proyecto.**
+El síntoma que se ve es "ya no puedo hablar con el ángel"; la causa no se le parece en nada:
+
+```
+LogGameMode: FindPlayerStart: PATHS NOT DEFINED or NO PLAYERSTART with positive rating
+LogSpawn:    SpawnActor failed because of collision at [X=0 Y=0 Z=0] for [BP_CombatCharacter_C]
+LogGameMode: SpawnDefaultPawnAtTransform: Couldn't spawn Pawn of type BP_CombatCharacter_C
+```
+
+Sin PlayerStart aceptado, el GameMode cae al origen del mundo, ahí choca, y **no se crea el
+personaje**. No es que no se pudiera interactuar: es que no había con quién.
+
+`PS_Master_Jardin` existía y estaba bien, en (−59649, −60004, 112) del maestro persistente.
+Los otros dos PlayerStart están dentro de Level Instances (Santuario y Anfiteatro).
+
+**Revertido a `Static`, y el jugador vuelve a aparecer** — comprobado en PIE, sale exactamente
+en `PS_Master_Jardin`. Los dos volúmenes (`Nav_GabrielC2` y `Nav_GabrielC3`) se quedan puestos:
+no estorban y son correctos.
+
+> **Lección de método:** ante un "ya no puedo interactuar", lo primero es comprobar que el pawn
+> existe (`find_actors` de `BP_CombatCharacter` con `UEDPIE` en la ruta), no auditar el actor
+> con el que no se puede interactuar. Se perdió tiempo revisando la caja, el verbo, el diálogo
+> y la colisión de `Interact_Gabriel` —todo correcto— antes de mirar si había jugador.
+
+**Queda pendiente `Build > Build Paths`**, que es lo que de verdad genera la malla con Static,
+y que el MCP no puede lanzar.
+
+### Resuelto: Build Paths hecho, y todo verificado en PIE
+
+Angel lanzó `Build > Build Paths`. Estado comprobado con el juego corriendo:
+
+| | |
+|---|---|
+| Jugador | aparece en (−59649, −60004, 116), o sea `PS_Master_Jardin` |
+| `Interact_Gabriel` | `Verbo` Hablar, `Dialogo1` puesto, `Inspeccionando` false |
+| Gabriel | `Paso` 0, `FaseRitual` 0, visible, `EnemiesToSpawn` 0 |
+| Navegación | **los dos agentes cubren la sala de los espejos** |
+
+Las bounds de los `RecastNavMesh` van ahora de (−93860, −17784) a (−63232, −11856): la Cámara
+III y la sala de los espejos. Con `RuntimeGeneration = Static` y horneado, que es la
+combinación buena.
+
+**La regresión del spawn queda cerrada** y el bloqueo de navegación del punto 2, también.
+
+## El espejo que te refleja (2026-08-18)
+
+Angel probó el punto 2 y el problema no era el marcador, era más de fondo: **ningún espejo
+reflejaba nada**. Su propuesta —que solo uno te devuelva tu reflejo— resuelve las dos cosas a
+la vez: distingue cuál cruzar **y evoca la exploración**, porque hay que mirar para
+encontrarlo. Y es literal del PDF: *«uno solo refleja sus alas negras»*.
+
+Decisión: **fuera el foco del nicho**. Marcaba, y marcar da la respuesta antes de buscarla.
+
+### Por qué no reflejaban
+
+`M_DA_MK_Espejo` y `M_DA_MK_Espejo_Roto` son **cuatro constantes** —BaseColor, Metallic,
+Roughness, Specular— y nada más. No había reflexión montada en ninguna parte de la sala.
+
+### Lo que se montó
+
+**`M_DA_MK_Espejo_Vivo`**: `TextureSampleParameter2D` llamado `Reflejo`, con las UV de
+`ScreenPosition.ViewportUV`, a **Emissive** — el reflejo no debe recibir la luz de la sala.
+BaseColor a negro y Roughness a 1 para que no aporte nada más.
+
+**El Render Target se crea en runtime**, no como asset: el MCP no tiene herramienta para
+crear `TextureRenderTarget2D`, y de paso no engorda el repo. `Encender` lo crea, se lo da a
+la cámara, hace un material dinámico del cristal y le mete la textura.
+
+**La matemática del espejo**, en `ActualizarReflejo`, cada tick:
+
+```
+N  = normal del cristal          (sale sola: del espejo al umbral, que está 110 dentro)
+C' = C - 2·((C-P)·N)·N           el ojo, reflejado en el plano
+F' = F - 2·(F·N)·N               la mirada, reflejada igual
+```
+
+Sin esto la captura es una pantalla de vídeo: al moverte de lado la imagen no acompaña.
+
+### El coste, atado desde el principio
+
+Un `SceneCapture` con `bCaptureEveryFrame` **renderiza la escena entera otra vez cada frame**.
+Con seis umbrales serían seis renders de más.
+
+Por eso la captura la gobierna una variable **`Vivo`**, no `Activo`: `Activo` nace en true
+—el umbral existe y se puede cruzar— y si la captura colgara de él, la cámara estaría
+renderizando desde el primer frame de la partida aunque Gabriel no hubiera armado nada.
+`Encender` pone `Vivo` y la captura a true; `RomperEspejo` los apaga los dos. Verificado en
+los pines.
+
+### Trampas nuevas
+
+- **Quitar un componente rompe todo lo que lo referencia, y el error sale al escribir otro
+  grafo.** Al borrar `Foco`, `Encender` y `RomperEspejo` quedaron con un `SetVisibility`
+  huérfano; `write_graph_dsl` compila al escribir, así que fallaba al tocar cualquiera de los
+  dos. **Hay que vaciar TODOS los grafos afectados antes de escribir ninguno.**
+- **`save_assets` falla con "Asset does not exist" si PIE está corriendo.** No es que el asset
+  falte: es que no se puede guardar en ese momento.
+- El pin es **`bCaptureEveryFrame`**, con la b.
+
+### Pendiente de probar
+
+La prueba es hablar con Gabriel las cuatro pantallas: `ArmarRitual` llama a `Encender` del
+umbral activo, y ahí es cuando `Espejo_3` debería empezar a reflejar. **No se ha podido probar
+por MCP** — el reflejo solo se enciende al final del guion, y las conversaciones necesitan la
+tecla.
+
+### El reflejo no se veía: dos causas, y la matemática no era una de ellas
+
+Angel probó y no se reflejaba en ninguno. Diagnóstico con datos, no a ojo:
+
+**Lo que SÍ estaba bien**, comprobado en PIE con `Encender` enganchado temporalmente al
+BeginPlay para no depender de las cuatro conversaciones:
+
+| | |
+|---|---|
+| `Vivo` | true |
+| `TextureTarget` | un `TextureRenderTarget2D` real, 1024² |
+| `bCaptureEveryFrame` | true |
+| Material del cristal | `MID_M_DA_MK_Espejo_Vivo_0` |
+
+**Y la matemática del espejo es exacta.** Con la cámara en (−66450, −14200, 207) y el plano en
+(−66000, −13740) con normal (0, −1, 0), la posición reflejada esperada es
+**(−66450, −13280, 207)** y la cámara de captura estaba **exactamente ahí**.
+
+> Ojo al leer `RelativeLocation` de un componente: hay que rotarla por el yaw del actor para
+> comparar con coordenadas de mundo. El umbral está a yaw 180 y sumarla a pelo da un sitio que
+> no es, y parece un fallo donde no lo hay.
+
+**Las dos causas reales:**
+
+1. **`CaptureSource` venía en `SCS_SceneColorHDR`**, que es lo de fábrica. Es la imagen sin
+   tonemapear: al muestrearla directa en un material sale negra o casi. Cambiado a
+   **`SCS_FinalColorLDR`**, que es la imagen ya revelada, la misma que ve el jugador. Y
+   `bAlwaysPersistRenderingState` a true, que hace falta en capturas por frame.
+2. **El Render Target era cuadrado (1024²) y el viewport es 16:9.** El material muestrea con
+   **UV de pantalla**, así que la textura tiene que tener la proporción del viewport o la
+   imagen sale estirada y descuadrada. Pasado a **1280×720**.
+
+**`Encender` sigue enganchado al BeginPlay a propósito**, para poder probar el reflejo sin
+hablar cuatro veces. Hay que quitarlo cuando esté confirmado.
+
+### Tercera causa: la rotación de la cámara no era la de la cámara
+
+Con `FinalColorLDR` y el Render Target en 16:9 el espejo ya **pintaba algo** —la sala, con
+niebla y una luz— pero seguía sin salir el jugador. O sea: la captura renderizaba bien y
+apuntaba mal.
+
+**`Camera|GetCameraRotation` sobre el `PlayerCameraManager` devolvía (0,0,0)** mientras el
+jugador miraba a otro lado. La posición sí era correcta —`GetCameraLocation` acertaba al
+centímetro, incluida la separación de tercera persona—, así que el fallo era solo la
+orientación, que es justo lo que no se nota mirando números de posición.
+
+Sustituido por **`Pawn|GetPlayerViewPoint`**, que da **posición y rotación del punto de vista
+real** de una sola llamada. Es lo que hay que usar para un espejo: no depende de dónde esté el
+actor de la cámara ni de si su transform está al día.
+
+> **Y una lectura del DSL que engaña:** al releer, el nodo aparece repetido cuatro veces, una
+> por cada uso. No lo está: `bind` con dos salidas —`(bind (_c _r) ...)`— crea **un solo
+> nodo**, y el lector simplemente lo dibuja inline en cada sitio donde se usa. Comprobado en
+> los pines: un `GetPlayerViewPoint`, con `Location` a dos destinos y `Rotation` a uno.
+
+### Qué reflejaba en realidad: su propio muro
+
+Disparando la cámara del editor desde la posición exacta de la captura —(−66450, −13520, 207)—
+se ve el problema de un vistazo: **los pilares y el muro de piedra que el espejo tiene detrás,
+a medio metro**. La sala se cuela solo por la rendija del centro. Esa era la mancha abstracta
+en blanco y negro: piedra en primerísimo plano, quemada por la exposición automática.
+
+No apuntaba mal ni fallaba la matemática. Faltaba decirle a la cámara que **ignore lo que hay
+detrás del plano del espejo**.
+
+### El clip plane cuesta 15% de BasePass en todo el juego
+
+La solución de manual es `bEnableClipPlane` en la captura. **Pero exige
+`r.AllowGlobalClipPlane`, que está en 0**, y su propia descripción dice *"adds about 15%
+BasePass GPU cost"* — para el juego entero, no para este espejo. Es el mismo tipo de
+interruptor global que rompió el spawn del jugador esta misma sesión, así que **no se tocó**.
+
+**Alternativa sin coste: esconderle los actores a la captura.** `OcultarDetras` recorre los
+`StaticMeshActor` y llama a `HideActorComponents` para todo lo que tenga distancia con signo
+negativa respecto al plano del cristal. Gratis, por espejo, y sin tocar ajustes del proyecto.
+
+> `HiddenActors` **no se puede escribir con `set_properties`** —"could not be set"—, hay que
+> hacerlo en runtime con `Rendering|SceneCapture|HideActorComponents`.
+
+Se hace una vez, en `Encender`, no por frame. Y como el resto del mundo (Cámaras I y III)
+también cae detrás del plano, se oculta de paso, que además ahorra.
+
+## El espejo enseña una imagen, no un reflejo (2026-08-18)
+
+**Se abandonó el reflejo en vivo.** Cinco arreglos reales y verificados —material propio,
+`FinalColorLDR`, proporción del Render Target, `GetPlayerViewPoint`, ocultar lo de detrás— y
+seguía sin salir imagen. Quedaban más causas posibles (encaje del frustum, FOV, post-proceso),
+y ahí está el problema de método:
+
+> **`CaptureViewport` no enseña PIE.** Un espejo por SceneCapture es de las cosas más
+> quisquillosas de UE y es el peor caso posible para depurar a ciegas: cada intento cuesta una
+> partida entera de Angel. Cuando el bucle de diagnóstico depende de otra persona, hay que
+> cambiar de enfoque antes de gastarle cinco vueltas, no después.
+
+### El PDF ya decía cuál era el enfoque
+
+*«Cada uno muestra un acto de bondad; uno solo refleja sus alas negras.»* Eso no describe
+espejos que reflejan la sala: describe espejos que **muestran imágenes**. Más fiel a la
+narrativa, infinitamente más fiable, y con control artístico total.
+
+### Lo montado
+
+- **`M_DA_MK_Espejo_Imagen`**: `TextureSampleParameter2D` llamado `Imagen`, con **UV de la
+  malla** —no de pantalla— a Emissive, para que la imagen tenga luz propia: es una visión, no
+  un cuadro colgado.
+- Variable **`Imagen`** (Texture2D, Instance Editable) en `BP_DA_Umbral`. Cada umbral lleva la
+  suya; meter las definitivas es arrastrarlas al panel de detalles.
+- **`Encender`** hace un material dinámico del cristal y le mete esa textura.
+
+De marcador provisional se puso `T_DA_Malkuth_Panorama360`, para poder probar la mecánica
+antes de que existan las imágenes de verdad.
+
+### El reflejo queda dormido, no borrado
+
+`M_DA_MK_Espejo_Vivo`, el componente `Reflejo` y `ActualizarReflejo` se quedan. `Encender` ya
+no los activa, así que `Vivo` nunca se pone a true y la función sale por la guarda cada tick
+sin hacer nada. **No cuesta nada apagado**, y si algún día se retoma está el 90% hecho — con
+el diagnóstico de por dónde seguir: el FOV de la captura y el clip plane global.
+
+## El finisher no se ejecutaba: el pawn en juego era el de DCS (2026-08-18)
+
+Con el `TryBackstab` propio ya escrito en `BP_DA_PlayerCharacter` —nueve `PrintString` de
+diagnóstico incluidos, de `FIN 1` a `FIN 5X`— la prueba en PIE **no imprimió ni uno**. Ni el
+primero, que está enganchado directamente al nodo de entrada de la función.
+
+El log lo dejó claro antes de tocar nada: **cero líneas de `LogBlueprintUserMessages` en toda
+la sesión**, con una partida de tres minutos y medio dentro. Los nodos estaban bien
+(`bPrintToScreen` y `bPrintToLog` en `true`, comprobado pin a pin). La función no se ejecutaba.
+
+### La cadena
+
+| Eslabón | Valor que tenía |
+|---|---|
+| `L_DA_Malkuth_Master` → World Settings → GameMode Override | **None** |
+| Entonces manda `GlobalDefaultGameMode` del proyecto | `BP_DCSGameMode` |
+| Su `DefaultPawnClass` | **`BP_CombatCharacter_C`** |
+| `BP_DA_GameMode` (existe, `DefaultPawnClass = BP_Malakh_DCS`) | sin asignar |
+
+En el Master no hay ningún pawn colocado: el jugador sale del `PlayerStart` que el GameMode
+elija, y salía **el personaje pelado de DCS**. Todo lo escrito en `BP_DA_PlayerCharacter` y
+`BP_Malakh_DCS` —Farsa, Corruptio, `RestAtAltar`, el finisher— era código muerto en juego.
+
+El log ya lo venía gritando desde antes:
+`SpawnDefaultPawnAtTransform: Couldn't spawn Pawn of type BP_CombatCharacter_C`.
+
+**No es un descubrimiento nuevo, es una regresión.** El cambio de GameMode se hizo en su día
+(está en la sección de Knockdown, «GameMode al hijo»), y estas mismas notas ya avisaban en la
+sección del HUD de que el `DefaultGameMode` del World Settings del Master estaba en `None`.
+El override se perdió por el camino y solo se notaba en cosas que nadie miraba de frente.
+
+### Arreglado y verificado
+
+`WorldSettings.DefaultGameMode = BP_DA_GameMode_C`, guardado y comprobado en el binario del
+`.umap` — no basta con que `save_assets` devuelva `true`, ver la sección del guardado que
+miente. PIE de comprobación lanzado por MCP:
+
+- `LogLoad: Game class is 'BP_DA_GameMode_C'`
+- El pawn del mundo de PIE es `BP_Malakh_DCS_C_0`
+- Sin errores nuevos; solo el aviso conocido de `RecastNavMesh`
+
+**Lo que cambia en juego:** el pawn pasa a ser Malakh, y el `HUDClass` pasa a `BP_DA_HUD` —que
+ya era el que había en la práctica, porque `BP_DA_DebugZonas` lo forzaba con `ClientSetHUD`.
+
+**La lección, para la próxima vez que algo del jugador «no se ejecute»:** antes de depurar el
+grafo, comprobar de qué clase es el pawn que el GameMode spawnea. Un override en una clase que
+no se instancia no falla ni da error: simplemente no pasa nada.
+
+### El cuerpo de Malakh no se dibujaba (mismo día, destapado por el cambio de GameMode)
+
+Con Malakh ya de pawn, en PIE se veían **el escudo y la espada flotando y ningún cuerpo**.
+
+No era el mesh ni la visibilidad: `CharacterMesh0` seguía con
+`bRenderInMainPass = false`, `bRenderInDepthPass = false` y `CastShadow = false`. Son los
+valores del montaje viejo de dos mallas —Manny invisible moviendo el `MalakMesh` retargeteado,
+la sección de arriba «Integración runtime Malakh»—, donde `CharacterMesh0` **tenía** que ser
+invisible porque solo generaba la pose.
+
+Al limpiar el `MalakMesh` y poner `SK_DA_Malakh` directamente en `CharacterMesh0`, esos tres
+flags se quedaron puestos. El componente `MalakMesh` ya no existe; los flags de cuando existía,
+sí. Y no se notaba **porque el pawn en juego era el de DCS**: el fallo llevaba ahí desde la
+limpieza, escondido detrás del GameMode.
+
+Arreglado en el CDO de `BP_Malakh_DCS`, compilado y guardado. El equipo se dibujaba porque son
+componentes aparte, con sus propios flags — por eso se veía el escudo y no el brazo que lo
+sujeta.
+
+**Y explica lo de «el finisher no se ve»:** el montage se estaba reproduciendo sobre un cuerpo
+que no se pintaba.
+
+### Cómo funciona el backstab de DCS por dentro (para cuando entren los 40 montages)
+
+`BP_StatusEffectLogic_Backstab` → `ProcessBackstab`:
+
+1. `GetBackstabMontages` devuelve **dos rutas fijas, escritas a pelo**: `M_Backstabbed` para la
+   víctima y `M_Backstab` para el ejecutor. Aquí es donde entra el DataTable de pares.
+2. Toca el montage **del ejecutor**, y luego `UpdateApplierPosition` lo lleva a la posición de
+   alineado con un Timeline.
+3. **Espera la duración entera del montage del ejecutor** y solo entonces toca el de la víctima.
+4. `Delay 0.6` y `ApplyBackstabDmg`.
+
+O sea que DCS los toca **en secuencia**, y los pares del Sword Takedown Pack están hechos para
+sonar **a la vez** —misma duración exacta, ver la nota del pack—. Así que no basta con cambiar
+las dos rutas: hay que rehacer `ProcessBackstab` en una copia propia, sin ese `Delay`.
+
+## Los montages del pack, enganchados (2026-08-18)
+
+### Lo montado, todo en `Content/DarkAngels`
+
+**`Blueprints/Combat/BP_DA_FinisherLogic`** — hijo de `BP_StatusEffectLogic_Backstab` de DCS.
+Lleva dos arrays paralelos, `MontagesEjecutor` y `MontagesVictima`, con las **10 parejas de
+espada única**. Las 10 dual quedan fuera: Malakh va con espada y escudo.
+
+Sobreescribe `GetBackstabMontages` para sacar una pareja al azar. Detalle que había que
+verificar: al releer el DSL, el `RandomIntegerInRange` aparece **dos veces**, una por cada
+`Get`. No lo está —`find_nodes` devuelve **un solo nodo**—, es el lector dibujándolo inline en
+cada uso, lo mismo que ya pasó con `GetPlayerViewPoint` en el espejo. Si de verdad fueran dos
+nodos, cada llamada daría un índice distinto y la pareja se descasaría.
+
+**`Data/DA_DA_Finisher_Espada`** — copia del data asset de estado de DCS, con `logicClass`
+apuntando a `BP_DA_FinisherLogic`.
+
+### ⚠️ Modificación viva sobre DCS
+
+Enganchar el data asset propio a los ángeles **no se pudo hacer desde el MCP**. El mapa
+`DefaultStatusEffects` vive en un componente que los `BP_DA_*` heredan del `BP_BaseAI` de DCS,
+y el override por blueprint no se puede crear desde aquí: la escritura sobre
+`BP_DA_Vigilante_C:StatusEffects_GEN_VARIABLE` **devolvió `true` y al compilar había
+desaparecido**. Otra del guardado que miente; comprobado que el `BP_BaseAI` quedó intacto.
+
+Angel eligió la vía rápida, así que:
+
+> **`DCS/.../Backstab/DA_StatusEffect_Backstab` → `Params.logicClass` = `BP_DA_FinisherLogic_C`**
+> (era `BP_StatusEffectLogic_Backstab_C`)
+
+Es **la única modificación viva sobre un asset de terceros** a día de hoy, y va sin red: la
+carpeta de DCS está en el `.gitignore`, así que git no la protege. **Una actualización de DCS
+la revierte en silencio** y los finishers volverían al `M_Backstab` de siempre sin dar ningún
+error. Si algún día se quiere quitar, la alternativa limpia es poner `DA_DA_Finisher_Espada` a
+mano en el componente `StatusEffects` de cada `BP_DA_*`.
+
+### Lo que queda, y ya se sabe por qué
+
+`ProcessBackstab` de DCS toca los dos montages **en secuencia**, y los del pack están hechos
+para sonar **a la vez**: el ángel se va a quedar quieto toda la ejecución y reaccionar al
+final. Hay que sobreescribir `ProcessBackstab` —es un evento del padre, así que el hijo puede—
+y con él el alineado, que ahora coloca al ejecutor **detrás** de la víctima mientras el pack
+documenta su propio offset (`TZ = 123`, `RY = 180`).
+
+### `ProcessBackstab` reescrito en el hijo
+
+Confirmado en juego lo que se veía venir: salía la ejecución del pack, pero **el ángel no se
+enteraba** —se moría y se disolvía mientras el jugador seguía apuñalando al aire—. Dos causas
+en la misma función, las dos de DCS:
+
+- Los montages iban **en secuencia**: el de la víctima no arrancaba hasta que terminaba el del
+  ejecutor, 3,63 s después.
+- El daño se aplicaba **0,6 s después de arrancar la reacción**, o sea a media ejecución. Por
+  eso se disolvía antes de tiempo.
+
+`EventProcessBackstab` sobreescrito en `BP_DA_FinisherLogic`, con el orden corregido: los dos
+`MontagePlay` seguidos, el Timeline de alineado, la duración del status igualada a la del
+montage de la víctima, y **el daño al final**, tras esperar la duración del montage del ejecutor.
+
+**Tres trampas del DSL, todas de la lista conocida, en una sola función:**
+
+1. El nombre del evento para escribirlo **no es el que devuelve el lector** (`Custom|ProcessBackstab`)
+   sino el del `type_id` del nodo: **`EventProcessBackstab`**. Sacarlo con `get_node_infos`
+   sobre el nodo que crea `add_event`.
+2. En las llamadas a funciones propias, los argumentos posicionales **chocan con el pin `self`**:
+   `(CallFunction|GetBackstabMontages :Applier Applier)`, con nombre.
+3. `Animation|Montage|Montage_Play` **no existe para crear**: el DSL come los guiones bajos y es
+   **`Animation|Montage|MontagePlay`**. Igual que `RandomIntegerinRange`. Para acertar a la
+   primera, `find_node_types` con un filtro estrecho — uno amplio devuelve miles de líneas.
+
+Y un acierto de rebote: se dejó `ReturnValueType` en su **valor por defecto `MontageLength`** en
+vez del `Duration` que usa DCS. Con play rate 1 valen lo mismo, y así **no hay que cablear un
+pin de enum**, que en este toolset no se deja.
+
+### El alineado de DCS, y por qué no vale para el pack
+
+```
+posicion = victima.Location + (-victima.Forward * 100)
+rotacion = victima.Rotation
+```
+
+Cien centímetros **a la espalda** de la víctima, mirando en su misma dirección. Las tomas del
+pack son en su mayoría **de frente**, y el offset que documenta el vendedor —`TZ = 123`,
+`RY = 180`— dice lo mismo en su convención de ejes: **123 cm de separación y los dos cara a
+cara**. En Unreal sería `victima.Location + victima.Forward * 123` con la rotación de la víctima
+**más 180° de yaw**. Pendiente de confirmar viéndolo antes de sobreescribir
+`GetBackstabApplierTargetPosition`.
+
+## El finisher como plano cinematográfico (2026-08-18)
+
+Todo dentro de `BP_DA_FinisherLogic`, con **quince variables en Class Defaults** para afinarlo
+sin tocar el grafo. Las reglas salen de cómo lo hacen otros juegos (180°, tres cuartos, plano
+bajo, FOV fijo tipo Doom, hit-stop y sacudida).
+
+### El encuadre
+
+Cámara propia spawneada, anclada al **punto medio** de la pareja, en **tres cuartos** —la
+dirección es `lado + CamaraFrente × frente`, normalizada— con FOV propio.
+
+**Dos candidatas, izquierda y derecha, cada una con su sphere trace.** Si la primera está
+tapada se va a la otra; si las dos, se queda con la primera. Eso cubre a la vez el muro y los
+otros ángeles metiéndose en cuadro, y respeta los 180° porque el lado se elige una vez.
+
+> **La trampa que costó una prueba:** `GetActorLocation` de un personaje devuelve el **centro de
+> la cápsula**, a ~96 cm del suelo, no los pies. Con `CamaraAlto = 110` la cámara acababa a
+> 2,06 m mirando a 2,11 m: por encima de las cabezas. Los valores van **relativos al centro de
+> la cápsula**, y por eso ahora son negativos.
+
+### Por qué el enemigo se levantaba y luego moría
+
+El montage de la víctima terminaba, el Anim Blueprint la devolvía a idle —ahí se levantaba— y
+solo entonces entraba el `Kill`. La corrección es **matar antes de que el montage acabe**
+(`MatarEn = 0.9`): el ragdoll coge la pose tumbada y no hay despertar.
+
+### Las alas
+
+`BP_DA_AlasMuerte`, componente propio en Vigilante, Lancero y Arquero —Heraldo e Inspector no
+llevan alas—. Al morir su dueño pone todas sus mallas en `AnimationSingleNode` (deja de aletear)
+y a los 3 s les pasa `StartDissolve`, que **acepta cualquier componente**, no solo el cuerpo.
+
+Va **por sondeo de `IsAlive` en el tick, no por el dispatcher `OnStateChanged`**, y a propósito:
+engancharse al dispatcher exige escribir en el EventGraph de cada enemigo, y como
+`read_graph_dsl` no devuelve algo que `write_graph_dsl` acepte, reescribir un grafo ajeno es la
+forma segura de perderlo. Un componente se añade sin abrir su grafo. Lleva una guarda de 1 s
+tras el BeginPlay por si las stats tardan un frame en inicializarse.
+
+> `ActorTools.add_component` **sí persiste** en un blueprint propio, al revés que el intento de
+> pisar un componente **heredado** (el `StatusEffects` del `BP_BaseAI`), que devolvía `true` y
+> desaparecía al compilar.
+
+### Deuda conocida
+
+El asset va por **1 MB**: cada `write_graph_dsl` sobre el EventGraph deja los nodos viejos
+huérfanos. No se ejecutan, pero están. Cuando el finisher se dé por bueno hay que regenerarlo
+limpio, y eso implica volver a poner los 20 montages y las quince variables.
+
+### La cámara se quedaba clavada: matar te destruye a ti
+
+Tras el finisher la cámara cinematográfica no volvía. La causa no estaba en la cámara:
+
+> **`Kill` mata al ángel → DCS le limpia los status effects → y con ellos destruye el actor de
+> lógica del backstab, que es quien está ejecutando el grafo.** Todo lo que venía después del
+> `Kill` —restaurar el tiempo, devolver la cámara, destruirla— nunca se ejecutó.
+
+Es la regla general para cualquier lógica de status effect: **matar al portador te destruye a
+ti**, así que todo lo que haya que restaurar va **antes** de matar, y matar es lo último.
+
+Dos arreglos, uno de orden y otro de red:
+
+- Restaurar tiempo, devolver cámara y quitar actividades, **todo antes del `Kill`**.
+- La cámara lleva **`SetLifeSpan(20)`** desde que nace: aunque la cadena muera por cualquier
+  otro motivo, el motor la limpia sola. Se quitaron del finisher el paro de alas y el disolver,
+  que ya hace `BP_DA_AlasMuerte` y que dependían de sobrevivir al `Kill`.
+
+**Red de seguridad:** `EventOnRemoved` sobreescrito en el hijo. Como no hay "call to parent",
+replica lo del padre (quitar `Activity.IsDisabled.Backstab` a los dos) y añade quitar
+`Activity.CantBeInterrupted` y **devolver `SetGlobalTimeDilation` a 1**. Si el finisher se corta
+a mitad, ni te quedas inmune al stun ni el juego entero se queda a cámara lenta.
+
+### Que no te interrumpan, y el cartel del takedown
+
+- **El stun que cortaba la animación** se arregla con la propia regla de DCS: su
+  `CanApplyStatus` **rechaza el Stun a quien tenga `Activity.CantBeInterrupted`**. El finisher
+  se la pone al empezar. No da invulnerabilidad: te pegan, pero no te aturden.
+- **El nombre del takedown** no se dibuja con `PrintString` —no se puede centrar ni agrandar—:
+  se llama a **`ShowZoneBanner` del `BP_DA_HUD`**, el cartel gris que ya existía. Cero código de
+  dibujo nuevo. Comparte hueco con el cartel de zona, ése es el precio.
+- Para llamar a una función de **otro** blueprint el tipo es `Class|BPDAHUD|ShowZoneBanner`,
+  **no** `CallFunction|...`, que es solo para funciones propias.
+
+### Limpieza hecha
+
+`BP_DA_FinisherLogic` regenerado de cero: **de 1,05 MB a 332 KB**. Al borrarlo hay que seguir el
+orden: **primero devolver el `logicClass` del data asset de DCS a su lógica original**, luego
+borrar, recrear, y volver a apuntarlo. Y fuera los nueve `PrintString` de diagnóstico de
+`TryBackstab`, que de paso se reescribió exigiendo **`vida > 0`**: el finisher ya no se dispara
+sobre un cadáver, que era el origen de aquel `FIN 5X`.
+
+### Notifies propios, y el selector de takedown (2026-08-18)
+
+**El notify de sacudida de DCS no vale**: `BP_CameraShakeNotify` del GiantBossProject lleva
+`BP_GiantStepCameraShake` **escrito a fuego**, con radios 4000/10000 de pisotón. Y es de
+terceros. Así que van dos propios en `Blueprints/Combat/`:
+
+- **`BP_DA_NotifySacudida`** — AnimNotify. Dispara `CS_DA_Finisher`, radios por notify.
+- **`BP_DA_NotifyHitStop`** — AnimNotify**State**, y esa es la gracia: **la barra que se
+  arrastra en la línea de tiempo ES la duración del hit-stop**. Al empezar baja el tiempo a
+  `Dilatacion` (0.08); al terminar **lo devuelve a `Fin_Dilatacion` del HUD**, no a 1, para no
+  cargarse la cámara lenta.
+
+> **Dentro de un notify no hay contexto de mundo.** `Game|GetPlayerController` falla con *"Pin
+> World Context Object must have a connection"*: hay que pasarle el `MeshComp`
+> (`:WorldContextObject MeshComp`). Lo mismo `SetGlobalTimeDilation`, que sí expone el pin.
+> **`PlayWorldCameraShake` no lo expone**, así que ahí no se puede forzar — pendiente de
+> comprobar en juego si resuelve solo; si no, se rutea por el controlador del jugador.
+
+### Elegir qué takedown sale
+
+`Fin_Indice` en `BP_DA_HUD`: **−1 es al azar**, 0-9 fija uno. Lo lee `GetBackstabMontages`, y
+la pestaña FINISHERS lo mueve con `< ANTERIOR` / `SIGUIENTE >` / `AL AZAR`. Sirve para repetir
+una y otra vez la toma que estás anotando con notifies.
+
+Verificado con `find_nodes` que en esa función hay **un solo `Random` y un solo `Select`**: si
+fueran dos, cada `Get` sacaría un índice distinto y **el ejecutor bailaría con la víctima de
+otra pareja**. El lector del DSL los dibuja duplicados y engaña.
+
+El tope de 9 está a mano en el generador: las parejas viven en el CDO del finisher y el panel
+no las ve. Si entran las 10 de doble espada, hay que subirlo.

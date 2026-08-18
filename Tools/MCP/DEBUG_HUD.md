@@ -161,3 +161,50 @@ No se usó `GetBuildConfiguration` porque **no se puede cablear desde Blueprint*
   el panel abierto; durante un reinicio puede colarse un aviso suelto en el log.
 - **Duplicación**: el troceo de líneas está repetido en cuatro funciones. **No es descuido**: es
   obligado, porque delegar en otra función devuelve vacío por esta API.
+
+## ⚠️ La regeneración es todo o nada
+
+`debughud_montar.py` **borra y recrea el blueprint entero**, grafo a grafo y en el orden de
+la lista `grafos`. Tarda unos **35 minutos** y durante ese rato el editor va lentísimo, porque
+recompila una vez por grafo.
+
+Un corte a mitad **no deja "lo de antes más lo nuevo"**: deja el asset sin las funciones del
+final de la lista, que son justo `DbgClick`, `DbgTick` y `DbgDibujar` — la tecla y el dibujado.
+Es decir, **el panel deja de existir** aunque todo lo demás esté.
+
+Mientras corre, entonces: **ni Play, ni cerrar el editor, ni abrir un segundo editor.**
+
+- **Play** hace fallar el último paso, que recompila `BP_DA_HUD` (el editor rechaza compilar en
+  modo juego). Los ganchos quedan puestos pero sin compilar.
+- **Cerrar el editor** es el caso malo: pasó el 2026-08-18 y dejó el panel sin `DbgTick` ni
+  `DbgDibujar`. Se arregla con una pasada completa, no hay que reparar nada a mano.
+- **Abrir un segundo editor** rompe el MCP: el primero no suelta el puerto 8000 al morir y el
+  nuevo arranca con `HttpListener unable to bind to 127.0.0.1:8000`, o sea sin servidor. Hay
+  que matar el proceso viejo y relanzar `ModelContextProtocol.StartServer` **con el puerto ya
+  libre**; si se lanza antes, falla en silencio.
+
+Antes de lanzarlo, dos comprobaciones que salen gratis y evitan la pasada perdida: que el
+Python compila (`ast.parse`) y que **el DSL generado cuadra de paréntesis**, importando el
+módulo y llamando a las `dsl_*` nuevas sin tocar el editor.
+
+### Los setters de otro blueprint van con `:self`
+
+Escribir una variable de **otro** blueprint es `Class|<BP>|Set<Var>`, y **hay que nombrar los
+dos pines**:
+
+```
+(Class|BPDADebugConfig|SetDilatacion :self cfg :Dilatacion (Variables|Default|GetFinDilatacion))
+```
+
+Posicional **no vale**: el DSL reserva el pin `self`, así que los argumentos empiezan después y
+el objeto se va al pin del valor. El síntoma es
+*"Could not connect pin AsBP DA Debug Config to Dilatacion"*, y **tumba la pasada entera**.
+
+Los **getters** sí aceptan el objeto posicional (`Class|BPDAHUD|GetFinDilatacion hud`), que es
+lo que despista: el mismo patrón funciona para leer y falla para escribir.
+
+> **Y una advertencia sobre la verificación en seco:** comprobar que el Python compila y que el
+> DSL cuadra de paréntesis **no detecta esto**. El texto era sintácticamente correcto; el fallo
+> solo aparece al conectar los pines dentro del editor, a mitad de la regeneración, con el
+> blueprint ya borrado. Antes de una pasada larga con nodos nuevos, conviene probar **un solo
+> grafo suelto** en un blueprint de usar y tirar y ver que compila.

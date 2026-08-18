@@ -40,7 +40,7 @@ DATOS = CARPETA + "/DA_DA_DebugDestinos.DA_DA_DebugDestinos"
 AUTO_ABRIR = False
 
 TECLAS = ["Period", "Decimal"]
-PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY"]
+PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY", "FINISHERS"]
 
 # --- Geometria del panel.
 #
@@ -53,7 +53,7 @@ PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY"]
 # Todo pasa por los ayudantes X() / Y() / SC(), y de ahi salen A LA VEZ el
 # dibujado y el enrutado de clics: por construccion no se pueden descuadrar.
 PY, PW = 92.0, 580.0        # PY es fijo: deja hueco al banner de objetivo
-TAB_W, TAB_H, TAB_SEP = 186.0, 28.0, 191.0
+TAB_W, TAB_H, TAB_SEP = 139.0, 28.0, 143.0
 TAB_Y0 = 46.0               # desplazamiento desde el borde superior del panel
 FILA = 26.0                 # alto de fila de la lista de destinos
 BOTON_H = 26.0
@@ -97,7 +97,7 @@ VARIABLES = [
     ("DbgCheckSel", "int", None),
     # --- COMBAT ---
     ("DbgDmgMult", "float", None), ("DbgEnemyMult", "float", None),
-    ("DbgOneHit", "bool", None), ("DbgLogOn", "bool", None),
+    ("DbgOneHit", "bool", None), ("DbgCfgLista", "bool", None), ("DbgLogOn", "bool", None),
     ("DbgLog", "string", "ARRAY"),
     ("DbgLastHP", "float", None), ("DbgLastHPObj", "float", None),
     ("DbgTrazas", "bool", None), ("DbgColisiones", "bool", None),
@@ -184,7 +184,7 @@ BIND_GEO = ('  (bind esc (Variables|Default|GetDbgEscala))\n'
 
 def tab_pos(i):
     """(desplazamiento en X, desplazamiento en Y) desde la esquina del panel."""
-    return (6.0 + (i % 3) * TAB_SEP, TAB_Y0 + (i // 3) * 32.0)
+    return (6.0 + (i % 4) * TAB_SEP, TAB_Y0 + (i // 4) * 32.0)
 
 
 # ---------------------------------------------------------------- grafos
@@ -235,6 +235,7 @@ def dsl_escalar():
 def dsl_cargar():
     # Los destinos se leen del Data Asset una sola vez y se cachean.
     return ('(fn DbgCargar ()\n'
+            '  (CallFunction|DbgCfgCargar)\n'
             '  (if (> (Utilities|Array|Length (Variables|Default|GetDbgLineas)) 0)\n'
             '    (return))\n'
             '  (bind datos (Variables|Default|GetDbgDatos))\n'
@@ -408,7 +409,7 @@ def dsl_dibujar():
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
          ' (+ 444.0 (* n %.1f))'
-         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 660.0))) esc))' % FILA,
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 660.0)))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -430,9 +431,9 @@ def dsl_dibujar():
         # Dos cierres: uno para el (else y otro para el (if.
         l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
         # WORLD, PLAYER, COMBAT y AI ya estan; BOSS y STORY pendientes.
-        etiqueta = '"%s"' % nombre if i < 6 else '"%s  --"' % nombre
+        etiqueta = '"%s"' % nombre if i < 7 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
-                       ORO if i < 6 else GRIS, 1.0))
+                       ORO if i < 7 else GRIS, 1.0))
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
@@ -451,7 +452,10 @@ def dsl_dibujar():
     l.append('                      (if (== (Variables|Default|GetDbgTab) 5)')
     l.append('                        (CallFunction|DbgTabStory)')
     l.append('                        (else')
-    l.append('                          (CallFunction|DbgTabPendiente)))))))))))))')
+    l.append('                          (if (== (Variables|Default|GetDbgTab) 6)')
+    l.append('                            (CallFunction|DbgTabFinishers)')
+    l.append('                            (else')
+    l.append('                              (CallFunction|DbgTabPendiente)))))))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -2041,6 +2045,253 @@ def caja(mx, my, x, y, w, h):
             % (mx, x, mx, x, w, my, y, my, y, h))
 
 
+# ------------------------------------------------- acciones de FINISHERS
+#
+# Los valores del finisher NO viven en el panel: viven en BP_DA_HUD, el PADRE,
+# y de ahi los lee BP_DA_FinisherLogic al empezar cada ejecucion. Por eso se
+# tocan con `Variables|Default|Set...`: son variables HEREDADAS. El DSL se come
+# el guion bajo, asi que `SetFinDilatacion` escribe `Fin_Dilatacion`
+# (comprobado leyendo el grafo de vuelta, no supuesto).
+#
+# Estan en el HUD y no en el CDO de la logica porque la logica se instancia y
+# se destruye en cada finisher, y a un CDO no se le puede escribir desde juego.
+
+FIN_DEFECTO = [("Dilatacion", 0.65), ("MatarEn", 0.9),
+               ("CamaraLado", 200.0), ("CamaraAlto", -20.0),
+               ("CamaraFrente", 0.7), ("CamaraFOV", 80.0)]
+
+FIN_ETIQ = {"Dilatacion": "Camara lenta", "HitStopEn": "Golpe en",
+            "MatarEn": "Muerte en", "CamaraLado": "Distancia",
+            "CamaraAlto": "Altura", "CamaraFrente": "Tres cuartos",
+            "CamaraFOV": "FOV"}
+
+
+def dsl_fin_fijar():
+    """Valor absoluto: lo usan los cinco presets de camara lenta."""
+    return ('(fn DbgFinDilFijar (Valor)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetFinDilatacion Valor)\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Camara lenta:  x"'
+            ' (Utilities|String|ToString(Float) Valor)))\n'
+            '  (return))')
+
+
+def dsl_fin_delta(nombre):
+    """Suma un paso. Una funcion por variable, para no cablear enums."""
+    return ('(fn DbgFin%s (Delta)\n' % nombre +
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Variables|Default|SetFin%s'
+            ' (+ (Variables|Default|GetFin%s) Delta))\n' % (nombre, nombre) +
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "%s:  "'
+            ' (Utilities|String|ToString(Float)'
+            ' (Variables|Default|GetFin%s))))\n' % (FIN_ETIQ[nombre], nombre) +
+            '  (return))')
+
+
+def dsl_fin_reset():
+    l = ['(fn DbgFinReset ()',
+         '  (if (not (CallFunction|DbgPermitido))',
+         '    (return))']
+    for n, v in FIN_DEFECTO:
+        l.append('  (Variables|Default|SetFin%s %.3f)' % (n, v))
+    l.append('  (Variables|Default|SetDbgMensaje'
+             ' "Finishers: valores por defecto")')
+    l.append('  (return))')
+    return "\n".join(l)
+
+
+def filas_finishers():
+    x0, w6, w4 = 8.0, 88.0, 137.0
+    dil = lambda v: '(CallFunction|DbgFinDilFijar :Valor %.2f)' % v
+    act = lambda v: '(== (Variables|Default|GetFinDilatacion) %.2f)' % v
+    # Ordenados de mas rapido a mas lento. MUY RAPIDA pasa de 1.0: no es camara
+    # lenta suave, es ACELERAR el finisher, que es la unica forma de que se note
+    # "rapido" de verdad (0.85 sigue siendo lento, solo poco).
+    return [
+        ("VELOCIDAD DEL FINISHER   (preset, o numero exacto abajo)",
+         130.0, 152.0, [
+             (x0, w6, "MUY RAPIDA", dil(1.5), act(1.5)),
+             (x0 + 92.0, w6, "SIN", dil(1.0), act(1.0)),
+             (x0 + 184.0, w6, "RAPIDA", dil(0.85), act(0.85)),
+             (x0 + 276.0, w6, "NORMAL", dil(0.65), act(0.65)),
+             (x0 + 368.0, w6, "LENTA", dil(0.35), act(0.35)),
+             (x0 + 460.0, w6, "MUY LENTA", dil(0.15), act(0.15)),
+         ]),
+        ("", None, 184.0, [
+            (x0, w4, "VELOC  - 0.05",
+             "(CallFunction|DbgFinDilatacion :Delta -0.05)", "false"),
+            (x0 + 141.0, w4, "VELOC  + 0.05",
+             "(CallFunction|DbgFinDilatacion :Delta 0.05)", "false"),
+        ]),
+        ("ENCUADRE   (relativo al centro de la capsula del angel, no al suelo)",
+         220.0, 242.0, [
+            (x0, w4, "ALTURA  - 10",
+             "(CallFunction|DbgFinCamaraAlto :Delta -10.0)", "false"),
+            (x0 + 141.0, w4, "ALTURA  + 10",
+             "(CallFunction|DbgFinCamaraAlto :Delta 10.0)", "false"),
+            (x0 + 282.0, w4, "DIST  - 20",
+             "(CallFunction|DbgFinCamaraLado :Delta -20.0)", "false"),
+            (x0 + 423.0, w4, "DIST  + 20",
+             "(CallFunction|DbgFinCamaraLado :Delta 20.0)", "false"),
+        ]),
+        ("", None, 274.0, [
+            (x0, w4, "3/4  - 0.1",
+             "(CallFunction|DbgFinCamaraFrente :Delta -0.1)", "false"),
+            (x0 + 141.0, w4, "3/4  + 0.1",
+             "(CallFunction|DbgFinCamaraFrente :Delta 0.1)", "false"),
+            (x0 + 282.0, w4, "FOV  - 5",
+             "(CallFunction|DbgFinCamaraFOV :Delta -5.0)", "false"),
+            (x0 + 423.0, w4, "FOV  + 5",
+             "(CallFunction|DbgFinCamaraFOV :Delta 5.0)", "false"),
+        ]),
+        ("QUE TAKEDOWN SALE   (para repetir el que estas arreglando)",
+         310.0, 332.0, [
+            (x0, w4, "< ANTERIOR",
+             "(CallFunction|DbgFinIndice :Delta -1)", "false"),
+            (x0 + 141.0, w4, "SIGUIENTE >",
+             "(CallFunction|DbgFinIndice :Delta 1)", "false"),
+            (x0 + 282.0, 278.0, "AL AZAR",
+             "(CallFunction|DbgFinIndice :Delta 0)",
+             "(< (Variables|Default|GetFinIndice) 0)"),
+        ]),
+        ("PUNTO DE MUERTE   (fraccion del montage; bajarlo evita el despertar)",
+         372.0, 394.0, [
+            (x0, w4, "MUERTE  - 0.05",
+             "(CallFunction|DbgFinMatarEn :Delta -0.05)", "false"),
+            (x0 + 141.0, w4, "MUERTE  + 0.05",
+             "(CallFunction|DbgFinMatarEn :Delta 0.05)", "false"),
+            (x0 + 282.0, 278.0, "VALORES POR DEFECTO",
+             "(CallFunction|DbgFinReset)", "false"),
+        ]),
+    ]
+
+
+def dsl_tab_finishers():
+    l = ['(fn DbgTabFinishers ()', BIND_GEO]
+    for titulo, y_tit, y_bot, botones in filas_finishers():
+        if y_tit:
+            l.append(texto(X(16.0), Y(y_tit), '"%s"' % titulo, ORO, 0.95))
+        for x, w, etiqueta, _accion, encendido in botones:
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
+                     ' :Etiqueta "%s" :Encendido %s)'
+                     % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
+    l.append(texto(X(16.0), Y(436.0), '"VALORES EN USO"', ORO, 0.95))
+    for i, (n, _v) in enumerate(FIN_DEFECTO):
+        l.append(texto(X(16.0), Y(458.0 + i * 22.0),
+                       '(Utilities|String|Append "%s:   "'
+                       ' (Utilities|String|ToString(Float)'
+                       ' (Variables|Default|GetFin%s)))' % (FIN_ETIQ[n], n),
+                       HUESO, 0.9))
+    l.append(texto(X(16.0), Y(414.0),
+                   '(Utilities|String|Append "Takedown en uso:   "'
+                   ' (select (< (Variables|Default|GetFinIndice) 0) "al azar"'
+                   ' (Utilities|String|Append "fijo, el numero "'
+                   ' (Utilities|String|ToString(Integer)'
+                   ' (+ (Variables|Default|GetFinIndice) 1)))))', HUESO, 0.9))
+    l.append(texto(X(16.0), Y(618.0),
+                   '"Se aplican al siguiente finisher: no hace falta recompilar."',
+                   GRIS, 0.8))
+    l.append(texto(X(16.0), Y(640.0),
+                   '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_click_finishers():
+    l = ['(fn DbgClickFinishers (MX MY)', BIND_GEO]
+    for _t, _yt, y_bot, botones in filas_finishers():
+        for x, w, _etiqueta, accion, _enc in botones:
+            l.append('  (if %s' % caja("MX", "MY", X(x), Y(y_bot),
+                                       SC(w), SC(BOTON_H)))
+            l.append('    ' + accion)
+            l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_fin_indice():
+    return ('(fn DbgFinIndice (Delta)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (if (== Delta 0)\n'
+            '    (Variables|Default|SetFinIndice -1)\n'
+            '    (Variables|Default|SetDbgMensaje "Finisher:  al azar")\n'
+            '    (else\n'
+            '      (bind ahora (Variables|Default|GetFinIndice))\n'
+            '      (bind bruto (+ (select (< ahora 0) 0 ahora) Delta))\n'
+            '      (bind final (select (< bruto 0) 9 (select (> bruto 9) 0 bruto)))\n'
+            '      (Variables|Default|SetFinIndice final)\n'
+            '      (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Finisher fijo:  numero "'
+            ' (Utilities|String|ToString(Integer) (+ final 1))))))\n'
+            '  (return))')
+
+
+# ------------------------------------------------- guardado de la config
+#
+# El panel vive y muere con el PIE: sus valores vuelven al defecto en cada
+# Play. Esto los escribe a disco en un SaveGame propio y los relee al arrancar,
+# para no tener que reconfigurar lo mismo cada vez.
+#
+# Se guarda en CADA clic del panel, no en cada accion: un solo gancho al final
+# de DbgClick cubre botones, cambio de pestana y zoom, en vez de diez llamadas
+# repartidas que hay que acordarse de mantener.
+#
+# NO se guardan God mode, One Hit Kill ni los multiplicadores de dano: esos no
+# son un numero, son cambios que el panel APLICA a las stats del jugador, y
+# restaurarlos al arrancar seria revivir un estado, no leer una preferencia.
+# Ademas asustaria abrir el juego y ser invencible sin saber por que.
+
+CFG = "/Game/DarkAngels/Debug/BP_DA_DebugConfig.BP_DA_DebugConfig_C"
+RANURA = "DA_DebugPanel"
+
+# (variable del SaveGame, variable del HUD). Las Fin_* viven en BP_DA_HUD, el
+# padre, que es de donde las lee el finisher en caliente.
+CFG_PARES = [("Dilatacion", "FinDilatacion"), ("MatarEn", "FinMatarEn"),
+             ("CamaraLado", "FinCamaraLado"), ("CamaraAlto", "FinCamaraAlto"),
+             ("CamaraFrente", "FinCamaraFrente"), ("CamaraFOV", "FinCamaraFOV"),
+             ("Escala", "DbgEscala")]
+CFG_ENTEROS = [("Indice", "FinIndice"), ("Tab", "DbgTab")]
+
+
+def dsl_cfg_guardar():
+    l = ['(fn DbgCfgGuardar ()',
+         '  (bind sg (SaveGame|CreateSaveGameObject :SaveGameClass "%s"))' % CFG,
+         '  (bind cfg (Utilities|Casting|CastToBP_DA_DebugConfig sg))']
+    for destino, origen in CFG_PARES + CFG_ENTEROS:
+        # El DSL RESERVA el pin `self`, asi que los posicionales empiezan
+        # despues: sin nombrarlo, `cfg` se iba al pin del valor y no conectaba.
+        l.append('  (Class|BPDADebugConfig|Set%s :self cfg :%s'
+                 ' (Variables|Default|Get%s))' % (destino, destino, origen))
+    l.append('  (SaveGame|SaveGametoSlot :SaveGameObject cfg'
+             ' :SlotName "%s" :UserIndex 0)' % RANURA)
+    l.append('  (return))')
+    return "\n".join(l)
+
+
+def dsl_cfg_cargar():
+    """Se llama una sola vez, con guarda: leer disco cada frame seria absurdo."""
+    l = ['(fn DbgCfgCargar ()',
+         '  (if (Variables|Default|GetDbgCfgLista)',
+         '    (return))',
+         '  (Variables|Default|SetDbgCfgLista true)',
+         '  (if (not (SaveGame|DoesSaveGameExist :SlotName "%s" :UserIndex 0))' % RANURA,
+         '    (return))',
+         '  (bind sg (SaveGame|LoadGamefromSlot :SlotName "%s" :UserIndex 0))' % RANURA,
+         '  (bind cfg (Utilities|Casting|CastToBP_DA_DebugConfig sg))']
+    for origen, destino in CFG_PARES + CFG_ENTEROS:
+        l.append('  (Variables|Default|Set%s (Class|BPDADebugConfig|Get%s cfg))'
+                 % (destino, origen))
+    l.append('  (Variables|Default|SetDbgMensaje'
+             ' "Config del panel recuperada del disco")')
+    l.append('  (return))')
+    return "\n".join(l)
+
+
 def dsl_click():
     l = ['(fn DbgClick (MX MY)',
          BIND_GEO,
@@ -2075,7 +2326,11 @@ def dsl_click():
     l.append('                    (CallFunction|DbgClickBoss :MX MX :MY MY)')
     l.append('                    (else')
     l.append('                      (if (== (Variables|Default|GetDbgTab) 5)')
-    l.append('                        (CallFunction|DbgClickStory :MX MX :MY MY))))))))))))')
+    l.append('                        (CallFunction|DbgClickStory :MX MX :MY MY)')
+    l.append('                        (else')
+    l.append('                          (if (== (Variables|Default|GetDbgTab) 6)')
+    l.append('                            (CallFunction|DbgClickFinishers :MX MX :MY MY))))))))))))))')
+    l.append('  (CallFunction|DbgCfgGuardar)')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -2218,6 +2473,8 @@ def run():
         ("DbgBoton", dsl_boton, [("X", "float", True), ("Y", "float", True),
                                  ("W", "float", True), ("Etiqueta", "string", True),
                                  ("Encendido", "bool", True)]),
+        ("DbgCfgGuardar", dsl_cfg_guardar, []),
+        ("DbgCfgCargar", dsl_cfg_cargar, []),
         ("DbgCargar", dsl_cargar, []),
         ("DbgCampo", dsl_campo, [("Indice", "int", True), ("Campo", "int", True),
                                  ("Valor", "string", False)]),
@@ -2272,12 +2529,24 @@ def run():
         ("DbgGuiaToggle", dsl_guia, []),
         ("DbgCheckpoint", dsl_checkpoint, [("Delta", "int", True), ("Ir", "bool", True)]),
         ("DbgResetStory", dsl_reset_story, []),
+        # --- FINISHERS ---
+        ("DbgFinDilFijar", dsl_fin_fijar, [("Valor", "float", True)]),
+        ("DbgFinDilatacion", lambda n='Dilatacion': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinHitStopEn", lambda n='HitStopEn': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinMatarEn", lambda n='MatarEn': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinCamaraLado", lambda n='CamaraLado': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinCamaraAlto", lambda n='CamaraAlto': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinCamaraFrente", lambda n='CamaraFrente': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinCamaraFOV", lambda n='CamaraFOV': dsl_fin_delta(n), [("Delta", "float", True)]),
+        ("DbgFinIndice", dsl_fin_indice, [("Delta", "int", True)]),
+        ("DbgFinReset", dsl_fin_reset, []),
         ("DbgTabPendiente", dsl_pendiente, []),
         ("DbgTabPlayer", dsl_tab_player, []),
         ("DbgTabCombat", dsl_tab_combat, []),
         ("DbgTabAI", dsl_tab_ai, []),
         ("DbgTabBoss", dsl_tab_boss, []),
         ("DbgTabStory", dsl_tab_story, []),
+        ("DbgTabFinishers", dsl_tab_finishers, []),
         ("DbgTabWorld", dsl_tab_world, []),
         ("DbgClickWorld", dsl_click_world, [("MX", "float", True),
                                             ("MY", "float", True)]),
@@ -2288,6 +2557,7 @@ def run():
         ("DbgClickAI", dsl_click_ai, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickBoss", dsl_click_boss, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickStory", dsl_click_story, [("MX", "float", True), ("MY", "float", True)]),
+        ("DbgClickFinishers", dsl_click_finishers, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
