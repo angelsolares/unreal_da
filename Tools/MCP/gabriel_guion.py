@@ -67,6 +67,14 @@ BPP = "/Game/DarkAngels/Blueprints/Bosses/BP_DA_GiantBoss.BP_DA_GiantBoss"
 BP = {"refPath": BPP}
 SUBASSET = "/Game/DarkAngels/Maps/L_DA_Malkuth_Gabriel_Sub"
 MAESTRO = "/Game/DarkAngels/Maps/L_DA_Malkuth_Master"
+# EL GESTO ES UN GOLPE AL SUELO CON LAS MANOS, NO UN ATAQUE CON ARMA.
+# El diseno lo describia como "Gabriel clava la lanza", pero **el Giant del pack no
+# tiene arma ninguna**: sus componentes son widgets, alas, malla, capsula,
+# movimiento, stats y el MeleeCollisionHandler, y en todo GiantBossProject no hay
+# un solo asset de arma. Pega con las manos, con sockets en ellas.
+#
+# El montage apunta a SK_Mannequin de GiantBossProject, el mismo esqueleto que usa
+# Gabriel, asi que ABP_DA_Gabriel lo reproduce sin problema — comprobado en juego.
 MONTAGE = ("/Game/DarkAngels/Animations/Boss/AM_DA_HitTheGroundAttack"
            ".AM_DA_HitTheGroundAttack")
 
