@@ -57,7 +57,11 @@ TAB_W, TAB_H, TAB_SEP = 186.0, 28.0, 191.0
 TAB_Y0 = 46.0               # desplazamiento desde el borde superior del panel
 FILA = 26.0                 # alto de fila de la lista de destinos
 BOTON_H = 26.0
-LISTA_Y0 = 236.0
+# La lista arranca en 238 y el titulo TELEPORT se dibuja 26 por encima (212).
+# El bloque de INFORMACION acaba en 190, asi que quedan 22 de separacion: lo
+# mismo que hay entre sus propias lineas. Con los valores anteriores (204 y 210)
+# el titulo se comia la linea de FPS.
+LISTA_Y0 = 238.0
 # Tamano por defecto: un paso por encima del anterior, que se leia justo.
 #
 # El techo no es el gusto sino la pantalla. Para que 1.30 siguiera cabiendo se
@@ -403,7 +407,7 @@ def dsl_dibujar():
          # WORLD crece con la lista de destinos; las demas tienen alto fijo, y
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
-         ' (+ 440.0 (* n %.1f))'
+         ' (+ 444.0 (* n %.1f))'
          ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 660.0))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
@@ -805,18 +809,18 @@ def dsl_tab_world():
          '  (bind loc (Transformation|GetActorLocation :self pawn))',
          '  (bind rot (Pawn|GetControlRotation :self (Game|GetPlayerController 0)))',
          '  (bind nivel (Game|GetCurrentLevelName true))']
-    y = 122.0
+    y = 116.0
     l.append(texto(X(16.0), Y(y), '"INFORMACION"', ORO, 1.05))
     datos = [
-        ('(Utilities|String|Append "Level:  " nivel)', 22.0),
-        ('(Utilities|String|Append "Loc:  " (Utilities|String|ToString(Vector) loc))', 42.0),
+        ('(Utilities|String|Append "Level:  " nivel)', 20.0),
+        ('(Utilities|String|Append "Loc:  " (Utilities|String|ToString(Vector) loc))', 38.0),
         ('(Utilities|String|Append "Rot camara:  "'
-         ' (Utilities|String|ToString(Rotator) rot))', 62.0),
+         ' (Utilities|String|ToString(Rotator) rot))', 56.0),
         ('(Utilities|String|Append'
          ' (Utilities|String|Append "FPS:  "'
          ' (Utilities|String|ToString(Float) (Variables|Default|GetDbgFps)))'
          ' (Utilities|String|Append "     Time Dilation:  "'
-         ' (Utilities|String|ToString(Float) (Utilities|Time|GetGlobalTimeDilation))))', 82.0),
+         ' (Utilities|String|ToString(Float) (Utilities|Time|GetGlobalTimeDilation))))', 74.0),
     ]
     for expr, dy in datos:
         l.append(texto(X(16.0), Y(y + dy), expr, HUESO, 0.95))
