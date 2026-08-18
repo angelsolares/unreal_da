@@ -87,6 +87,8 @@ VARIABLES = [
     ("DbgDistSel", "float", None),
     ("DbgCongelada", "bool", None), ("DbgApagada", "bool", None),
     ("DbgIgnorar", "bool", None),
+    # --- BOSS ---
+    ("DbgBosses", "string", "ARRAY"), ("DbgBossSel", "int", None),
     # --- COMBAT ---
     ("DbgDmgMult", "float", None), ("DbgEnemyMult", "float", None),
     ("DbgOneHit", "bool", None), ("DbgLogOn", "bool", None),
@@ -399,7 +401,7 @@ def dsl_dibujar():
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
          ' (+ 440.0 (* n %.1f))'
-         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 660.0)) esc))' % FILA,
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 660.0))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -421,9 +423,9 @@ def dsl_dibujar():
         # Dos cierres: uno para el (else y otro para el (if.
         l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
         # WORLD, PLAYER, COMBAT y AI ya estan; BOSS y STORY pendientes.
-        etiqueta = '"%s"' % nombre if i < 4 else '"%s  --"' % nombre
+        etiqueta = '"%s"' % nombre if i < 5 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
-                       ORO if i < 4 else GRIS, 1.0))
+                       ORO if i < 5 else GRIS, 1.0))
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
@@ -436,7 +438,10 @@ def dsl_dibujar():
     l.append('              (if (== (Variables|Default|GetDbgTab) 3)')
     l.append('                (CallFunction|DbgTabAI)')
     l.append('                (else')
-    l.append('                  (CallFunction|DbgTabPendiente)))))))))')
+    l.append('                  (if (== (Variables|Default|GetDbgTab) 4)')
+    l.append('                    (CallFunction|DbgTabBoss)')
+    l.append('                    (else')
+    l.append('                      (CallFunction|DbgTabPendiente)))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -1054,6 +1059,88 @@ def dsl_reset_arena():
             ' "Arena limpia: enemigos de debug fuera y IA restaurada"))')
 
 
+# ----------------------------------------------------------- BOSS: acciones
+#
+# QUE SE PUEDE Y QUE NO, y por que. Los dos bosses no comparten arquitectura:
+#
+#   BP_DA_GiantBoss  lleva el StatsManager de DCS, asi que su vida se toca por
+#                    la misma via oficial que PLAYER y COMBAT.
+#   BP_Gabriel       hereda de BP_Archangel, un Character con `HP` suelto y sin
+#                    StatsManager. Para escribir ese `HP` haria falta una
+#                    referencia TIPADA al actor, y `GetAllActorsOfClass`
+#                    devuelve `Actor` a secas: por esta API no hay cast a clases
+#                    del proyecto. Su vida NO es alcanzable desde aqui.
+#
+# FASES: ninguno de los dos tiene un sistema formal. Lo que hay son BANDERAS
+# que pone la propia logica del boss (`Phase`, `bPhase2Triggered`,
+# `bPhase3Triggered` en Gabriel; `FaseRitual`, que es el paso del guion, en el
+# Giant). Escribirlas desde fuera pondria la bandera SIN ejecutar la transicion,
+# que es justo lo que el encargo prohibe. Por eso los botones de fase estan
+# preparados pero apagados.
+
+def boss_ref(var="jefe"):
+    """Encuentra en el mundo el actor del boss seleccionado.
+
+    Se carga la clase desde la ruta de texto del Data Asset (misma cadena que el
+    spawner: MakeSoftClassPath -> ToSoftClassReference -> LoadClassAssetBlocking)
+    y se coge el primero que haya colocado."""
+    return ('  (bind ruta (CallFunction|DbgCampoBoss'
+            ' :Indice (Variables|Default|GetDbgBossSel) :Campo 1))\n'
+            '  (bind cls (Utilities|LoadClassAssetBlocking'
+            ' :AssetClass (Utilities|ToSoftClassReference'
+            ' :SoftClassPath (Utilities|MakeSoftClassPath :PathString ruta))))\n')
+
+
+def dsl_campo_boss():
+    # Troceo EN LINEA, como DbgCampoTipo: delegar en otra funcion propia
+    # devuelve vacio (ver las notas de la fase 4).
+    return _troceo("DbgCampoBoss", "DbgBosses")
+
+
+def dsl_cargar_boss():
+    return ('(fn DbgCargarBoss ()\n'
+            '  (if (> (Utilities|Array|Length (Variables|Default|GetDbgBosses)) 0)\n'
+            '    (return))\n'
+            '  (bind d (Variables|Default|GetDbgDatosEnem))\n'
+            '  (Utilities|IsValid d\n'
+            '    (:"Is Valid"\n'
+            '      (Variables|Default|SetDbgBosses'
+            ' (Class|BPDADebugEnemigos|GetBosses :self d)))\n'
+            '    (:"Is Not Valid")))')
+
+
+def dsl_boss_vida():
+    """Vida del boss por el StatsManager de DCS, si lo lleva.
+
+    Mismo mecanismo que PLAYER: ModifyStat suma un delta, asi que para dejarlo
+    al 50% se suma (max*0.5 - actual). Si el boss no tiene StatsManager no pasa
+    nada y se avisa en la linea de mensaje."""
+    return ('(fn DbgBossVida (Fraccion)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            + boss_ref() +
+            '  (bind ac (Utilities|Casting|CastToActorClass :Class cls)\n'
+            '    (:then\n'
+            '      (bind lista (Actor|GetAllActorsOfClass :ActorClass ac))\n'
+            '      (if (> (Utilities|Array|Length lista) 0)\n'
+            '        (bind jefe (Utilities|Array|Get(acopy) lista 0))\n'
+            '        (bind sm (Actor|GetComponentbyClass :self jefe'
+            ' :ComponentClass "' + DCS_STATS + '"))\n'
+            '        (Utilities|IsValid sm\n'
+            '          (:"Is Valid"\n'
+            '            (bind mx ' + leer(TAG_HP_MAX, "sm") + ')\n'
+            '            (bind ah ' + leer(TAG_HP, "sm") + ')\n'
+            '            ' + sumar(TAG_HP, "(- (* mx Fraccion) ah)", "sm").strip() + '\n'
+            '            (Variables|Default|SetDbgMensaje "Vida del boss ajustada"))\n'
+            '          (:"Is Not Valid"\n'
+            '            (Variables|Default|SetDbgMensaje'
+            ' "Este boss no usa el StatsManager de DCS: su vida no es alcanzable")))\n'
+            '        (else\n'
+            '          (Variables|Default|SetDbgMensaje'
+            ' "No hay ningun actor de ese boss en el nivel"))))\n'
+            '    (:CastFailed)))')
+
+
 # --------------------------------------------------------- COMBAT: acciones
 #
 # COMO FUNCIONA EL MULTIPLICADOR DE DANO, que es lo que importa entender:
@@ -1607,6 +1694,140 @@ def dsl_click_ai():
     return "\n".join(l)
 
 
+# -------------------------------------------------------------- BOSS: pintar
+
+BOSS_LISTA_Y = 152.0
+
+
+def filas_boss():
+    x0, w3, w5 = 8.0, 182.0, 108.0
+    vida = lambda f: "(CallFunction|DbgBossVida :Fraccion %s)" % f
+    nada = "(CallFunction|DbgNadaAun)"
+    return [
+        ("HEALTH", 240.0, 262.0, [
+            (x0 + i * 112.0, w5, e, vida(v), "false")
+            for i, (e, v) in enumerate([("100%", "1.0"), ("75%", "0.75"),
+                                        ("50%", "0.5"), ("25%", "0.25"),
+                                        ("10%", "0.1")])
+        ]),
+        ("", None, 294.0, [
+            (x0, 278.0, "KILL BOSS", vida("0.0"), "false"),
+        ]),
+        # Fases: preparadas y APAGADAS. Ver la explicacion en las acciones.
+        ("PHASE CONTROL   (sin sistema formal de fases)", 332.0, 354.0, [
+            (x0, w5, "-- START", nada, "false"),
+            (x0 + 112.0, w5, "-- PHASE 1", nada, "false"),
+            (x0 + 224.0, w5, "-- PHASE 2", nada, "false"),
+            (x0 + 336.0, w5, "-- PHASE 3", nada, "false"),
+            (x0 + 448.0, w5, "-- NEXT", nada, "false"),
+        ]),
+        ("BOSS STATES   (sin sistema de stagger ni finisher)", 392.0, 414.0, [
+            (x0, w3, "-- FORCE STAGGER", nada, "false"),
+            (x0 + 190.0, w3, "-- RESET STAGGER", nada, "false"),
+            (x0 + 380.0, w3, "-- FINISHER", nada, "false"),
+        ]),
+        ("CINEMATICS / QTE   (sistemas aun no existentes)", 452.0, 474.0, [
+            (x0, w3, "-- INTRO CINEMATIC", nada, "false"),
+            (x0 + 190.0, w3, "-- MID CINEMATIC", nada, "false"),
+            (x0 + 380.0, w3, "-- TRIGGER QTE", nada, "false"),
+        ]),
+        ("", None, 506.0, [
+            (x0, w3, "-- QTE SUCCESS", nada, "false"),
+            (x0 + 190.0, w3, "-- QTE FAILURE", nada, "false"),
+            (x0 + 380.0, w3, "-- RESTART BOSS", nada, "false"),
+        ]),
+    ]
+
+
+def dsl_tab_boss():
+    l = ['(fn DbgTabBoss ()', BIND_GEO, '  (CallFunction|DbgCargarBoss)',
+         '  (bind nb (Utilities|Array|Length (Variables|Default|GetDbgBosses)))']
+    l.append(texto(X(16.0), Y(130.0), '"BOSS SELECTION"', ORO, 1.05))
+    l.append('  (for i (range nb)')
+    l.append('    (bind by (+ %s (* i %s)))' % (Y(BOSS_LISTA_Y), SC(FILA_AI)))
+    l.append('    (if (== i (Variables|Default|GetDbgBossSel))')
+    l.append('    ' + rect(X(8.0), "by", SC(PW - 16.0), SC(FILA_AI - 3.0),
+                           BOTON_ON).strip())
+    l.append('      (else')
+    l.append('    ' + rect(X(8.0), "by", SC(PW - 16.0), SC(FILA_AI - 3.0),
+                           BOTON).strip() + '))')
+    l.append('    ' + texto(X(18.0), "(+ by %s)" % SC(2.0),
+                            '(CallFunction|DbgCampoBoss :Indice i :Campo 0)',
+                            HUESO, 0.95).strip())
+    l.append('    )')
+
+    for titulo, y_tit, y_bot, botones in filas_boss():
+        if y_tit:
+            l.append(texto(X(16.0), Y(y_tit), '"%s"' % titulo, ORO, 0.95))
+        for x, w, etiqueta, _accion, encendido in botones:
+            l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
+                     ' :Etiqueta "%s" :Encendido %s)'
+                     % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
+
+    # --- BOSS DEBUG INFO: solo lo que se puede leer de verdad ---
+    l.append(texto(X(16.0), Y(546.0), '"BOSS DEBUG INFO"', ORO, 1.05))
+    l.append('  (bind pawn (Game|GetPlayerPawn 0))')
+    l.append(boss_ref().rstrip())
+    l.append('  (bind ac2 (Utilities|Casting|CastToActorClass :Class cls)')
+    l.append('    (:then')
+    l.append('      (bind lst (Actor|GetAllActorsOfClass :ActorClass ac2))')
+    l.append('      (if (> (Utilities|Array|Length lst) 0)')
+    l.append('        (bind jf (Utilities|Array|Get(acopy) lst 0))')
+    l.append('        (bind smj (Actor|GetComponentbyClass :self jf'
+             ' :ComponentClass "%s"))' % DCS_STATS)
+    l.append('        ' + texto(X(16.0), Y(568.0),
+                                '(Utilities|String|Append "Boss:  "'
+                                ' (Utilities|String|ToString(Object) jf))',
+                                HUESO, 0.9).strip())
+    l.append('        ' + texto(X(16.0), Y(588.0),
+                                '(Utilities|String|Append'
+                                ' (Utilities|String|Append "HP:  "'
+                                ' (Utilities|String|ToString(Integer)'
+                                ' (Math|Float|Truncate ' + leer(TAG_HP, "smj") + ')))'
+                                ' (Utilities|String|Append "  /  "'
+                                ' (Utilities|String|ToString(Integer)'
+                                ' (Math|Float|Truncate ' + leer(TAG_HP_MAX, "smj") + '))))',
+                                HUESO, 0.9).strip())
+    l.append('        ' + texto(X(16.0), Y(608.0),
+                                '(Utilities|String|Append "Distancia a Malakh:  "'
+                                ' (Utilities|String|ToString(Integer)'
+                                ' (Math|Float|Truncate (/ (Math|Vector|VectorLength'
+                                ' (- (Transformation|GetActorLocation :self jf)'
+                                ' (Transformation|GetActorLocation :self pawn)))'
+                                ' 100.0))))', HUESO, 0.9).strip())
+    l.append('        ' + texto(X(16.0), Y(628.0),
+                                '"Phase / State / Stagger / Active Attack:  '
+                                'no accesibles (ver notas)"', GRIS, 0.8).strip())
+    l.append('        (else')
+    l.append('          ' + texto(X(16.0), Y(568.0),
+                                  '"Ese boss no esta colocado en el nivel abierto."',
+                                  GRIS, 0.85).strip() + ')))')
+    # Tres cierres: el (:CastFailed, el (bind ac2 y el (fn.
+    l.append('    (:CastFailed)))')
+    return "\n".join(l)
+
+
+def dsl_click_boss():
+    l = ['(fn DbgClickBoss (MX MY)', BIND_GEO,
+         '  (bind nb (Utilities|Array|Length (Variables|Default|GetDbgBosses)))']
+    l.append('  (bind finb (+ %s (* nb %s)))' % (Y(BOSS_LISTA_Y), SC(FILA_AI)))
+    l.append('  (if (and (and (>= MX %s) (< MX %s))'
+             ' (and (>= MY %s) (< MY finb)))'
+             % (X(8.0), X(PW - 8.0), Y(BOSS_LISTA_Y)))
+    l.append('    (Variables|Default|SetDbgBossSel'
+             ' (Math|Float|Truncate (/ (- MY %s) %s)))'
+             % (Y(BOSS_LISTA_Y), SC(FILA_AI)))
+    l.append('    (return))')
+    for _t, _yt, y_bot, botones in filas_boss():
+        for x, w, _etiqueta, accion, _enc in botones:
+            l.append('  (if %s' % caja("MX", "MY", X(x), Y(y_bot),
+                                       SC(w), SC(BOTON_H)))
+            l.append('    ' + accion)
+            l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
 def caja(mx, my, x, y, w, h):
     return ('(and (and (>= %s %s) (< %s (+ %s %s))) (and (>= %s %s) (< %s (+ %s %s))))'
             % (mx, x, mx, x, w, my, y, my, y, h))
@@ -1640,7 +1861,10 @@ def dsl_click():
     l.append('            (CallFunction|DbgClickCombat :MX MX :MY MY)')
     l.append('            (else')
     l.append('              (if (== (Variables|Default|GetDbgTab) 3)')
-    l.append('                (CallFunction|DbgClickAI :MX MX :MY MY))))))))')
+    l.append('                (CallFunction|DbgClickAI :MX MX :MY MY)')
+    l.append('                (else')
+    l.append('                  (if (== (Variables|Default|GetDbgTab) 4)')
+    l.append('                    (CallFunction|DbgClickBoss :MX MX :MY MY))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -1828,10 +2052,15 @@ def run():
         ("DbgTrazasToggle", dsl_trazas, []),
         ("DbgColisionesToggle", dsl_colisiones, []),
         ("DbgResetCombat", dsl_reset_combat, []),
+        # --- BOSS ---
+        ("DbgCampoBoss", dsl_campo_boss, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),
+        ("DbgCargarBoss", dsl_cargar_boss, []),
+        ("DbgBossVida", dsl_boss_vida, [("Fraccion", "float", True)]),
         ("DbgTabPendiente", dsl_pendiente, []),
         ("DbgTabPlayer", dsl_tab_player, []),
         ("DbgTabCombat", dsl_tab_combat, []),
         ("DbgTabAI", dsl_tab_ai, []),
+        ("DbgTabBoss", dsl_tab_boss, []),
         ("DbgTabWorld", dsl_tab_world, []),
         ("DbgClickWorld", dsl_click_world, [("MX", "float", True),
                                             ("MY", "float", True)]),
@@ -1839,8 +2068,8 @@ def run():
                                               ("MY", "float", True)]),
         ("DbgClickCombat", dsl_click_combat, [("MX", "float", True),
                                               ("MY", "float", True)]),
-        ("DbgClickAI", dsl_click_ai, [("MX", "float", True),
-                                      ("MY", "float", True)]),
+        ("DbgClickAI", dsl_click_ai, [("MX", "float", True), ("MY", "float", True)]),
+        ("DbgClickBoss", dsl_click_boss, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).

@@ -8043,6 +8043,52 @@ de volver a reducirlo. Por eso el defecto es 1.15 y no más.
 `PY = 92` tampoco es arbitrario: deja libre la franja donde el HUD del juego dibuja el banner de
 objetivo, que ahora comparte el centro de la pantalla con el panel.
 
+## DA Debug HUD, fase 5: pestaña BOSS (2026-08-17)
+
+### Los dos bosses no comparten arquitectura, y eso lo decide todo
+
+| | `BP_DA_GiantBoss` | `BP_Gabriel` |
+|---|---|---|
+| Padre | `BP_Giant` (asset de pago) | `BP_Archangel` (Character pelado) |
+| Vida | **StatsManager de DCS** + `MaxHealth`/`CurrentHealth` propios | `HP` suelto |
+| Alcanzable desde el HUD | **Sí**, por el StatsManager | **No** |
+| Fases | `FaseRitual` (paso del guion del ritual) | `Phase`, `bPhase2Triggered`, `bPhase3Triggered` |
+
+`BP_Gabriel` no tiene StatsManager, así que para escribir su `HP` haría falta una referencia
+**tipada** al actor — y `GetAllActorsOfClass` devuelve `Actor` a secas, sin cast disponible por
+esta API. Su vida no se puede tocar desde aquí.
+
+### Lo que queda FUNCIONAL
+
+- **Boss selection**: lista data-driven (array `Bosses` del Data Asset), se elige clicando.
+- **Health 100/75/50/25/10% y Kill Boss**: por el StatsManager del boss seleccionado, con el
+  mismo delta relativo que PLAYER. Si el boss no lo lleva, lo dice en la línea de mensaje en
+  vez de fallar en silencio.
+- **Boss debug info**: nombre, HP actual/máx y distancia a Malakh.
+
+### Lo que queda PREPARADO Y APAGADO, y por qué
+
+- **Phase control**: ninguno de los dos tiene sistema formal de fases. Lo que hay son
+  **banderas que pone la propia lógica del boss**. Escribirlas desde fuera pondría la bandera
+  **sin ejecutar la transición** — justo lo que el encargo prohíbe. Para activarlo haría falta
+  una función tipo `EnterPhase(N)` en el boss que haga el cambio de verdad.
+- **Stagger / finisher**: no existe ningún sistema de stagger ni de finisher.
+- **Cinemáticas y QTE**: no existen.
+- **Phase / State / AI State / Stagger / Active Attack** en la info: no accesibles, por lo
+  mismo que la vida de Gabriel (hacen falta referencias tipadas).
+
+### Restart Boss Encounter: qué arquitectura falta
+
+Hoy **no es seguro** hacerlo. Reiniciar el encuentro sin recargar Malkuth necesitaría que el
+boss expusiera un `ResetEncounter()` propio que devolviera a la vez: vida al máximo, estado y
+banderas de fase al inicio, posición al punto de partida, enemigos de oleada limpiados
+(`WaveStarted` / `EnemiesToSpawn` / `EnemiesSpawned` del Giant), el guion del ritual a su primer
+paso (`FaseRitual`, `Paso`) y el Behavior Tree reiniciado.
+
+Desde el HUD solo se podría tocar la vida, así que un "restart" desde fuera dejaría el boss vivo
+pero con el guion a medias — peor que no tenerlo. Mientras no exista esa función, lo honesto es
+`RESTART LEVEL` de WORLD.
+
 ## DA Debug HUD, fase 4: pestaña AI y spawner (2026-08-17)
 
 ### Los enemigos son los que existen, comprobados uno a uno
@@ -8628,3 +8674,33 @@ función entera no hace nada—, pero ese mapa no se ha abierto.
 
 - `Tools/MCP/gabriel_guion.py` — regenera las cuatro funciones, añade las variables, borra las
   viejas (`TurnoB`, `MensajeA1/B1/B2`) y escribe los textos en la instancia.
+
+### Corrección: Gabriel no clava ninguna lanza, porque el Giant no tiene arma
+
+Probado en juego: **las cuatro pantallas salen en orden y el gesto se dispara**. Y eso
+verifica de paso el secuenciador entero, porque `ArmarRitual` solo se ejecuta cuando `Paso`
+llega a 4: si golpea el suelo, es que el contador recorrió las cuatro.
+
+Lo que no encaja es la descripción del diseño. Decía *"Gabriel clava la lanza"*, y **el Giant
+del pack no tiene arma ninguna**:
+
+- Sus componentes son `TargetWidget`, `StatBarsWidget`, `Wings`, `CharacterMesh0`,
+  `CollisionCylinder`, `Arrow`, `StatsManager`, `DissolveEffect`, `CharMoveComp`,
+  `TeamRelations` y `MeleeCollisionHandler`. Ni rastro de una malla de arma.
+- En **todo `GiantBossProject` no hay un solo asset de arma**: ni lanza, ni hacha, ni maza.
+
+Es un bruto que pega con las manos, y su daño sale de sockets en ellas. `AM_DA_HitTheGroundAttack`
+es un **golpe al suelo con las manos**, no un ataque con arma. El montage estaba bien elegido;
+lo que estaba mal era el nombre en prosa. **El mensaje del commit `e5a690c` repite el error**
+—dice "el montage de clavar la lanza"— y se deja sin reescribir historia; queda corregido aquí.
+
+Decisión de Angel: **se queda sin arma por ahora**. El golpe al suelo funciona como gesto de
+armar el ritual. Si algún día lleva lanza, hará falta un modelo, un componente enganchado a un
+socket de mano y ajustarlo a su escala 5,5.
+
+**Resuelto de paso el riesgo que quedaba abierto:** el montage apunta a `SK_Mannequin` de
+`GiantBossProject`, el mismo esqueleto que usa Gabriel, así que `ABP_DA_Gabriel` —duplicado
+del ABP del pack— reproduce los montages del jefe sin retargeting.
+
+Sigue sin comprobarse si el cartel `[E] Hablar` desaparece tras la cuarta y si el objetivo del
+HUD cambia.

@@ -39,6 +39,21 @@ ENCUENTROS = [
     ("TEST Mixto a distancia", "0:2, 2:1"),
 ]
 
+# Los DOS actores tipo boss que existen hoy. No son la misma arquitectura:
+#
+#   BP_DA_GiantBoss  hereda de BP_Giant (asset de pago) y LLEVA StatsManager de
+#                    DCS, asi que su vida si se puede tocar por la via oficial.
+#                    Tiene ademas MaxHealth/CurrentHealth propios y `FaseRitual`,
+#                    que es el paso del guion del ritual, no una fase de boss.
+#   BP_Gabriel       hereda de BP_Archangel, que es un Character pelado con `HP`,
+#                    `Phase`, `bDormant` y `bShieldUp` sueltos. SIN StatsManager:
+#                    su vida no es alcanzable desde el HUD (ver las notas).
+BOSSES = [
+    ("Giant Boss", "/Game/DarkAngels/Blueprints/Bosses/BP_DA_GiantBoss.BP_DA_GiantBoss_C"),
+    ("Gabriel (Archangel)",
+     "/Game/DarkAngels/Blueprints/Enemies/BP_Gabriel.BP_Gabriel_C"),
+]
+
 
 def bp(t, a):
     return execute_tool("editor_toolset.toolsets.blueprint.BlueprintTools." + t,
@@ -68,7 +83,7 @@ def run():
         bp("create", {"folder_path": CARPETA, "asset_name": CLASE_NOM,
                       "asset_type": {"refPath": "/Script/Engine.PrimaryDataAsset"}})
     ya = bp("list_variables", {"blueprint": {"refPath": CLASE}})
-    for nombre in ["Tipos", "Encuentros"]:
+    for nombre in ["Tipos", "Encuentros", "Bosses"]:
         if nombre not in ya:
             bp("add_variable", {"blueprint": {"refPath": CLASE}, "name": nombre,
                                 "type_name": "string", "container_type": "ARRAY"})
@@ -85,12 +100,14 @@ def run():
     inst = {"refPath": ASSET}
     obj("set_properties", {"instance": inst, "values": json.dumps({
         "Tipos": ["%s | %s" % (n, c) for n, c in TIPOS],
-        "Encuentros": ["%s | %s" % (n, c) for n, c in ENCUENTROS]})})
+        "Encuentros": ["%s | %s" % (n, c) for n, c in ENCUENTROS],
+        "Bosses": ["%s | %s" % (n, c) for n, c in BOSSES]})})
 
     leido = json.loads(obj("get_properties", {"instance": inst,
-                                              "properties": ["Tipos", "Encuentros"]}))
+                                              "properties": ["Tipos", "Encuentros", "Bosses"]}))
     out["tipos"] = len(leido["Tipos"])
     out["encuentros"] = len(leido["Encuentros"])
+    out["bosses"] = leido["Bosses"]
     out["ultimo_tipo"] = leido["Tipos"][-1] if leido["Tipos"] else None
     ast("save_assets", {"asset_paths": []})
     return out
