@@ -9873,6 +9873,33 @@ Behaviour Tree, esconde la barra de vida y pone lifespan de 5 s.
 **Cabo suelto:** el `GiantBoss` cuelga de `BP_Giant`, que tampoco es `BP_BaseAI`. Si algun dia se
 pudiera rematar a el, el cast volveria a fallar y dependeriamos otra vez de los 50 de dano.
 
+### El panel de debug te dejaba clavado (2026-08-19)
+
+Sintoma: arrancabas y te movias bien; abrias el menu de debug, lo cerrabas, y **A/W/S/D dejaban
+de responder mientras todo lo demas seguia funcionando**. Parecia un problema de input y no lo era.
+
+`DbgTick` llama cada fotograma a `DbgMantener`, y ahi dentro:
+
+```
+si DbgMovMult != 1  ->  SetMaxWalkSpeed(600 * DbgMovMult)
+```
+
+Con `DbgMovMult = 0` la velocidad maxima se pone a **cero en cada tick**. Las teclas llegan
+perfectamente; el personaje simplemente no tiene velocidad. De ahi que solo muriera el
+movimiento.
+
+El 0 venia de la config guardada. Al abrir el panel por primera vez corre `DbgCfgCargar`, que
+lee `DA_DebugPanel.sav` y llama a `DbgMov(GetMovMult)`. Y **el CDO de `BP_DA_DebugConfig` tenia
+`MovMult = 0`** —igual que `DmgMult`, `EnemyMult` y `Escala`—: al leer un `.sav` anterior a que
+existiera ese campo, devuelve el defecto de la clase.
+
+**Arreglado** poniendo esos defectos a `1.0` (y `Escala` a `1.3`) y retirando el `.sav` viejo, que
+quedo copiado en `_Backups/`. En `debughud_montar.py` esta el diccionario `CFG_DEFECTOS` con el
+porque, para que una regeneracion no lo reintroduzca.
+
+> **La leccion:** un float de un SaveGame que nace a 0 es una bomba de relojeria cuando ese 0
+> significa "apagado" en vez de "sin tocar". Los multiplicadores tienen que nacer a 1.
+
 ## Escribir grafos por MCP: cuatro trampas nuevas (2026-08-19)
 
 Todas del mismo tipo: **lo que lee `read_graph_dsl` no es lo que acepta `write_graph_dsl`**.

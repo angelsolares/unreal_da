@@ -348,7 +348,13 @@ def dsl_toggle():
             '      (if (Variables|Default|GetDbgVisible)\n'
             '        (Input|DisableInput :self pawn :PlayerController pc)\n'
             '        (else\n'
-            '          (Input|EnableInput :self pawn :PlayerController pc))))\n'
+            # Al cerrar no basta con EnableInput: eso solo repone el componente
+            # de input del pawn. Si algo dejo desequilibrado el contador de
+            # IgnoreMoveInput, WASD sigue muerto y el resto del input funciona,
+            # que es exactamente como se manifesto el fallo.
+            '          (Input|EnableInput :self pawn :PlayerController pc)\n'
+            '          (Input|ResetIgnoreMoveInput :self pc)\n'
+            '          (Input|SetInputModeGameOnly :PlayerController pc))))\n'
             '    (:"Is Not Valid")))')
 
 
@@ -2279,6 +2285,14 @@ CFG_TODO = [
 # efecto apagado, que es peor que no guardarlo.
 CFG_SOLO_GUARDAR = {"MovMult", "DmgMult", "EnemyMult", "Trazas", "Colisiones",
                     "Congelada", "Apagada", "Ignorar"}
+
+# OJO con los defectos del CDO de BP_DA_DebugConfig. Los float nacen a 0, y al
+# cargar una partida guardada ANTES de que existiera un campo, ese campo vuelve
+# como 0. Con MovMult eso significa `SetMaxWalkSpeed(600 * 0)` cada tick desde
+# DbgMantener: el jugador no se mueve y TODO lo demas funciona, que despista
+# muchisimo. Los multiplicadores tienen que nacer a 1.0 (y Escala a 1.3).
+# Si se regenera la clase de config, hay que volver a dejarlos asi.
+CFG_DEFECTOS = {"MovMult": 1.0, "DmgMult": 1.0, "EnemyMult": 1.0, "Escala": 1.3}
 
 
 def dsl_cfg_guardar():
