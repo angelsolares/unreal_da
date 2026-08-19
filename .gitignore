@@ -176,3 +176,11 @@ Content/DarkAngels/Environment/Props/SK_DA_Puerta_Yesod.uasset
 # Copia local en _Backups/assets_fuera_de_git/.
 Content/DarkAngels/Environment/Props/SK_DA_Puerta_Claro.uasset
 Content/DarkAngels/Characters/Colosos/SK_DA_Coloso_Angel_V2.uasset
+
+# El mapa de demostracion del Sword Takedown Pack (de pago) deja sus actores
+# externos fuera de Content/Sword_Takedown/, asi que hay que excluirlos aparte.
+Content/__ExternalActors__/Sword_Takedown/
+Content/__ExternalObjects__/
+
+# Cache de los scripts de Python del MCP.
+Tools/MCP/__pycache__/

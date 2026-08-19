@@ -9572,6 +9572,34 @@ escorzo se acorta y se pierde justo lo que hace impactante esa imagen.
 La del remate hacia el **80-85%** del montage, antes del `MatarEn` de 0.9, para que el corte
 ocurra mientras todavia hay animacion.
 
+### Cuanto dura cada pareja, y donde cae el 80-85%
+
+Las dos animaciones de un par duran **exactamente lo mismo**, asi que el fotograma elegido en el
+del ejecutor vale igual en el `_React`. Todas van a **30 fps**.
+
+| Takedown | Duracion | Fotogramas | Remate (80-85%) | `MatarEn` 0.9 | Notifies |
+|---|---|---|---|---|---|
+| 01 | 3,63 s | 109 | 87-93 | 98 | ✅ |
+| 02 | 4,90 s | 147 | 118-125 | 132 | ✅ |
+| 03 | 5,30 s | 159 | 127-135 | 143 | en curso |
+| 04 | 4,90 s | 147 | 118-125 | 132 | ❌ |
+| 05 | 4,13 s | 124 | 99-105 | 112 | ❌ |
+| 06 | 3,97 s | 119 | 95-101 | 107 | ❌ |
+| 07 | 3,63 s | 109 | 87-93 | 98 | ❌ |
+| 08 | 4,23 s | 127 | 102-108 | 114 | ❌ |
+| 09 | 4,63 s | 139 | 111-118 | 125 | ❌ |
+| 10 | 2,60 s | 78 | 62-66 | 70 | ❌ |
+
+El **03 es el mas largo del pack** y el 10 el mas corto: menos de la mitad. La marca del remate
+hay que ponerla **antes** de la columna `MatarEn`, o el corte de camara llega cuando ya no queda
+animacion que ver.
+
+> **Las marcas las coloca Angel a mano** raspando la linea de tiempo; el MCP no escribe notifies
+> (no hay toolset de montages y `Notifies` ni siquiera se lee). El apoyo util es al reves: Angel
+> pasa el fotograma clave con su captura y de vuelta salen los seis numeros del
+> `BP_DA_NotifyCamara`, **en el orden del panel Details**: `Lado, Frente, Alto, Mira, FOV,
+> Desfase`.
+
 ### Las otras dos marcas de la animacion
 
 - **`BP_DA_NotifySacudida`** — instantanea. `Escala` 1.0. Usa `ClientStartCameraShake` sobre el
@@ -9601,3 +9629,227 @@ correccion ya incorporada — location (−6.595, 3.690, **−5.180**), rotation
 > Es un socket **de malla**, y el Skeleton Tree del editor de montage esconde esos por defecto:
 > hay que activarlos en el engranaje, y **el filtro de texto por nombre de hueso tambien los
 > oculta**, porque el socket no se llama como el hueso. Se gestionan mejor abriendo la malla.
+
+## Los diez takedowns anotados, y el sistema de vecinos (2026-08-19)
+
+Cerrados los **diez montages de espada unica** con sus notifies. Lo que sigue es lo que costo
+sacar, no el procedimiento: el procedimiento esta arriba.
+
+### Las tomas que se pusieron, por takedown
+
+Los fotogramas salen de **medir** la animacion, no de mirarla a ojo: se posan los dos actores en
+el tiempo `t` y se anota la caja envolvente de cada uno, fotograma a fotograma. Los **picos de
+velocidad de la victima** son los impactos.
+
+**Takedown 03** — 159 fotogramas. Impactos en **f16, f44 y f61**; la caida entre **f138 y f146**.
+
+| Toma | Fotograma | `Lado` | `Frente` | `Alto` | `Mira` | `FOV` |
+|---|---|---|---|---|---|---|
+| Primer contacto | f11 | 200 | 0 | 45 | 40 | 80 |
+| Segundo golpe | f32 | 150 | −35 | 35 | 35 | 70 |
+| Golpe fuerte | f54 | 260 | 20 | 30 | 25 | 80 |
+| Remate y caida | f136 | 240 | 30 | 10 | −30 | 88 |
+
+**Takedown 06** — 119 fotogramas.
+
+| Toma | Fotograma | `Lado` | `Frente` | `Alto` | `Mira` | `FOV` |
+|---|---|---|---|---|---|---|
+| Apertura | f16 | 180 | 0 | 20 | 55 | 75 |
+| Entrada (la zancada) | — | 120 | −55 | 60 | 30 | 72 |
+| Plantado | f38 | 210 | −10 | 15 | 20 | 80 |
+| Golpe central | f60 | 160 | 25 | 40 | 40 | 70 |
+
+**Takedown 08** — 127 fotogramas.
+
+| Toma | Fotograma | `Lado` | `Frente` | `Alto` | `Mira` | `FOV` |
+|---|---|---|---|---|---|---|
+| Estocada | f8 | 230 | −15 | 5 | 15 | 84 |
+| Recogida | f22 | 120 | −50 | 45 | 35 | 70 |
+| Paso | f70 | 250 | 25 | 25 | 30 | 88 |
+
+**Takedown 09** — 139 fotogramas. El del izado: el angel sale **ensartado y por el aire**.
+
+| Toma | Fotograma | `Lado` | `Frente` | `Alto` | `Mira` | `FOV` |
+|---|---|---|---|---|---|---|
+| Estocada | f11 | 230 | −15 | 5 | 15 | 84 |
+| Carga | f36 | 140 | −30 | −15 | 10 | 72 |
+| Izado | f66 | 210 | 10 | 0 | **95** | 90 |
+| Lanzamiento | f84 | 260 | −25 | 30 | 75 | 95 |
+
+**Takedown 10** — 78 fotogramas, el mas corto del pack. Golpe tornado.
+
+| Toma | Fotograma | `Lado` | `Frente` | `Alto` | `Mira` | `FOV` |
+|---|---|---|---|---|---|---|
+| Barrida / apertura | f26 | 290 | 15 | 20 | 30 | 96 |
+
+### Tres reglas que salieron de anotarlos
+
+**La escala de `Alto` y `Mira`, con numero.** La capsula de `BP_DA_PlayerCharacter` mide **96 de
+media altura**, y el 0 de las dos variables es el centro de la capsula. O sea que **el suelo esta
+exactamente en −96**. Con eso se dejan de adivinar: para mirar a un cuerpo tendido, `Mira` sobre
+−70; para uno que vuela ensartado, `Mira` +95.
+
+**La orientacion de la hoja manda sobre el resto.** Una espada que apunta *hacia* la victima va
+paralela al eje de la pareja: solo se ve entera desde el costado, con `Frente` cerca de 0. Una
+espada **vertical** no se acorta con `Frente` sino con la **altura de camara**: cuanto mas arriba
+mires desde, mas escorzo. Y una barrida horizontal se lee mejor **a la altura de la hoja**, que
+la convierte en una linea en vez de una elipse.
+
+**Un aereo se hace bajando `Mira`, no inclinando.** El notify **no tiene control de picado**: el
+angulo sale de la relacion entre altura y distancia.
+
+```
+picado = atan( (Alto − Mira) / raiz(Lado^2 + Frente^2) )
+```
+
+Subir `Alto` y poner `Mira` en −96 da la toma cenital. Entre 50 y 65 grados es donde todavia se
+leen los cuerpos; pasando de 75 solo se ven coronillas. Y **la regla de los ±61 en `Frente` no
+aplica desde arriba**, porque nadie puede meterse entre la camara y la accion.
+
+### Lo del giro de 360 grados
+
+Sintoma: en algunas tomas parecia que la camara **daba la vuelta entera** alrededor de la pareja.
+
+Leyendo el grafo de `BP_DA_NotifyCamara` entero: hace **una sola cosa y una sola vez** —
+`SetActorLocationAndRotation` mas `SetFieldOfView` sobre el view target—, sin Tick, sin
+interpolacion y sin ningun `AttachTo`. Y `BP_DA_FinisherLogic` tiene un **`Event Tick` suelto,
+sin conectar a nada**. Asi que **una marca sola no puede girar la camara**.
+
+La causa esta en otro sitio: el notify **construye sus ejes con la orientacion de Malakh en ese
+instante** —`Lado` es su vector derecha, `Frente` su vector adelante—. En un takedown donde
+Malakh **gira** (el tornado del 10, o el 09 cuando se vuelve de espaldas para lanzar), dos marcas
+seguidas con numeros parecidos caen en **puntos opuestos del arco**, y eso se lee como una
+orbita.
+
+> **Como convivir con ello:** en los takedowns con giro, **una sola marca dentro de la rotacion**.
+> Si hace falta una segunda despues de media vuelta, hay que **cambiar el signo de `Lado` y de
+> `Frente`** para quedarse en el mismo costado de la accion. Y ahi los numeros se afinan mirando
+> el preview, no calculandolos.
+
+### La inmunidad estaba dentro del montage, y la perdimos
+
+DCS trae un AnimNotifyState llamado **`ANS_Activity`**
+(`/Game/DynamicCombatSystem/DCS/Blueprints/AnimNotifies/`) con dos propiedades, `ActivityTag` y
+`CanStack`: aplica el tag mientras dura la barra y lo quita al terminar.
+
+Y **el `M_Backstab` de DCS lleva dentro un `ANS_Activity` con `Activity.IsImmortal`**. O sea que
+el apunalamiento original si te hacia inmune, y la inmunidad no vivia en ningun blueprint sino
+**dentro de la animacion**. Al sustituir `M_Backstab` por los montages del pack, se quedo atras —
+por eso te mataban en mitad de un finisher.
+
+Se arregla con dos barras de `ANS_Activity` a lo largo de **los diez montages del ejecutor** (en
+los `_React` no: el tag se aplica a quien reproduce la animacion):
+
+| `ActivityTag` | Que hace |
+|---|---|
+| `Activity.IsImmortal` | No te hacen dano mientras dura |
+| `Activity.IsNonTargetable` | `BP_BaseAI` deja de tomarte como objetivo |
+
+Los dos tags ya existian en `DT_DCSTags_Activities` y los consume la propia IA de DCS. Y por ser
+un NotifyState, **el End se dispara aunque el montage se corte**: la red de seguridad sale gratis.
+
+## Apartar a los vecinos durante el finisher (2026-08-19)
+
+Problema: si te emboscan varios, los enemigos de alrededor se empalman encima de la pareja y
+tapan el remate.
+
+Se descarto **esconderlos**: `bHidden` no quita la colision, y 2,6 a 5,3 segundos sin un cuerpo
+es un parpadeo enorme. Lo que hacen otros juegos no es esconder, sino que no te puedan herir, que
+la animacion sea corta y que la camara los deje fuera de cuadro.
+
+### Como quedo
+
+Dos funciones **en `BP_DA_HUD`**, llamadas desde `BP_DA_FinisherLogic`:
+
+| Funcion | Donde se llama | Que hace |
+|---|---|---|
+| `ApartarVecinos(Victima)` | justo despues del `AddActivity` de `CantBeInterrupted` | busca, empuja y disuelve |
+| `DevolverVecinos()` | tras el `RemoveActivity`, **antes** del `ApplyBackstabDmg` y del `Kill` | los devuelve |
+| `DevolverVecinos()` | al final de `EventOnRemoved` | la red de seguridad |
+
+Van **antes del `Kill`** a proposito: matar al portador destruye el objeto de logica, asi que
+todo lo que haya que restaurar tiene que pasar antes. Es la misma regla que ya mordio con la
+camara.
+
+`ApartarVecinos` recorre los `BP_BaseAI` a menos de **500 cm de la victima** y con cada uno:
+
+1. Lo guarda en `Fin_Vecinos`.
+2. `StopLogic` sobre su `BrainComponent` — sin eso el Behaviour Tree pisa el movimiento al tick
+   siguiente.
+3. **`LaunchCharacter`** de 500 en direccion contraria a la victima.
+4. Si `Fin_DisolverVecinos` esta activo: color a **blanco** y `StartDissolve`.
+
+`DevolverVecinos` hace `RestartLogic`, el disolver en **reverso**, y devuelve el color a rojo.
+
+### Los cuatro detalles que costaron
+
+**El disolver tiene que coger todo lo que lleve encima.** `StartDissolve` toma **un** componente,
+asi que hay que recorrer todos los `MeshComponent` del actor —cuerpo y alas— **y ademas** los de
+todos los actores enganchados recursivamente, que es donde estan la espada y el escudo. Se filtra
+por `MeshComponent` y no por `PrimitiveComponent` a proposito: asi quedan fuera la capsula, la
+flecha y los widgets de barras de vida.
+
+**`StartDissolve` lleva un flag `Reverse`**: el mismo nodo desvanece y trae de vuelta.
+**`StopDissolve` no revierte**, solo detiene el tick — deja a los enemigos medio transparentes
+para siempre.
+
+**El color hay que devolverlo.** Es el mismo componente que se usa al morir, asi que si dejas el
+blanco puesto la siguiente muerte tambien sale blanca. Queda: **blanco = escondido por finisher,
+rojo `(5,0,0,0)` = muerto**.
+
+**El movimiento no puede depender de la navegacion.** El primer intento usaba
+`SimpleMoveToLocation` y no se movia nadie. El diagnostico salio solo: como el disolver **si**
+funcionaba, y esta en la misma rama y **despues** del movimiento, el bucle encontraba a los
+vecinos y la llamada se hacia — luego el fallo era el NavMesh. Con `LaunchCharacter` funciona
+haya NavMesh o no.
+
+> **El radio se mide desde la victima, no desde Malakh**, en 3D y de centro a centro de capsula,
+> y **se calcula una sola vez al empezar**: quien entre en el area a mitad del remate ya no se
+> disuelve. Se cambia en el `500.0` de `ApartarVecinos`.
+
+### Pendiente
+
+La fila del panel para encender y apagar `Fin_DisolverVecinos` desde la pestana FINISHERS. Exige
+la pasada de 35 minutos de `debughud_montar.py`. **Y al regenerar hay que dejar el defecto en
+`true` tambien en el generador**, porque esa pasada borra y recrea el hijo.
+
+## Escribir grafos por MCP: cuatro trampas nuevas (2026-08-19)
+
+Todas del mismo tipo: **lo que lee `read_graph_dsl` no es lo que acepta `write_graph_dsl`**.
+
+**Los guiones bajos desaparecen en los `type_id`.** La variable `Fin_CamaraFOV` se escribe
+`Variables|Default|GetFinCamaraFOV`. Con el nombre literal falla con *"does not exist"* y
+`find_node_types` filtrando por el devuelve **vacio**, asi que parece que la variable no existe.
+Es la misma norma que ya se veia en `Class|BPDAHUD|ShowZoneBanner`.
+
+**Los operadores de vectores del lector no se escriben.** `Math|Vector|vector+vector`,
+`vector*vector` y `vector-vector` salen al leer; al escribir hay que usar
+`Utilities|Operators|Add`, `Multiply` y `Subtract`.
+
+**Si un nombre de funcion esta repetido, el DSL elige mal en silencio.** Pidiendo
+`GetDissolveEffect` habia dos —el de `BP_BaseAI` y el de `BP_DAGiantBoss`— y **cogio el del
+Giant**. Se veia perfecto en el grafo y habria fallado en juego. La vuelta segura es
+`Actor|GetComponentByClass` con la ruta de clase, que no es ambiguo.
+
+**El orden de los pines no es el que parece.** `SetDissolveColor` es `execute, DissolveColor,
+self`, asi que el primer argumento posicional cae en el color y no en el objetivo. Ante la duda,
+**pines nombrados**: `(... :self _comp :DissolveColor (...))`.
+
+> **Y dos de bulto, que rompen cosas ya montadas:**
+>
+> - **Rehacer una funcion rompe a quien la llama, aunque este en otro blueprint.** Borrar y
+>   recrear `ApartarVecinos` dejo los tres nodos de llamada del finisher apuntando a una funcion
+>   muerta, y el editor solo lo dice al darle a Play. Hay que rehacer tambien los nodos de
+>   llamada. Por eso un cambio de un solo valor —el radio— se hace con `set_pin_value` sobre el
+>   pin, **no** reescribiendo la funcion.
+> - **Un blueprint hijo no hereda un defecto que cambies luego en el padre.**
+>   `Fin_DisolverVecinos` se creo en `BP_DA_HUD` con defecto `true`, pero `BP_DA_DebugHUD` —que es
+>   el HUD que corre en juego— se quedo con `false` en su propio CDO. El disolver no se ejecutaba
+>   y el grafo estaba perfecto. Hay que poner el valor **en los dos CDO**.
+
+### Otra clase de bug: el mesh que no era
+
+`BP_BaseAI` hereda de **`Character`**, no de `BP_CombatCharacter`. Un `CastToBP_CombatCharacter`
+sobre un enemigo **falla siempre**, y como estaba dentro de un `if`, la rama entera se saltaba en
+silencio. Y su componente de disolver no se llama `Dissolve` como en el jugador, sino
+**`DissolveEffect`**. Antes de dar por hecho el arbol de clases de DCS, mirarlo con `get_parent`.
