@@ -9483,3 +9483,40 @@ otra pareja**. El lector del DSL los dibuja duplicados y engaña.
 
 El tope de 9 está a mano en el generador: las parejas viven en el CDO del finisher y el panel
 no las ve. Si entran las 10 de doble espada, hay que subirlo.
+
+### Las reacciones salian al reves: era el alineado (2026-08-18)
+
+Sintoma: el angel reproducia su reaccion **inclinandose hacia el atacante** en vez de darle la
+espalda, y en la toma en la que sale lanzado **volaba al lado contrario**. Comparando con el
+video del vendedor se veia claro que el par no encajaba.
+
+**La causa no estaba en las animaciones.** Las dos del par estan autoradas **en su sitio**, sin
+root motion, asi que lo unico que decide si encajan es **la posicion y rotacion relativas** de
+los dos actores al arrancar. Y seguiamos con el arreglo de DCS:
+
+|  | Ejecutor | Mirando |
+|---|---|---|
+| DCS | 100 cm **a la espalda** de la victima | en la misma direccion que ella |
+| El pack | 123 cm **delante** | **girado 180°: cara a cara** |
+
+El angel reproducia una reaccion autorada para un atacante **de frente** con el atacante
+**detras**: de ahi que todo saliera espejado. El caso del lanzamiento era el mismo error de
+180°, solo que con desplazamiento se nota muchisimo mas.
+
+**Arreglado** poniendo los valores del pack, que ya estaban expuestos como variables en
+`BP_DA_FinisherLogic`:
+
+```
+AlineadoDistancia = 123     (el TZ del vendedor)
+AlineadoEncarado  = true    (su RY = 180)
+CamaraDesfase     = 61      (el punto medio se mueve al otro lado)
+```
+
+> **La leccion:** cuando un par de animaciones "casi" encaja pero algo sale espejado, el
+> sospechoso no son los assets sino **el transform relativo con el que se lanzan**. Y el
+> vendedor lo documentaba desde el principio con dos numeros que parecian un detalle menor.
+
+**Queda una posibilidad abierta:** si alguna toma concreta se ve peor con el alineado nuevo,
+sera porque el pack mezcla tomas frontales y por la espalda. La solucion entonces es una
+tercera variable **por pareja**, marcando cuales van por detras. Con las diez corriendo bien no
+hizo falta.
