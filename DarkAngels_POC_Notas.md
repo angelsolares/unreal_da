@@ -9848,6 +9848,31 @@ Puesto en dos sitios de `EventProcessBackstab`, los dos sobre el `InputBuffer` d
 > la limpieza final y antes de que DCS devuelva el control— todavia podria colarse. La ventana es
 > de milisegundos; taparla del todo pediria un tick.
 
+### Por que a veces el finisher no mataba (2026-08-19)
+
+El final del remate hacia esto:
+
+```
+ApplyBackstabDmg  ->  50 de dano, fijos
+CastToBP_CombatCharacter(victima)  ->  Reactions|Kill
+```
+
+Y **ese cast falla siempre**: `BP_DA_Vigilante`, `BP_DA_Heraldo` y `BP_DA_Inspector` heredan de
+`BP_BaseAI`, que a su vez hereda de `Character` — **ninguno es un `BP_CombatCharacter`**. El
+`Kill` era codigo muerto y lo unico que mataba era el dano. Como `ApplyBackstabDmg` reparte
+**50 puntos exactos**, el enemigo moria solo si le quedaba esa vida o menos. De ahi el "a veces".
+
+**Arreglado** cambiando el cast por `CastToBP_BaseAI` y encadenando su `Reactions|Kill`, que es
+una muerte completa: estado a muerto, para el montage, corta movimiento y colision, apaga el
+Behaviour Tree, esconde la barra de vida y pone lifespan de 5 s.
+
+> **Ojo:** `Reactions|Kill` **sale duplicado** en la lista de nodos —hay uno para
+> `BP_CombatCharacter` y otro para `BP_BaseAI`—, asi que hay que crearlo pasando
+> `declaring_class` explicitamente. Es la misma trampa que con `GetDissolveEffect`.
+
+**Cabo suelto:** el `GiantBoss` cuelga de `BP_Giant`, que tampoco es `BP_BaseAI`. Si algun dia se
+pudiera rematar a el, el cast volveria a fallar y dependeriamos otra vez de los 50 de dano.
+
 ## Escribir grafos por MCP: cuatro trampas nuevas (2026-08-19)
 
 Todas del mismo tipo: **lo que lee `read_graph_dsl` no es lo que acepta `write_graph_dsl`**.
