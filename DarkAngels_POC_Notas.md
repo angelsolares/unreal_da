@@ -9520,3 +9520,84 @@ CamaraDesfase     = 61      (el punto medio se mueve al otro lado)
 sera porque el pack mezcla tomas frontales y por la espalda. La solucion entonces es una
 tercera variable **por pareja**, marcando cuales van por detras. Con las diez corriendo bien no
 hizo falta.
+
+## Dirigir la camara del finisher desde la animacion (2026-08-18)
+
+`BP_DA_NotifyCamara` es un AnimNotify: se pone una marca en el montage y en ese fotograma la
+camara **salta** al angulo que diga la marca. Varias marcas = varias tomas dentro de la misma
+ejecucion. No interpola: es un corte, que para un finisher suele ser lo correcto.
+
+Encuentra la camara sin etiquetas ni referencias: pide al controlador del jugador su
+**view target**, que durante la ejecucion **es** la camara del finisher.
+
+### El sistema de coordenadas, que es lo que hay que entender
+
+Todo se mide **en centimetros desde el punto medio de la pareja**, y el eje lo marca Malakh:
+
+```
+        Malakh -61  ---- punto medio 0 ----  angel +61
+```
+
+| Variable | Que hace |
+|---|---|
+| `Frente` | Sobre el eje que los une. **Negativo hacia Malakh, positivo hacia el angel** |
+| `Lado` | Perpendicular. **En negativo cambia de costado** |
+| `Alto` | Altura de la camara. **El 0 es el ombligo, no el suelo** (centro de la capsula) |
+| `Mira` | Altura a la que apunta |
+| `FOV` | Mas bajo = mas cerrado y tenso |
+| `Desfase` | Donde esta el punto medio. **No tocar** salvo que cambie el alineado |
+
+> **La regla que costo dos correcciones:** con `Frente` mas alla de ±61 uno de los dos cuerpos
+> se pone **entre la camara y la accion**. Con +90 se ve la espalda del angel; con −70, la de
+> Malakh. **Moverse entre −40 y +40** y no se pierde la accion. Fuera de ese rango solo para un
+> plano deliberado, como un sobre-el-hombro donde el hombro es parte de la composicion.
+>
+> Y una conclusion de fondo: en un par de animaciones autoradas juntas **la vista lateral
+> siempre funciona**, porque es la unica posicion donde ninguno tapa al otro. Los planos
+> frontales son mas vistosos pero dependen de que la pose concreta lo permita.
+
+### Valores que ya funcionaron
+
+| Tipo de plano | `Lado` | `Frente` | `Alto` | `Mira` | `FOV` |
+|---|---|---|---|---|---|
+| **Tajo / impacto** | 170 | 0 | 40 | 40 | 75 |
+| **Remate y caida** | 240 | −20 | 25 | 10 | 88 |
+| **Sobre el hombro** | 90 | −110 | 45 | 45 | 70 |
+| **Estocada, hoja entera** | 240 | −40 | 10 | 10 | 85 |
+
+Para la hoja completa, `Frente` cerca de 0 es lo que la deja **perpendicular a la camara**: con
+escorzo se acorta y se pierde justo lo que hace impactante esa imagen.
+
+**Donde colocarlas:** la del impacto en el mismo fotograma que el `CUE_HitSword` y la sacudida.
+La del remate hacia el **80-85%** del montage, antes del `MatarEn` de 0.9, para que el corte
+ocurra mientras todavia hay animacion.
+
+### Las otras dos marcas de la animacion
+
+- **`BP_DA_NotifySacudida`** — instantanea. `Escala` 1.0. Usa `ClientStartCameraShake` sobre el
+  controlador porque `PlayWorldCameraShake` **no tiene contexto de mundo dentro de un notify** y
+  fallaba en silencio.
+- **`BP_DA_NotifyHitStop`** — notify **de estado**: la barra que se arrastra ES la duracion.
+  `Dilatacion` 0.25. Al terminar devuelve el tiempo a `Fin_Dilatacion`, no a 1.
+
+> **Segundos reales = (fotogramas ÷ 30) ÷ Dilatacion.** Con 0.25, una barra de 2 fotogramas son
+> 0,27 s: el "cuarto de segundo" que el recetario reserva para un golpe final. Con dilataciones
+> muy bajas el minimo arrastrable ya se pasa de largo.
+
+> **Las tres variables son Instance Editable**, asi que **cada marca colocada lleva sus propios
+> valores**. Ojo: una instancia ya colocada **no hereda** el defecto que cambies despues en la
+> clase — asi se quedo la primera sacudida con `Escala = 0` y no temblaba.
+
+### El preview: espada en la mano
+
+La malla `SM_SteelSword` esta autorada al reves y DCS la endereza **dentro** de
+`BP_DI_SteelSword` (yaw 180, roll 180, Z −6). Un preview asset pega la malla cruda al socket sin
+esa correccion, y sale volteada. **Girar `sword_use` romperia el juego**, porque DCS aplicaria
+su correccion encima.
+
+Solucion: socket propio **`DA_espada_preview`** en `SK_DA_Malakh`, hijo de `hand_r`, con la
+correccion ya incorporada — location (−6.595, 3.690, **−5.180**), rotation (0, **180**, **180**).
+
+> Es un socket **de malla**, y el Skeleton Tree del editor de montage esconde esos por defecto:
+> hay que activarlos en el engranaje, y **el filtro de texto por nombre de hueso tambien los
+> oculta**, porque el socket no se llama como el hueso. Se gestionan mejor abriendo la malla.
