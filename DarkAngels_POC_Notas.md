@@ -9817,6 +9817,37 @@ alternarlo en caliente, asi que no compensa la pasada de 35 minutos de `debughud
 poner su CDO a `false` a mano — y recordando que hay que tocarlo **en los dos CDO**, el de
 `BP_DA_HUD` y el de `BP_DA_DebugHUD`, que es el que corre en juego.
 
+### Vaciar la cola de ataques al rematar (2026-08-19)
+
+Sintoma: si estabas atacando cuando lanzas el finisher, **al terminar el remate el jugador
+soltaba los espadazos que habian quedado encolados**, y encima encadenaba combo.
+
+La causa esta en el `BP_InputBufferComponent` de DCS, que guarda **una** tecla pendiente en
+`StoredKey`:
+
+```
+CloseInputBuffer()  ->  ConsumeInputBuffer()
+ConsumeInputBuffer():  si StoredKey != vacio  ->  dispara OnInputBufferConsumed
+```
+
+O sea que **cerrar el buffer no descarta el ataque pendiente: lo ejecuta**. Al acabar el finisher
+se cierra el buffer, sale el golpe guardado y ese encadena el resto.
+
+No hay funcion de "vaciar", pero **`SetStoredKey` con el valor vacio (`NewEnumerator0`) descarta
+sin disparar**: solo consume si el buffer esta cerrado, y en ese caso `ConsumeInputBuffer`
+comprueba que la tecla no este vacia antes de lanzar nada.
+
+Puesto en dos sitios de `EventProcessBackstab`, los dos sobre el `InputBuffer` del **Applier**:
+
+| Donde | Que tira |
+|---|---|
+| tras `ApartarVecinos` | lo encolado **antes** de entrar al finisher |
+| tras `DevolverVecinos`, antes del `ApplyBackstabDmg` | lo encolado **durante** el remate |
+
+> **Limite:** la limpieza es puntual, no continua. Un ataque soltado en el ultimo instante —tras
+> la limpieza final y antes de que DCS devuelva el control— todavia podria colarse. La ventana es
+> de milisegundos; taparla del todo pediria un tick.
+
 ## Escribir grafos por MCP: cuatro trampas nuevas (2026-08-19)
 
 Todas del mismo tipo: **lo que lee `read_graph_dsl` no es lo que acepta `write_graph_dsl`**.
