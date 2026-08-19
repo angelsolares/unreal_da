@@ -9807,11 +9807,15 @@ haya NavMesh o no.
 > y **se calcula una sola vez al empezar**: quien entre en el area a mitad del remate ya no se
 > disuelve. Se cambia en el `500.0` de `ApartarVecinos`.
 
-### Pendiente
+### El interruptor del panel: descartado a proposito (2026-08-19)
 
-La fila del panel para encender y apagar `Fin_DisolverVecinos` desde la pestana FINISHERS. Exige
-la pasada de 35 minutos de `debughud_montar.py`. **Y al regenerar hay que dejar el defecto en
-`true` tambien en el generador**, porque esa pasada borra y recrea el hijo.
+Se llego a plantear una fila en la pestana FINISHERS para encender y apagar
+`Fin_DisolverVecinos`, y **se decidio no hacerla**: el efecto se ve bien y no hay necesidad de
+alternarlo en caliente, asi que no compensa la pasada de 35 minutos de `debughud_montar.py`.
+
+**Queda activo por defecto.** La variable sigue existiendo en `BP_DA_HUD`, asi que apagarlo es
+poner su CDO a `false` a mano — y recordando que hay que tocarlo **en los dos CDO**, el de
+`BP_DA_HUD` y el de `BP_DA_DebugHUD`, que es el que corre en juego.
 
 ## Escribir grafos por MCP: cuatro trampas nuevas (2026-08-19)
 
