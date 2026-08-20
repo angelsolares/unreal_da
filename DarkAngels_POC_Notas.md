@@ -10026,7 +10026,7 @@ sale de un `FindLookAtRotation` hacia el umbral, o sea que apareces mirando por 
 venido: bien en una sala de espejos, mal cruzando una puerta. La **Z de un destino no es la del
 suelo**: el origen de un Character es el centro de la capsula, suelo + 96.
 
-## Revision de conectividad de El Claro (2026-08-21)
+## Revision de conectividad de El Claro (2026-08-20)
 
 Angel pregunto si El Claro estaba cerrado y si se podia llegar a las zonas que antes eran
 opcionales. Respuesta medida: **si estaba cerrado, y lo cerraba un actor invisible.**
@@ -10080,9 +10080,9 @@ trabajo pendiente, y conviene no confundirlo. Cada una pasa la puerta a su maner
 
 | | eleccion | como pasa | estado |
 |---|---|---|---|
-| 1 | ORDEN | Sariel se disuelve y reaparece junto a la puerta, y la abre el | **hecho** (2026-08-21) |
+| 1 | ORDEN | Sariel se disuelve y reaparece junto a la puerta, y la abre el | **hecho** (2026-08-20) |
 | 2 | FURIA | con la llave que le arrebatas | **hecho** |
-| 3 | NEGACION | forzar el sello, con montage y VFX propios | **hecho** (2026-08-21) |
+| 3 | NEGACION | forzar el sello, con montage y VFX propios | **hecho** (2026-08-20) |
 
 Las tres salidas de Sariel llegan ya al final. Ninguna deja al jugador plantado.
 
@@ -10115,7 +10115,7 @@ un NavMesh horneado —que el MCP no sabe hornear— o un playtest.
 a (8675, 3750) y el paso de vuelta a (8800, 3500), los dos dentro del hueco medido y a 280 uu
 uno de otro. La Z ya no se escribe a mano: `paso_colocar.py` la mide con `apoyar()`.
 
-## Forzar el sello: la salida de NEGACION (2026-08-21)
+## Forzar el sello: la salida de NEGACION (2026-08-20)
 
 Tercera manera de pasar la puerta de El Claro, la del que nego que la puerta significara nada.
 Miras la puerta, el cartel dice **"Forzar"** en vez de "Sellado", y la E revienta el sello.
@@ -10174,7 +10174,7 @@ bloqueo/desbloqueo del mando estan verificados **en el pin** (el lector omite lo
 ser el valor por defecto, asi que releer el grafo no valia). Pero **que la E encadene montage,
 chispas y cruce hay que verlo jugando**, y para eso hace falta llegar con la Marca NEGACION.
 
-## Sariel se va del Mirador y aparece en la puerta: la salida de ORDEN (2026-08-21)
+## Sariel se va del Mirador y aparece en la puerta: la salida de ORDEN (2026-08-20)
 
 Cierra el nudo. Le pides a Sariel que abra la puerta el, porque es su oficio; se deshace en el
 Mirador, y al coronar la escalinata de El Claro esta alli, y la puerta ya no esta sellada.
@@ -10254,7 +10254,7 @@ rojo de la muerte. Eso ultimo es decision de arte: se cambia en `sariel_aparicio
 Y la **posicion** de Sariel junto a la puerta (rellano, al oeste del hueco, mirando al sur) es
 funcional, para poder probar el beat entero. Colocar personajes es de Angel.
 
-## El tramo de detras de la puerta SI se anda (2026-08-21)
+## El tramo de detras de la puerta SI se anda (2026-08-20)
 
 Quedaba abierto si, una vez cruzada la puerta de El Claro, se podia llegar **a pie** al corredor
 del Santuario. Contestado con `Tools/MCP/probe_camino.py`: **si**.
@@ -10280,7 +10280,7 @@ se cabe de pie y entre las que se pasa.
 Es la respuesta a las tres mediciones que me engañaron midiendo El Claro, todas por fiarme de
 rayos sueltos. Para "¿se puede ir de A a B?", esta sonda; para "¿que hay ahi?", una traza.
 
-## El Mirador se anda, pero no se ve (2026-08-21)
+## El Mirador se anda, pero no se ve (2026-08-20)
 
 Angel pregunto si el Mirador y El Claro estan conectados, "porque si no, como voy a por la llave".
 
@@ -10300,7 +10300,7 @@ llegar al Claro. La ruta es: Jardin → carretera principal → ramal en (−147
 
 O sea que el camino existia y era andable de punta a punta, pero **no habia senda que lo marcara**:
 tierra pelada para salir de la carretera y mas tierra hasta la escalinata. Eso explicaba el "no veo
-camino" -- no lo habia *dibujado*. **Dibujado el 2026-08-21** con `Tools/MCP/mirador_senda.py`: seis
+camino" -- no lo habia *dibujado*. **Dibujado el 2026-08-20** con `Tools/MCP/mirador_senda.py`: seis
 piezas, tres por tramo, que cierran la bifurcacion con la carretera y llevan hasta el pie de
 `Mirador_Escalera_0`.
 
@@ -10316,7 +10316,7 @@ piezas, tres por tramo, que cierran la bifurcacion con la carretera y llevan has
    de 170 que la sonda rechaza. Las unicas dos celdas inalcanzables del mapa fino eran su cuerpo
    y sus alas. **El destino se pone en suelo libre, nunca sobre un actor.**
 
-### Dibujar senda nueva: la receta, y la trampa de la Z (2026-08-21)
+### Dibujar senda nueva: la receta, y la trampa de la Z (2026-08-20)
 
 `mirador_senda.py`. La receta sale de **leer una pieza existente**, no de las notas: todas las de
 los nueve corredores son `SM_MGK_Path_Straight_600` a escala **(1.3, 3, 1)** sin materiales
@@ -10339,7 +10339,7 @@ malas y merece quedar escrito:
 El tramo norte **para en y = −25100**, antes de que el suelo empiece a subir (18 a −24830, 157 a
 −24400): la escalinata ya se encarga del desnivel.
 
-## El Jardin no llegaba a la carretera: 15.659 uu sin nada (2026-08-21)
+## El Jardin no llegaba a la carretera: 15.659 uu sin nada (2026-08-20)
 
 Angel lo marco en rojo sobre la vista cenital. Medido: los 32 actores `Senda_*` del Jardin
 mueren en **(−40380, −60649)** y la carretera `Conexiones/JardinClaro` no empieza hasta
@@ -10380,7 +10380,7 @@ static_mesh...-- asi que los control points y segmentos son trabajo a mano en el
 mezclaria dos lenguajes: los otros 150 tramos son piezas colocadas. Pasar a splines tiene
 sentido como decision para **toda la red de caminos**, no para un hueco suelto.
 
-## Juntar las piedras del Jardin sin taparle el camino (2026-08-21)
+## Juntar las piedras del Jardin sin taparle el camino (2026-08-20)
 
 `jardin_juntar_piedras.py`. Contrae radialmente hacia el centro del submapa los **23 `Ladera_*`**
 de `Fondo/Montanas` --`r_nuevo = r * 0,70`, angulo intacto, para que se conserve que piedra esta
