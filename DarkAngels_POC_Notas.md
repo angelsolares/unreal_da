@@ -10080,11 +10080,11 @@ trabajo pendiente, y conviene no confundirlo. Cada una pasa la puerta a su maner
 
 | | eleccion | como pasa | estado |
 |---|---|---|---|
-| 1 | ORDEN | Sariel se disuelve y reaparece junto a la puerta, y la abre el | por montar |
+| 1 | ORDEN | Sariel se disuelve y reaparece junto a la puerta, y la abre el | **hecho** (2026-08-21) |
 | 2 | FURIA | con la llave que le arrebatas | **hecho** |
 | 3 | NEGACION | forzar el sello, con montage y VFX propios | **hecho** (2026-08-21) |
 
-Solo falta ORDEN: elegirla deja al jugador plantado en El Claro hasta que exista.
+Las tres salidas de Sariel llegan ya al final. Ninguna deja al jugador plantado.
 
 **Y cuando existan, el cerrojo deja de colgar de una Marca.** Lo natural es que las tres
 terminen llamando a `MarcarFlag("CLARO_PUERTA_ABIERTA")` y que `Requisito` pase a ser ese flag.
@@ -10173,3 +10173,83 @@ Compila, las propiedades releidas del actor son las que se escribieron, y los cu
 bloqueo/desbloqueo del mando estan verificados **en el pin** (el lector omite los `false` por
 ser el valor por defecto, asi que releer el grafo no valia). Pero **que la E encadene montage,
 chispas y cruce hay que verlo jugando**, y para eso hace falta llegar con la Marca NEGACION.
+
+## Sariel se va del Mirador y aparece en la puerta: la salida de ORDEN (2026-08-21)
+
+Cierra el nudo. Le pides a Sariel que abra la puerta el, porque es su oficio; se deshace en el
+Mirador, y al coronar la escalinata de El Claro esta alli, y la puerta ya no esta sellada.
+`BP_DA_Aparicion` + `Tools/MCP/sariel_{aparicion,colocar}.py`.
+
+### La receta del finisher no valia tal cual
+
+`ApartarVecinos` de `BP_DA_HUD` saca el `BP_DissolveComponent` **del actor que va a disolver**,
+porque alli son `BP_BaseAI` y lo traen puesto. Sariel no: **`NPC_Sariel` es un
+`SkeletalMeshActor` pelado**, con un unico `SkeletalMeshComponent0` y nada de DCS. Y sus alas
+son **otro actor suelto**, `Sariel_Alas`, ni siquiera un hijo pegado.
+
+**La vuelta: el disolvedor no tiene por que vivir en el actor que se disuelve.**
+`Interface|StartDissolve` toma `self` = el `BP_DissolveComponent` y `Component` = la malla, que
+puede ser de cualquiera. Asi que `BP_DA_Aparicion` trae el suyo propio y se lo aplica a quien le
+digas, **sin tocar los actores del nivel**. La documentacion de DCS confirma la pieza que
+faltaba: el componente *sustituye los materiales* por el suyo, o sea que no le exige nada a la
+malla de origen.
+
+### Tres cosas que hay que saber para reusarlo
+
+- **`Objetivos` es un array de Actor** (`add_object_variable` acepta `container_type: ARRAY`),
+  porque Sariel son tres actores: cuerpo, alas y su caja de dialogo `Interact_Sariel`. Los tres
+  se van juntos; si la caja se quedara seguirias hablando con el aire. Apagarle la colision es
+  justo lo que la quita de en medio: la traza de DCS deja de encontrarla.
+- **El que aparece se disuelve primero.** `StartDissolve` con `Reverse = true` trae de vuelta
+  algo que se fue, asi que para materializar a alguien hay que haberlo desvanecido antes. El
+  `BeginPlay` de las instancias con `Aparecer = true` lo hace nada mas arrancar: ocurre a
+  kilometros del jugador y detras de un anillo de acantilados.
+- **La colision se conmuta al EMPEZAR el disolver, no al acabarlo.** Durante los 2,5 s un Sariel
+  medio transparente que no puedes atravesar es peor que uno que ya no estorba.
+
+### Un `if` y el `Hecho` dentro
+
+`VigilarAparicion` tiene **un solo** `if` y escribe `Hecho` dentro de la rama. Partirlo en dos
+`if` hermanos habria sido el error clasico: un `bind` sobre nodos puros no cachea, el segundo
+reevaluaria `Hecho` --ya cambiado-- y no entraria nunca. La condicion se evalua una vez en el
+Branch y ya no vuelve a mirarse.
+
+Y los nombres llevan apellido a proposito: `VigilarAparicion`, no `Vigilar`. `Vigilar` ya existe
+en `BP_DA_Decision` y en `BP_DA_MarcarFlag`, y con el nombre repetido el lector del DSL le
+cuelga la llamada al blueprint equivocado. Misma pega que obligo a `CruzarPaso`.
+
+### La copia de Sariel se hizo leyendo, y se verifico por bounds
+
+No hay herramienta de duplicar actores entre niveles, asi que el Sariel de la puerta se
+construye leyendo del original —malla, `AnimationMode`, `AnimationData` y escala—: **ningun
+numero esta escrito en el script**. Las alas van con su desfase pasado a **coordenadas locales**
+y rotado con el yaw nuevo; con el desfase del mundo tal cual se habrian puesto de lado.
+
+La comprobacion buena es comparar los **bounds**:
+
+| | original | copia |
+|---|---|---|
+| `NPC_Sariel` | 72 x 53 x 181 | 53 x 72 x 181 |
+| `Sariel_Alas` | 230 x 106 x 228 | 106 x 230 x 228 |
+
+X e Y intercambiados y la altura clavada, que es exactamente lo que hace girar 90 grados. Si la
+altura no cuadrara, la copia estaria mal escalada.
+
+### El flag es lo que abre la puerta
+
+`Aparicion_Sariel_Puerta` marca **`CLARO_PUERTA_ABIERTA`** al materializarse: el mismo flag que
+deja forzar el sello. O sea que ORDEN abre la puerta por la via que ya existia y **no hubo que
+tocar `BP_DA_Paso`**. Sariel aparece y, al aparecer, el cartel del paso pasa a decir "Cruzar".
+
+Con esto **las tres salidas de la decision de Sariel llegan al final**, cada una por su camino.
+
+### Lo que falta mirar con los ojos
+
+Compila, las propiedades releidas de las instancias son las escritas y los bounds cuadran. Pero
+**el disolver no se ha visto correr**: hay que jugarlo eligiendo ORDEN. Dos cosas concretas a
+vigilar ahi: que el `Reverse` materialice bien a alguien que se disolvio en el `BeginPlay`, y el
+**color**, que es oro `(5, 3.2, 1.2, 0)` para no chocar ni con el blanco del finisher ni con el
+rojo de la muerte. Eso ultimo es decision de arte: se cambia en `sariel_aparicion.py`.
+
+Y la **posicion** de Sariel junto a la puerta (rellano, al oeste del hueco, mirando al sur) es
+funcional, para poder probar el beat entero. Colocar personajes es de Angel.
