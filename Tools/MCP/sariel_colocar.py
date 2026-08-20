@@ -51,8 +51,21 @@ MARCA = "ORDEN"
 FLAG_PARTIO = "MIRADOR_SARIEL_PARTIO"
 FLAG_ABIERTA = "CLARO_PUERTA_ABIERTA"
 
-# Rellano de El Claro, coordenadas del submapa. El eje del hueco es x=8245.
-SARIEL_X, SARIEL_Y, SARIEL_YAW = 7980.0, 2900.0, -90.0
+# Al pie de la escalinata de El Claro, al este, en coordenadas del submapa. El
+# eje del hueco es x=8245 y el porton ocupa de 7855 a 8635: aqui esta AL LADO,
+# no delante, asi que no tapa la puerta ni estorba al subir.
+#
+# EL PRIMER SITIO QUE ELEGI ESTABA MAL Y SE VEIA. Lo puse en (7980, 2900), sobre
+# la escalinata, porque una traza decia que ahi habia suelo. Habia suelo y ademas
+# roca: `Claro_Cliff_Out_3` llega hasta x=8408, asi que Sariel quedo metido en el
+# acantilado y solo asomaban las alas. **Que haya suelo no quiere decir que quepa
+# nadie**: hay que comprobar tambien los lados.
+#
+# Y OJO CON MEDIR SOBRE UNA ESCALERA: la prueba de "120 uu libres alrededor" da
+# falso negativo en todos los escalones, porque el siguiente peldano siempre esta
+# cerca y mas alto. Por eso este sitio se eligio en suelo LLANO, midiendo cuatro
+# direcciones a tres alturas, y se confirmo con una captura.
+SARIEL_X, SARIEL_Y, SARIEL_YAW = 8650.0, 2100.0, -90.0
 
 CAMPOS = ["SkeletalMeshAsset", "AnimationMode", "AnimationData"]
 
