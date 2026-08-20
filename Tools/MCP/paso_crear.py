@@ -109,28 +109,80 @@ MENSAJE = """(fn GetInteractionMessage ()
   (return (Utilities|String|StringToName
             (Class|BPDAGameState|VerboPaso
               :self (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState))
-              :Requerido (Variables|Default|GetRequisito)))))
+              :Requerido (Variables|Default|GetRequisito)
+              :Forzar (Variables|Default|GetRequisitoForzar)
+              :Abierta (Variables|Default|GetFlagAbierta)))))
 """
 
-# Dos `if` hermanos y no uno dentro de otro: comprobado que un `if` NO termina
-# el hilo (detras suyo se sigue ejecutando), pero anidar es pedirle mas al DSL
-# de lo necesario.
+# `if` hermanos y no anidados: comprobado que un `if` NO termina el hilo (detras
+# suyo se sigue ejecutando), pero anidar es pedirle mas al DSL de lo necesario.
 #
-# El flag se apunta ANTES de cruzar. Da igual para el resultado, pero asi el
-# unico nodo que podria cortar el hilo (`Cruzar`, con su `IsValid` dentro) queda
-# el ultimo y no se lleva nada por delante si el `Destino` esta sin poner.
+# **EL ORDEN DE LOS TRES NO ES LIBRE.** El de forzar va el ULTIMO porque lleva un
+# `Delay` dentro, y lo que va detras de un `if` se ejecuta por las dos ramas: la
+# falsa sigue de inmediato y la verdadera sale del Delay. Poniendolo al final no
+# hay nada detras que pueda ejecutarse dos veces ni fuera de tiempo.
 #
-# `FlagPaso` vacio no escribe nada. Sin esta guarda un paso sin configurar
-# meteria la cadena vacia en `Flags`, y `Lleva("")` empezaria a decir que si.
+# `FlagPaso` vacio no escribe nada en la rama de cruzar. Sin esa guarda un paso
+# sin configurar meteria la cadena vacia en `Flags`, y `Lleva("")` empezaria a
+# decir que si. En la rama de forzar no hace falta la guarda porque un paso
+# forzable **tiene que** traer su `FlagPaso`; queda dicho aqui y en `paso_colocar`.
+#
+# ### QUE HACE FORZAR
+#
+# Bloquear el mando, lanzar el montage sobre el jugador, reventar el VFX en el
+# centro del hueco, esperar, y entonces marcar `FlagAbierta` y cruzar. A partir
+# de ahi el paso queda abierto para siempre --`FlagAbierta` entra en el
+# GameState-- y el cartel pasa a decir "Cruzar" para todo el mundo.
+#
+# El mando se bloquea con los mismos `SetIgnoreMoveInput` / `SetIgnoreLookInput`
+# que usa el modo inspeccion del padre, y se suelta despues del `Delay`. No se
+# usa la maquina de estados de combate de DCS porque **no hay nodo de cast a sus
+# clases** por esta via.
+#
+# La espera es un `Delay` y no un notify de la animacion a proposito: las marcas
+# dentro de las animaciones las pone Angel, no yo. `EsperaForzar` es el numero
+# que hay que cuadrar con la duracion del montage; si algun dia lleva notify,
+# esto se cambia por el evento y se quita el Delay.
+#
+# El VFX sale en `GetWorldLocation` del `Zona` HEREDADO --el hijo si puede leer
+# las variables del padre, comprobado-- que es justo el centro del hueco de la
+# puerta, a la altura del pecho. Con `GetActorLocation` saldria en el suelo.
 EVENTO = """(event Interaction|EventInteract (Caller)
   (bind _gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))
+  (bind _abierta (and (not (Utilities|String|IsEmpty (Variables|Default|GetFlagAbierta)))
+                      (Class|BPDAGameState|Lleva :self _gs
+                        :Nombre (Variables|Default|GetFlagAbierta))))
   (bind _ok (or (Utilities|String|IsEmpty (Variables|Default|GetRequisito))
-                (Class|BPDAGameState|Lleva :self _gs
-                  :Nombre (Variables|Default|GetRequisito))))
+                (or _abierta
+                    (Class|BPDAGameState|Lleva :self _gs
+                      :Nombre (Variables|Default|GetRequisito)))))
+  (bind _forzar (and (not _ok)
+                     (and (not (Utilities|String|IsEmpty
+                                 (Variables|Default|GetRequisitoForzar)))
+                          (Class|BPDAGameState|Lleva :self _gs
+                            :Nombre (Variables|Default|GetRequisitoForzar)))))
   (if (and _ok (not (Utilities|String|IsEmpty (Variables|Default|GetFlagPaso))))
     (Class|BPDAGameState|MarcarFlag :self _gs
       :Nombre (Variables|Default|GetFlagPaso)))
   (if _ok
+    (CallFunction|CruzarPaso))
+  (if _forzar
+    (Input|SetIgnoreMoveInput :self (Game|GetPlayerController 0) :bNewMoveInput true)
+    (Input|SetIgnoreLookInput :self (Game|GetPlayerController 0) :bNewLookInput true)
+    (Animation|PlayAnimMontage :self (Game|GetPlayerCharacter 0)
+      :AnimMontage (Variables|Default|GetMontageForzar) :InPlayRate 1.0)
+    (Niagara|SpawnSystematLocation
+      :SystemTemplate (Variables|Default|GetVfxForzar)
+      :Location (Transformation|GetWorldLocation (Variables|Default|GetZona)))
+    (Utilities|FlowControl|Delay :Duration (Variables|Default|GetEsperaForzar))
+    (Input|SetIgnoreMoveInput :self (Game|GetPlayerController 0) :bNewMoveInput false)
+    (Input|SetIgnoreLookInput :self (Game|GetPlayerController 0) :bNewLookInput false)
+    (Class|BPDAGameState|MarcarFlag
+      :self (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState))
+      :Nombre (Variables|Default|GetFlagAbierta))
+    (Class|BPDAGameState|MarcarFlag
+      :self (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState))
+      :Nombre (Variables|Default|GetFlagPaso))
     (CallFunction|CruzarPaso)))
 """
 
@@ -204,13 +256,19 @@ def run():
         bt("compile_blueprint", {"blueprint": BP})
         out["renombrada"] = "FlagRequerido -> Requisito"
         ya = str(bt("list_variables", {"blueprint": BP}))
-    for n, t in (("Requisito", "string"), ("FlagPaso", "string")):
+    for n, t in (("Requisito", "string"), ("FlagPaso", "string"),
+                 ("RequisitoForzar", "string"), ("FlagAbierta", "string"),
+                 ("EsperaForzar", "float")):
         if "'" + n + "'" not in ya:
             bt("add_variable", {"blueprint": BP, "name": n, "type_name": t})
-    if "'Destino'" not in ya:
-        bt("add_object_variable", {"blueprint": BP, "name": "Destino",
-                                   "object_class": {"refPath": "/Script/Engine.Actor"}})
-    for n in ("Destino", "Requisito", "FlagPaso"):
+    for n, clase in (("Destino", "/Script/Engine.Actor"),
+                     ("MontageForzar", "/Script/Engine.AnimMontage"),
+                     ("VfxForzar", "/Script/Niagara.NiagaraSystem")):
+        if "'" + n + "'" not in ya:
+            bt("add_object_variable", {"blueprint": BP, "name": n,
+                                       "object_class": {"refPath": clase}})
+    for n in ("Destino", "Requisito", "FlagPaso", "RequisitoForzar", "FlagAbierta",
+              "EsperaForzar", "MontageForzar", "VfxForzar"):
         bt("set_variable_instance_editable",
            {"blueprint": BP, "variable_name": n, "instance_editable": True})
 
@@ -266,6 +324,12 @@ def run():
 
     bt("write_graph_dsl", {"graph": eg, "code": EVENTO})
 
+    bt("compile_blueprint", {"blueprint": BP})
+    # El defecto va DESPUES de compilar: hasta entonces el CDO no tiene la
+    # propiedad recien creada. 1.2 s es lo que dura el amago de `M_UC_HeavyAttack`
+    # hasta el impacto; si se cambia el montage hay que recuadrar este numero.
+    ot("set_properties", {"instance": bt("get_default_object", {"blueprint": BP}),
+                          "values": json.dumps({"EsperaForzar": 1.2})})
     bt("compile_blueprint", {"blueprint": BP})
     ast("save_assets", {"asset_paths": [CARPETA + "/" + NOMBRE]})
 

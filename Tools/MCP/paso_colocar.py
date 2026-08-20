@@ -46,32 +46,30 @@ import json
 # centro de la capsula, o sea el suelo + 96. Es el mismo `+96` que ya se pago
 # colocando los enemigos de El Claro.
 #
-# ### EL CERROJO ES LA MARCA `FURIA`
+# ### DOS DE LAS TRES SALIDAS DE SARIEL YA LLEGAN AQUI
 #
-# `Requisito = "FURIA"` en los dos. `FURIA` es la Marca que anota
-# `Decision_Sariel` en el Mirador cuando eliges la opcion 2, *"Arrebatarle la
-# llave"*. O sea: **la puerta de El Claro se abre con la llave de Sariel**, y
-# hasta entonces el cartel dice "Sellado" y la E no hace nada.
+# La decision del Mirador tiene tres, y la puerta de El Claro es donde se cobran:
 #
-# Se lee del historico de Marcas y no de un flag, y eso evita tener que reescribir
-# `Elegir` en `BP_DA_Decision`. El porque esta en `paso_verbo.py`.
-#
-# **LAS OTRAS DOS SALIDAS ESTAN DISENADAS, PERO SIN MONTAR.** La decision de
-# Sariel tiene tres, y cada una pasa la puerta a su manera:
 #   1 ORDEN     "Que abras tu la puerta. Es tu oficio."       -> Sariel se disuelve
-#      y reaparece junto a la puerta, y la abre el. **Por montar.**
-#   2 FURIA     "Arrebatarle la llave."                       -> abre. **Es esta.**
-#   3 NEGACION  "Nadie deberia tener que custodiar una puerta" -> forzar el sello,
-#      con montage y VFX; su revelacion ya lo anuncia: *"El cerrojo sigue en su
-#      sitio. Tendras que vertelas tu con el."* **Por montar.**
+#      y reaparece junto a la puerta, y la abre el. **POR MONTAR.**
+#   2 FURIA     "Arrebatarle la llave."                       -> `Requisito`, cruza
+#      directo. El cartel dice "Cruzar".
+#   3 NEGACION  "Nadie deberia tener que custodiar una puerta" -> `RequisitoForzar`,
+#      el cartel dice "Forzar" y la E revienta el sello. Su propia revelacion lo
+#      anuncia: *"El cerrojo sigue en su sitio. Tendras que vertelas tu con el."*
 #
-# O sea que hoy solo FURIA llega hasta el final: con 1 o 3 el jugador se queda en
-# El Claro **hasta que se monten esas dos**, no por un agujero de guion.
+# Las dos se leen del **historico de Marcas**, no de flags, y por eso ninguna
+# obligo a tocar `BP_DA_Decision`. El porque esta en `paso_verbo.py`.
 #
-# CUANDO EXISTAN, el sitio natural de este cerrojo deja de ser una Marca: que las
-# tres terminen llamando a `MarcarFlag("CLARO_PUERTA_ABIERTA")` y que `REQUISITO`
-# pase a ser ese flag. No hay que tocar nada mas --`Lleva` ya mira en los dos
-# almacenes--, asi que el cambio es una cadena de aqui.
+# Forzar deja `CLARO_PUERTA_ABIERTA` en el GameState, y a partir de ahi la puerta
+# esta abierta para siempre y en los dos sentidos. **Ese es el sitio definitivo
+# del cerrojo**: cuando ORDEN tambien exista, lo suyo es que las tres terminen
+# marcando ese mismo flag y que `REQUISITO` pase a ser el flag en vez de `FURIA`.
+# No hay que tocar nada mas --`Lleva` ya mira en los dos almacenes--: es cambiar
+# una cadena de aqui.
+#
+# Mientras ORDEN no exista, elegirla deja al jugador plantado en El Claro. No es
+# un agujero de guion, es trabajo pendiente.
 #
 # ### EL FLAG DE IDA SI, EL DE VUELTA NO
 #
@@ -105,21 +103,45 @@ CARPETA = "Claro/Puerta"
 
 EJE = 8245.0          # eje de la abertura norte, medido
 CAPSULA = 96.0        # medio alto de la capsula del jugador
-FLAG_CRUZADA = "CLARO_PUERTA_CRUZADA"
-REQUISITO = "FURIA"   # la Marca de arrebatarle la llave a Sariel
 
-# (etiqueta, x, y, yaw, es_paso, destino, flag)
+FLAG_CRUZADA = "CLARO_PUERTA_CRUZADA"
+FLAG_ABIERTA = "CLARO_PUERTA_ABIERTA"
+REQUISITO = "FURIA"      # la Marca de arrebatarle la llave a Sariel
+FORZAR = "NEGACION"      # la Marca de negar que la puerta signifique nada
+
+# El montage es un placeholder RAZONADO, no el definitivo: `M_UC_HeavyAttack` es
+# el golpe fuerte **desarmado** de DCS, y se eligio precisamente por eso --se ve
+# igual de bien lleves espada envainada o no, que es lo que no se puede dar por
+# supuesto al llegar a esta puerta--. Cambiarlo es un desplegable en la instancia.
+# Si se cambia, hay que recuadrar `EsperaForzar`.
+MONTAGE = ("/Game/DynamicCombatSystem/DCS/Animations/UnarmedCombat/Montages/"
+           "Player/M_UC_HeavyAttack.M_UC_HeavyAttack")
+# Idem el VFX: `NS_EmbersLarge` es del pack gratuito de efectos, y lee como
+# chispas saltando del sello. Es un NiagaraSystem, comprobado con get_asset_class.
+VFX = "/Game/Effects/Embers/NS_EmbersLarge.NS_EmbersLarge"
+
+# (etiqueta, x, y, yaw, es_paso, destino, props)
 # La Z no se escribe: se mide con una traza al colocar. Ver `apoyar`.
+#
+# `FlagAbierta` va en LOS DOS: es la constancia de que la puerta ya esta
+# franqueada, y una vez puesta abre en los dos sentidos, sin importar como se
+# gano. `RequisitoForzar` solo en el de ida: por dentro no se fuerza nada, se
+# vuelve por una puerta que ya esta abierta.
 PIEZAS = [
-    ("Destino_TrasPuerta",       8675.0, 3750.0,  90.0, False, None, ""),
-    ("Destino_AntePuerta",         EJE,  2850.0, -90.0, False, None, ""),
+    ("Destino_TrasPuerta",       8675.0, 3750.0,  90.0, False, None, {}),
+    ("Destino_AntePuerta",         EJE,  2850.0, -90.0, False, None, {}),
     # el de ida: pegado a la cara sur de la puerta, sobre el rellano
-    ("Paso_Puerta_Claro",          EJE,  3020.0,   0.0, True,
-     "Destino_TrasPuerta", FLAG_CRUZADA),
+    ("Paso_Puerta_Claro",          EJE,  3020.0,   0.0, True, "Destino_TrasPuerta",
+     {"Requisito": REQUISITO, "FlagPaso": FLAG_CRUZADA, "FlagAbierta": FLAG_ABIERTA,
+      "RequisitoForzar": FORZAR, "MontageForzar": MONTAGE, "VfxForzar": VFX}),
     # el de vuelta: en el hueco del este, a 280 uu de donde aterrizas
-    ("Paso_Puerta_Claro_Vuelta", 8800.0, 3500.0,   0.0, True,
-     "Destino_AntePuerta", ""),
+    ("Paso_Puerta_Claro_Vuelta", 8800.0, 3500.0,   0.0, True, "Destino_AntePuerta",
+     {"Requisito": REQUISITO, "FlagPaso": "", "FlagAbierta": FLAG_ABIERTA,
+      "RequisitoForzar": ""}),
 ]
+
+# Cuales de esas propiedades son referencias a asset y no cadenas sueltas.
+ASSETS = ("MontageForzar", "VfxForzar")
 
 
 def call(t, a):
@@ -176,7 +198,7 @@ def run():
 
     puestos = {}
     out["suelo"] = {}
-    for etiqueta, x, y, yaw, es_paso, destino, flag in PIEZAS:
+    for etiqueta, x, y, yaw, es_paso, destino, props in PIEZAS:
         # Un paso se apoya en el suelo; un destino va al centro de la capsula del
         # jugador, o sea suelo + 96. Ese `+96` es el mismo que se pago colocando
         # los enemigos de El Claro: el origen de un Character son las caderas.
@@ -203,24 +225,29 @@ def run():
 
         if es_paso:
             # Un campo por llamada: el setter de propiedades aplica la primera y
-            # con la referencia de objeto conviene no mezclarla con cadenas.
+            # con las referencias conviene no mezclarlas con cadenas.
             ot("set_properties", {"instance": a, "values": json.dumps(
                 {"Destino": {"refPath": puestos[destino]["refPath"]}})})
-            ot("set_properties", {"instance": a, "values": json.dumps({"FlagPaso": flag})})
-            ot("set_properties", {"instance": a, "values": json.dumps({"Requisito": REQUISITO})})
+            for campo in sorted(props):
+                valor = props[campo]
+                if campo in ASSETS:
+                    valor = {"refPath": valor}
+                ot("set_properties", {"instance": a,
+                                      "values": json.dumps({campo: valor})})
 
     # --- releer del actor, no del script ---
-    for etiqueta, x, y, yaw, es_paso, destino, flag in PIEZAS:
+    for etiqueta, x, y, yaw, es_paso, destino, props in PIEZAS:
         a = puestos[etiqueta]
         t = at("get_actor_transform", {"actor": a})
         ficha = {"loc": [round(t["location"][k]) for k in ("x", "y", "z")],
                  "yaw": round(t["rotation"]["yaw"], 1)}
         if es_paso:
-            p = json.loads(ot("get_properties", {"instance": a, "properties":
-                              ["Destino", "FlagPaso", "Requisito"]}))
-            ficha["Destino"] = str(p["Destino"]).split("/")[-1]
-            ficha["FlagPaso"] = p["FlagPaso"]
-            ficha["Requisito"] = p["Requisito"]
+            campos = ["Destino", "FlagPaso", "Requisito", "RequisitoForzar",
+                      "FlagAbierta", "EsperaForzar", "MontageForzar", "VfxForzar"]
+            p = json.loads(ot("get_properties", {"instance": a, "properties": campos}))
+            for campo in campos:
+                v = p[campo]
+                ficha[campo] = str(v).split("/")[-1] if campo in ASSETS or campo == "Destino" else v
             b = at("get_actor_bounds", {"actor": a, "only_colliding": False})
             ficha["caja"] = {"min": [round(b["min"][k]) for k in ("x", "y", "z")],
                              "max": [round(b["max"][k]) for k in ("x", "y", "z")]}

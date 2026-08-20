@@ -12,7 +12,7 @@ import json
 # junto a los flags. Es la misma razon por la que `Resumen` e `Historial` estan
 # aqui y no en el HUD.
 #
-# Y HAY UN SEGUNDO MOTIVO, este de diseno: asi las dos palabras de todos los
+# Y HAY UN SEGUNDO MOTIVO, este de diseno: asi las TRES palabras de todos los
 # pasos de Malkuth se cambian en un sitio. Si cada instancia llevara su cadena,
 # renombrar "Sellado" seria repasar el mapa entero.
 #
@@ -47,6 +47,7 @@ BPP = "/Game/DarkAngels/Blueprints/World/BP_DA_GameState.BP_DA_GameState"
 BP = {"refPath": BPP}
 
 ABIERTO = "Cruzar"
+FORZAR  = "Forzar"
 SELLADO = "Sellado"
 
 LLEVA = '''(fn Lleva (Nombre)
@@ -56,19 +57,41 @@ LLEVA = '''(fn Lleva (Nombre)
                 :TargetArray (Variables|Default|GetMarcaNombre) :ItemToFind Nombre))))
 '''
 
-VERBO = '''(fn VerboPaso (Requerido)
-  (return (select (or (Utilities|String|IsEmpty Requerido)
+# Tres estados, no dos. `Abierta` es el flag que dice que este paso YA esta
+# franqueado --lo pone forzarlo--, y por eso se mira antes que nada: una vez
+# abierto da igual como llegaste.
+#
+# Todo va EN LINEA, sin llamar a `Lleva`, aunque queden seis `ContainsItem`
+# repetidos. No es descuido: una llamada a otra funcion PROPIA no devuelve valor
+# por esta via, y aqui el resultado tiene que llegar al `return`.
+VERBO = '''(fn VerboPaso (Requerido Forzar Abierta)
+  (bind _abierta (and (not (Utilities|String|IsEmpty Abierta))
                       (or (Utilities|Array|ContainsItem
-                            :TargetArray (Variables|Default|GetFlags) :ItemToFind Requerido)
+                            :TargetArray (Variables|Default|GetFlags) :ItemToFind Abierta)
                           (Utilities|Array|ContainsItem
                             :TargetArray (Variables|Default|GetMarcaNombre)
-                            :ItemToFind Requerido)))
-            "%s" "%s")))
-''' % (ABIERTO, SELLADO)
+                            :ItemToFind Abierta))))
+  (bind _puede (or (Utilities|String|IsEmpty Requerido)
+                   (or _abierta
+                       (or (Utilities|Array|ContainsItem
+                             :TargetArray (Variables|Default|GetFlags) :ItemToFind Requerido)
+                           (Utilities|Array|ContainsItem
+                             :TargetArray (Variables|Default|GetMarcaNombre)
+                             :ItemToFind Requerido)))))
+  (bind _forzar (and (not _puede)
+                     (and (not (Utilities|String|IsEmpty Forzar))
+                          (or (Utilities|Array|ContainsItem
+                                :TargetArray (Variables|Default|GetFlags) :ItemToFind Forzar)
+                              (Utilities|Array|ContainsItem
+                                :TargetArray (Variables|Default|GetMarcaNombre)
+                                :ItemToFind Forzar)))))
+  (return (select _puede "%s" (select _forzar "%s" "%s"))))
+''' % (ABIERTO, FORZAR, SELLADO)
 
 FUNCIONES = [
     ("Lleva", [("Nombre", "string", True), ("Tiene", "bool", False)], LLEVA),
-    ("VerboPaso", [("Requerido", "string", True),
+    ("VerboPaso", [("Requerido", "string", True), ("Forzar", "string", True),
+                   ("Abierta", "string", True),
                    ("Verbo", "string", False)], VERBO),
 ]
 

@@ -10082,9 +10082,9 @@ trabajo pendiente, y conviene no confundirlo. Cada una pasa la puerta a su maner
 |---|---|---|---|
 | 1 | ORDEN | Sariel se disuelve y reaparece junto a la puerta, y la abre el | por montar |
 | 2 | FURIA | con la llave que le arrebatas | **hecho** |
-| 3 | NEGACION | forzar el sello, con montage y VFX propios | por montar |
+| 3 | NEGACION | forzar el sello, con montage y VFX propios | **hecho** (2026-08-21) |
 
-Hoy solo FURIA llega al final: con 1 o 3 el jugador se queda en El Claro hasta que existan.
+Solo falta ORDEN: elegirla deja al jugador plantado en El Claro hasta que exista.
 
 **Y cuando existan, el cerrojo deja de colgar de una Marca.** Lo natural es que las tres
 terminen llamando a `MarcarFlag("CLARO_PUERTA_ABIERTA")` y que `Requisito` pase a ser ese flag.
@@ -10114,3 +10114,62 @@ un NavMesh horneado —que el MCP no sabe hornear— o un playtest.
 `Destino_TrasPuerta` estaba en el eje a y=3800, o sea **detras de la pared de roca**. Recolocado
 a (8675, 3750) y el paso de vuelta a (8800, 3500), los dos dentro del hueco medido y a 280 uu
 uno de otro. La Z ya no se escribe a mano: `paso_colocar.py` la mide con `apoyar()`.
+
+## Forzar el sello: la salida de NEGACION (2026-08-21)
+
+Tercera manera de pasar la puerta de El Claro, la del que nego que la puerta significara nada.
+Miras la puerta, el cartel dice **"Forzar"** en vez de "Sellado", y la E revienta el sello.
+
+### Como quedo repartido
+
+`BP_DA_Paso` gana cinco propiedades, todas opcionales: `RequisitoForzar` (que Marca o flag
+habilita forzar), `FlagAbierta` (lo que queda apuntado al conseguirlo), `MontageForzar`,
+`VfxForzar` y `EsperaForzar`. Un paso sin nada de eso se comporta como antes.
+
+`VerboPaso` del GameState pasa a tener **tres estados** y tres parametros
+(`Requerido`, `Forzar`, `Abierta`): *Cruzar* / *Forzar* / *Sellado*. Todo en linea, con seis
+`ContainsItem` repetidos, porque una llamada a otra funcion **propia** no devuelve valor por
+esta via y el resultado tiene que llegar al `return`.
+
+**`FlagAbierta` es el sitio definitivo del cerrojo.** Forzar deja `CLARO_PUERTA_ABIERTA` en el
+GameState y desde ese momento la puerta esta abierta para siempre y en los dos sentidos, sin
+importar como se gano. Cuando ORDEN exista, lo suyo es que las tres salidas marquen ese mismo
+flag y que `Requisito` pase de `FURIA` al flag: es cambiar una cadena en `paso_colocar.py`.
+
+### Lo que hace la E al forzar
+
+Bloquear el mando (`SetIgnoreMoveInput` / `SetIgnoreLookInput`, los mismos que usa el modo
+inspeccion del padre), lanzar el montage sobre el jugador, reventar el Niagara en el centro del
+hueco, esperar, soltar el mando, marcar los flags y cruzar.
+
+Tres decisiones que no son arbitrarias:
+
+- **La espera es un `Delay`, no un notify de la animacion.** Las marcas dentro de las
+  animaciones las pone Angel; `EsperaForzar` (1,2 s) es el numero que hay que cuadrar con el
+  montage. Si algun dia lleva notify, se cambia el Delay por el evento.
+- **El VFX sale de `GetWorldLocation` del `Zona` heredado**, que es el centro del hueco a la
+  altura del pecho. Con `GetActorLocation` saldria en el suelo. Comprobado de paso que **un
+  hijo SI puede leer las variables del padre por DSL** (`Variables|Default|GetZona` resuelve);
+  lo que no se puede es leer las de un blueprint ajeno.
+- **El `if` de forzar va el ULTIMO del evento**, porque lleva un `Delay` dentro y lo que va
+  detras de un `if` se ejecuta por las dos ramas: la falsa sigue de inmediato y la verdadera
+  sale del Delay. Al final no hay nada detras que pueda dispararse fuera de tiempo.
+
+### Los assets son placeholders razonados
+
+- `M_UC_HeavyAttack` (`.../UnarmedCombat/Montages/Player/`) es el golpe fuerte **desarmado** de
+  DCS. Se eligio por eso: se ve igual de bien con la espada envainada o sin ella, y al llegar a
+  esta puerta no se puede dar por supuesto que la lleve fuera. Cambiarlo es un desplegable en la
+  instancia, pero obliga a recuadrar `EsperaForzar`.
+- `NS_EmbersLarge` (`/Game/Effects/Embers/`) es del pack gratuito; lee como chispas saltando
+  del sello. Comprobado con `get_asset_class` que es un `NiagaraSystem` de verdad.
+
+Los dos son decision de arte, o sea de Angel: aqui estan puestos para que la mecanica se pueda
+probar, no como eleccion final.
+
+### Sin probar en juego
+
+Compila, las propiedades releidas del actor son las que se escribieron, y los cuatro pines de
+bloqueo/desbloqueo del mando estan verificados **en el pin** (el lector omite los `false` por
+ser el valor por defecto, asi que releer el grafo no valia). Pero **que la E encadene montage,
+chispas y cruce hay que verlo jugando**, y para eso hace falta llegar con la Marca NEGACION.
