@@ -10298,10 +10298,11 @@ llegar al Claro. La ruta es: Jardin → carretera principal → ramal en (−147
 | carretera `JardinClaro` (−13416, −51677) → arranque del ramal | ~2.100 uu | **si**, 13 celdas planas a z=−40 |
 | final del ramal (−16000, −27000) → plataforma del Mirador | ~3.700 uu | **si**, por `Mirador_Escalera_0/1/2` |
 
-O sea que **el camino existe y es andable de punta a punta**, pero **no hay senda que lo marque**:
-son 2.100 uu de tierra pelada para salir de la carretera y otros 3.700 hasta la escalinata. El
-jugador no tiene ninguna pista de que ahi se gira. Eso explica el "no veo camino": no lo hay
-*dibujado*. Poner piezas de senda en esos dos tramos es trabajo de nivel pendiente.
+O sea que el camino existia y era andable de punta a punta, pero **no habia senda que lo marcara**:
+tierra pelada para salir de la carretera y mas tierra hasta la escalinata. Eso explicaba el "no veo
+camino" -- no lo habia *dibujado*. **Dibujado el 2026-08-21** con `Tools/MCP/mirador_senda.py`: seis
+piezas, tres por tramo, que cierran la bifurcacion con la carretera y llevan hasta el pie de
+`Mirador_Escalera_0`.
 
 ### Y dos falsos negativos de `probe_camino` que conviene conocer
 
@@ -10314,3 +10315,26 @@ jugador no tiene ninguna pista de que ahi se gira. Eso explica el "no veo camino
    suelo choca **con el propio Sariel** y devuelve 492 en vez de los ~322 del suelo: un escalon
    de 170 que la sonda rechaza. Las unicas dos celdas inalcanzables del mapa fino eran su cuerpo
    y sus alas. **El destino se pone en suelo libre, nunca sobre un actor.**
+
+### Dibujar senda nueva: la receta, y la trampa de la Z (2026-08-21)
+
+`mirador_senda.py`. La receta sale de **leer una pieza existente**, no de las notas: todas las de
+los nueve corredores son `SM_MGK_Path_Straight_600` a escala **(1.3, 3, 1)** sin materiales
+sobreescritos, y el yaw sigue una regla que no es obvia — **yaw = atan2(dy,dx) + 90**, porque la
+malla es larga en su **Y local** (por eso el 3 va en Y). Comprobado en los dos corredores.
+
+**Y la Z es fija a −38**, como las otras 139. Intentar que siguiera el terreno costo dos pasadas
+malas y merece quedar escrito:
+
+> **Trazar el suelo EN la ruta no mide el terreno: mide lo que haya encima.** En los extremos la
+> traza chocaba con las piezas de senda que ya estaban (su superficie esta a −26, no a −38) y en
+> el norte con la escalinata del promontorio. Peor: como cada pieza mide 1800 y van cada 1100,
+> **cada una tapaba a la siguiente**, y salieron las seis escalonadas, +24 uu cada una, flotando
+> sobre la anterior.
+>
+> Dos reglas. **Para medir terreno hay que apartarse de lo construido**: trazas desplazadas 700 uu
+> a los lados dieron −40 plano en los dos huecos, que era la respuesta. Y **si se coloca en serie,
+> medir todo primero o borrar antes de medir**, nunca medir-colocar-medir.
+
+El tramo norte **para en y = −25100**, antes de que el suelo empiece a subir (18 a −24830, 157 a
+−24400): la escalinata ya se encarga del desnivel.
