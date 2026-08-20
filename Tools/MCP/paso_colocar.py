@@ -46,30 +46,27 @@ import json
 # centro de la capsula, o sea el suelo + 96. Es el mismo `+96` que ya se pago
 # colocando los enemigos de El Claro.
 #
-# ### DOS DE LAS TRES SALIDAS DE SARIEL YA LLEGAN AQUI
+# ### LAS TRES SALIDAS DE SARIEL SE COBRAN AQUI
 #
-# La decision del Mirador tiene tres, y la puerta de El Claro es donde se cobran:
+# La decision del Mirador tiene tres, y esta puerta es donde cada una paga:
 #
-#   1 ORDEN     "Que abras tu la puerta. Es tu oficio."       -> Sariel se disuelve
-#      y reaparece junto a la puerta, y la abre el. **POR MONTAR.**
+#   1 ORDEN     "Que abras tu la puerta. Es tu oficio."       -> Sariel se deshace
+#      en el Mirador y aparece junto a esta puerta marcando `CLARO_PUERTA_ABIERTA`.
+#      Lo monta `sariel_aparicion.py`; aqui no hay nada suyo.
 #   2 FURIA     "Arrebatarle la llave."                       -> `Requisito`, cruza
 #      directo. El cartel dice "Cruzar".
 #   3 NEGACION  "Nadie deberia tener que custodiar una puerta" -> `RequisitoForzar`,
 #      el cartel dice "Forzar" y la E revienta el sello. Su propia revelacion lo
 #      anuncia: *"El cerrojo sigue en su sitio. Tendras que vertelas tu con el."*
 #
-# Las dos se leen del **historico de Marcas**, no de flags, y por eso ninguna
+# Las tres se leen del **historico de Marcas**, no de flags, y por eso ninguna
 # obligo a tocar `BP_DA_Decision`. El porque esta en `paso_verbo.py`.
 #
-# Forzar deja `CLARO_PUERTA_ABIERTA` en el GameState, y a partir de ahi la puerta
-# esta abierta para siempre y en los dos sentidos. **Ese es el sitio definitivo
-# del cerrojo**: cuando ORDEN tambien exista, lo suyo es que las tres terminen
-# marcando ese mismo flag y que `REQUISITO` pase a ser el flag en vez de `FURIA`.
-# No hay que tocar nada mas --`Lleva` ya mira en los dos almacenes--: es cambiar
-# una cadena de aqui.
-#
-# Mientras ORDEN no exista, elegirla deja al jugador plantado en El Claro. No es
-# un agujero de guion, es trabajo pendiente.
+# `CLARO_PUERTA_ABIERTA` es el sitio definitivo del cerrojo: lo dejan puesto tanto
+# forzar como la llegada de Sariel, y desde entonces la puerta esta abierta para
+# siempre y en los dos sentidos. Si algun dia se quiere que TODO cuelgue de ahi,
+# basta con que FURIA lo marque tambien y que `REQUISITO` pase a ser el flag en vez
+# de `FURIA`: `Lleva` ya mira en los dos almacenes, o sea una cadena de aqui.
 #
 # ### EL FLAG DE IDA SI, EL DE VUELTA NO
 #
