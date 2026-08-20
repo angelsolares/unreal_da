@@ -56,15 +56,22 @@ import json
 # Se lee del historico de Marcas y no de un flag, y eso evita tener que reescribir
 # `Elegir` en `BP_DA_Decision`. El porque esta en `paso_verbo.py`.
 #
-# **OJO, DECISION DE GUION PENDIENTE.** La decision de Sariel tiene tres salidas
-# y solo una abre esto:
-#   1 ORDEN     "Que abras tu la puerta. Es tu oficio."      -> NO abre (¿deberia?)
-#   2 FURIA     "Arrebatarle la llave."                      -> abre
-#   3 NEGACION  "Nadie deberia tener que custodiar una puerta"-> NO abre, y su
-#      propia revelacion lo dice: *"El cerrojo sigue en su sitio. Tendras que
-#      vertelas tu con el."*  Esa otra manera todavia no existe.
-# Tal cual esta, elegir 1 o 3 deja al jugador plantado en El Claro. Cambiarlo es
-# editar `REQUISITO` aqui, o dar a las otras dos su propia via.
+# **LAS OTRAS DOS SALIDAS ESTAN DISENADAS, PERO SIN MONTAR.** La decision de
+# Sariel tiene tres, y cada una pasa la puerta a su manera:
+#   1 ORDEN     "Que abras tu la puerta. Es tu oficio."       -> Sariel se disuelve
+#      y reaparece junto a la puerta, y la abre el. **Por montar.**
+#   2 FURIA     "Arrebatarle la llave."                       -> abre. **Es esta.**
+#   3 NEGACION  "Nadie deberia tener que custodiar una puerta" -> forzar el sello,
+#      con montage y VFX; su revelacion ya lo anuncia: *"El cerrojo sigue en su
+#      sitio. Tendras que vertelas tu con el."* **Por montar.**
+#
+# O sea que hoy solo FURIA llega hasta el final: con 1 o 3 el jugador se queda en
+# El Claro **hasta que se monten esas dos**, no por un agujero de guion.
+#
+# CUANDO EXISTAN, el sitio natural de este cerrojo deja de ser una Marca: que las
+# tres terminen llamando a `MarcarFlag("CLARO_PUERTA_ABIERTA")` y que `REQUISITO`
+# pase a ser ese flag. No hay que tocar nada mas --`Lleva` ya mira en los dos
+# almacenes--, asi que el cambio es una cadena de aqui.
 #
 # ### EL FLAG DE IDA SI, EL DE VUELTA NO
 #

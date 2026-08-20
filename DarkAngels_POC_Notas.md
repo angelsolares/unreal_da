@@ -10075,10 +10075,21 @@ y la rama que mete la llave en la mochila—, asi que regenerarlo habria sido un
 silenciosa. Regla general: antes de relanzar un script de generacion sobre un asset que otra
 sesion pudo tocar, **comparar el grafo vivo con lo que el script produce**.
 
-**Sigue pendiente de guion:** las otras dos salidas de Sariel no abren nada. La 3 lo dice ella
-misma —*"El cerrojo sigue en su sitio. Tendras que vertelas tu con el"*— pero esa otra manera
-no existe todavia, y la 1 (*"Que abras tu la puerta"*) tampoco. Tal cual, elegir 1 o 3 deja al
-jugador plantado en El Claro.
+**Las otras dos salidas estan disenadas, pero sin montar** — no es un agujero de guion, es
+trabajo pendiente, y conviene no confundirlo. Cada una pasa la puerta a su manera:
+
+| | eleccion | como pasa | estado |
+|---|---|---|---|
+| 1 | ORDEN | Sariel se disuelve y reaparece junto a la puerta, y la abre el | por montar |
+| 2 | FURIA | con la llave que le arrebatas | **hecho** |
+| 3 | NEGACION | forzar el sello, con montage y VFX propios | por montar |
+
+Hoy solo FURIA llega al final: con 1 o 3 el jugador se queda en El Claro hasta que existan.
+
+**Y cuando existan, el cerrojo deja de colgar de una Marca.** Lo natural es que las tres
+terminen llamando a `MarcarFlag("CLARO_PUERTA_ABIERTA")` y que `Requisito` pase a ser ese flag.
+No hay que tocar nada mas: `Lleva` ya mira en los dos almacenes, asi que es cambiar una cadena
+en `paso_colocar.py`.
 
 ### El metodo: por que las trazas mintieron dos veces
 
