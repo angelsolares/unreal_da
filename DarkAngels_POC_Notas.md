@@ -10338,3 +10338,44 @@ malas y merece quedar escrito:
 
 El tramo norte **para en y = −25100**, antes de que el suelo empiece a subir (18 a −24830, 157 a
 −24400): la escalinata ya se encarga del desnivel.
+
+## El Jardin no llegaba a la carretera: 15.659 uu sin nada (2026-08-21)
+
+Angel lo marco en rojo sobre la vista cenital. Medido: los 32 actores `Senda_*` del Jardin
+mueren en **(−40380, −60649)** y la carretera `Conexiones/JardinClaro` no empieza hasta
+**`Conn_JC_Path_0`, en (−24776, −59333)**. Terreno **plano a −40** de punta a punta, comprobado
+en 13 puntos con trazas desplazadas 900 uu a los dos lados. Cerrado con `senda_jardin_claro.py`:
+once piezas, `Conn_JC_Enlace_0..10`.
+
+### La senda del Jardin y la carretera NO son la misma receta
+
+Misma malla (`SM_MGK_Path_Straight_600`), pero:
+
+| | escala | z | yaw |
+|---|---|---|---|
+| `Senda_*` (Jardin) | (1.15, 1.02, 1) | **6** | uno por pieza, curva |
+| `Conn_*` (carretera) | (1.3, 3, 1) | **−38** | uno por tramo, recto |
+
+Las piezas del Jardin miden 612 en vez de 1800: por eso pueden curvar. Y **estan 44 uu mas
+altas**. Con una z fija el enlace dejaba un escalon de 44 justo en la union — por debajo de los
+45 que sube un Character, o sea transitable, pero un peldaño feo en mitad del camino. **La z se
+interpola** de 6 a −38 a lo largo del tramo: 0,28% de pendiente, invisible, y sin escalon en
+ninguno de los dos extremos.
+
+**Regla:** antes de enlazar dos caminos, leer la transform de la ultima pieza de CADA lado. Que
+compartan malla no quiere decir que compartan cota ni escala.
+
+### Lo que este tramo no lleva: setos
+
+`JardinClaro` tiene `Conn_JC_HedgeL_*` y `Conn_JC_HedgeR_*` a los lados. El enlace va **solo con
+la senda**, porque el desfase de los setos existentes no sale de una formula: `HedgeL_0` cae a
+(−386, +84) del centro de la calzada y `HedgeR_0` a (−83, −387). Estan puestos a ojo, y
+reproducirlo a ciegas quedaria peor que no ponerlos. Segunda pasada si se quieren.
+
+### Y sobre dibujarlos con splines de landscape
+
+Se verian mejor: el camino deformaria el terreno en vez de flotar sobre el. Pero **el MCP no
+expone ningun toolset de landscape** --hay actor, asset, blueprint, material, object, scene,
+static_mesh...-- asi que los control points y segmentos son trabajo a mano en el editor. Y
+mezclaria dos lenguajes: los otros 150 tramos son piezas colocadas. Pasar a splines tiene
+sentido como decision para **toda la red de caminos**, no para un hueco suelto.
