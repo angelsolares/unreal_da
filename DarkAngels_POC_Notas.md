@@ -9940,3 +9940,86 @@ self`, asi que el primer argumento posicional cae en el color y no en el objetiv
 sobre un enemigo **falla siempre**, y como estaba dentro de un `if`, la rama entera se saltaba en
 silencio. Y su componente de disolver no se llama `Dissolve` como en el jugador, sino
 **`DissolveEffect`**. Antes de dar por hecho el arbol de clases de DCS, mirarlo con `get_parent`.
+
+## `BP_DA_Paso`: cruzar pulsando, no andando (2026-08-20)
+
+`BP_DA_Umbral` teletransporta al jugador **al solaparse** con una caja. Este es su gemelo
+disparado por la **interaccion de DCS**: miras el paso, sale un cartel, pulsas E y apareces al
+otro lado. Scripts: `Tools/MCP/paso_{verbo,crear,colocar}.py`.
+
+### Es hijo de `BP_DA_Interactuable`, y eso resuelve la interfaz
+
+DCS busca interactuables con una traza de capsula contra el **tipo de objeto** `Interactable`
+(`ECC_GameTraceChannel2`) y les pide el cartel por `I_IsInteractable`. **El MCP no sabe declarar
+una interfaz** —`interaccion_crear_bp.py` termina con un "PENDIENTE a mano"—, pero **un hijo la
+hereda ya puesta**, y con ella el `Zona` bien configurado. Cero pasos manuales.
+
+Comprobado en el hijo antes de construir: `list_events` da `Interact` con
+`bIsImplemented: False` y `list_functions` da `GetInteractionMessage` igual, o sea que las dos
+se pueden sobreescribir. Y **`add_function_graph` con el nombre de una funcion heredada no crea
+una funcion nueva: crea la sobreescritura**, con su `ReturnNode` y su pin `Message` (de tipo
+**Name**, no string: de ahi el `StringToName`) ya puestos.
+
+Verificado ademas contra el motor, no contra el grafo: `find_actors` con
+`collision_channels: ["ObjectTypeQuery7"]` —que es `Interactable`, el primer canal de objeto
+propio, detras de los seis del motor— sobre la caja de la puerta devuelve **exactamente los dos
+pasos y nada mas**. Es la misma familia de consulta que usa DCS.
+
+### El modo inspeccion no sobrevive, y no hay eleccion
+
+Al sobreescribir el evento `Interact` en el hijo, el conmutador de camara del padre (encuadrar,
+esconder al jugador, bloquearle el mando, salir con la misma tecla) **no se ejecuta**. Y no se
+puede conservar: `find_node_types` con filtro `"Parent:"` devuelve **vacio**.
+
+**Pero los nodos `Parent:` SI existen**, y esto corrige la nota vieja. Al crear el hijo, Unreal
+le metio solas las sobreescrituras de `BeginPlay`, `Tick` y `ActorBeginOverlap` con su
+`|Parent:BeginPlay`, `|Parent:Tick` y `Collision|Parent:ActorBeginOverlap` ya cableados. O sea:
+**el DSL no sabe crearlos, pero el editor los pone al nacer el hijo**. Se borran en el script —
+el padre las tiene vacias y una de ellas es un Tick por actor.
+
+Tampoco convendria conservarlo: un paso es algo que cruzas, no algo que miras, y el cruce
+ocurriria con el pawn escondido y el mando bloqueado. **Si algun dia se quiere la ceremonia**,
+no hay que tocar el paso: al lado se pone un `BP_DA_MarcarFlag`, que ya vigila el flanco de
+`Inspeccionando` de un interactuable sin modificarlo.
+
+### El estado y el verbo salen del GameState
+
+No hay ningun `Activo` como el del umbral. El paso solo guarda **nombres** de flags:
+`FlagRequerido` (vacio = abierto) y `FlagPaso` (vacio = no apunta nada, guardado a proposito
+para que un paso sin configurar no meta la cadena vacia en `Flags`). El cartel lo devuelve
+`VerboPaso(Requerido)`, funcion **nueva de `BP_DA_GameState`**, que dice `"Cruzar"` o
+`"Sellado"`. Vive alli por lo de siempre —el DSL no sabe leer una variable de otro blueprint,
+pero si llamar a una funcion suya— y de paso las dos palabras de todos los pasos de Malkuth
+estan en un sitio.
+
+### El lector del DSL puede atribuirle la funcion al blueprint equivocado
+
+La funcion se llama `CruzarPaso` y no `Cruzar` por esto. Llamandola `Cruzar` el grafo **funciona**
+—el `type_id` del nodo es `|Cruzar`, categoria vacia, o sea llamada propia— pero
+`read_graph_dsl` la imprime como **`(Class|BPDAUmbral|Cruzar)`**, porque resuelve el nombre por
+todo el proyecto y `BP_DA_Umbral` tiene una que se llama igual. Como aqui todo se comprueba
+releyendo el grafo, el diagnostico salia falso: parecia el fallo real de
+`Pawn|GetControlRotation`, y no lo era. **La comprobacion buena es el `type_id` del nodo, no el
+texto**; y con un nombre que no tenga nadie mas, el texto tampoco miente.
+
+### La puerta de El Claro, medida
+
+Coordenadas **del submapa** `L_DA_Malkuth_Claro_Sub`; `LI_04_ElClaro` suma
+**(36000, −12000, −2)** sin rotacion ni escala.
+
+- `Claro_Puerta_Bronce` (8245, 3090) **tapa de verdad**: traza horizontal por el eje a z=400 y
+  a z=700 choca en **y = 3080**. El hueco norte esta sellado, asi que el paso no es un atajo.
+- Rellano sur: la traza da **z ≈ 182**, no los 232 de los bounds. Los bounds son la caja del
+  mesh entero; la traza es la superficie que se pisa.
+- Detras de la puerta hay un bolsillo entre `Claro_GateRock_L` y `_R` con suelo plano a
+  **z = −40** desde y=3400 hasta la roca del fondo en y≈5600.
+
+**Van dos pasos, no uno.** El bolsillo no tiene salida —la puerta lo cierra y el escalon de
+220 uu del rellano no se sube—, asi que con uno solo cruzar seria quedarse encerrado. El de ida
+(`Paso_Puerta_Claro`, flag `CLARO_PUERTA_CRUZADA`) y el de vuelta
+(`Paso_Puerta_Claro_Vuelta`, sin flag) con sus dos `TargetPoint`.
+
+**La rotacion al llegar se lee del `Destino`**, unica desviacion respecto al umbral. Alli el yaw
+sale de un `FindLookAtRotation` hacia el umbral, o sea que apareces mirando por donde has
+venido: bien en una sala de espejos, mal cruzando una puerta. La **Z de un destino no es la del
+suelo**: el origen de un Character es el centro de la capsula, suelo + 96.
