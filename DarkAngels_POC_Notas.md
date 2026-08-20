@@ -10279,3 +10279,38 @@ se cabe de pie y entre las que se pasa.
 
 Es la respuesta a las tres mediciones que me engañaron midiendo El Claro, todas por fiarme de
 rayos sueltos. Para "¿se puede ir de A a B?", esta sonda; para "¿que hay ahi?", una traza.
+
+## El Mirador se anda, pero no se ve (2026-08-21)
+
+Angel pregunto si el Mirador y El Claro estan conectados, "porque si no, como voy a por la llave".
+
+**No lo estan, y no tienen que estarlo.** El Mirador cuelga del tramo Jardin→Claro, **antes** de
+llegar al Claro. La ruta es: Jardin → carretera principal → ramal en (−14700, −50000) → Mirador
+→ volver → seguir al Claro. Desde El Claro no se va al Mirador: se vuelve por donde se vino.
+
+### Los dos huecos del ramal, medidos
+
+`Conexiones/JardinMirador` son 12 piezas de senda de (−14700, −50000) a (−16000, −27000), y
+**no tocan nada por ninguno de sus dos extremos**:
+
+| hueco | distancia | ¿se anda? |
+|---|---|---|
+| carretera `JardinClaro` (−13416, −51677) → arranque del ramal | ~2.100 uu | **si**, 13 celdas planas a z=−40 |
+| final del ramal (−16000, −27000) → plataforma del Mirador | ~3.700 uu | **si**, por `Mirador_Escalera_0/1/2` |
+
+O sea que **el camino existe y es andable de punta a punta**, pero **no hay senda que lo marque**:
+son 2.100 uu de tierra pelada para salir de la carretera y otros 3.700 hasta la escalinata. El
+jugador no tiene ninguna pista de que ahi se gira. Eso explica el "no veo camino": no lo hay
+*dibujado*. Poner piezas de senda en esos dos tramos es trabajo de nivel pendiente.
+
+### Y dos falsos negativos de `probe_camino` que conviene conocer
+
+1. **Una escalera medida con rejilla gruesa sale como muro.** Con paso de 250 uu, la escalinata
+   del Mirador sube ~80 por celda y el limite de escalon es 45, asi que la sonda dijo "no hay
+   camino" donde hay tres tramos de escalera. **Bajando el paso a 60 la misma zona sale entera
+   conectada** (268 de 270 celdas). Regla: si la sonda dice que no y hay desnivel, remedir fino
+   antes de creerselo.
+2. **Apuntar el destino a un personaje lo falsea.** Poniendo el destino en Sariel, la traza de
+   suelo choca **con el propio Sariel** y devuelve 492 en vez de los ~322 del suelo: un escalon
+   de 170 que la sonda rechaza. Las unicas dos celdas inalcanzables del mapa fino eran su cuerpo
+   y sus alas. **El destino se pone en suelo libre, nunca sobre un actor.**
