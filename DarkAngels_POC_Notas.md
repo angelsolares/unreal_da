@@ -10379,3 +10379,42 @@ expone ningun toolset de landscape** --hay actor, asset, blueprint, material, ob
 static_mesh...-- asi que los control points y segmentos son trabajo a mano en el editor. Y
 mezclaria dos lenguajes: los otros 150 tramos son piezas colocadas. Pasar a splines tiene
 sentido como decision para **toda la red de caminos**, no para un hueco suelto.
+
+## Juntar las piedras del Jardin sin taparle el camino (2026-08-21)
+
+`jardin_juntar_piedras.py`. Contrae radialmente hacia el centro del submapa los **23 `Ladera_*`**
+de `Fondo/Montanas` --`r_nuevo = r * 0,70`, angulo intacto, para que se conserve que piedra esta
+al norte y cual al sureste-- y comprueba cada una contra la red de caminos.
+
+**No toca los otros 58 de esa carpeta**: `Monte_Medio_*` (74-116 km), `Monte_Lejos_*` y `Aguja_*`
+(122-202 km) son el telon del horizonte, y acercarlos deshace la linea de montanas.
+
+La Z **no se recalcula**: estas mallas estan hundidas a proposito (z de −137 a −342 con escalas
+de 3,5 a 6,8) y lo que asoma es la punta. Reasentarlas contra el suelo las sacaria enteras.
+
+### El fallo que costo una pasada: dos sistemas de coordenadas que nadie ve a la vez
+
+La primera version protegio **solo la `Senda_*` interna del Jardin**, que es lo unico visible
+desde el submapa. Pero la carretera al Claro y el ramal del Mirador son actores del **maestro**,
+en `Conexiones/`, y desde dentro de una Level Instance **no existen**. Resultado: tres piedras
+acabaron encima de la calzada, y se vio en la captura cenital.
+
+**Regla: si lo que colocas vive en un submapa y lo que tiene que respetar vive en el maestro,
+hay que recoger la red con el maestro abierto y restarle el offset de la LI a mano.** Ninguna
+consulta ve los dos a la vez.
+
+### Y otra: recontraer sobre lo ya contraido
+
+El script guarda las **posiciones originales** en una tabla y recalcula siempre desde ahi, en vez
+de leer donde esta cada piedra ahora. Sin eso, relanzarlo con otro `FACTOR` apretaria sobre lo
+apretado y cada pasada acumularia. Asi `FACTOR` significa siempre lo mismo.
+
+### Resultado, y lo que queda por decidir
+
+14 piedras contraidas al 0,70; 2 frenadas por el camino y devueltas hacia fuera hasta despejar;
+y **7 dejadas donde estaban porque ya invadian la carretera antes de tocar nada** --`Ladera_65`
+la que mas, con 3.595 uu de solape--. El script no las mueve: empeorar algo que ya estaba mal no
+es su trabajo. **Sacarlas de la calzada o desviar la carretera es decision de Angel.**
+
+Que se solapen **entre ellas** es normal y no es defecto: antes de tocar nada ya habia **32 pares
+solapados de 253**, con el peor a −7.680. Son rocas kitbasheadas, hechas para interpenetrarse.
