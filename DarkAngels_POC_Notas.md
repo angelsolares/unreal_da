@@ -10253,3 +10253,29 @@ rojo de la muerte. Eso ultimo es decision de arte: se cambia en `sariel_aparicio
 
 Y la **posicion** de Sariel junto a la puerta (rellano, al oeste del hueco, mirando al sur) es
 funcional, para poder probar el beat entero. Colocar personajes es de Angel.
+
+## El tramo de detras de la puerta SI se anda (2026-08-21)
+
+Quedaba abierto si, una vez cruzada la puerta de El Claro, se podia llegar **a pie** al corredor
+del Santuario. Contestado con `Tools/MCP/probe_camino.py`: **si**.
+
+Del punto donde aterrizas (44675, −8250) al arranque del corredor (44305, −6083) hay camino de
+**12 celdas, todas a z = −42, sin un solo escalon**: dos celdas al oeste hasta x=44250 y luego
+recto al norte. De las 266 celdas de la rejilla, 130 son alcanzables desde el origen: todo el
+lado este y norte es una sola region continua.
+
+### La sonda, que sirve para los demas corredores
+
+`probe_camino.py` mide, por celda, **suelo** (traza desde 600, no desde arriba) y **que quepa el
+jugador de pie** (traza vertical hasta 190); y por arista entre vecinas, **escalon ≤ 45** —lo que
+sube un Character sin saltar— y **que no haya muro** (traza horizontal a la altura del pecho).
+Despues, recorrido en anchura. Dibuja el mapa y devuelve la lista de celdas del camino.
+
+No es un NavMesh y hay que saber sus dos limites: con paso de rejilla de 250 **no ve una rendija
+mas estrecha que eso**, asi que puede decir "no hay camino" donde el jugador si se cuela; y mide
+escalon entre centros de celda, asi que una cuesta continua muy inclinada la da por buena. Pero
+**no miente en la direccion peligrosa**: cuando dice que si, hay una cadena de celdas en las que
+se cabe de pie y entre las que se pasa.
+
+Es la respuesta a las tres mediciones que me engañaron midiendo El Claro, todas por fiarme de
+rayos sueltos. Para "¿se puede ir de A a B?", esta sonda; para "¿que hay ahi?", una traza.

@@ -92,8 +92,11 @@ import json
 # cuatro lados**. Con eso sale el hueco de verdad: se abre a partir de y≈3500 y
 # corrido al ESTE del eje, entre x 8550 y 9050.
 #
-# Aun asi esto NO certifica que se pueda caminar: eso lo dice un NavMesh
-# horneado, y el MCP no sabe hornear. Son cotas de sitio libre, no una ruta.
+# Eso son cotas de sitio libre, no una ruta. La ruta la contesto despues
+# `probe_camino.py`, que busca camino de celda en celda: **del sitio donde
+# aterrizas al corredor del Santuario SI se va andando** --12 celdas, todas a
+# z=-42, sin un solo escalon--. Se sale al oeste hasta x=44250 y luego recto al
+# norte. Sigue sin ser un NavMesh horneado, pero ya no es una suposicion.
 
 SUB = "/Game/DarkAngels/Maps/L_DA_Malkuth_Claro_Sub"
 MAESTRO = "/Game/DarkAngels/Maps/L_DA_Malkuth_Master"
