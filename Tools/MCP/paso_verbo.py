@@ -16,9 +16,24 @@ import json
 # pasos de Malkuth se cambian en un sitio. Si cada instancia llevara su cadena,
 # renombrar "Sellado" seria repasar el mapa entero.
 #
-# EL FLAG VACIO ES "ABIERTO", no "cerrado". Un paso recien colocado, sin nada
-# escrito en `FlagRequerido`, funciona; sellarlo es una decision explicita. Al
+# EL REQUISITO VACIO ES "ABIERTO", no "cerrado". Un paso recien colocado, sin
+# nada escrito en `Requisito`, funciona; sellarlo es una decision explicita. Al
 # reves se colocarian pasos muertos sin enterarse.
+#
+# ### `Lleva` MIRA EN LOS DOS ALMACENES, Y ESO NO ES PEREZA
+#
+# El GameState guarda dos cosas distintas: `Flags` (ganchos de exploracion, los
+# pone `MarcarFlag`) y `MarcaNombre` (el historico de decisiones, lo pone
+# `AnotarMarca`). Un cerrojo puede colgar de cualquiera de las dos, y de hecho el
+# primero que hay --la puerta de El Claro-- cuelga de una MARCA: se abre si
+# llevas `FURIA`, que es la que anota `Decision_Sariel` al arrebatarle la llave.
+#
+# La alternativa era que la decision escribiera ademas un flag, y eso obligaba a
+# **reescribir `Elegir` en `BP_DA_Decision`**, blueprint compartido cuyo script
+# canonico (`decision_grafos.py`) ya NO coincide con el asset vivo: le faltan
+# `ObjetoMalla`, `ObjetoItem` y la rama que mete la llave en la mochila.
+# Regenerarlo habria sido una regresion silenciosa. Leyendo lo que la decision YA
+# apunta no hay que tocar nada de nadie.
 #
 # `ContainsItem` en linea y no `TieneFlag`: una llamada a otra funcion PROPIA no
 # devuelve valor por esta via (el grafo se lee perfecto y sale vacio), asi que
@@ -34,15 +49,28 @@ BP = {"refPath": BPP}
 ABIERTO = "Cruzar"
 SELLADO = "Sellado"
 
+LLEVA = '''(fn Lleva (Nombre)
+  (return (or (Utilities|Array|ContainsItem
+                :TargetArray (Variables|Default|GetFlags) :ItemToFind Nombre)
+              (Utilities|Array|ContainsItem
+                :TargetArray (Variables|Default|GetMarcaNombre) :ItemToFind Nombre))))
+'''
+
 VERBO = '''(fn VerboPaso (Requerido)
   (return (select (or (Utilities|String|IsEmpty Requerido)
-                      (Utilities|Array|ContainsItem
-                        :TargetArray (Variables|Default|GetFlags) :ItemToFind Requerido))
+                      (or (Utilities|Array|ContainsItem
+                            :TargetArray (Variables|Default|GetFlags) :ItemToFind Requerido)
+                          (Utilities|Array|ContainsItem
+                            :TargetArray (Variables|Default|GetMarcaNombre)
+                            :ItemToFind Requerido)))
             "%s" "%s")))
 ''' % (ABIERTO, SELLADO)
 
-FUNCIONES = [("VerboPaso", [("Requerido", "string", True),
-                            ("Verbo", "string", False)], VERBO)]
+FUNCIONES = [
+    ("Lleva", [("Nombre", "string", True), ("Tiene", "bool", False)], LLEVA),
+    ("VerboPaso", [("Requerido", "string", True),
+                   ("Verbo", "string", False)], VERBO),
+]
 
 
 def call(t, a):
@@ -117,5 +145,6 @@ def run():
 
     # Releer siempre: el `true` de estas APIs solo dice que acepto la llamada.
     out["funciones"] = sorted([str(f["name"]) for f in bt("list_functions", {"blueprint": BP})])
-    out["verbopaso"] = str(bt("read_graph_dsl", {"graph": {"refPath": BPP + ":VerboPaso"}}))
+    for _n in ("Lleva", "VerboPaso"):
+        out[_n] = str(bt("read_graph_dsl", {"graph": {"refPath": BPP + ":" + _n}}))
     return out

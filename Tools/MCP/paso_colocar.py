@@ -11,25 +11,29 @@ import json
 # la Level Instance del maestro les suma su offset. Escribir aqui numeros leidos
 # en el maestro manda el actor a decenas de km.
 #
-#   - `Claro_Puerta_Bronce` esta en (8245, 3090), y **tapa de verdad**: una traza
-#     horizontal por el eje a z=400 y a z=700 choca en y = 3080. O sea que el
-#     hueco norte del anillo esta sellado y no se puede pasar andando. Por eso
-#     este paso tiene sentido y no es un atajo: no hay ruta alternativa.
+#   - El hueco norte del anillo **esta sellado**, y no lo sella quien parece.
+#     `Claro_Puerta_Bronce` --la de Tripo, la que se ve-- **no tiene colision**:
+#     una traza horizontal por el eje pasa de largo a z=800, 1000 y 1200, aunque
+#     su malla llegue a z=1280. Quien tapa es **`Claro_Puerta_Ruta`**, la puerta
+#     modular vieja, que quedo *oculta pero no borrada* y conserva
+#     `QueryAndPhysics`. El bloqueo se acaba **exactamente en z=753**, que es su
+#     techo. Con el jugador de pie en el rellano (pies a 182, cabeza a ~374) se
+#     esta muy por debajo: no se pasa. Es el caso de manual de que `bHidden` no
+#     quita la colision.
 #   - Al sur de la puerta se sube por `Claro_Escalera`: el suelo va de z=43 en
 #     y=2400 a z=183 en y=3000. La cota del rellano es **~182**, no los 232 que
 #     dan los bounds --los bounds son la caja del mesh entero, la traza es la
 #     superficie que se pisa--.
-#   - Al norte, pasada la puerta, hay un bolsillo entre `Claro_GateRock_L` y
-#     `_R` con suelo **plano a z=-40** desde y=3400 hasta el fondo de roca en
-#     y~5600.
+#   - Al norte, pasada la puerta, hay un pasillo estrecho entre los acantilados
+#     exteriores que se abre hacia el este. **No es una llanura**, aunque las
+#     primeras trazas lo dijeran; ver mas abajo.
 #
 # ### VAN DOS PASOS, NO UNO
 #
-# El bolsillo del norte no tiene salida: la puerta lo cierra y el escalon de
-# 220 uu del rellano no se sube. Con un solo paso, cruzar seria quedarse
-# encerrado y habria que reiniciar el nivel para seguir probando -- y probar
-# ANDANDO es justo lo que pide la nota del salto de zona. Asi que el de ida
-# tiene su gemelo de vuelta, con el destino en el rellano.
+# El de ida tiene su gemelo de vuelta para que cruzar no sea un billete de ida:
+# la puerta sigue sin dejar pasar andando en ninguno de los dos sentidos, asi
+# que sin el de vuelta habria que reiniciar el nivel para seguir probando -- y
+# probar ANDANDO es justo lo que pide la nota del salto de zona.
 #
 # ### LOS DESTINOS SON `TargetPoint` Y SU YAW IMPORTA
 #
@@ -42,6 +46,26 @@ import json
 # centro de la capsula, o sea el suelo + 96. Es el mismo `+96` que ya se pago
 # colocando los enemigos de El Claro.
 #
+# ### EL CERROJO ES LA MARCA `FURIA`
+#
+# `Requisito = "FURIA"` en los dos. `FURIA` es la Marca que anota
+# `Decision_Sariel` en el Mirador cuando eliges la opcion 2, *"Arrebatarle la
+# llave"*. O sea: **la puerta de El Claro se abre con la llave de Sariel**, y
+# hasta entonces el cartel dice "Sellado" y la E no hace nada.
+#
+# Se lee del historico de Marcas y no de un flag, y eso evita tener que reescribir
+# `Elegir` en `BP_DA_Decision`. El porque esta en `paso_verbo.py`.
+#
+# **OJO, DECISION DE GUION PENDIENTE.** La decision de Sariel tiene tres salidas
+# y solo una abre esto:
+#   1 ORDEN     "Que abras tu la puerta. Es tu oficio."      -> NO abre (¿deberia?)
+#   2 FURIA     "Arrebatarle la llave."                      -> abre
+#   3 NEGACION  "Nadie deberia tener que custodiar una puerta"-> NO abre, y su
+#      propia revelacion lo dice: *"El cerrojo sigue en su sitio. Tendras que
+#      vertelas tu con el."*  Esa otra manera todavia no existe.
+# Tal cual esta, elegir 1 o 3 deja al jugador plantado en El Claro. Cambiarlo es
+# editar `REQUISITO` aqui, o dar a las otras dos su propia via.
+#
 # ### EL FLAG DE IDA SI, EL DE VUELTA NO
 #
 # `CLARO_PUERTA_CRUZADA` queda en el GameState en cuanto se cruza, y de ahi lo
@@ -49,9 +73,22 @@ import json
 # que solo aparezca si has estado detras de la puerta--. La vuelta no apunta
 # nada: `FlagPaso` vacio esta contemplado y no escribe.
 #
-# `FlagRequerido` se deja VACIO en los dos, o sea la puerta esta abierta. Es el
-# gancho para sellarla: el dia que haya que ganarse el paso, se escribe ahi el
-# nombre del flag y el cartel pasa solo a decir "Sellado" (ver `paso_verbo.py`).
+# ### DONDE CAEN LAS PIEZAS DEL NORTE: MEDIDO, NO ELEGIDO
+#
+# El primer intento puso el destino en el eje de la puerta a y=3800 creyendo que
+# detras habia llanura. No la hay: **`Claro_Cliff_Out_2` y `Out_3`, las piezas
+# del anillo EXTERIOR, cierran a 250-600 uu de la hoja**, y el eje esta tapado a
+# la altura del cuerpo entre y≈3600 y y≈3700.
+#
+# El error de metodo fue fiarse de trazas hacia abajo desde muy arriba: pasan por
+# DEBAJO de los salientes y encuentran suelo, asi que un pasillo de roca se lee
+# como campo abierto. Lo que si sirve es una rejilla que, en cada celda, ademas
+# del suelo comprueba que **cabe un jugador de pie y que hay 200 uu libres a los
+# cuatro lados**. Con eso sale el hueco de verdad: se abre a partir de y≈3500 y
+# corrido al ESTE del eje, entre x 8550 y 9050.
+#
+# Aun asi esto NO certifica que se pueda caminar: eso lo dice un NavMesh
+# horneado, y el MCP no sabe hornear. Son cotas de sitio libre, no una ruta.
 
 SUB = "/Game/DarkAngels/Maps/L_DA_Malkuth_Claro_Sub"
 MAESTRO = "/Game/DarkAngels/Maps/L_DA_Malkuth_Master"
@@ -60,20 +97,20 @@ DESTINO = "/Script/Engine.TargetPoint"
 CARPETA = "Claro/Puerta"
 
 EJE = 8245.0          # eje de la abertura norte, medido
-SUELO_NORTE = -40.0   # suelo plano detras de la puerta
-SUELO_SUR = 172.0     # rellano de la escalinata, delante de la puerta
 CAPSULA = 96.0        # medio alto de la capsula del jugador
 FLAG_CRUZADA = "CLARO_PUERTA_CRUZADA"
+REQUISITO = "FURIA"   # la Marca de arrebatarle la llave a Sariel
 
-# (etiqueta, x, y, z, yaw, es_paso, destino, flag)
+# (etiqueta, x, y, yaw, es_paso, destino, flag)
+# La Z no se escribe: se mide con una traza al colocar. Ver `apoyar`.
 PIEZAS = [
-    ("Destino_TrasPuerta",  EJE, 3800.0, SUELO_NORTE + CAPSULA + 4,  90.0, False, None, ""),
-    ("Destino_AntePuerta",  EJE, 2850.0, SUELO_SUR + CAPSULA + 4,   -90.0, False, None, ""),
+    ("Destino_TrasPuerta",       8675.0, 3750.0,  90.0, False, None, ""),
+    ("Destino_AntePuerta",         EJE,  2850.0, -90.0, False, None, ""),
     # el de ida: pegado a la cara sur de la puerta, sobre el rellano
-    ("Paso_Puerta_Claro",   EJE, 3020.0, SUELO_SUR,                   0.0, True,
+    ("Paso_Puerta_Claro",          EJE,  3020.0,   0.0, True,
      "Destino_TrasPuerta", FLAG_CRUZADA),
-    # el de vuelta: al otro lado de la hoja, sobre el suelo del bolsillo
-    ("Paso_Puerta_Claro_Vuelta", EJE, 3450.0, SUELO_NORTE,            0.0, True,
+    # el de vuelta: en el hueco del este, a 280 uu de donde aterrizas
+    ("Paso_Puerta_Claro_Vuelta", 8800.0, 3500.0,   0.0, True,
      "Destino_AntePuerta", ""),
 ]
 
@@ -107,6 +144,20 @@ def busca(nombre):
     return None
 
 
+def apoyar(x, y):
+    """Cota del suelo pisable en (x, y), medida.
+
+    Se traza DESDE 600, no desde 3000: mas arriba la traza choca con los
+    salientes de los acantilados y devuelve un techo creyendo que es suelo. Es
+    el error que puso el destino dentro de la roca en la primera pasada.
+    """
+    d = sc("trace_world", {"start": {"x": x, "y": y, "z": 600.0},
+                           "end": {"x": x, "y": y, "z": -800.0}})
+    if d is None:
+        raise RuntimeError("sin suelo bajo (%d, %d)" % (x, y))
+    return round(600.0 - d, 1)
+
+
 def run():
     if call("EditorToolset.EditorAppToolset.IsPIERunning", {}):
         return {"error": "PIE esta corriendo"}
@@ -117,7 +168,14 @@ def run():
         return {"error": "no se abrio el submapa"}
 
     puestos = {}
-    for etiqueta, x, y, z, yaw, es_paso, destino, flag in PIEZAS:
+    out["suelo"] = {}
+    for etiqueta, x, y, yaw, es_paso, destino, flag in PIEZAS:
+        # Un paso se apoya en el suelo; un destino va al centro de la capsula del
+        # jugador, o sea suelo + 96. Ese `+96` es el mismo que se pago colocando
+        # los enemigos de El Claro: el origen de un Character son las caderas.
+        suelo = apoyar(x, y)
+        out["suelo"][etiqueta] = suelo
+        z = suelo if es_paso else suelo + CAPSULA + 4
         # `set_actor_transform` RESETEA escala y rotacion si no se las pasas:
         # el xform va siempre entero.
         xf = {"location": {"x": x, "y": y, "z": z},
@@ -142,20 +200,20 @@ def run():
             ot("set_properties", {"instance": a, "values": json.dumps(
                 {"Destino": {"refPath": puestos[destino]["refPath"]}})})
             ot("set_properties", {"instance": a, "values": json.dumps({"FlagPaso": flag})})
-            ot("set_properties", {"instance": a, "values": json.dumps({"FlagRequerido": ""})})
+            ot("set_properties", {"instance": a, "values": json.dumps({"Requisito": REQUISITO})})
 
     # --- releer del actor, no del script ---
-    for etiqueta, x, y, z, yaw, es_paso, destino, flag in PIEZAS:
+    for etiqueta, x, y, yaw, es_paso, destino, flag in PIEZAS:
         a = puestos[etiqueta]
         t = at("get_actor_transform", {"actor": a})
         ficha = {"loc": [round(t["location"][k]) for k in ("x", "y", "z")],
                  "yaw": round(t["rotation"]["yaw"], 1)}
         if es_paso:
             p = json.loads(ot("get_properties", {"instance": a, "properties":
-                              ["Destino", "FlagPaso", "FlagRequerido"]}))
+                              ["Destino", "FlagPaso", "Requisito"]}))
             ficha["Destino"] = str(p["Destino"]).split("/")[-1]
             ficha["FlagPaso"] = p["FlagPaso"]
-            ficha["FlagRequerido"] = p["FlagRequerido"]
+            ficha["Requisito"] = p["Requisito"]
             b = at("get_actor_bounds", {"actor": a, "only_colliding": False})
             ficha["caja"] = {"min": [round(b["min"][k]) for k in ("x", "y", "z")],
                              "max": [round(b["max"][k]) for k in ("x", "y", "z")]}

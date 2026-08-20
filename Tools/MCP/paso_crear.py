@@ -49,10 +49,14 @@ import json
 #
 # `BP_DA_Umbral` lleva un `Activo` propio que se apaga al cruzar, y ese es
 # justamente el reparto que `BP_DA_GameState` vino a terminar. Aqui no hay
-# ninguna variable de estado: `FlagRequerido` decide si se puede cruzar y
-# `FlagPaso` deja constancia de que se cruzo, y las dos son NOMBRES de flags del
-# GameState, no el estado en si. El cartel sale de `VerboPaso`, tambien del
-# GameState (ver `paso_verbo.py`).
+# ninguna variable de estado: `Requisito` dice QUE HAY QUE LLEVAR para poder
+# cruzar y `FlagPaso` deja constancia de que se cruzo. Las dos son NOMBRES, no
+# el estado. El cartel sale de `VerboPaso`, tambien del GameState.
+#
+# `Requisito` se resuelve con `Lleva`, que mira en los dos almacenes del
+# GameState: `Flags` (los de exploracion) y `MarcaNombre` (el historico de
+# decisiones). Asi un cerrojo puede colgar de una Marca sin que la decision que
+# la anota tenga que enterarse. Ver `paso_verbo.py`, que explica por que.
 #
 # Consecuencia buena: el Debug HUD ya ve si un paso se ha cruzado, sin saber que
 # los pasos existen.
@@ -105,7 +109,7 @@ MENSAJE = """(fn GetInteractionMessage ()
   (return (Utilities|String|StringToName
             (Class|BPDAGameState|VerboPaso
               :self (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState))
-              :Requerido (Variables|Default|GetFlagRequerido)))))
+              :Requerido (Variables|Default|GetRequisito)))))
 """
 
 # Dos `if` hermanos y no uno dentro de otro: comprobado que un `if` NO termina
@@ -117,12 +121,12 @@ MENSAJE = """(fn GetInteractionMessage ()
 # el ultimo y no se lleva nada por delante si el `Destino` esta sin poner.
 #
 # `FlagPaso` vacio no escribe nada. Sin esta guarda un paso sin configurar
-# meteria la cadena vacia en `Flags`, y `TieneFlag("")` empezaria a decir que si.
+# meteria la cadena vacia en `Flags`, y `Lleva("")` empezaria a decir que si.
 EVENTO = """(event Interaction|EventInteract (Caller)
   (bind _gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))
-  (bind _ok (or (Utilities|String|IsEmpty (Variables|Default|GetFlagRequerido))
-                (Class|BPDAGameState|TieneFlag :self _gs
-                  :Nombre (Variables|Default|GetFlagRequerido))))
+  (bind _ok (or (Utilities|String|IsEmpty (Variables|Default|GetRequisito))
+                (Class|BPDAGameState|Lleva :self _gs
+                  :Nombre (Variables|Default|GetRequisito))))
   (if (and _ok (not (Utilities|String|IsEmpty (Variables|Default|GetFlagPaso))))
     (Class|BPDAGameState|MarcarFlag :self _gs
       :Nombre (Variables|Default|GetFlagPaso)))
@@ -188,14 +192,25 @@ def run():
     out["padre"] = str(bt("get_parent", {"blueprint": BP})["refPath"])
 
     # --- 2. variables: NOMBRES de flags, no estado ---
+    # `FlagRequerido` se llamo asi el primer dia, cuando solo miraba `Flags`.
+    # Ahora acepta tambien Marcas, asi que el nombre mentia. Se quita DESPUES de
+    # vaciar los grafos --si algun nodo la sigue leyendo, el blueprint no compila
+    # y el script muere a mitad--, y por eso este bloque va donde va.
     ya = str(bt("list_variables", {"blueprint": BP}))
-    for n, t in (("FlagRequerido", "string"), ("FlagPaso", "string")):
+    if "'FlagRequerido'" in ya:
+        for g in bt("list_graphs", {"blueprint": BP}):
+            vaciar(g, True)
+        bt("remove_variable", {"blueprint": BP, "name": "FlagRequerido"})
+        bt("compile_blueprint", {"blueprint": BP})
+        out["renombrada"] = "FlagRequerido -> Requisito"
+        ya = str(bt("list_variables", {"blueprint": BP}))
+    for n, t in (("Requisito", "string"), ("FlagPaso", "string")):
         if "'" + n + "'" not in ya:
             bt("add_variable", {"blueprint": BP, "name": n, "type_name": t})
     if "'Destino'" not in ya:
         bt("add_object_variable", {"blueprint": BP, "name": "Destino",
                                    "object_class": {"refPath": "/Script/Engine.Actor"}})
-    for n in ("Destino", "FlagRequerido", "FlagPaso"):
+    for n in ("Destino", "Requisito", "FlagPaso"):
         bt("set_variable_instance_editable",
            {"blueprint": BP, "variable_name": n, "instance_editable": True})
 

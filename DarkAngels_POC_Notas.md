@@ -10007,8 +10007,10 @@ texto**; y con un nombre que no tenga nadie mas, el texto tampoco miente.
 Coordenadas **del submapa** `L_DA_Malkuth_Claro_Sub`; `LI_04_ElClaro` suma
 **(36000, −12000, −2)** sin rotacion ni escala.
 
-- `Claro_Puerta_Bronce` (8245, 3090) **tapa de verdad**: traza horizontal por el eje a z=400 y
-  a z=700 choca en **y = 3080**. El hueco norte esta sellado, asi que el paso no es un atajo.
+- El hueco norte **esta sellado** — pero **NO por `Claro_Puerta_Bronce`**, como se escribio
+  aqui el 2026-08-20 y se corrigio al dia siguiente. La de bronce no tiene colision. Quien
+  tapa es `Claro_Puerta_Ruta`, oculta y con colision viva. Ver la revision de conectividad
+  mas abajo.
 - Rellano sur: la traza da **z ≈ 182**, no los 232 de los bounds. Los bounds son la caja del
   mesh entero; la traza es la superficie que se pisa.
 - Detras de la puerta hay un bolsillo entre `Claro_GateRock_L` y `_R` con suelo plano a
@@ -10023,3 +10025,81 @@ Coordenadas **del submapa** `L_DA_Malkuth_Claro_Sub`; `LI_04_ElClaro` suma
 sale de un `FindLookAtRotation` hacia el umbral, o sea que apareces mirando por donde has
 venido: bien en una sala de espejos, mal cruzando una puerta. La **Z de un destino no es la del
 suelo**: el origen de un Character es el centro de la capsula, suelo + 96.
+
+## Revision de conectividad de El Claro (2026-08-21)
+
+Angel pregunto si El Claro estaba cerrado y si se podia llegar a las zonas que antes eran
+opcionales. Respuesta medida: **si estaba cerrado, y lo cerraba un actor invisible.**
+
+### Quien sella el hueco norte
+
+No `Claro_Puerta_Bronce`. Esa **no tiene colision** pese a que `collisionEnabled` diga
+`QueryAndPhysics`: es un SkeletalMesh de Tripo sin physics asset. Quien tapa es
+**`Claro_Puerta_Ruta`**, el porton modular al que sustituyo el 2026-08-15 y que quedo
+*"oculto, no borrado"*: `bHidden = true` y colision viva.
+
+La prueba es la cota a la que deja de tapar:
+
+| altura del rayo | choca en |
+|---|---|
+| z = 250 / 400 / 600 / 740 | y ≈ 3080 |
+| z = 800 / 1000 / 1200 | pasa de largo |
+
+**El bloqueo se acaba en z=753**, que es el techo de `Claro_Puerta_Ruta` (bounds z[232,753]);
+la de bronce llega a 1280 y a esas alturas no para nada. Es [[unreal-bhidden-no-quita-colision]]
+en estado puro, y esta vez con consecuencias de mapa entero.
+
+### Que hay detras del sello
+
+El anillo de El Claro tiene **dos huecos y solo dos**: el sur (≈265° desde el centro, donde
+muere el corredor `JardinClaro`) y el hueco norte (≈85-89°), que es este. Y la red de
+corredores del Master es **una cadena, no una estrella**:
+
+- **La llave esta ANTES.** `JardinMirador` sale del tramo Jardin→Claro por (−14700, −50000)
+  y sube al Mirador en (−16000, −24000). Ir a por la llave no pasa por El Claro.
+- **El Gazebo esta DESPUES.** `ClaroGazebo` arranca en (41000, 16500), colgado del tramo
+  Claro→Santuario, que nace en (44305, −6083) — detras de la puerta. O sea que la tableta
+  del Gazebo (`GAZEBO_TABLETA_LEIDA`, la tercera opcion de la Marca II) y todo lo que sigue
+  —Santuario, Puente, Anfiteatro, Elevador, Gabriel C1/C2/C3, Yesod— colgaban de un porton
+  invisible.
+
+### Decidido: la puerta se abre con la llave
+
+`Requisito = "FURIA"` en los dos pasos. `FURIA` es la Marca que anota `Decision_Sariel` al
+elegir *"Arrebatarle la llave"*. Se lee del **historico de Marcas**, no de un flag, con la
+funcion nueva `Lleva(Nombre)` del GameState, que mira en `Flags` **y** en `MarcaNombre`.
+
+Se hizo asi para no tener que reescribir `Elegir` en `BP_DA_Decision`: **su script canonico
+`decision_grafos.py` ya no coincide con el asset vivo** —le faltan `ObjetoMalla`, `ObjetoItem`
+y la rama que mete la llave en la mochila—, asi que regenerarlo habria sido una regresion
+silenciosa. Regla general: antes de relanzar un script de generacion sobre un asset que otra
+sesion pudo tocar, **comparar el grafo vivo con lo que el script produce**.
+
+**Sigue pendiente de guion:** las otras dos salidas de Sariel no abren nada. La 3 lo dice ella
+misma —*"El cerrojo sigue en su sitio. Tendras que vertelas tu con el"*— pero esa otra manera
+no existe todavia, y la 1 (*"Que abras tu la puerta"*) tampoco. Tal cual, elegir 1 o 3 deja al
+jugador plantado en El Claro.
+
+### El metodo: por que las trazas mintieron dos veces
+
+1. **Una traza hacia abajo desde muy arriba no mide el suelo, mide el primer techo.** Desde
+   z=3000 el eje norte daba "roca a z=2600" durante 2000 uu: eran salientes por ENCIMA. Bajando
+   el origen a z=600 el suelo salia plano a −42, y entonces parecia una llanura. Las dos
+   lecturas eran falsas.
+2. **Un rayo horizontal no distingue un muro de un canto rodado**, y desde el centro solo mide
+   los props del medio.
+
+Lo que si vale es una **rejilla que en cada celda comprueba tres cosas**: que hay suelo bajo
+600, que cabe un jugador de pie, y que quedan 200 uu libres a los cuatro lados. Con eso salio
+la forma real: detras de la puerta hay un **pasillo estrecho**, tapado en el eje entre y≈3600
+y y≈3700 por `Claro_Cliff_Out_2` y `Out_3`, que se abre **al este**, entre x 8550 y 9050, y de
+ahi ya sale al corredor del Santuario.
+
+Aun asi, **nada de esto certifica que se pueda caminar**: son cotas de sitio libre. Eso lo dice
+un NavMesh horneado —que el MCP no sabe hornear— o un playtest.
+
+### Consecuencia en las piezas colocadas
+
+`Destino_TrasPuerta` estaba en el eje a y=3800, o sea **detras de la pared de roca**. Recolocado
+a (8675, 3750) y el paso de vuelta a (8800, 3500), los dos dentro del hueco medido y a 280 uu
+uno de otro. La Z ya no se escribe a mano: `paso_colocar.py` la mide con `apoyar()`.
