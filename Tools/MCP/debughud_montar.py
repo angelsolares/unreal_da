@@ -1264,6 +1264,36 @@ def dsl_reset_story():
             ' "Overrides de debug limpiados (el progreso real no se toca)"))')
 
 
+def dsl_marcas_borrar():
+    """Borra contadores, historico y flags del GameState.
+
+    Existe por una razon practica: `BP_DA_Decision` tiene una guarda `Elegida`
+    que solo deja elegir UNA vez, asi que sin esto hay que reiniciar PIE para
+    poder probar otra opcion de la misma Marca."""
+    return ('(fn DbgMarcasBorrar ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Class|BPDAGameState|BorrarTodo :self'
+            ' (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "Marcas, historico y flags borrados"))')
+
+
+def dsl_marcas_reiniciar():
+    """Pone a cero los contadores de la esfera y CONSERVA el historico.
+
+    Es lo que pasa de verdad al cruzar a la siguiente Sephirah: las Marcas no se
+    borran nunca, pero la cuenta local vuelve a empezar."""
+    return ('(fn DbgMarcasReiniciar ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (Class|BPDAGameState|ReiniciarEsfera :self'
+            ' (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState))'
+            ' :NuevaEsfera "MALKUTH")\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "Contadores de la esfera a cero (el historico se conserva)"))')
+
+
 # --------------------------------------------------------- COMBAT: acciones
 #
 # COMO FUNCIONA EL MULTIPLICADOR DE DANO, que es lo que importa entender:
@@ -1979,18 +2009,12 @@ def filas_story():
             (x0 + 286.0, 278.0, "RESPAWN AT DEBUG CP",
              "(CallFunction|DbgIrAGuardada)", "false"),
         ]),
-        # Sin sistema detras: a la vista y apagados, sin inventar nada.
-        ("PUZZLES   (sin sistema de puzzles todavia)", 332.0, 354.0, [
-            (x0, w5, "-- RESET", nada, "false"),
-            (x0 + 112.0, w5, "-- COMPLETE", nada, "false"),
-            (x0 + 224.0, w5, "-- ADVANCE", nada, "false"),
-            (x0 + 336.0, w5, "-- PREVIOUS", nada, "false"),
-            (x0 + 448.0, w5, "-- ESPEJOS", nada, "false"),
-        ]),
-        ("COLLECTIBLES   (sin contador de lore ni de cofres)", 392.0, 414.0, [
-            (x0, w3, "-- LORE", nada, "false"),
-            (x0 + 190.0, w3, "-- COFRES", nada, "false"),
-            (x0 + 380.0, w3, "-- NEXT MISSING", nada, "false"),
+        # MARCAS: la primera seccion de STORY con sistema de verdad detras.
+        # Sustituye a PUZZLES y COLLECTIBLES, que eran botones muertos.
+        ("MARCAS   (BP_DA_GameState)", 332.0, 354.0, [
+            (x0, w3, "BORRAR TODO", "(CallFunction|DbgMarcasBorrar)", "false"),
+            (x0 + 190.0, w3, "REINICIAR ESFERA",
+             "(CallFunction|DbgMarcasReiniciar)", "false"),
         ]),
         ("", None, 452.0, [
             (x0, 564.0, "RESET STORY DEBUG", "(CallFunction|DbgResetStory)", "false"),
@@ -2016,6 +2040,14 @@ def dsl_tab_story():
                    ' (Utilities|String|Append "     "'
                    ' (Utilities|String|ToString(Text)'
                    ' (Variables|Default|GetObjectiveText))))', HUESO, 0.9))
+    # Estado de las Marcas. Se lee por FUNCION y no por variable: el DSL no sabe
+    # crear el getter de una variable de otro blueprint.
+    l.append('  (bind gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))')
+    l.append(texto(X(16.0), Y(376.0),
+                   '(Class|BPDAGameState|Resumen :self gs)', HUESO, 0.95))
+    l.append(texto(X(16.0), Y(398.0),
+                   '(Utilities|String|Append "Marcas:  "'
+                   ' (Class|BPDAGameState|Historial :self gs))', GRIS, 0.85))
     l.append('  (bind vols (Actor|GetAllActorsOfClass :ActorClass "%s"))' % RESPAWN)
     l.append(texto(X(16.0), Y(486.0),
                    '(Utilities|String|Append'
@@ -2586,6 +2618,8 @@ def run():
         ("DbgGuiaToggle", dsl_guia, []),
         ("DbgCheckpoint", dsl_checkpoint, [("Delta", "int", True), ("Ir", "bool", True)]),
         ("DbgResetStory", dsl_reset_story, []),
+        ("DbgMarcasBorrar", dsl_marcas_borrar, []),
+        ("DbgMarcasReiniciar", dsl_marcas_reiniciar, []),
         # --- FINISHERS ---
         ("DbgFinDilFijar", dsl_fin_fijar, [("Valor", "float", True)]),
         ("DbgFinDilatacion", lambda n='Dilatacion': dsl_fin_delta(n), [("Delta", "float", True)]),
