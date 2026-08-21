@@ -10478,3 +10478,49 @@ no conecta a esos pines**, solo el literal se convierte. Configurables por insta
 `BP_RespawnVolume` (el del puente) tambien reacciona a caidas, comparando la Z del jugador contra
 la suya y devolviendolo **en silencio**. Si su cota esta por encima de −3000, saltara el primero
 y no habra Game Over en esa zona. Hay que decidir cual manda alli.
+
+## Plataformas moviles del Elevador (2026-08-20)
+
+`BP_DA_Plataforma` + `plataformas_elevador.py`. Ocho de las doce terrazas se deslizan de lado a
+lado, cada una a su ritmo. Los cilindros **no se sustituyen**: un actor `Mover_*` por plataforma
+la mueve desde fuera, igual que se hizo con Sariel.
+
+### Tres cosas que condicionaron el diseno
+
+**Las terrazas eran `Mobility = Static`**, y un actor estatico **ignora `SetActorLocation`**. Se
+pasaron a `Movable` **solo las ocho que se mueven**; a cambio pierden la iluminacion horneada.
+
+**Un actor por plataforma, no uno con arrays.** El `for` del DSL **itera elementos, no indices**,
+asi que dentro del bucle no hay con que leer un array paralelo. Sale mejor asi de todas formas:
+cada plataforma se afina sola desde el editor.
+
+**`bTeleport = false`, y no es un descuido.** Con `true` Unreal resetea el estado fisico y el
+jugador **no se deja arrastrar**; con `false` calcula la velocidad de la base y va montado.
+Verificado en el pin, que el lector omite los `false`.
+
+### La geometria, medida
+
+Doce cilindros de **2600 de diametro** y 40 de grosor, en fila a lo largo de **+Y** (y=10455 a
+35935, 255 m) con la X clavada en −74000. Centros a **2700-3000**, o sea que alineados el hueco
+entre bordes es de solo **~200**.
+
+`_10`/`_11` y `_14`/`_15` comparten Y y solo cambian de Z: son escalones. **Se quedan quietas**,
+decision de Angel.
+
+### El "siempre se puede saltar" lo da la AMPLITUD, no el desfase
+
+Con periodos distintos, dos vecinas coinciden a veces desplazadas a lados contrarios: **el
+desfase no garantiza nada**. Lo que acota el salto es la amplitud:
+
+| desplazamiento en X | hueco entre bordes |
+|---|---|
+| 0 | ~200 |
+| 1.200 | ~450 |
+| 2.000 | ~840 |
+| 3.000 | ~1.500 |
+
+Puesta en **1200**, que deja el peor caso en ~450. Subirla es un numero por instancia, pero hay
+que medir antes el salto real de Malakh.
+
+Periodos de 4,3 a 6,7 s, **distintos y no multiplos entre si**, para que el patron tarde en
+repetirse y no acaben todas alineadas cada pocos segundos.

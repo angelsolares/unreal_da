@@ -35,12 +35,30 @@ import json
 # y ninguno de widgets--, asi que anadir un Text o un Button al arbol de un
 # `WBP_` es trabajo a mano. De ahi que el reintento vaya por tecla.
 #
-# ### LA TECLA Y EL MAPA VAN COMO LITERALES, NO COMO VARIABLE
+# ### REINTENTAR TELETRANSPORTA, NO RECARGA EL MAPA
 #
-# `WasInputKeyJustPressed` pide un `FKey` y `OpenLevel(byName)` un `FName`. Una
-# variable String **no conecta** a esos pines; solo el literal se convierte. Lo que
-# si queda configurable por instancia es lo que es String o float de verdad:
-# `Texto`, `Flag` y `CotaMortal`.
+# La primera version hacia `OpenLevel`, y **fallaba de una forma que solo se ve
+# jugando**: el mapa recarga, el jugador aparece en el PlayerStart... y las Level
+# Instances todavia no han terminado de cargar, asi que **no hay colision bajo el
+# y se vuelve a caer**. Cruza otra vez la cota, `Caido` vuelve a true y el cartel
+# reaparece. Medido en PIE: el pawn estaba en (-59649, -60004, **-6102**) -- la X y
+# la Y exactas del PlayerStart, y 6 km por debajo.
+#
+# Hay suelo bajo los tres PlayerStart (18, -26 y 16,5), o sea que el nivel esta
+# bien: es una **carrera de carga**, no un agujero.
+#
+# Teletransportar lo evita entero: es instantaneo, no recarga nada y conserva la
+# partida. Es ademas lo que ya hace `BP_RespawnVolume` en este proyecto.
+#
+# **Y hay que parar la velocidad**: un Character teletransportado mientras cae
+# **conserva su velocidad de caida** y sigue hundiendose. De ahi el
+# `StopMovementImmediately` antes de moverlo.
+#
+# ### LA TECLA VA COMO LITERAL, NO COMO VARIABLE
+#
+# `WasInputKeyJustPressed` pide un `FKey`, y una variable String **no conecta** a
+# ese pin: solo el literal se convierte. Configurables por instancia quedan
+# `Texto`, `Flag`, `CotaMortal` y `PuntoRespawn`.
 
 CARPETA = "/Game/DarkAngels/Blueprints/Level"
 NOMBRE = "BP_DA_Abismo"
@@ -48,7 +66,6 @@ BPP = CARPETA + "/" + NOMBRE + "." + NOMBRE
 BP = {"refPath": BPP}
 
 TECLA = "R"
-MAPA = "L_DA_Malkuth_Master"
 COTA = -3000.0                     # muy por debajo de cualquier suelo pisable
 TEXTO = "HAS CAIDO AL VACIO   -   [R] Reintentar"
 FLAG = "MUERTE_ABISMO"
@@ -74,8 +91,36 @@ VIGILAR = """(fn VigilarAbismo ()
       :InText (Variables|Default|GetTexto)))
   (if (and (Variables|Default|GetCaido)
            (Game|Player|WasInputKeyJustPressed :self _pc :Key "%s"))
-    (Game|OpenLevel(byName) :LevelName "%s")))
-""" % (TECLA, MAPA)
+    (CallFunction|RenacerAbismo)))
+""" % TECLA
+
+# Se llama `RenacerAbismo` y no `Renacer` por lo de siempre: un nombre repetido
+# hace que el lector del DSL le cuelgue la llamada al blueprint equivocado.
+#
+# `Caido` se pone a false **al final**, despues de limpiar el cartel: asi el Tick
+# siguiente ya encuentra al jugador arriba y no vuelve a entrar.
+RENACER = """(fn RenacerAbismo ()
+  (bind _dst (Variables|Default|GetPuntoRespawn))
+  (Utilities|IsValid _dst
+    (:"Is Valid"
+      (bind _pj (Game|GetPlayerCharacter 0))
+      (bind _pc (Game|GetPlayerController 0))
+      (bind _rot (Math|Rotator|MakeRotator :Roll 0.0 :Pitch 0.0
+                   :Yaw (.yaw (Transformation|GetActorRotation _dst))))
+      (Components|Movement|StopMovementImmediately
+        (Actor|GetComponentByClass _pj "/Script/Engine.CharacterMovementComponent"))
+      (Transformation|SetActorLocationAndRotation :self _pj
+        :NewLocation (Transformation|GetActorLocation _dst) :NewRotation _rot
+        :bSweep false :bTeleport true)
+      (Pawn|SetControlRotation :self _pc :NewRotation _rot)
+      (Input|SetIgnoreMoveInput :self _pc :bNewMoveInput false)
+      (Input|SetIgnoreLookInput :self _pc :bNewLookInput false)
+      (Class|BPDAHUD|SetZoneText
+        :self (Utilities|Casting|CastToBP_DA_HUD (HUD|GetHUD :self _pc))
+        :ZoneText "")
+      (Variables|Default|SetCaido false))
+    (:"Is Not Valid")))
+"""
 
 EVENTOS = """(event EventTick (DeltaSeconds)
   (CallFunction|VigilarAbismo))
@@ -132,6 +177,11 @@ def run():
                  ("Caido", "bool")):
         if "'" + n + "'" not in ya:
             bt("add_variable", {"blueprint": BP, "name": n, "type_name": t})
+    if "'PuntoRespawn'" not in ya:
+        bt("add_object_variable", {"blueprint": BP, "name": "PuntoRespawn",
+                                   "object_class": {"refPath": "/Script/Engine.Actor"}})
+    bt("set_variable_instance_editable",
+       {"blueprint": BP, "variable_name": "PuntoRespawn", "instance_editable": True})
     for n in ("CotaMortal", "Texto", "Flag"):
         bt("set_variable_instance_editable",
            {"blueprint": BP, "variable_name": n, "instance_editable": True})
@@ -142,10 +192,14 @@ def run():
     out["vaciado_eventgraph"] = vaciar(eg, True)
 
     grafos = [g["refPath"].split(":")[-1] for g in bt("list_graphs", {"blueprint": BP})]
-    if "VigilarAbismo" not in grafos:
-        bt("add_function_graph", {"blueprint": BP, "graph_name": "VigilarAbismo"})
+    for _g in ("RenacerAbismo", "VigilarAbismo"):
+        if _g not in grafos:
+            bt("add_function_graph", {"blueprint": BP, "graph_name": _g})
     bt("compile_blueprint", {"blueprint": BP})
 
+    gr = {"refPath": BPP + ":RenacerAbismo"}
+    vaciar(gr, True)
+    bt("write_graph_dsl", {"graph": gr, "code": RENACER})
     gv = {"refPath": BPP + ":VigilarAbismo"}
     out["vaciado_funcion"] = vaciar(gv, True)
     bt("write_graph_dsl", {"graph": gv, "code": VIGILAR})
@@ -162,6 +216,7 @@ def run():
 
     # --- releer, que el `true` de estas APIs solo dice "acepte la llamada" ---
     out["VigilarAbismo"] = str(bt("read_graph_dsl", {"graph": gv}))
+    out["RenacerAbismo"] = str(bt("read_graph_dsl", {"graph": gr}))
     out["EventGraph"] = str(bt("read_graph_dsl", {"graph": eg}))
     out["variables"] = [str(v) for v in bt("list_variables", {"blueprint": BP})]
     out["defectos"] = json.loads(ot("get_properties", {
