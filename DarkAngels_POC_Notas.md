@@ -10432,3 +10432,49 @@ coordenadas de mundo fijas apuntando al sitio viejo. Con la zona movida, ese ram
 al Mirador**: muere en campo abierto. Rehacerlo es reapuntar el tramo, no mover la zona.
 
 Y `LI_10_GabrielC1` esta desviada (−50, −150) de su (−40000, −15000): metro y medio, sin decidir.
+
+## Caer al vacio es Game Over: `BP_DA_Abismo` (2026-08-20)
+
+Un solo actor en el maestro (`Abismo_Malkuth`, en el origen). Compara en Tick la Z del jugador
+contra `CotaMortal` (−3000); al cruzarla apunta el flag **`MUERTE_ABISMO`** en el GameState,
+bloquea el mando y deja fijo el cartel *"HAS CAIDO AL VACIO — [R] Reintentar"*. La `R` recarga
+`L_DA_Malkuth_Master`.
+
+### Por cota y no por caja
+
+La `TR_DeathVoid_Malkuth` que se probo primero medía **200.000 x 200.000 x 20.000 uu** con el
+techo en **z = 4927**: el suelo del mapa esta a −40, o sea que **el jugador nacia dentro** y el
+Game Over saltaba en el primer fotograma. Con un umbral de cota se cubre **todo el mapa con un
+actor** en vez de una caja por precipicio, y es la misma tecnica que ya usa `BP_RespawnVolume`.
+
+**KillZ sigue desactivado** (−1.048.575) a proposito: destruye el pawn, y despues no hay a quien
+enseniarle la pantalla ni a quien devolverle el control.
+
+### El cartel se pinta con lo que ya habia, y hay un apaño consciente
+
+`BP_DA_HUD` ya tiene `ShowZoneBanner(InText)`. **No se toca el HUD**: se le llama desde fuera,
+que es la unica via del DSL para hablar con otro blueprint. Pero esa funcion guarda
+`ZoneBannerEnd = ahora + 5s`, o sea que **el cartel caduca**. Por eso se le llama **en cada
+Tick** mientras dure la caida: cada llamada empuja el vencimiento y el texto se queda fijo.
+
+De paso: `InText` es un pin de tipo **Text**, no String. El DSL mete solo el
+`Utilities|Text|ToText(String)`, no hay que escribirlo.
+
+### Lo que NO se pudo montar, y por que
+
+**La pantalla de UMG con su boton de Reintentar.** El MCP **no expone ningun toolset de widgets**
+--hay actor, blueprint, material, textura... y ninguno de UMG--, asi que anadir un Text o un
+Button al arbol de un `WBP_` es trabajo a mano. De ahi que el reintento vaya por tecla, que
+ademas es coherente con el resto del proyecto (las opciones 1/2/3, el salto de zona).
+
+### La tecla y el mapa van como literales
+
+`WasInputKeyJustPressed` pide un `FKey` y `OpenLevel(byName)` un `FName`: **una variable String
+no conecta a esos pines**, solo el literal se convierte. Configurables por instancia quedan
+`Texto`, `Flag` y `CotaMortal`, que si son String y float.
+
+### Pendiente de decidir
+
+`BP_RespawnVolume` (el del puente) tambien reacciona a caidas, comparando la Z del jugador contra
+la suya y devolviendolo **en silencio**. Si su cota esta por encima de −3000, saltara el primero
+y no habra Game Over en esa zona. Hay que decidir cual manda alli.
