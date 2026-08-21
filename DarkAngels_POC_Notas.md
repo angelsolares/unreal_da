@@ -10738,3 +10738,53 @@ de llamada y la lista corta de lo que de verdad no se puede. La regla que fija: 
 por hecho que se puede, e intentarlo por los tres caminos antes de decir que no.**
 Durante esta POC se dijo "no puedo" cuatro veces --UMG, splines de landscape, foliage,
 assets sin guardar-- y las cuatro era falso.
+
+---
+
+## 2026-08-21 — El Jardin tenia cuatro landscapes apilados
+
+### Lo encontrado
+
+`L_DA_Malkuth_Jardin_Sub` contenia `Landscape_0..3`, en dos parejas **exactamente
+superpuestas**:
+
+    Landscape_0 "Landscape"   y  Landscape_1 "Landscape2"   en (-30400, -50400)
+    Landscape_2 "Landscape3"  y  Landscape_3 "Landscape4"   en (-26650, -53400)
+
+Los cuatro **reales e independientes**: 513 componentes cada uno y el mismo relieve
+(Z de 638, min -40 / max 497,5, rugosidad 48,3, 1.018.081 vertices = 1009^2).
+
+O sea **2.052 componentes y ~4 millones de vertices** donde deberia haber la cuarta
+parte, cuatro superficies de colision apiladas, y z-fighting garantizado entre cada
+pareja. Salieron de repetir la creacion de Landscape al intentar esculpir.
+
+### El paso que casi me hace borrar lo que no era
+
+`AnalyzeTerrain` devolvia estadisticas identicas para los cuatro, y eso **no prueba que
+sean copias**: podia ser el tool resolviendo `landscapeNameOrLabel` siempre al mismo
+actor. La comprobacion buena fue `get_actor_bounds` **por referencia de actor**, que no
+puede confundir uno con otro: los cuatro dieron 513 componentes y Z de 638 propios.
+
+**Regla:** cuando una herramienta acepta un nombre y devuelve lo mismo para varios,
+verificar por referencia antes de borrar nada.
+
+### Cual se conservo, y por que
+
+Los cuatro tienen el mismo heightmap, asi que por datos daba igual. Se decidio por
+cobertura del contenido del Jardin (1.490 actores):
+
+    posicion A (Landscape_0/_1) -> cubre 1433
+    posicion B (Landscape_2/_3) -> cubre 1434
+
+Empate practico, un actor de diferencia. Mando el nombre original: **queda
+`Landscape_0`**, etiqueta "Landscape".
+
+### Verificado por tres vias
+
+- El submapa en disco paso de **17.368.006 a 8.122.982 bytes: -9,25 MB, un -53%**.
+- Desde el maestro, `ListLandscapes` pasa de **6 a 3** — uno por zona: Jardin, Claro y
+  Puente. Ninguna otra tenia duplicados.
+- El superviviente conserva sus 513 componentes, su Z de 638 y sus bounds.
+
+El script es `Tools/MCP/jardin_landscapes_dedup.py`, relanzable. El `_Sub` se abrio como
+nivel normal, **sin el ciclo edit/commit de la Level Instance**.
