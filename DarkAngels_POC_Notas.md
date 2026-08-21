@@ -10418,3 +10418,17 @@ es su trabajo. **Sacarlas de la calzada o desviar la carretera es decision de An
 
 Que se solapen **entre ellas** es normal y no es defecto: antes de tocar nada ya habia **32 pares
 solapados de 253**, con el peor a −7.680. Son rocas kitbasheadas, hechas para interpenetrarse.
+
+## El Mirador ya no esta en (−16000, −24000) (2026-08-20)
+
+`LI_03_MiradorSariel` esta ahora en **(12350, −5660, 0)**. Decision de Angel: se queda ahi.
+Cualquier nota anterior que diga (−16000, −24000) --incluida la de la integracion del Master del
+2026-08-12 y la de la senda del ramal-- **esta obsoleta para la posicion**; el contenido interno
+de la zona no cambia, porque va en coordenadas del submapa y viaja con la Level Instance.
+
+**Consecuencia que queda abierta:** `Conexiones/JardinMirador` son 12 piezas de senda, mas las 6
+que se anadieron hoy (`Conn_JardinMirador_S0..2` y `N0..2`), y todas viven en el **maestro** con
+coordenadas de mundo fijas apuntando al sitio viejo. Con la zona movida, ese ramal **ya no lleva
+al Mirador**: muere en campo abierto. Rehacerlo es reapuntar el tramo, no mover la zona.
+
+Y `LI_10_GabrielC1` esta desviada (−50, −150) de su (−40000, −15000): metro y medio, sin decidir.
