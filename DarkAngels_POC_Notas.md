@@ -10524,3 +10524,141 @@ que medir antes el salto real de Malakh.
 
 Periodos de 4,3 a 6,7 s, **distintos y no multiplos entre si**, para que el patron tarde en
 repetirse y no acaben todas alineadas cada pocos segundos.
+
+---
+
+## 2026-08-20 — Cuanto se tarda en cruzar Malkuth, en segundos
+
+Angel pregunto si Unreal sabe decir "de aqui a aqui son 5 metros" o "son 5 segundos
+de caminata sin nada", para colocar los beats.
+
+**Distancia si**: en un viewport ortografico, `Ctrl` + arrastrar con el boton
+central es una regla. **Tiempo no**: eso hay que calcularlo, y la velocidad del
+jugador no esta donde uno la busca.
+
+### La velocidad no vive en `MaxWalkSpeed`
+
+Malakh hereda de `BP_CombatCharacter`. DCS **pisa** el `MaxWalkSpeed` del
+CharacterMovement desde su propio `BP_MovementSpeedComponent`. Leido del CDO:
+
+| estado | uu/s | m/s |
+|---|---|---|
+| `WalkSpeed` | 200 | 2,0 |
+| **`JogSpeed`** | **400** | **4,0** |
+| `SprintSpeed` | 550 | 5,5 |
+
+`DefaultMovementState = Jog`, o sea que **lo normal es el trote**. Regla de bolsillo:
+**1.000 uu = 2,5 s**. Es una cota optimista: no cuenta la aceleracion
+(`SpeedChangeInterpSpeed` 6) ni que nadie anda en linea recta; lo real sale un
+10-20% por encima.
+
+### Lo medido
+
+`Tools/MCP/medir_beats.py` ordena las piezas de cada carretera por su sufijo
+--el numero es el orden del trazado-- y suma distancias 3D.
+
+| tramo | piezas | metros | a trote |
+|---|---|---|---|
+| `Conn_JC_Path` (Jardin -> Claro) | 48 | 810 | **3 min 22 s** |
+| `Conn_CS_Path` (Claro -> Santuario) | 31 | 523 | **2 min 11 s** |
+
+**5 min 33 s de camino sin un solo beat** solo en esos dos pasillos. Con el liston
+en 45 s, el primero pide cuatro paradas y el segundo dos.
+
+### Lo que aparecio de paso: el enlace del Jardin ya no esta
+
+`Conn_JC_Enlace_*` da **0 piezas** en el maestro. Es el tramo de 156 m que cerraba
+el hueco entre la senda del Jardin y `Conn_JC_Path_0`, puesto por
+`senda_jardin_claro.py`. El hueco de 15.659 uu esta otra vez abierto. Relanzar ese
+script lo repone.
+
+---
+
+## 2026-08-21 — VibeUE: clonado, y por que todavia no compila
+
+Angel pidio instalar [VibeUE](https://github.com/kevinpbuckley/VibeUE) (MIT, UE 5.8+),
+que **extiende el MCP nativo** en vez de sustituirlo: su `.uplugin` depende de
+`ModelContextProtocol` y `ToolsetRegistry`, se registra en el mismo servidor y usa
+el mismo `127.0.0.1:8000/mcp`. **El `.mcp.json` no se toca.**
+
+Anade lo que hoy no tenemos: **UMG, landscape, Niagara, audio, animacion, profiling**
+y el modulo `unreal.*` completo --el sandbox actual solo permite importar
+`time, math, re, json, datetime, copy`--. Eso desbloquearia la pantalla
+`WBP_DA_GameOver` y los splines de landscape para los caminos.
+
+### Estado: clonado y DESACTIVADO
+
+- `Plugins/VibeUE`, anadido a `.gitignore` (codigo de terceros, repo propio del autor).
+- En el `.uproject` va con **`"Enabled": false`**. Es obligatorio: un plugin de C++
+  sin binarios hace que Unreal se plante al abrir pidiendo recompilar modulos.
+
+### Bloqueo 1 (resuelto): Tripo3DUEBridge rompe cualquier compilacion
+
+Tripo distribuye el plugin ya compilado y su `Build.cs` declara `bPrecompile = true`
+--pensado para proyectos solo-Blueprint que nunca compilan--, pero **enviaron el
+`Source/` sin la libreria que ese mismo `Build.cs` exige**:
+`ThirdParty/IXWebSocket/Lib/Win64/IXWebSocket.lib` no viene en el paquete.
+
+Mientras el proyecto no compilara, la DLL cargaba y nadie se enteraba. Al anadir un
+plugin de C++, UBT lee las reglas de **todos** los plugins activos y falla.
+
+Probado: **apartar su `Source/` no vale** --pasa de `Unable to instantiate module` a
+`Could not find definition for module`--. UBT exige las reglas de todo plugin que
+viva en el `Plugins/` del proyecto. La unica salida barata es
+**`"Tripo3DUEBridge": {"Enabled": false}`** al compilar. Decision de Angel, y cuesta
+poco: la receta de Tripo son ocho pasos de importacion a mano sobre el FBX
+descargado; el plugin es solo el transporte por WebSocket desde Tripo Studio.
+
+### Bloqueo 2 (pendiente, es de la maquina): el compilador es viejo
+
+| toolchain instalado | estado |
+|---|---|
+| `14.38.33130` (Community) | usable segun UBT, pero **no compila 5.8** |
+| `14.42.34433` (Community) | **prohibido**: UBT veta `14.40.0-14.43.99999` |
+| `14.42.34433` (BuildTools) | **prohibido**, idem |
+
+Con Tripo desactivado la compilacion **arranco de verdad** (83 acciones) y murio en
+la segunda, **dentro de una cabecera del propio Unreal**, no en codigo de VibeUE:
+
+    Engine\Source\Runtime\Core\Public\Containers\ContainerAllocationPolicies.h(843,3):
+    error C7539: 'ForAnyElementType': a class with user-declared constructors
+    cannot have a member with the same name as the class
+
+O sea que **con el 14.38 no se compila NADA en UE 5.8**, ni VibeUE ni nada. Falta
+instalar **MSVC v143 14.50.35717** desde el Visual Studio Installer.
+
+### Un detalle del script de build
+
+`BuildAndLaunchGame.ps1` cierra el editor y **a los 15 s lo mata con `taskkill /F`**.
+La primera vez el editor tardo **109 s** en cerrarse. Cerrarlo a mano antes, o
+esperar a que el proceso desaparezca, y solo entonces lanzar el script.
+
+### VibeUE quedo instalado y funcionando
+
+`Result: Succeeded` en 825 s con el toolset **`14.44.35207`**, que llego al actualizar
+Visual Studio Community de 17.12 a 17.14. Detalle util: **UBT veta `14.40.0-14.43.99999`
+y el `14.44` queda FUERA del veto**, asi que no hizo falta el `14.50.35717` que pedia
+el mensaje. Cero errores pese al warnings-as-errors del plugin.
+
+Verificado de tres formas, que compilar no es funcionar:
+
+    LogTemp: VibeUE: registered 33 service toolset(s) with ToolsetRegistry.
+    LogToolRegistry: VibeUE: exposed 7 tool(s) on Epic's MCP endpoint
+    list_toolsets() -> 52 toolsets (19 de Epic + 33 de VibeUE)
+    call_tool(VibeUE.WidgetService, ListWidgetBlueprints) -> 38 widgets
+
+### CORRECCION: el sandbox de Python NO se abrio
+
+Antes de instalarlo escribi que VibeUE daria acceso a `unreal.*` desde los scripts que
+lanzo por `ue.mjs`. **Es falso.** El sandbox del `ProgrammaticToolset` es de Epic y
+sigue permitiendo solo `time, math, re, json, datetime, copy`. La API `unreal.*` de
+VibeUE es para la consola de Python del editor.
+
+La via correcta es `call_tool`, y **los nombres van en PascalCase**
+(`ListWidgetBlueprints`) aunque la doc del toolset los liste en snake_case.
+
+### Y algo que aparecio en la primera llamada
+
+**`/Game/DarkAngels/UI/WBP_DA_DeathScreen` ya existe.** Cuando se monto `BP_DA_Abismo`
+se dijo que la pantalla de Game Over era trabajo manual porque no habia toolset de UMG.
+Ahora se puede leer y engancharla, en vez del cartel de texto con `[R]`.

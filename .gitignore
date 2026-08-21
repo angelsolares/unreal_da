@@ -184,3 +184,11 @@ Content/__ExternalObjects__/
 
 # Cache de los scripts de Python del MCP.
 Tools/MCP/__pycache__/
+
+# ---------------------------------------------------------------
+# VibeUE — plugin de terceros (MIT), se instala clonandolo
+# ---------------------------------------------------------------
+# No se sube: es un repo propio de su autor y cada quien lo clona
+#   cd Plugins && git clone https://github.com/kevinpbuckley/VibeUE.git
+# y despues compila con Plugins/VibeUE/BuildAndLaunchGame.ps1
+Plugins/VibeUE/
