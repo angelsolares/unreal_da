@@ -10662,3 +10662,79 @@ La via correcta es `call_tool`, y **los nombres van en PascalCase**
 **`/Game/DarkAngels/UI/WBP_DA_DeathScreen` ya existe.** Cuando se monto `BP_DA_Abismo`
 se dijo que la pantalla de Game Over era trabajo manual porque no habia toolset de UMG.
 Ahora se puede leer y engancharla, en vez del cartel de texto con `[R]`.
+
+---
+
+## 2026-08-21 — Agua con Niagara, y NiagaraToolsets activado
+
+Angel pregunto si el agua se puede llevar con Niagara. Investigacion de solo lectura,
+sin tocar el proyecto.
+
+### Niagara NO sustituye al WaterBody
+
+`WaterAdvanced` --ya activo-- se describe como "coleccion de sistemas de simulacion de
+agua construidos sobre Niagara Fluids y Water", y **`NiagaraFluids` ya estaba montado**
+en la sesion, cargado solo como dependencia. O sea que la capacidad estaba viva.
+
+Pero la clase clave, `AShallowWaterRiverActor`, pide WaterBodies:
+
+    TArray<TSoftObjectPtr<AWaterBody>> SourceRiverWaterBodies;
+    TArray<TSoftObjectPtr<AWaterBody>> SinkRiverWaterBodies;
+    bool bMatchSpline = true;
+
+Simula **encima** de la forma; la forma sigue saliendo del spline. La mina de
+[[unreal-mcp-arrays-de-structs]] --cambiar el numero de puntos tumba el editor--
+sigue en pie. Lo bueno: todo lo demas que expone son escalares, bools, enums y
+materiales, o sea afinables por MCP. Reparto: Angel crea el WaterBody con sus
+puntos, Claude afina la simulacion entera.
+
+Tambien hay `Grid2D_OceanPatch` con `FFTOceanPatchSubsystem`, que huele a mas
+independiente del spline. **Sin verificar.**
+
+### Epic no tiene toolset de Water
+
+De los 27 toolsets de `Engine/Plugins/Experimental/Toolsets`, para esto solo sirven
+`NiagaraToolsets` y `PCGToolset`. **No habra nunca un WaterToolset de Epic.**
+
+### NiagaraToolsets activado, sin recompilar
+
+El Niagara de VibeUE venia capado a proposito: su `NiagaraService` esta *recortado* y
+delega crear/anadir/compilar en los `NiagaraToolsets` de Epic, que no teniamos.
+
+Se activo con **una linea en el `.uproject`**. Los toolsets de Epic traen su DLL ya
+construida, asi que **no hubo que recompilar**. Registro cinco toolsets nuevos
+(`_System`, `_Assets`, `_Component`, `_Blueprint`, `_Info`) y `_System` solo trae
+**46 herramientas**: `CreateNiagaraSystem`, `AddEmitter`, `AddModule`, `AddRenderer`,
+`AddUserVariables`, y `GetStackIssues` + `ApplyStackIssueFix` para diagnosticar y
+arreglar errores del stack.
+
+Verificado con una llamada real:
+`GetSystemSummary(NS_EmbersLarge)` -> 1 emisor `Ember`, CPUSim, sprite renderer.
+
+### El editor se relanza solo, MCP incluido
+
+    UnrealEditor.exe "<proyecto>.uproject" -ExecCmds="ModelContextProtocol.StartServer"
+
+El 8000 quedo escuchando a los 64 s. Ya no hace falta pedirle a Angel que escriba
+`StartServer` en la consola tras cada reinicio.
+
+### CORRECCION IMPORTANTE: `execute_python_code` si permite `import unreal`
+
+Registre --dos veces-- que `import unreal` estaba prohibido. Es cierto **solo dentro
+del sandbox del `ProgrammaticToolset` de Epic**, que sigue limitado a
+`time, math, re, json, datetime, copy`.
+
+VibeUE expone ademas **7 herramientas de nivel superior** (sin `toolset_name`), y una
+es **`execute_python_code`**: Python arbitrario dentro del editor, con la API `unreal`
+completa y los subsistemas. Comprobado leyendo version del engine, nivel actual, 362
+actores y los paquetes sin guardar — justo lo que dije no poder comprobar cuando hubo
+que cerrar el editor para compilar.
+
+Las otras seis: `discover_python_class` / `_function` / `_module`,
+`list_python_subsystems`, `deep_research`, `terrain_data`.
+
+Se creo **`CLAUDE.md`** en la raiz con el inventario de los 57 toolsets, las tres vias
+de llamada y la lista corta de lo que de verdad no se puede. La regla que fija: **dar
+por hecho que se puede, e intentarlo por los tres caminos antes de decir que no.**
+Durante esta POC se dijo "no puedo" cuatro veces --UMG, splines de landscape, foliage,
+assets sin guardar-- y las cuatro era falso.
