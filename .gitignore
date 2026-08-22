@@ -192,3 +192,19 @@ Tools/MCP/__pycache__/
 #   cd Plugins && git clone https://github.com/kevinpbuckley/VibeUE.git
 # y despues compila con Plugins/VibeUE/BuildAndLaunchGame.ps1
 Plugins/VibeUE/
+
+# ---------------------------------------------------------------
+# Flora de terceros (Fab, 21/08/2026) — ~6,1 GB
+# ---------------------------------------------------------------
+# Mismo criterio que DCS y GiantBoss: son assets de la biblioteca de
+# Fab de Angel, recuperables desde su cuenta. No se suben.
+Content/FruitTree_Collection/
+Content/Megaplant_Library/
+Content/Water_Flowers/
+Content/Flowering_Shrubs/
+Content/NFlowerPack_1/
+Content/Vine_Plant_Pack/
+Content/HangingPlantsVol03/
+
+# Miniaturas que deja el instalador de Fab en la raiz del proyecto.
+/*.png

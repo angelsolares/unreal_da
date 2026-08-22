@@ -17,6 +17,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "USDImporter",
+			"Enabled": true
+		},
+		{
 			"Name": "WaterAdvanced",
 			"Enabled": true
 		},
