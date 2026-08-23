@@ -184,14 +184,20 @@ Todo lo que el contrato no cerraba y hubo que resolver para poder implementar v2
 
 ### 6.1 ⚠️ Los dos nombres que faltaban
 
-| arquetipo | Blueprint | por qué |
+| arquetipo | Blueprint | estado |
 |---|---|---|
-| `portador_del_estandarte` | `BP_DA_Heraldo` | un heraldo porta el estandarte; encaja solo |
-| `elite_pesado` | `BP_DA_Inspector` | **por descarte** |
+| `portador_del_estandarte` | `BP_DA_Heraldo` | propuesto; un heraldo porta el estandarte, encaja solo |
+| `elite_pesado` | ~~`BP_DA_Inspector`~~ | **CONFIRMADO INCORRECTO — sin resolver** |
 
-«Inspector» no lee como «pesado con guardia y espadón». Si en Unreal el Inspector
-es otra cosa —un enemigo que patrulla, que detecta, que investiga— esta fila está
-mal y hay que cambiarla en `js/catalogo.js`. **Dímelo.**
+**Angel confirmó el 2026-08-23 que el Inspector es otra cosa.** No sabemos todavía
+qué Blueprint le corresponde al `elite_pesado`, ni qué arquetipo (si alguno) le
+corresponde al Inspector. `js/catalogo.js` sigue apuntando a `BP_DA_Inspector`
+**y eso está mal**: el exportador de la herramienta colocará un suplente ahí hasta
+que se cierre.
+
+**No bloquea el JSON.** El encuentro solo emite `elite_pesado` como nombre de
+diseño; la equivalencia con el Blueprint vive del lado de Unreal (§1.2). Lo único
+que hay que hacer es no meter esa fila en el Data Asset hasta saber cuál es.
 
 ### 6.2 ⚠️ `drop` se resuelve como dos booleanos, y eso cuesta algo
 
