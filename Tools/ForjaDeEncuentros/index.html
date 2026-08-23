@@ -84,6 +84,7 @@
       <button data-hoja="propiedades">Propiedades</button>
       <button data-hoja="calibracion">Calibracion</button>
       <button data-hoja="ia">IA</button>
+      <button data-hoja="unreal">Unreal</button>
     </div>
 
     <section class="hoja visible" id="hoja-veredicto">
@@ -106,6 +107,36 @@
         se validan y se juegan 100 partidas antes de enseñarse, y salen ordenadas por
         lo que dice el veredicto, no por lo que dijo el modelo.</p>
       <div id="ia-salida"></div>
+    </section>
+
+    <section class="hoja" id="hoja-unreal">
+      <div id="ue-estado" class="titular">Comprobando el editor…</div>
+
+      <label>Offset del submapa (cm)</label>
+      <div class="campo-fila">
+        <input type="number" id="ue-off-x" value="0" title="X" />
+        <input type="number" id="ue-off-y" value="0" title="Y" />
+        <input type="number" id="ue-off-z" value="0" title="Z" />
+      </div>
+      <p class="nota">Dentro de un <code>_Sub</code> los actores van en coordenadas
+        del submapa y la Level Instance les suma su transform. Si exportas con offset
+        0 a un <code>_Sub</code>, el encuentro acaba donde no es.</p>
+
+      <label><input type="checkbox" id="ue-confirmar" /> Escribir aunque el nivel esté protegido</label>
+      <p class="nota">El Malkuth Master y los <code>_Sub</code> están protegidos: sin
+        marcar esto, la exportación se niega.</p>
+
+      <div id="ue-botones" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">
+        <button id="btn-exportar">Exportar al nivel abierto</button>
+        <button id="btn-importar">Leer lo que hay en el editor</button>
+      </div>
+
+      <p class="nota"><strong>Esto no cambia de nivel.</strong> Abre tú el que quieras
+        en Unreal y coloca ahí. Todo lo que pone lleva la etiqueta <code>Forja</code>,
+        así que volver a exportar limpia lo suyo y no toca nada más. El nivel no se
+        guarda: eso lo decides tú.</p>
+
+      <div id="ue-salida"></div>
     </section>
   </aside>
 

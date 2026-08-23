@@ -51,6 +51,7 @@ async function arrancar() {
   pintarCalibracion($('#hoja-calibracion'), E.cal);
   prepararReproductor();
   comprobarIA();
+  comprobarUnreal();
 }
 
 function construirPaleta() {
@@ -119,6 +120,9 @@ function conectarUI() {
       $(`#hoja-${b.dataset.hoja}`).classList.add('visible');
     };
   });
+
+  $('#btn-exportar').onclick = exportarAUnreal;
+  $('#btn-importar').onclick = importarDeUnreal;
 
   $('#btn-criticar').onclick = pedirCritica;
   $('#btn-variantes').onclick = pedirVariantes;
@@ -301,6 +305,118 @@ function cargarVariante(v) {
   prepararReproductor();
   pintarVeredicto($('#hoja-veredicto'), E.lote);
   $$('.pestanas button')[0].click();
+}
+
+// -------------------------------------------------------------- puente Unreal
+
+let ue = null;
+
+async function cargarUE() {
+  if (!ue) ue = await import('./unreal.js');
+  return ue;
+}
+
+const offsetUE = () => ({
+  x: +$('#ue-off-x').value || 0,
+  y: +$('#ue-off-y').value || 0,
+  z: +$('#ue-off-z').value || 0
+});
+
+async function comprobarUnreal() {
+  const nodo = $('#ue-estado');
+  const { estadoUnreal } = await cargarUE();
+  const s = await estadoUnreal();
+  nodo.className = 'titular ' + (s.conectado ? 'ok' : 'aviso');
+  nodo.innerHTML = s.conectado
+    ? `Editor conectado. Nivel abierto: <strong>${escapar(s.nivel)}</strong>`
+    : `Editor no conectado — ${escapar(s.motivo)}`;
+  $$('#ue-botones button').forEach(b => { b.disabled = !s.conectado; });
+}
+
+function ocupadaUE(t) {
+  $$('#ue-botones button').forEach(b => { b.disabled = true; });
+  $('#ue-salida').innerHTML = `<p class="nota">${escapar(t)}</p>`;
+}
+function libreUE() { $$('#ue-botones button').forEach(b => { b.disabled = false; }); }
+function fallaUE(err) {
+  $('#ue-salida').innerHTML = `<div class="titular fallo">${escapar(err.message)}</div>`;
+  libreUE();
+}
+
+async function exportarAUnreal() {
+  ocupadaUE('Colocando el encuentro en el editor…');
+  try {
+    const { exportar } = await cargarUE();
+    const r = await exportar(E.enc, offsetUE(), $('#ue-confirmar').checked);
+    const partes = [
+      `<div class="titular ${r.resumen.desviados ? 'aviso' : 'ok'}">
+         ${r.resumen.enemigos} enemigos, ${r.resumen.sello} muros de sello y
+         ${r.resumen.marcas} marcas en <strong>${escapar(r.nivel)}</strong>.
+         ${r.borrados ? `Se limpiaron ${r.borrados} de la exportacion anterior.` : ''}
+       </div>`,
+      `<p class="nota">${escapar(r.nota)}</p>`
+    ];
+    if (r.resumen.desviados) {
+      partes.push(`<h2>No cuadran</h2>`);
+      for (const d of r.desviados) {
+        partes.push(`<div class="problema error">${escapar(d.etiqueta)}: pedido
+          ${d.pedido.join(', ')} · el editor dice ${d.real.join(', ')}</div>`);
+      }
+    } else {
+      partes.push(`<p class="nota">Releido del editor uno a uno: <strong>todo en su
+        sitio</strong>. Si algo se hubiera colocado mal, saldria aqui.</p>`);
+    }
+    for (const a of r.avisos || []) partes.push(`<div class="problema">${escapar(a)}</div>`);
+    $('#ue-salida').innerHTML = partes.join('');
+    libreUE();
+    comprobarUnreal();
+  } catch (err) { fallaUE(err); }
+}
+
+async function importarDeUnreal() {
+  ocupadaUE('Leyendo el editor…');
+  try {
+    const { importar, comparar, aplicarCambios } = await cargarUE();
+    const leido = await importar(offsetUE());
+    const filas = comparar(E.enc, leido);
+    const movidos = filas.filter(f => f.estado === 'movido');
+
+    const marca = { igual: 'ok', movido: 'aviso', falta: 'fallo', sobra: 'aviso' };
+    const partes = [
+      `<div class="titular ${movidos.length ? 'aviso' : 'ok'}">
+        ${leido.total} actores de la Forja en <strong>${escapar(leido.nivel)}</strong>.
+        ${movidos.length ? `${movidos.length} se han movido desde la ultima exportacion.` : 'Nada ha cambiado.'}
+      </div>`,
+      '<table class="datos"><tr><th>enemigo</th><th>estado</th></tr>'
+    ];
+    for (const f of filas) {
+      partes.push(`<tr class="${f.estado === 'igual' ? '' : 'destacada'}">
+        <td>${escapar(f.etiqueta)}</td><td style="text-align:left">${escapar(f.texto)}</td></tr>`);
+    }
+    partes.push('</table>');
+    if (movidos.length) {
+      partes.push(`<button id="btn-aplicar-ue" class="principal" style="margin-top:8px">
+        Traer esas ${movidos.length} posiciones al encuentro</button>`);
+      partes.push(`<p class="nota">Colocar a ojo en Unreal y volver a simular es el
+        bucle que cierra la fase E.</p>`);
+    }
+    $('#ue-salida').innerHTML = partes.join('');
+
+    const boton = $('#btn-aplicar-ue');
+    if (boton) boton.onclick = () => {
+      const n = aplicarCambios(E.enc, filas);
+      E.lote = null; E.testigo = null; E.fotograma = null;
+      editor.invalidarPresion();
+      editor.pintar();
+      if (vista3d) vista3d.reconstruir();
+      refrescarPaneles();
+      prepararReproductor();
+      pintarVeredicto($('#hoja-veredicto'), null);
+      $('#ue-salida').innerHTML = `<div class="titular ok">${n} posiciones traidas del
+        editor. Vuelve a simular para ver si el cambio mejora algo.</div>`;
+    };
+    libreUE();
+  } catch (err) { fallaUE(err); }
 }
 
 // --------------------------------------------------------------- vista 2D/3D

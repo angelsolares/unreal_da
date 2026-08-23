@@ -63,8 +63,52 @@ async function rutaIA(req, res, accion) {
   }
 }
 
+/** Rutas del puente con Unreal (fase E). Mismo patron perezoso que la IA. */
+async function rutaUnreal(req, res, accion) {
+  const enviar = (codigo, cuerpo) => {
+    res.writeHead(codigo, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(cuerpo));
+  };
+
+  let puente, exportador;
+  try {
+    puente = await import('./puente.mjs');
+    exportador = await import('./exportador.mjs');
+  } catch (err) {
+    return enviar(500, { error: 'No se pudo cargar el puente: ' + err.message });
+  }
+
+  if (accion === 'estado') return enviar(200, await puente.estado());
+  if (!exportador.TRABAJOS[accion]) return enviar(404, { error: `Trabajo desconocido: ${accion}` });
+  if (req.method !== 'POST') return enviar(405, { error: 'Usa POST' });
+
+  const trozos = [];
+  for await (const t of req) trozos.push(t);
+  let cuerpo;
+  try {
+    cuerpo = JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}');
+  } catch (err) {
+    return enviar(400, { error: 'Cuerpo JSON invalido: ' + err.message });
+  }
+
+  try {
+    enviar(200, await exportador.TRABAJOS[accion](cuerpo));
+  } catch (err) {
+    puente.reiniciarSesion();
+    enviar(502, { error: err.message, codigo: err.codigo || 'error-unreal' });
+  }
+}
+
 http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
+
+  if (url.startsWith('/unreal/')) {
+    rutaUnreal(req, res, url.slice(8)).catch(err => {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err.message || err) }));
+    });
+    return;
+  }
 
   if (url.startsWith('/ia/')) {
     rutaIA(req, res, url.slice(4)).catch(err => {
