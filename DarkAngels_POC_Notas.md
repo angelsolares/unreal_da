@@ -10929,3 +10929,58 @@ instalado en `/Game/Throwing_Pack/`.
 que no incluyo) y al arrancar PIE saca un **dialogo modal** que congela el editor y el MCP. Se
 cura poniendo `PostProcessAnimBlueprint = None` en sus `SKM_Manny` y `SKM_Quinn` y borrando los
 dos ABP. No los necesitamos: solo queremos las AnimSequences.
+
+## La arena que se cierra: `BP_DA_Arena` (2026-08-23)
+
+El punto 6/7 del brief de corrupcion: un encuentro del que no se puede huir. Es un actor
+suelto que colocas donde quieras; no toca ni a DCS ni al mapa.
+
+**Como se usa.** Arrastras `BP_DA_Arena` al centro de la zona, le pones `RadioArena`
+(mitad del lado del cuadrado), `AlturaMuro`, el `TextoObjetivo` y **metes los enemigos
+en el array `Enemigos`**. Nada mas. La primera instancia esta en El Claro:
+`Arena_Claro`, en (8000, 0, −40) del submapa, radio 2800, con los cuatro guardianes.
+
+**Como funciona.** Cinco `BoxComponent`: `Entrada` (el disparador, dentro) y cuatro
+muros en el perimetro. `ColocarMuros` los dimensiona desde `RadioArena`/`AlturaMuro`, y
+corre **tambien en el Construction Script**, asi que los ves a escala en el viewport sin
+darle a play. Tres estados en `Estado`: 0 abierta, 1 sellada, 2 resuelta.
+
+- `BeginPlay` → coloca, pone perfiles, abre y arranca un timer de 0,5 s.
+- Al pisar `Entrada` con `Estado == 0` → `Sellar`.
+- `VigilarArena` (el timer) → si el jugador muere, abre; si no queda ningun enemigo vivo,
+  abre. Nunca te quedas encerrado.
+
+**Perfiles de colision, que importan.** `Entrada` va a `OverlapOnlyPawn` y los muros a
+**`InvisibleWall`**: ese preset ignora el canal `Visibility`, que es justo lo que hace
+falta para que la barrera no envenene la punteria ni las trazas de golpe (la misma
+leccion que los `ZoneTrigger`). Sellar = `QueryOnly`; abrir = `NoCollision`.
+
+**El objetivo del HUD, sin romper los indices.** `SetObjective` del HUD solo acepta un
+texto si su indice **supera** al actual, y las zonas usan 1..5. La arena guarda el par
+(indice, texto) que hubiera puesto, escribe el suyo con indice +100, y al terminar
+`RestaurarObjetivo` devuelve los dos por escritura directa. Asi el `ZoneTrigger` de la
+siguiente zona sigue funcionando.
+
+**Dos trampas del DSL que costaron la tarde:**
+
+- `CanBeAttacked|IsAlive` tiene **cinco** candidatos con el mismo nombre. Los cuatro
+  normales exigen la clase concreta en el pin `self` y fallan al conectar un `Actor`
+  cualquiera. El bueno es `CanBeAttacked|IsAlive(Message)`.
+- **El DSL se traga lo que va despues de un `if`** y lo mete en el `else`. `Abrir` se
+  quedo sin bajar los muros justo en el caso de victoria. Se ve releyendo el grafo. La
+  cura: que el `if` sea la ultima sentencia de la funcion, o partirla en dos.
+
+**Probado en PIE** (dentro del propio `_Sub`, con el pawn por defecto y llamando a las
+funciones por `call_method`): sella, aguanta sellada con enemigos vivos, y abre tanto al
+morir los cuatro como al morir el jugador. Para matar un personaje de DCS desde Python no
+sirve `GameplayStatics.apply_damage` — hay que ir a su componente:
+
+```python
+sm = [c for c in actor.get_components_by_class(unreal.ActorComponent)
+      if c.get_class().get_name() == 'BP_StatsManagerComponent_C'][0]
+sm.call_method('TakeDamage', args=(9999.0, False))   # (dano, was_blocked)
+```
+
+**Lo que falta.** Los muros son invisibles: mecanicamente sellan, pero te chocas contra
+nada. Y falta el paso 2 del plan — el checkpoint antes del sello y el reinicio del
+encuentro al morir.
