@@ -1,4 +1,4 @@
-# Forja de Encuentros — Fases A, B y C
+# Forja de Encuentros — Fases A, B, C y D
 
 Banco de pruebas para los encuentros de Malkuth, según
 `Dark_Angels_Divine_Weapon_Corruption_Combat_Loop_v2.pdf`.
@@ -19,7 +19,8 @@ node Tools/ForjaDeEncuentros/serve.mjs
 ```
 
 Y abrir `http://localhost:5175`. Hace falta el servidor porque los módulos ES no
-cargan desde `file://`.
+cargan desde `file://`. Sin instalar nada: Three.js va vendorizado y la capa de IA
+se apaga sola si no está configurada.
 
 Sin navegador, desde la línea de comandos:
 
@@ -37,6 +38,7 @@ node Tools/ForjaDeEncuentros/pruebas/humo.mjs
 | `pruebas/atasco.mjs [politica]` | busca la primera partida que agota el tiempo y la disecciona |
 | `pruebas/lectura.mjs [encuentro]` | qué se ve desde la puerta, enemigo a enemigo (§5.1) |
 | `pruebas/ejes3d.mjs` | el mapeo de ejes de la vista 3D, sin navegador |
+| `pruebas/variantes.mjs` | la tubería de la IA **sin gastar una llamada** |
 
 Encuentros incluidos: `romper-la-linea` (§6.1) y `cadena-perfecta` (§6.5).
 
@@ -116,7 +118,61 @@ ficha. Durante la reproducción, Malakh cambia de arma en la mano, la espada bas
 se guarda cuando empuña algo a dos manos, las armas caídas brillan en el suelo y
 los muertos se quedan tumbados donde cayeron.
 
-**La puerta nueva: `js/lectura.js`.** El §5.1 apuesta toda la mecánica a que la
+## Fase D: la capa de IA
+
+Pestaña **IA** en el panel derecho. Es **opcional**: sin ella todo lo demás
+funciona igual.
+
+```bash
+npm install openai
+export OPENAI_API_KEY=...          # en PowerShell: $env:OPENAI_API_KEY="..."
+node serve.mjs
+```
+
+Modelo por defecto **GPT 5.6 Sol** (`gpt-5.6-sol`). Si el identificador de la API
+no es exactamente ése, se cambia sin tocar código:
+
+```bash
+export OPENAI_MODEL=el-id-correcto
+```
+
+La clave vive **solo en el proceso del servidor** (`ia.mjs`), nunca en el
+navegador: una clave en el navegador es una clave publicada. El módulo se carga
+de forma perezosa, así que quien no use la IA no paga la dependencia — y si falta
+la clave o el paquete, la pestaña se apaga sola y dice por qué.
+
+### Tres trabajos, y ninguno decide nada
+
+| botón | qué hace |
+|---|---|
+| **Criticar** | lee el encuentro *y sus números*, y opina en el vocabulario del PDF: qué funciona, el problema más grave, si la señal del §5.1 existe, y **un** cambio concreto |
+| **Proponer 3 variantes** | devuelve composiciones nuevas con la misma arena, en JSON validado por esquema |
+| **Narrar** | convierte el log de la partida testigo en la "historia de combate recordable" del §15 |
+
+### La regla: la IA propone, el simulador dispone
+
+Una variante generada **no se enseña hasta que se ha jugado**. El flujo es:
+
+1. El modelo devuelve una **propuesta estrecha** (composición y geometría), no un
+   Encuentro completo. La arena, el sello y el checkpoint los hereda del actual:
+   son decisiones de nivel, y las reglas que el PDF da por sentadas no se negocian
+   con un modelo.
+2. `expandirPropuesta()` la convierte en un Encuentro real, descartando lo que no
+   existe (un arquetipo inventado se cae, un drop inventado baja a "estándar").
+3. `validar()` + 100 partidas.
+4. Se muestran **ordenadas por lo que dice el veredicto**, con su semáforo de
+   nueve puertas, no por el orden en que las escupió el modelo.
+
+Lo que ves en pantalla no es "lo que dijo el modelo", es "lo que dijo el modelo,
+y esto es lo que pasa cuando se juega". Si el veredicto la tumba, se enseña
+tumbada.
+
+`pruebas/variantes.mjs` prueba toda esa tubería con respuestas de mentira —
+incluidas las malas— sin gastar una llamada.
+
+---
+
+**La puerta nueva de la Fase C: `js/lectura.js`.** El §5.1 apuesta toda la mecánica a que la
 silueta comunique la estrategia —*"Lanza larga y brillante visible desde
 entrada"*— y eso nadie lo había comprobado. Ahora se mide: desde los ojos de
 Malakh en la puerta, para cada enemigo, si está tapado, a qué distancia, y cuántos
@@ -283,10 +339,10 @@ números se calibran con una captura y el veredicto se vuelve mucho más fiable.
 - **Siluetas reales en la 3D.** `ThreeJSPOC/` ya tiene los GLB de Malakh, el
   Arcángel y las armas. Los primitivos bastan para juzgar posición y oclusión,
   pero para juzgar *lectura* de silueta el modelo real diría más.
-- **Fase D** — capa de IA: crítico de encuentro, generador de variantes con JSON
-  validado por esquema, narrador de la partida. Con proxy local para la clave.
 - **Fase E** — export/import por MCP: volcar el JSON a actores y Blocking Volumes,
   e importar la geometría real de Malkuth para planificar sobre suelo verdadero.
+  Es la que cierra el círculo: hasta entonces esto planifica sobre rectángulos
+  abstractos, no sobre el suelo de Malkuth.
 
 Antes de la Fase B conviene **cerrar la calibración en PIE**: las ventanas activas,
 el alcance de las trazas y la esquiva. Son los tres números de los que más depende

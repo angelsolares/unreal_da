@@ -83,6 +83,7 @@
       <button data-hoja="veredicto" class="activo">Veredicto</button>
       <button data-hoja="propiedades">Propiedades</button>
       <button data-hoja="calibracion">Calibracion</button>
+      <button data-hoja="ia">IA</button>
     </div>
 
     <section class="hoja visible" id="hoja-veredicto">
@@ -93,6 +94,19 @@
     <section class="hoja" id="hoja-propiedades"></section>
 
     <section class="hoja" id="hoja-calibracion"></section>
+
+    <section class="hoja" id="hoja-ia">
+      <div id="ia-estado" class="titular">Comprobando la capa de IA…</div>
+      <div id="ia-botones">
+        <button id="btn-criticar">Criticar este encuentro</button>
+        <button id="btn-variantes">Proponer 3 variantes</button>
+        <button id="btn-narrar">Narrar la partida testigo</button>
+      </div>
+      <p class="nota">La IA propone; el <strong>simulador dispone</strong>. Las variantes
+        se validan y se juegan 100 partidas antes de enseñarse, y salen ordenadas por
+        lo que dice el veredicto, no por lo que dijo el modelo.</p>
+      <div id="ia-salida"></div>
+    </section>
   </aside>
 
 </div>

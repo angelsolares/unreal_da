@@ -17,7 +17,8 @@ const E = {
   extra: {},
   testigo: null,
   fotograma: null,
-  reproduciendo: false
+  reproduciendo: false,
+  variantes: []
 };
 
 const $ = (s) => document.querySelector(s);
@@ -49,6 +50,7 @@ async function arrancar() {
   refrescarPaneles();
   pintarCalibracion($('#hoja-calibracion'), E.cal);
   prepararReproductor();
+  comprobarIA();
 }
 
 function construirPaleta() {
@@ -118,6 +120,10 @@ function conectarUI() {
     };
   });
 
+  $('#btn-criticar').onclick = pedirCritica;
+  $('#btn-variantes').onclick = pedirVariantes;
+  $('#btn-narrar').onclick = pedirNarracion;
+
   $('#btn-2d').onclick = () => ponerVista('2d');
   $('#btn-3d').onclick = () => ponerVista('3d');
   $('#camara').onchange = (e) => vista3d?.ponerCamara(e.target.value);
@@ -164,6 +170,137 @@ function borrarSeleccion() {
   editor.invalidarPresion();
   editor.pintar();
   refrescarPaneles();
+}
+
+// ------------------------------------------------------------------ capa IA
+
+let ia = null;   // se importa perezosamente, como la 3D
+
+async function cargarIA() {
+  if (!ia) ia = await import('./ia.js');
+  return ia;
+}
+
+async function comprobarIA() {
+  const nodo = $('#ia-estado');
+  const { estadoIA } = await cargarIA();
+  const s = await estadoIA();
+  nodo.className = 'titular ' + (s.disponible ? 'ok' : 'aviso');
+  nodo.innerHTML = s.disponible
+    ? `Modelo <strong>${escapar(s.modelo)}</strong>. ${escapar(s.nota || '')}`
+    : `IA apagada — ${escapar(s.motivo)}<br><span style="color:var(--texto-tenue)">`
+      + `Exporta <code>OPENAI_API_KEY</code>, instala con <code>npm install openai</code> y reinicia el servidor.</span>`;
+  $$('#ia-botones button').forEach(b => { b.disabled = !s.disponible; });
+  return s.disponible;
+}
+
+const escapar = (s) => String(s ?? '').replace(/[&<>"]/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function ocupadaIA(texto) {
+  $$('#ia-botones button').forEach(b => { b.disabled = true; });
+  $('#ia-salida').innerHTML = `<p class="nota">${escapar(texto)}</p>`;
+}
+
+function libreIA() { $$('#ia-botones button').forEach(b => { b.disabled = false; }); }
+
+function fallaIA(err) {
+  $('#ia-salida').innerHTML = `<div class="titular fallo">${escapar(err.message)}</div>`
+    + (err.bruto ? `<div class="prosa">${escapar(err.bruto)}</div>` : '');
+  libreIA();
+}
+
+async function pedirCritica() {
+  if (!E.lote) { $('#ia-salida').innerHTML = '<p class="nota">Simula primero: la critica se apoya en los numeros.</p>'; return; }
+  ocupadaIA('Leyendo el encuentro y su veredicto…');
+  try {
+    const { criticar } = await cargarIA();
+    const texto = await criticar(E.enc, E.cal, E.lote);
+    $('#ia-salida').innerHTML = `<div class="prosa">${escapar(texto)}</div>`;
+    libreIA();
+  } catch (err) { fallaIA(err); }
+}
+
+async function pedirNarracion() {
+  if (!E.testigo) { $('#ia-salida').innerHTML = '<p class="nota">No hay partida testigo. Simula primero.</p>'; return; }
+  ocupadaIA('Contando la partida…');
+  try {
+    const { narrar } = await cargarIA();
+    const texto = await narrar(E.enc, E.testigo);
+    $('#ia-salida').innerHTML = `<div class="prosa">${escapar(texto)}</div>`;
+    libreIA();
+  } catch (err) { fallaIA(err); }
+}
+
+async function pedirVariantes() {
+  ocupadaIA('Pidiendo variantes…');
+  try {
+    const { generarVariantes } = await cargarIA();
+    const juzgadas = await generarVariantes(E.enc, E.cal, E.armas, E.lote,
+      (paso) => { $('#ia-salida').innerHTML = `<p class="nota">${escapar(paso)}</p>`; });
+    E.variantes = juzgadas;
+    pintarVariantes(juzgadas);
+    libreIA();
+  } catch (err) { fallaIA(err); }
+}
+
+function pintarVariantes(juzgadas) {
+  const partes = [`<p class="nota">Ordenadas por lo que dice el simulador, no por
+    el orden en que las propuso el modelo.</p>`];
+
+  juzgadas.forEach((v, i) => {
+    const p = v.propuesta;
+    if (v.fallo) {
+      partes.push(`<div class="variante"><h3>${escapar(p.nombre)}</h3>
+        <div class="cifras" style="color:var(--fallo)">No se pudo simular: ${escapar(v.fallo)}</div></div>`);
+      return;
+    }
+    const ver = v.lote.veredicto;
+    const base = v.lote.porPolitica['cercano'].resumen;
+    const vent = v.lote.porPolitica['ventaja'].resumen;
+    const errores = v.problemas.filter(x => x.nivel === 'error');
+
+    partes.push(`
+      <div class="variante">
+        <h3>${escapar(p.nombre)}</h3>
+        <div class="semaforo">${ver.puertas.map(g => `<span class="luz ${g.estado}" title="${escapar(g.titulo)}: ${escapar(g.estado)}"></span>`).join('')}</div>
+        <div class="cifras">
+          espada sola ${(base.tasaVictoria * 100).toFixed(0)}% ·
+          con armas ${(vent.tasaVictoria * 100).toFixed(0)}% ·
+          ${p.enemigos.length} enemigos
+        </div>
+        <div class="porque">${escapar(p.queEnsena || '')}</div>
+        <div class="porque" style="color:var(--texto-tenue)">${escapar(p.porQueFunciona || '')}</div>
+        ${errores.length ? `<div class="problema error" style="margin-top:6px">${errores.map(e => escapar(e.texto)).join('<br>')}</div>` : ''}
+        <div style="margin-top:7px;display:flex;gap:5px">
+          <button data-cargar-variante="${i}">Cargar en el editor</button>
+          <button data-guardar-variante="${i}">Guardar JSON</button>
+        </div>
+      </div>`);
+  });
+
+  $('#ia-salida').innerHTML = partes.join('');
+
+  $$('#ia-salida [data-cargar-variante]').forEach(b => {
+    b.onclick = () => cargarVariante(E.variantes[+b.dataset.cargarVariante]);
+  });
+  $$('#ia-salida [data-guardar-variante]').forEach(b => {
+    b.onclick = () => descargar(E.variantes[+b.dataset.guardarVariante].encuentro);
+  });
+}
+
+function cargarVariante(v) {
+  if (!v?.encuentro) return;
+  E.enc = v.encuentro;
+  E.seleccion = null; E.lote = v.lote; E.testigo = v.lote?.testigo || null;
+  E.fotograma = null; E.extra = {};
+  editor.invalidarPresion();
+  editor.encajar();
+  if (vista3d) vista3d.reconstruir();
+  refrescarPaneles();
+  prepararReproductor();
+  pintarVeredicto($('#hoja-veredicto'), E.lote);
+  $$('.pestanas button')[0].click();
 }
 
 // --------------------------------------------------------------- vista 2D/3D
@@ -450,14 +587,16 @@ async function cargarDeDisco(id) {
   pintarVeredicto($('#hoja-veredicto'), null);
 }
 
-function guardar() {
-  const blob = new Blob([aJSON(E.enc)], { type: 'application/json' });
+function descargar(enc) {
+  const blob = new Blob([aJSON(enc)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${E.enc.id}.json`;
+  a.download = `${enc.id}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+function guardar() { descargar(E.enc); }
 
 function cargar(ev) {
   const f = ev.target.files[0];

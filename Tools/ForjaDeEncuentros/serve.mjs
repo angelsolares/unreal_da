@@ -20,8 +20,60 @@ const TIPOS = {
   '.png': 'image/png'
 };
 
+/**
+ * Rutas de la capa de IA (fase D). El modulo se importa solo cuando se pide:
+ * asi la herramienta entera —editor, simulador, 3D— sigue funcionando sin
+ * instalar nada, y quien no use la IA no paga su dependencia.
+ */
+async function rutaIA(req, res, accion) {
+  const enviar = (codigo, cuerpo) => {
+    res.writeHead(codigo, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(cuerpo));
+  };
+
+  let ia;
+  try {
+    ia = await import('./ia.mjs');
+  } catch (err) {
+    return enviar(500, { error: 'No se pudo cargar ia.mjs: ' + err.message });
+  }
+
+  if (accion === 'estado') return enviar(200, await ia.estado());
+  if (!ia.TRABAJOS[accion]) return enviar(404, { error: `Trabajo desconocido: ${accion}` });
+  if (req.method !== 'POST') return enviar(405, { error: 'Usa POST' });
+
+  const trozos = [];
+  for await (const t of req) trozos.push(t);
+  let cuerpo;
+  try {
+    cuerpo = JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}');
+  } catch (err) {
+    return enviar(400, { error: 'Cuerpo JSON invalido: ' + err.message });
+  }
+
+  try {
+    enviar(200, await ia.TRABAJOS[accion](cuerpo));
+  } catch (err) {
+    // El motivo importa mas que el codigo: la interfaz lo enseña tal cual.
+    enviar(err.codigo === 'sin-ia' ? 503 : 502, {
+      error: err.message,
+      codigo: err.codigo || 'error-openai',
+      bruto: err.bruto
+    });
+  }
+}
+
 http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
+
+  if (url.startsWith('/ia/')) {
+    rutaIA(req, res, url.slice(4)).catch(err => {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err.message || err) }));
+    });
+    return;
+  }
+
   const rel = url === '/' ? 'index.html' : url.slice(1);
   const destino = path.join(raiz, rel);
 
@@ -38,4 +90,7 @@ http.createServer((req, res) => {
   });
 }).listen(puerto, () => {
   console.log(`Forja de Encuentros -> http://localhost:${puerto}`);
+  console.log(process.env.OPENAI_API_KEY
+    ? `IA: activa, modelo ${process.env.OPENAI_MODEL || 'gpt-5.6-sol'} (cambialo con OPENAI_MODEL)`
+    : 'IA: apagada. Exporta OPENAI_API_KEY y ejecuta: npm install openai');
 });

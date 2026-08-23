@@ -110,12 +110,18 @@ export function validar(enc) {
   }
 
   // Alcanzabilidad: cualquier enemigo en cota alta necesita un acceso.
+  //
+  // Los dos casos de abajo son el MISMO soft-lock, aunque no lo parezcan: el
+  // simulador solo permite golpear con menos de 120 cm de diferencia de cota, asi
+  // que un enemigo flotando sin plataforma es tan inalcanzable como uno en un
+  // balcon sin rampa. Por eso los dos llevan el codigo `inalcanzable` y los dos
+  // tumban la puerta del §7.3.
   for (const e of enc.enemigos) {
     if ((e.cota || 0) <= 50) continue;
     const plat = plataformaBajo(enc, e.pos);
     if (!plat) {
-      aviso('aviso', 'cota-sin-plataforma',
-        `${etiquetaDe(e)} esta a cota ${e.cota} pero no hay plataforma debajo. La ruta a pie es indefinida.`, [e.id]);
+      aviso('error', 'inalcanzable',
+        `${etiquetaDe(e)} esta a cota ${e.cota} y no hay ninguna plataforma debajo: flota. Con espada sola es inalcanzable: SOFT-LOCK.`, [e.id]);
     } else if (!plat.accesos || plat.accesos.length === 0) {
       aviso('error', 'inalcanzable',
         `${etiquetaDe(e)} esta sobre "${plat.etiqueta || plat.id}" sin ningun acceso. Con espada sola es inalcanzable: SOFT-LOCK.`, [e.id, plat.id]);

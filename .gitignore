@@ -208,3 +208,9 @@ Content/HangingPlantsVol03/
 
 # Miniaturas que deja el instalador de Fab en la raiz del proyecto.
 /*.png
+
+# ---------------------------------------------------------------
+# Forja de Encuentros: la dependencia opcional de la capa de IA
+# ---------------------------------------------------------------
+Tools/ForjaDeEncuentros/node_modules/
+Tools/ForjaDeEncuentros/package-lock.json
