@@ -11212,3 +11212,51 @@ muro invisible; ahora la ruta no pasa por ahi.
 **El coste esta acotado por los volumenes**: solo se genera dentro de los
 `NavMeshBoundsVolume`, que en Malkuth son tres (Claro, GabrielC2, GabrielC3), no en todo el
 mapa. Y Dynamic **no tira lo horneado**: parte de ello y solo reconstruye las zonas sucias.
+
+### Las armas soltadas caen, y ya no se quedan volando (2026-08-23)
+
+**Lo que hacia antes:** `DropOne` tomaba la posicion del arma en la mano, tiraba una traza de
+**500 uu hacia abajo** buscando suelo, y soltaba el arma ahi. Si la traza no encontraba nada
+—enemigo muerto sobre un bloque, ragdoll con el brazo en alto, o simplemente mas de 5 metros de
+caida— el arma se quedaba **flotando donde estaba la mano**.
+
+**Lo que hace ahora:** se suelta en el sitio exacto del arma, **con fisica**, y cae. Mientras
+cae **no se puede recoger**: `Caer` apaga la colision de la `Zona` de interaccion. Un
+temporizador de 0,2 s mira la velocidad; cuando baja de 12 uu/s, `Posar` para la fisica, ancla
+el arma al suelo y vuelve a encender la `Zona`. Hay un temporizador de seguridad a 6 s por si
+no se posa nunca.
+
+Detalles que hicieron falta y no son obvios:
+
+- **CCD encendido** (`SetUseCCD`). Sin el, en una caida larga la lanza **atraviesa el suelo**:
+  llega a ~1280 uu/s y el casco convexo tunelea a traves de la malla de tierra.
+- **Ignorar `ECC_Pawn` y `ECC_PhysicsBody`**, o el arma se posa **encima del cadaver** que
+  acaba de soltarla, y cuando el cadaver desaparece vuelve a quedarse en el aire.
+- **La fisica va sobre el componente `Mesh`, que no es la raiz.** Eso lo mueve a el solo, y la
+  `Zona` de interaccion se quedaria en el sitio original — recogerias el arma donde *estaba*.
+  Por eso `Posar` mueve el ACTOR a donde acabo la malla y luego pone la malla a relativo cero.
+
+## Y el bug de verdad que aparecio por el camino
+
+**La caja `Entrada` de `BP_DA_Arena` estaba bloqueando el canal Visibility.** El preset
+`OverlapOnlyPawn` **no ignora Visibility**: parte de bloquear todo y solo cambia la respuesta
+de Pawn a Overlap. Medido: `get_collision_response_to_channel(ECC_VISIBILITY)` devolvia
+`ECR_BLOCK`.
+
+Consecuencias: la traza de suelo del arma tomaba el **techo de la caja de entrada** por suelo
+y anclaba ahi (z=758 con el suelo a −36, cayera desde 900 o desde 1200 — misma cota, que fue la
+pista). Y lo peor, que no se veia: **cualquier traza de puntería o de golpe dentro de la arena
+chocaba contra esa caja invisible**. Es exactamente el veneno que ya estaba anotado para los
+`ZoneTrigger`, repetido.
+
+Arreglado cambiando el perfil de `Entrada` a **`OverlapAllDynamic`**, que solapa con todo y no
+bloquea nada. Los cuatro muros ya estaban bien: usan `InvisibleWall`, que si ignora Visibility.
+
+**Medido antes y despues**, con el Lancero muerto a z=1200 sobre suelo a −36:
+
+| | donde acaba el arma |
+|---|---|
+| antes | z = **758** (encima de la caja de entrada) |
+| despues | z = **−37** (en el suelo) |
+
+Y con los enemigos en su sitio normal, las tres armas soltadas acaban en z = −37.
