@@ -11012,3 +11012,42 @@ el viewport sin darle a play.
 **Lo que le falta a la barrera:** no tiene borde superior ni estructura, asi que se lee
 como bruma dorada y no como muro. Para que lea de verdad hace falta material propio con
 degradado en el canto y algun patron en movimiento.
+
+### Material propio de la barrera: `M_DA_MuroArena` (2026-08-23)
+
+`M_DA_HazLuz` servia de apano pero no tiene borde ni estructura: se leia como bruma. La
+barrera tiene ahora material propio, aditivo, sin iluminar y a dos caras, con **46 nodos** y
+216 instrucciones de pixel. Cuatro cosas encima del velo de color:
+
+1. **Canto superior encendido.** Un `SmoothStep` sobre la altura normalizada marca el 5%
+   de arriba (`GrosorBorde`). Ese canto ademas **arde mas blanco**: el emisivo se multiplica
+   por `1 + bordes*2`.
+2. **Halo al ras del suelo**, el mismo borde invertido, al 60%.
+3. **Bandas diagonales subiendo.** `fase = (x + y + dz) * Frecuencia - Tiempo * Velocidad`,
+   metida en un seno. Al ir por posicion de MUNDO, las bandas miden igual en cualquier muro
+   sin importar su escala.
+4. **Fresnel de canto** (`Canto`), que enciende la barrera cuando la miras de refilon.
+
+Parametros, agrupados: `Color`/`Brillo`/`Opacidad` (Aspecto), `Borde`/`GrosorBorde`/`Canto`
+(Borde), `Velocidad`/`Frecuencia` (Movimiento).
+
+**La altura normalizada NO puede salir de `ObjectBounds`.** Fue el primer intento y la
+barrera salio blanca del todo: los `SmoothStep` saturaban a 1 en toda la superficie porque el
+rango de `h` se iba fuera de 0..1. Lo que si funciona es **posicion local**: un
+`TransformPosition` de Mundo a Local sobre `WorldPosition`, mascara Z, `*0.01 + 0.5`. El cubo
+del motor va de −50 a +50 en Z **pase lo que pase con la escala**, asi que `h` sale exacto.
+
+**Montar un material por Python: dos reglas.**
+
+- **Todo el grafo en UNA sola llamada.** Cada `execute_python_code` es un interprete nuevo:
+  si lo partes en dos, pierdes las referencias a los nodos y no puedes seguir cableando.
+- **Nunca `delete_asset` para rehacerlo.** Unreal saca un modal *"Material ... is in use"*,
+  el borrado falla con un `Ensure`, y el `create_asset` siguiente saca otro modal
+  *"Overwrite Existing Object"* que **congela el editor y el MCP**. Lo correcto es cargar el
+  material y vaciarlo: `delete_material_expression` en bucle sobre
+  `get_material_expressions` — `delete_all_material_expressions` **deja nodos vivos**
+  (55 en vez de 0 en la prueba), asi que hay que comprobar que el contador llega a cero.
+
+Los const de los nodos (`const_a`, `const_b`, `const_min`, `const_max`) evitan tener que crear
+un `Constant` por cada numero. Y el pin unico sin nombre se cablea con `''`, aunque
+`get_material_expression_input_names` lo llame `"None"`.
