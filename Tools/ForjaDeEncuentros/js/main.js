@@ -24,6 +24,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 let editor;
+let vista3d = null;
 
 // ---------------------------------------------------------------- arranque
 
@@ -117,6 +118,11 @@ function conectarUI() {
     };
   });
 
+  $('#btn-2d').onclick = () => ponerVista('2d');
+  $('#btn-3d').onclick = () => ponerVista('3d');
+  $('#camara').onchange = (e) => vista3d?.ponerCamara(e.target.value);
+  $('#capa-lineas3d').onchange = (e) => vista3d?.alternarLineasDeEntrada(e.target.checked);
+
   $('#sel-encuentro').onchange = (e) => cargarDeDisco(e.target.value);
   $('#btn-simular').onclick = simular;
   $('#btn-encajar').onclick = () => editor.encajar();
@@ -158,6 +164,53 @@ function borrarSeleccion() {
   editor.invalidarPresion();
   editor.pintar();
   refrescarPaneles();
+}
+
+// --------------------------------------------------------------- vista 2D/3D
+
+/**
+ * La 3D se carga la primera vez que se pide, no al arrancar: son 720 KB de
+ * Three y la mayoria de las sesiones se quedan en la planta.
+ */
+async function ponerVista(cual) {
+  const es3d = cual === '3d';
+  $('#btn-2d').classList.toggle('activo', !es3d);
+  $('#btn-3d').classList.toggle('activo', es3d);
+  $('#lienzo').classList.toggle('oculto', es3d);
+  $('#lienzo3d').classList.toggle('oculto', !es3d);
+  $('#camara').classList.toggle('oculto', !es3d);
+  $('#lbl-lineas').classList.toggle('oculto', !es3d);
+  $('#pista').textContent = es3d
+    ? 'arrastrar: orbitar · rueda: acercar'
+    : 'rueda: zoom · arrastrar fondo: mover · supr: borrar';
+
+  if (!es3d) { vista3d?.parar(); editor.pintar(); return; }
+
+  if (!vista3d) {
+    $('#pista').textContent = 'cargando Three.js…';
+    try {
+      const { Vista3D } = await import('./vista3d.js');
+      vista3d = new Vista3D($('#lienzo3d'), () => E);
+    } catch (err) {
+      $('#pista').textContent = 'No se pudo cargar la vista 3D: ' + err.message;
+      console.error(err);
+      ponerVista('2d');
+      return;
+    }
+    $('#pista').textContent = 'arrastrar: orbitar · rueda: acercar';
+  }
+
+  vista3d.reconstruir();
+  vista3d.ponerCamara($('#camara').value);
+  vista3d.alternarLineasDeEntrada($('#capa-lineas3d').checked);
+  vista3d.mostrar(E.fotograma);
+  vista3d.arrancar();
+}
+
+/** El editor y la 3D miran el mismo estado; esto los mantiene en fase. */
+function refrescarVistas() {
+  editor.pintar();
+  if (vista3d?.activa) vista3d.mostrar(E.fotograma);
 }
 
 // ------------------------------------------------------------------ paneles
@@ -315,7 +368,7 @@ function mostrarFotograma(i) {
   const recientes = t.eventos.filter(e => e.t <= f.t).slice(-3).reverse();
   $('#linea-eventos').textContent = recientes.map(describir).join('   ·   ') || '…';
 
-  editor.pintar();
+  refrescarVistas();
 }
 
 function nombreArma(familia) {
@@ -392,6 +445,7 @@ async function cargarDeDisco(id) {
   editor.invalidarPresion();
   editor.encajar();
   refrescarPaneles();
+  if (vista3d) vista3d.reconstruir();
   prepararReproductor();
   pintarVeredicto($('#hoja-veredicto'), null);
 }
@@ -425,5 +479,17 @@ function cargar(ev) {
   lector.readAsText(f);
   ev.target.value = '';
 }
+
+// Es una herramienta de dev: el estado, a mano desde la consola del navegador.
+// `forja.E.enc` es el encuentro vivo, `forja.lote()` el ultimo veredicto crudo,
+// y `forja.vista3d` la escena de Three para hurgar en ella.
+window.forja = {
+  E,
+  get editor() { return editor; },
+  get vista3d() { return vista3d; },
+  lote: () => E.lote,
+  simular,
+  ponerVista
+};
 
 arrancar();

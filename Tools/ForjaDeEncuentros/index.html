@@ -47,6 +47,18 @@
 
   <div id="lienzo-envoltura">
     <canvas id="lienzo"></canvas>
+    <div id="lienzo3d" class="oculto"></div>
+    <div id="barra-vista">
+      <button id="btn-2d" class="activo">Planta 2D</button>
+      <button id="btn-3d">Vista 3D</button>
+      <select id="camara" class="oculto" title="Camara">
+        <option value="orbita">Orbita</option>
+        <option value="entrada">Ojos de Malakh en la entrada</option>
+        <option value="malakh">Tras Malakh</option>
+        <option value="cenital">Cenital</option>
+      </select>
+      <label id="lbl-lineas" class="oculto"><input type="checkbox" id="capa-lineas3d" /> Lineas desde la entrada</label>
+    </div>
     <div id="pista">rueda: zoom · arrastrar fondo: mover · supr: borrar</div>
   </div>
 

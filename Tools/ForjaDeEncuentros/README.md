@@ -1,4 +1,4 @@
-# Forja de Encuentros — Fases A y B
+# Forja de Encuentros — Fases A, B y C
 
 Banco de pruebas para los encuentros de Malkuth, según
 `Dark_Angels_Divine_Weapon_Corruption_Combat_Loop_v2.pdf`.
@@ -35,6 +35,8 @@ node Tools/ForjaDeEncuentros/pruebas/humo.mjs
 | `pruebas/diag.mjs` | techo de la espada y daño necesario para este encuentro |
 | `pruebas/traza.mjs [semilla] [politica]` | una sola partida, evento a evento |
 | `pruebas/atasco.mjs [politica]` | busca la primera partida que agota el tiempo y la disecciona |
+| `pruebas/lectura.mjs [encuentro]` | qué se ve desde la puerta, enemigo a enemigo (§5.1) |
+| `pruebas/ejes3d.mjs` | el mapeo de ejes de la vista 3D, sin navegador |
 
 Encuentros incluidos: `romper-la-linea` (§6.1) y `cadena-perfecta` (§6.5).
 
@@ -92,6 +94,36 @@ ninguno), recogida con ventana de vulnerabilidad, swap irreversible con purga de
 off-hand ante armas a dos manos, munición del arco, los cinco ataques de descarte
 (proyectil, AoE, impacto y zona), bloqueo mejorado del escudo que además para
 flechas, y purga total al romper el sello.
+
+## Fase C: la vista 3D, y lo que la planta no puede contestar
+
+Botón **Vista 3D** sobre el lienzo. Misma simulación, otro renderer: Three.js
+vendorizado en `vendor/three/` (720 KB, sin CDN, se carga solo cuando se pide).
+
+Cuatro cámaras:
+
+| cámara | para qué |
+|---|---|
+| Órbita | repasar el trazado entero |
+| **Ojos de Malakh en la entrada** | **la prueba del §5.1**, con FOV 70 como el juego |
+| Tras Malakh | seguir la partida testigo en tercera persona |
+| Cenital | contrastar contra la planta 2D |
+
+La silueta **es** la señal. Cada arquetipo lleva su arma con su tamaño real: la
+lanza mide 3,2 m y se ve desde la puerta, el escudo va pegado al cuerpo y apenas
+cambia el contorno. Eso es lo que hay que poder juzgar mirando, no leyendo la
+ficha. Durante la reproducción, Malakh cambia de arma en la mano, la espada base
+se guarda cuando empuña algo a dos manos, las armas caídas brillan en el suelo y
+los muertos se quedan tumbados donde cayeron.
+
+**La puerta nueva: `js/lectura.js`.** El §5.1 apuesta toda la mecánica a que la
+silueta comunique la estrategia —*"Lanza larga y brillante visible desde
+entrada"*— y eso nadie lo había comprobado. Ahora se mide: desde los ojos de
+Malakh en la puerta, para cada enemigo, si está tapado, a qué distancia, y cuántos
+grados de silueta ocupa (y qué parte de esa silueta es el arma, porque si el arma
+no se distingue la señal no existe). Vive aparte de la vista 3D a propósito: así
+el veredicto lo usa sin navegador y las pruebas de node lo cubren. La casilla
+**Líneas desde la entrada** lo pinta en la escena: verde legible, rojo tapado.
 
 **Calibración** (`datos/calibracion.json`) — cada valor lleva su procedencia:
 `medido`, `parcial` o `ESTIMADO`. La interfaz lo enseña con una etiqueta de color.
@@ -195,6 +227,28 @@ implementarlo en DCS el arquero puede huir sin fin, ese encuentro no se cerrará
 
 ---
 
+## Lo que salió en la Fase C
+
+**8. «Romper la línea» sí se lee; «Cadena perfecta» no.** Desde la puerta:
+
+| encuentro | qué se ve |
+|---|---|
+| Romper la línea | las 5 siluetas, la más pequeña a 3,1° |
+| Cadena perfecta | el Arquero y el Elite **tapados** por las columnas |
+
+En «Cadena perfecta» ninguno de los dos tapados es llave táctica, así que la
+puerta no salta — pero significa que el jugador entra sin saber que al fondo hay
+un Elite. Puede ser lo que quieres (una emboscada) o un descuido; el documento
+no lo dice, y ahora al menos la decisión es consciente.
+
+**9. La lanza se lee, el escudo no.** El Lancero de «Cadena perfecta» ocupa 18,5°
+de silueta y el **72% de eso es la lanza**. El Escudero ocupa 5,1° y solo el 47%
+es el escudo. La señal «ese lleva una herramienta» funciona con las armas largas
+y es casi nula con el escudo: si quieres que el jugador vea de lejos que ahí hay
+un escudo que coger, no bastará la silueta — hará falta color, brillo o VFX.
+
+---
+
 ## Lo que este modelo NO sabe
 
 Importa tanto como lo que sabe, porque **todo tira del veredicto hacia abajo**:
@@ -217,11 +271,18 @@ el proyecto, y sus números reales deberían sustituir a los de aquí.
 
 ---
 
+Y una advertencia sobre la Fase C: **el límite de lectura (40 m) y el ancho que
+añade cada arma a la silueta son suposiciones de diseño**, no medidas. Están
+declaradas en `js/lectura.js`. El día que haya una arena real en Unreal, esos dos
+números se calibran con una captura y el veredicto se vuelve mucho más fiable.
+
+---
+
 ## Lo que falta
 
-- **Fase C** — vista 3D con Three.js. Hay terreno hecho: `ThreeJSPOC/` ya tiene los
-  GLB de Malakh, el Arcángel y las armas, así que se puede pasar de primitivos a
-  siluetas reales y comprobar la señal "Silueta / arma" del §5.1 desde la entrada.
+- **Siluetas reales en la 3D.** `ThreeJSPOC/` ya tiene los GLB de Malakh, el
+  Arcángel y las armas. Los primitivos bastan para juzgar posición y oclusión,
+  pero para juzgar *lectura* de silueta el modelo real diría más.
 - **Fase D** — capa de IA: crítico de encuentro, generador de variantes con JSON
   validado por esquema, narrador de la partida. Con proxy local para la clave.
 - **Fase E** — export/import por MCP: volcar el JSON a actores y Blocking Volumes,

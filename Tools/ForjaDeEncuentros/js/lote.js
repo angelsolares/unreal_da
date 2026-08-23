@@ -15,6 +15,7 @@
 import { Simulacion } from './sim.js';
 import { crearPoliticas, crearPolitica, POLITICA_BASE, POLITICA_VENTAJA } from './politicas.js';
 import { validar } from './esquema.js';
+import { resumenDeLectura } from './lectura.js';
 import { mediana, percentil, media } from './rng.js';
 
 export const PARTIDAS_POR_DEFECTO = 200;
@@ -216,7 +217,26 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
     });
   }
 
-  // --- 7. No saturar el suelo (§8) ---
+  // --- 7. La arena se LEE desde la puerta (§5.1) ---
+  const lect = resumenDeLectura(encuentro, calibracion);
+  if (lect.filas.length) {
+    const malas = lect.llavesIlegibles;
+    puertas.push({
+      id: 'se-lee',
+      titulo: 'La llave tactica se ve desde la entrada',
+      referencia: '§5.1 Lectura antes que UI',
+      estado: !lect.llaves.length ? 'na' : malas.length ? (malas.length === lect.llaves.length ? 'fallo' : 'aviso') : 'ok',
+      texto: !lect.llaves.length
+        ? 'No hay ningun drop garantizado que leer.'
+        : malas.length
+          ? malas.map(f => `"${f.etiqueta}" lleva ${f.nombreArma || 'su arma'} y desde la puerta esta ${f.estado === 'tapado' ? 'TAPADO' : `a ${f.distancia} cm, demasiado lejos para leerse`}.`).join(' ')
+            + ' El §5.1 pide que la silueta comunique la estrategia; si no se ve, la ruta no se descubre, se tropieza.'
+          : `Las ${lect.llaves.length} llaves tacticas se ven al entrar (la mas pequeña ocupa ${Math.min(...lect.llaves.map(f => f.grados)).toFixed(1)}° de silueta).`,
+      dato: lect
+    });
+  }
+
+  // --- 8. No saturar el suelo (§8) ---
   const maxDrops = Math.max(0, ...Object.values(porPolitica).map(p => p.resumen.maxDropsSimultaneos));
   puertas.push({
     id: 'no-saturar',
@@ -229,7 +249,7 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
     dato: maxDrops
   });
 
-  // --- 8. Watchdog del §7.3 ---
+  // --- 9. Watchdog del §7.3 ---
   const atascos = Object.values(porPolitica).reduce((a, p) => a + p.resumen.porTiempo, 0);
   puertas.push({
     id: 'watchdog',
