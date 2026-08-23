@@ -416,7 +416,7 @@ def dsl_dibujar():
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
          ' (+ 444.0 (* n %.1f))'
-         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 660.0)))) esc))' % FILA,
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 (select (== (Variables|Default|GetDbgTab) 2) 720.0 660.0))))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -1724,15 +1724,18 @@ def dsl_tab_combat():
             l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
                      ' :Etiqueta "%s" :Encendido %s)'
                      % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
-    # El log, ultimas lineas.
-    l.append(texto(X(16.0), Y(452.0), '"COMBAT LOG"', ORO, 1.05))
+    # El log, ultimas lineas. Va a Y fija, NO detras de la ultima fila: si se
+    # anade un grupo a `filas_combat()` hay que bajar estas tres Y y subir el
+    # alto del panel para COMBAT en `dsl_dibujar()`, o el titulo del log se come
+    # los botones de la ultima fila. Paso el 2026-08-23 al meter la arena.
+    l.append(texto(X(16.0), Y(512.0), '"COMBAT LOG"', ORO, 1.05))
     l.append('  (bind lg (Variables|Default|GetDbgLog))')
     l.append('  (bind nl (Utilities|Array|Length lg))')
     l.append('  (for i (range nl)')
-    l.append('    ' + texto(X(16.0), "(+ %s (* i %s))" % (Y(474.0), SC(20.0)),
+    l.append('    ' + texto(X(16.0), "(+ %s (* i %s))" % (Y(534.0), SC(20.0)),
                             '(Utilities|Array|Get(acopy) lg i)', HUESO, 0.9).strip())
     l.append('    )')
-    l.append(texto(X(16.0), Y(636.0),
+    l.append(texto(X(16.0), Y(696.0),
                    '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
     l.append('  (return false))')
     return "\n".join(l)

@@ -11162,3 +11162,16 @@ en `Tools/MCP/DEBUG_HUD.md`.
 Comprobado antes de lanzar nada, que es gratis: `ast.parse` del script, `exec` del modulo, y
 que el DSL de las tres funciones **cuadra de parentesis** (balance 0). El dibujado y el clic
 salen los dos de `filas_combat()`, asi que no pueden descuadrarse entre si.
+
+**El log de COMBAT va a Y fija, y eso muerde.** La primera pasada dejo los tres botones
+funcionando pero con el titulo `COMBAT LOG` encima de ellos: `dsl_tab_combat()` dibuja el log
+en coordenadas **fijas** (titulo 452, lineas 474, mensaje 636), no detras de la ultima fila de
+`filas_combat()`. Meter un grupo nuevo de 60 unidades lo pisa.
+
+El arreglo son cuatro numeros: log a 512, lineas a 534, mensaje a 696, y **el alto del panel
+para COMBAT de 660 a 720** en el `select` por pestana de `dsl_dibujar()` — que hasta ahora solo
+tenia casos para AI (760), BOSS (700) y FINISHERS (682), y COMBAT caia en el 660 por defecto.
+Queda el mismo margen bajo el mensaje que tenia el diseno original (24 unidades).
+
+**Moraleja para la proxima fila que se anada a cualquier pestana**: comprobar si esa pestana
+dibuja algo a Y fija por debajo de `filas_*()`, y si el alto del panel le da.
