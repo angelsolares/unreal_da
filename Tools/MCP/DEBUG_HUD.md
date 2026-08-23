@@ -136,6 +136,7 @@ No se usó `GetBuildConfiguration` porque **no se puede cablear desde Blueprint*
 | PLAYER — abilities | Sólo *Infinite Resource*; DCS no tiene desbloqueo ni cooldowns |
 | COMBAT — multiplicadores, velocidad, trazas | Funcional |
 | COMBAT — log | Observa vida; no puede dar atacante, ataque, block, parry ni crítico |
+| COMBAT — arena | Funcional: actúa sobre la arena en cuya caja estés |
 | AI | Funcional |
 | BOSS — selección, vida, info | Funcional (si el boss lleva StatsManager) |
 | BOSS — fases, stagger, finisher, cinemáticas, QTE | **No existen**: preparados y apagados |

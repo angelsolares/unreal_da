@@ -11133,3 +11133,32 @@ HUD a su indice 1.
 Lo unico que quedo escrito pero **sin ejercitar**: `LimpiarArmasTiradas`. En la prueba rapida
 no llego a caer ninguna arma (el drop de DCS va con la animacion de muerte, no es instantaneo),
 asi que compila y corre pero no vi su efecto.
+
+### Los controles de arena en el Debug HUD (2026-08-23)
+
+Tres botones nuevos en la pestana **COMBAT**, bajo el titulo `ARENA YOU ARE IN`:
+**SEAL ARENA**, **OPEN ARENA** y **RESTART FIGHT**.
+
+**No hay "arena seleccionada"**: el criterio es donde estas. Cada boton recorre los
+`BP_DA_Arena` del mundo y actua sobre aquel en cuya caja caiga el jugador, con el mismo test
+exacto que usa `BuscarEnemigos`. Si no estas dentro de ninguna, el mensaje del panel lo dice
+y no pasa nada.
+
+Las tres guardas importan:
+
+- **SEAL** solo si `Estado != 1`. Sellar lo ya sellado volveria a tomar la instantanea.
+- **OPEN** llama antes a `RestaurarObjetivo`: abrir a mano sin eso deja el HUD con el texto de
+  la arena y su indice +100, que bloquea a los `ZoneTrigger` siguientes.
+- **RESTART** solo con la arena sellada. Sin sellar, `PuntoEntrada` esta vacio y el reinicio
+  teletransportaria al jugador al origen del mundo.
+
+Escrito donde toca: `Tools/MCP/debughud_montar.py` (`arena_accion()` fabrica las tres, mas su
+registro en `grafos` antes de `DbgTabCombat`/`DbgClickCombat`, y el grupo de filas en
+`filas_combat()`). **El panel no existe hasta relanzar el generador**, que borra y recrea
+`BP_DA_DebugHUD` entero: `node ue.mjs script debughud_montar.py` desde `Tools/MCP`, unos 35
+minutos, con PIE parado y sin tocar el editor. Ver el aviso de "la regeneracion es todo o nada"
+en `Tools/MCP/DEBUG_HUD.md`.
+
+Comprobado antes de lanzar nada, que es gratis: `ast.parse` del script, `exec` del modulo, y
+que el DSL de las tres funciones **cuadra de parentesis** (balance 0). El dibujado y el clic
+salen los dos de `filas_combat()`, asi que no pueden descuadrarse entre si.

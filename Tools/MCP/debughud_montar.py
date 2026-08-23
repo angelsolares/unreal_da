@@ -117,6 +117,7 @@ RESPAWN = "/Game/DarkAngels/Blueprints/World/BP_RespawnVolume.BP_RespawnVolume_C
 DATOS_ENEM = CARPETA + "/DA_DA_DebugEnemigos.DA_DA_DebugEnemigos"
 FILA_AI = 24.0
 DCS_AI = "/Game/DynamicCombatSystem/DCS/Blueprints/AI/BP_BaseAI.BP_BaseAI_C"
+DA_ARENA = "/Game/DarkAngels/Blueprints/Combat/BP_DA_Arena.BP_DA_Arena_C"
 DCS_COLL = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/CollisionHandler/"
             "BP_CollisionHandlerComponent.BP_CollisionHandlerComponent_C")
 TAG_DMG = "Stat.Damage"
@@ -1417,6 +1418,67 @@ def dsl_reset_combat():
             '  (Variables|Default|SetDbgMensaje "Reset del debug de combate"))')
 
 
+# ---------------------------------------------------------- COMBAT: la arena
+#
+# No hay "arena seleccionada": el criterio es DONDE ESTAS. Los tres botones
+# actuan sobre la arena en cuya caja caiga el jugador, con el mismo test que
+# usa `BuscarEnemigos` del propio `BP_DA_Arena` — caja exacta por
+# `InverseTransformLocation`, no un radio, para que las esquinas cuenten.
+# Si no estas dentro de ninguna, el mensaje lo dice y no pasa nada.
+#
+# Los tres pasan por `DbgPermitido` como el resto de acciones destructivas.
+
+def arena_accion(nombre, guarda, cuerpo, mensaje):
+    """Fabrica una accion de arena. `guarda` es una condicion extra en DSL
+    (o "true"), `cuerpo` las sentencias a ejecutar sobre la arena `a`."""
+    return ('(fn %s ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind jug (Transformation|GetActorLocation'
+            ' (Game|GetPlayerCharacter 0)))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "No estas dentro de ninguna arena")\n'
+            '  (for a (Actor|GetAllActorsOfClass "%s")\n'
+            '    (bind rel (Math|Transform|InverseTransformLocation'
+            ' (Transformation|GetActorTransform a) jug))\n'
+            '    (bind ab (Math|Vector|VectorGetAbs rel))\n'
+            '    (bind r (Class|BPDAArena|GetRadioArena a))\n'
+            '    (if (and (and (< (.x ab) r) (< (.y ab) r)) %s)\n'
+            '%s'
+            '      (Variables|Default|SetDbgMensaje "%s"))))'
+            % (nombre, DA_ARENA, guarda, cuerpo, mensaje))
+
+
+def dsl_arena_sellar():
+    # Sellar una arena ya sellada volveria a tomar la instantanea; se evita.
+    return arena_accion(
+        "DbgArenaSellar",
+        "(!= (Class|BPDAArena|GetEstado a) 1)",
+        "      (Class|BPDAArena|Sellar a)\n",
+        "Arena sellada")
+
+
+def dsl_arena_abrir():
+    # Abrir a mano tiene que devolver tambien el objetivo del HUD, o se queda
+    # con el texto de la arena y su indice +100 bloqueando a los ZoneTrigger.
+    return arena_accion(
+        "DbgArenaAbrir",
+        "(== (Class|BPDAArena|GetEstado a) 1)",
+        "      (Class|BPDAArena|RestaurarObjetivo a)\n"
+        "      (Class|BPDAArena|Abrir a)\n",
+        "Arena abierta")
+
+
+def dsl_arena_reiniciar():
+    # Solo con la arena sellada: si no lo esta, `PuntoEntrada` no vale nada y
+    # el reinicio teletransportaria al jugador al origen del mundo.
+    return arena_accion(
+        "DbgArenaReiniciar",
+        "(== (Class|BPDAArena|GetEstado a) 1)",
+        "      (Class|BPDAArena|ReiniciarEncuentro a)\n",
+        "Encuentro reiniciado")
+
+
 def dsl_log_linea():
     return ('(fn DbgLogLinea (Texto)\n'
             '  (Utilities|Array|Add :TargetArray (Variables|Default|GetDbgLog)'
@@ -1641,7 +1703,13 @@ def filas_combat():
              "(CallFunction|DbgColisionesToggle)",
              "(Variables|Default|GetDbgColisiones)"),
         ]),
-        ("", None, 408.0, [
+        ("ARENA YOU ARE IN", 408.0, 430.0, [
+            (x0, 182.0, "SEAL ARENA", "(CallFunction|DbgArenaSellar)", "false"),
+            (x0 + 190.0, 182.0, "OPEN ARENA", "(CallFunction|DbgArenaAbrir)", "false"),
+            (x0 + 380.0, 182.0, "RESTART FIGHT",
+             "(CallFunction|DbgArenaReiniciar)", "false"),
+        ]),
+        ("", None, 468.0, [
             (x0, 564.0, "RESET COMBAT DEBUG", "(CallFunction|DbgResetCombat)", "false"),
         ]),
     ]
@@ -2608,6 +2676,9 @@ def run():
         ("DbgLogTick", dsl_log_tick, []),
         ("DbgTrazasToggle", dsl_trazas, []),
         ("DbgColisionesToggle", dsl_colisiones, []),
+        ("DbgArenaSellar", dsl_arena_sellar, []),
+        ("DbgArenaAbrir", dsl_arena_abrir, []),
+        ("DbgArenaReiniciar", dsl_arena_reiniciar, []),
         ("DbgResetCombat", dsl_reset_combat, []),
         # --- BOSS ---
         ("DbgCampoBoss", dsl_campo_boss, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),
