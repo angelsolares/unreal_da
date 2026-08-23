@@ -10883,3 +10883,49 @@ Nada quedo a medias. Lo natural ahora:
    construirlo entero.
 4. Opcional: el arma tirada copia el mesh pero **no los materiales**. Vale porque espada y
    escudo no los sobreescriben; si alguna futura si, saldria con los del mesh.
+
+---
+
+## Recrear M_DA_ArrojarLanza (2026-08-23)
+
+El montaje del lanzamiento **no viaja en git**: vive en `Content/DarkAngels/Animations/`, que
+esta ignorado porque son assets derivados de packs de pago. Quien clone el proyecto tiene que
+rehacerlo. Son cuatro pasos y hace falta el **Throwing Animation Pack** de Raise Creation
+instalado en `/Game/Throwing_Pack/`.
+
+1. **Marcar los esqueletos compatibles.** El pack trae su propio `SK_Mannequin` (161 huesos),
+   pero es un subconjunto exacto del de DCS (164): cero huesos ajenos, y los 3 de mas son
+   virtuales `VB IK_Hand_*`. No hace falta retargeting:
+   ```python
+   dcs  = unreal.load_asset('/Game/DynamicCombatSystem/Demo/Meshes/Mannequins/Meshes/SK_Mannequin')
+   pack = unreal.load_asset('/Game/Throwing_Pack/Demo/Characters/Mannequins/Meshes/SK_Mannequin')
+   dcs.modify(); dcs.add_compatible_skeleton(pack)
+   ```
+   (Es modificacion viva de DCS. Sin esto, `Montage_Play` devuelve 0.0 y no suena nada.)
+
+2. **Crear el montaje** desde `AS_T_BH_Overhead` (dos manos, 1,47 s):
+   ```python
+   unreal.AnimMontageService.create_montage_from_animation(
+       '/Game/Throwing_Pack/Animation/Both_Hand/AS_T_BH_Overhead',
+       '/Game/DarkAngels/Animations/Throw', 'M_DA_ArrojarLanza')
+   ```
+
+3. **Cambiar el slot a FullBody.** Nace en `DefaultSlot` y asi **suena pero no se ve**;
+   los ataques de DCS usan `FullBody`:
+   ```python
+   unreal.AnimMontageService.set_slot_name('<ruta>', 0, 'FullBody')
+   ```
+
+4. **Poner la marca del suelte** a 0,80 s (a ojo; se afina arrastrandola en el editor).
+   OJO: `AnimSequenceService.add_notify` devuelve **-1** sobre un montaje; hay que usar el
+   `add_notify` de **AnimMontageService**:
+   ```python
+   unreal.AnimMontageService.add_notify('<ruta>',
+       '/Game/DarkAngels/Blueprints/Combat/BP_DA_NotifyArrojar.BP_DA_NotifyArrojar_C',
+       0.80, 'Soltar')
+   ```
+
+**Ademas, al instalar el pack**: su `ABP_Manny_PostProcess` viene roto (referencia Pose Assets
+que no incluyo) y al arrancar PIE saca un **dialogo modal** que congela el editor y el MCP. Se
+cura poniendo `PostProcessAnimBlueprint = None` en sus `SKM_Manny` y `SKM_Quinn` y borrando los
+dos ABP. No los necesitamos: solo queremos las AnimSequences.
