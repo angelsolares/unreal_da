@@ -42,9 +42,14 @@ export const ESQUEMA_PROPUESTA = {
             description: 'Que señal del §5.1 (posicion, presion, silueta, geometria, timing, reaccion enemiga) comunica la ruta sin texto.'
           },
           enemigos: {
+            // El tope de 4 es una restriccion DURA, no un ruego. En la primera
+            // tanda real el modelo mantuvo los 5 enemigos aunque el prompt le
+            // pedia menos, y el simulador tumbo las tres variantes por lo mismo:
+            // la espada sola no aguanta esa presion. Lo que el prompt sugiere se
+            // ignora; lo que el esquema prohibe, no.
             type: 'array',
             minItems: 2,
-            maxItems: 6,
+            maxItems: 4,
             items: {
               type: 'object',
               additionalProperties: false,

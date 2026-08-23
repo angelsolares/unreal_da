@@ -49,7 +49,7 @@ export async function estado() {
  * el modelo no la tienen. No se cual de las dos acepta este modelo, y prefiero
  * probar las dos a clavar la equivocada.
  */
-async function pedir({ sistema, usuario, schema, nombreSchema, maxTokens = 4000 }) {
+async function pedir({ sistema, usuario, schema, nombreSchema, maxTokens = 16000 }) {
   const c = await obtenerCliente();
   if (!c) {
     const e = new Error(motivoNoDisponible);
@@ -69,6 +69,13 @@ async function pedir({ sistema, usuario, schema, nombreSchema, maxTokens = 4000 
         } : {})
       });
       const texto = r.output_text ?? extraerDeResponses(r);
+      // Este es un modelo de razonamiento: los tokens de razonamiento salen del
+      // MISMO presupuesto que la respuesta. Si se acaba, el texto llega cortado a
+      // media frase. Eso hay que DECIRLO, no colar media critica como si fuera
+      // entera.
+      if (r.status === 'incomplete') {
+        return marcarCortado(texto, r.incomplete_details?.reason, r.usage);
+      }
       if (texto) return texto;
     } catch (err) {
       // Si la Responses API no acepta este modelo, se prueba la otra puerta.
@@ -87,7 +94,19 @@ async function pedir({ sistema, usuario, schema, nombreSchema, maxTokens = 4000 
       response_format: { type: 'json_schema', json_schema: { name: nombreSchema, strict: true, schema } }
     } : {})
   });
-  return r.choices?.[0]?.message?.content || '';
+  const texto = r.choices?.[0]?.message?.content || '';
+  if (r.choices?.[0]?.finish_reason === 'length') {
+    return marcarCortado(texto, 'max_output_tokens', r.usage);
+  }
+  return texto;
+}
+
+function marcarCortado(texto, motivo, usage) {
+  const razonamiento = usage?.output_tokens_details?.reasoning_tokens
+    ?? usage?.completion_tokens_details?.reasoning_tokens;
+  const detalle = razonamiento ? ` (${razonamiento} tokens se fueron en razonar)` : '';
+  return `${texto || ''}\n\n⚠ RESPUESTA CORTADA — se agoto el presupuesto de tokens${detalle}. `
+    + `Motivo: ${motivo || 'desconocido'}. Sube maxTokens en ia.mjs si esto se repite.`;
 }
 
 function extraerDeResponses(r) {
@@ -117,9 +136,15 @@ Sus reglas, que no se discuten:
   terminar cualquier encuentro (§5.2 y §12). Ninguna arena puede exigir un arma
   temporal para ganarse.
 - Las armas de los enemigos son oportunidades TEMPORALES. No hay inventario, no
-  hay durabilidad y no hay desgaste: un arma temporal solo termina por swap,
-  por su ataque de descarte, por agotar un recurso natural (flechas) o por el
-  seal break al completar el encuentro (§3).
+  hay durabilidad y no hay desgaste: un arma temporal EQUIPADA solo termina por
+  swap, por su ataque de descarte, por agotar un recurso natural (flechas) o por
+  el seal break al completar el encuentro (§3).
+- OJO, son dos cosas distintas y no las confundas: el arma EN LA MANO no caduca
+  nunca (§3), pero el arma TIRADA EN EL SUELO si tiene una ventana limitada — el
+  §4.1 pide literalmente que "permanezca fisicamente en el mundo durante una
+  ventana breve y clara". Un TTL sobre el drop del suelo cumple el PDF; un
+  temporizador sobre el arma equipada lo violaria. La herramienta hace lo
+  primero. No lo señales como error.
 - El swap es irreversible: al coger otra, la anterior se desmaterializa (§4.1).
 - La corrupcion celestial→oscura es visual y narrativa. NO es un temporizador ni
   una barra de durabilidad (§3).
@@ -171,7 +196,7 @@ proceda. No repitas los numeros: interpretalos.
    que politica de drop) y que esperas que le pase al veredicto.
 
 Si algo del veredicto te parece que mide mal, dilo.`,
-      maxTokens: 3000
+      maxTokens: 16000
     })
   };
 }
@@ -188,9 +213,15 @@ Propon ${cuantas} variantes que enseñen lo mismo con OTRA geometria. Reglas:
 
 - Reutiliza la misma arena: no toques limites, entrada ni trigger. Solo cambias
   la composicion, las posiciones, las coberturas y el orden previsto.
-- Cada variante debe poder ganarse SOLO con la espada base (§12). Con los numeros
-  actuales eso significa no amontonar mas de tres enemigos a la vez sobre Malakh:
-  usa la distancia, las coberturas y la cota para escalonar el combate.
+- Cada variante debe poder ganarse SOLO con la espada base (§12), y eso es lo
+  primero que se comprueba: se simulan 100 partidas sin tocar un arma del suelo y
+  hay que ganar el 90%. Esto NO es retorica. Los numeros medidos dicen que la
+  espada aguanta 2-3 enemigos SIMULTANEOS, asi que lo que decide la variante no
+  es cuantos enemigos pones sino cuantos llegan a la vez: separalos con
+  distancia, cortales la vision con coberturas, y escalona su entrada. Dos
+  enemigos bien colocados hacen mejor encuentro que cuatro amontonados.
+- Que las variantes no sean tres veces la misma idea. Si las tres enseñan lo
+  mismo, has propuesto una.
 - Marca como "garantizado" solo el drop que es la llave del puzzle, y ponlo donde
   se vea desde la entrada (§5.1). Los demas, "estandar" o "ninguno".
 - No pongas enemigos con cota alta salvo que la arena ya tenga una plataforma con
@@ -199,7 +230,7 @@ Propon ${cuantas} variantes que enseñen lo mismo con OTRA geometria. Reglas:
 Devuelve solo el JSON del esquema.`,
     schema: esquema,
     nombreSchema: 'variantes_de_encuentro',
-    maxTokens: 8000
+    maxTokens: 40000
   });
 
   let json;
@@ -227,7 +258,7 @@ Cuentalo como la "historia de combate recordable" del §15: un parrafo, presente
 sin numeros, sin nombres de campo, como si lo contara alguien que acaba de verlo
 jugar. Si la partida es plana y no da para una historia, dilo en una frase en vez
 de inventar epica.`,
-      maxTokens: 1200
+      maxTokens: 8000
     })
   };
 }
