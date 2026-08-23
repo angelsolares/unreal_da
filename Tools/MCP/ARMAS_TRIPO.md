@@ -111,3 +111,28 @@ lanzamiento sale barato reusando lo de la flecha.
 En el data asset: `weaponType = Sword` (no hay Lanza en `E_WeaponType`) y
 `twoHanded = false`, que es lo que hace que el escudo NO se oculte y el estilo
 resuelva a `CombatStyle.Melee.Armed.OneHandedWeapon`.
+
+---
+
+# La lanza, importada (2026-08-23) — lo que la practica corrigio de la ficha
+
+- El export de Tripo (remesheado por Angel) llego a **14.004 triangulos** y
+  **una sola textura: basecolor 4096** (sin normal/roughness/metallic). Para un
+  arma basta: material propio `M_DA_Lanza` = basecolor + Roughness 0.5 +
+  Metallic 0.4 constantes. `MaxTextureSize` 1024.
+- **La malla vino con el convenio del HACHA, no el de la espada**: pivote en la
+  base, punta hacia **+Z**, 98,19 uu de largo. Asi que el DI bueno para copiar
+  era `BP_DI_DA_HachaMano` (rotacion identidad), no el de la espada.
+- Numeros finales del componente en `BP_DI_DA_Lanza`: escala **1.7823**
+  (98,19 -> 175 cm), `rel_loc z = -58.3` (empunadura a 1/3 del regaton),
+  `rel_rot = (0, 90, 0)` — **yaw 90 obligatorio**: el plano de la hoja venia
+  en Y y espada/hacha lo llevan en X; sin el giro, en los mandobles de una
+  mano la moharra se ve DE CANTO y desaparece (se descubrio en una captura
+  de Angel jugando).
+- Regla rapida para el proximo modelo: mirar en que eje es ANCHA la malla.
+  El plano ancho debe acabar en el **X del socket**; si viene en Y, yaw 90.
+- `DA_DA_Lanza`: **twoHanded = TRUE** — el escudo se oculta solo
+  (`IsHidden=True` en el DI del escudo, verificado en PIE) y el estilo
+  resuelve a `CombatStyle.Melee.Armed.TwoHandedWeapon`, que reusa las
+  animaciones de una mano igual que el GreatAxe. Icono: `T_DA_Lanza_Icon`
+  (del `lanza.png` de Angel).
