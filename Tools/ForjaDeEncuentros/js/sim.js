@@ -3,14 +3,18 @@
 // Reglas de la casa:
 //  - Nada de Math.random: todo sale del Azar sembrado, o el lote de 200 partidas
 //    no compara politicas, compara ruido.
-//  - Nada de render aqui dentro: esto tiene que poder correr 200 veces sin pintar.
-//  - Todo numero de balance viene de calibracion.json, nunca escrito a pelo.
+//  - Nada de render aqui dentro: esto tiene que poder correr 1000 veces sin pintar.
+//  - Todo numero de balance viene de calibracion.json o armas.json, nunca a pelo.
 
 import { Azar } from './rng.js';
 import {
   dist, resta, suma, escala, normaliza, largo, yawDe, giraHacia, deltaAngulo,
   dentroDePoligono, hayVision, empujaFuera, segmentoCortaPoligono, centroide
 } from './geometria.js';
+import {
+  perfilAtaque, perfilBloqueo, descarteDe, equipar, gastarRecurso,
+  consumirPorDescarte, consumirOffHandPorDescarte, purgarPorSeal, decideDrop
+} from './armas.js';
 
 export const ESTADOS = {
   LIBRE: 'libre',
@@ -19,6 +23,7 @@ export const ESTADOS = {
   RECUPERACION: 'recuperacion',
   ESQUIVA: 'esquiva',
   CURANDO: 'curando',
+  RECOGIENDO: 'recogiendo',
   ATURDIDO: 'aturdido',
   MUERTO: 'muerto'
 };
@@ -28,9 +33,10 @@ const REGEN_AGUANTE = 20;
 const RADIO_ALERTA_ALIADOS = 900;
 
 export class Simulacion {
-  constructor(encuentro, calibracion, politica, semilla, opciones = {}) {
+  constructor(encuentro, calibracion, armas, politica, semilla, opciones = {}) {
     this.enc = encuentro;
     this.cal = calibracion;
+    this.armas = armas;
     this.politica = politica;
     this.azar = new Azar(semilla);
     this.semilla = semilla;
@@ -42,10 +48,14 @@ export class Simulacion {
     this.t = 0;
     this.tick = 0;
     this.proyectiles = [];
+    this.drops = [];
+    this.zonas = [];
     this.eventos = [];
     this.fotogramas = [];
     this.terminada = false;
     this.razonFin = null;
+    this._contadorDrops = 0;
+    this.maxDropsSimultaneos = 0;
 
     this._montar();
     if (this.politica.iniciar) this.politica.iniciar(this);
@@ -73,6 +83,13 @@ export class Simulacion {
       objetivoId: null,
       perfil: m,
       bloqueando: false,
+      // --- armas temporales (Fase B) ---
+      temporal: null,
+      offHand: null,
+      armasRecogidas: [],
+      descartesUsados: 0,
+      tUltimaArma: null,
+      // --- consumibles y estadistica ---
       pociones: m.pocion ? m.pocion.cantidad : 0,
       pocionesBebidas: 0,
       curacionTotal: 0,
@@ -81,7 +98,6 @@ export class Simulacion {
       golpesFallados: 0,
       esquivasLogradas: 0
     };
-    // mirar hacia el centro de la arena
     this.malakh.yaw = yawDe(resta(centroide(this.enc.arena.bounds), this.malakh.pos));
 
     this.enemigos = this.enc.enemigos.map(e => {
@@ -104,7 +120,7 @@ export class Simulacion {
         estado: ESTADOS.LIBRE,
         tEstado: 0,
         accion: null,
-        recarga: this.azar.rango(0, p.recarga * 0.5), // desincronizar el primer ataque
+        recarga: this.azar.rango(0, p.recarga * 0.5),
         alertado: false,
         perfil: p,
         danoInfligido: 0,
@@ -129,6 +145,8 @@ export class Simulacion {
     const dt = this.dt;
 
     this._pasoProyectiles(dt);
+    this._pasoDrops(dt);
+    this._pasoZonas(dt);
     this._pasoMalakh(dt);
     for (const e of this.enemigos) this._pasoEnemigo(e, dt);
     this._separarAgentes();
@@ -144,6 +162,7 @@ export class Simulacion {
 
     this.t += dt;
     this.tick += 1;
+    this.maxDropsSimultaneos = Math.max(this.maxDropsSimultaneos, this.drops.length);
     if (this.grabar && this.tick % this.cadaCuantosFotogramas === 0) this._grabarFotograma();
     this._comprobarFin();
   }
@@ -156,6 +175,10 @@ export class Simulacion {
     } else if (vivos.length === 0) {
       this.terminada = true; this.razonFin = 'victoria';
       this._evento('victoria', { tiempo: this.t });
+      // REGLA DE SEAL BREAK: todo lo temporal se desmaterializa (§ prompt maestro).
+      const purgado = purgarPorSeal(this.malakh);
+      this.drops = [];
+      if (purgado.length) this._evento('sealBreak', { purgado });
     } else if (this.t >= this.tiempoLimite) {
       this.terminada = true; this.razonFin = 'tiempo';
       this._evento('derrota', { motivo: `Se agoto el limite de ${this.tiempoLimite}s`, vivos: vivos.length });
@@ -168,7 +191,7 @@ export class Simulacion {
     const M = this.malakh;
     if (M.estado === ESTADOS.MUERTO) return;
 
-    M.bloqueando = false;   // se sostiene tick a tick; si la politica no lo pide, baja la guardia
+    M.bloqueando = false;
     M.tEstado += dt;
 
     if (M.estado === ESTADOS.ATURDIDO) {
@@ -187,10 +210,17 @@ export class Simulacion {
       return;
     }
 
+    if (M.estado === ESTADOS.RECOGIENDO) {
+      if (M.tEstado >= M.accion.duracion) {
+        this._completarRecogida(M.accion.dropId);
+        this._aLibre(M);
+      }
+      return;
+    }
+
     if (M.estado === ESTADOS.ESQUIVA) {
       const a = M.accion;
-      const avance = (a.distancia / a.duracion) * dt;
-      this._mover(M, escala(a.dir, avance));
+      this._mover(M, escala(a.dir, (a.distancia / a.duracion) * dt));
       if (M.tEstado >= a.duracion) this._aLibre(M);
       return;
     }
@@ -210,52 +240,74 @@ export class Simulacion {
       return;
     }
 
-    if (obj && obj.estado !== ESTADOS.MUERTO) {
-      M.yaw = giraHacia(M.yaw, yawDe(resta(obj.pos, M.pos)), M.perfil.velocidadGiro * dt);
-    }
-
     if (intencion.accion === 'beber' && M.pociones > 0) {
       const p = this.cal.malakh.pocion;
       M.pociones -= 1;
       M.pocionesBebidas += 1;
       M.estado = ESTADOS.CURANDO;
       M.tEstado = 0;
-      // El frasco se gasta al empezar: si te interrumpen, lo has perdido.
       M.accion = { duracion: p.duracion, curacion: p.curacion };
       this._evento('bebe', { agente: M.id, restantes: M.pociones });
       return;
     }
 
+    // --- recoger un arma del suelo (§4.1) ---
+    if (intencion.accion === 'recoger') {
+      const drop = this.drops.find(d => d.id === intencion.dropId);
+      if (drop) {
+        if (dist(M.pos, drop.pos) <= this.armas.reglas.radioRecogida &&
+            Math.abs((drop.cota || 0) - M.cota) <= 120) {
+          M.estado = ESTADOS.RECOGIENDO;
+          M.tEstado = 0;
+          M.accion = { duracion: this.armas.reglas.duracionRecogida, dropId: drop.id };
+          return;
+        }
+        this._avanzarHacia(M, { pos: drop.pos, cota: drop.cota, radio: 0 }, 0, dt);
+        return;
+      }
+    }
+
+    // --- ataque de descarte (§3.2): sacrificar el arma por un remate ---
+    if (intencion.accion === 'descartar') {
+      const d = descarteDe(M, this.armas);
+      if (d) { this._iniciarDescarte(M, d); return; }
+    }
+
+    if (obj && obj.estado !== ESTADOS.MUERTO) {
+      M.yaw = giraHacia(M.yaw, yawDe(resta(obj.pos, M.pos)), M.perfil.velocidadGiro * dt);
+    }
+
     if (intencion.accion === 'bloquear') {
       M.bloqueando = true;
-      // De cara a la amenaza, no al objetivo: bloquear de espaldas no sirve de nada.
       if (intencion.mirarA) {
         M.yaw = giraHacia(M.yaw, yawDe(resta(intencion.mirarA, M.pos)), M.perfil.velocidadGiro * dt);
       }
       if (intencion.direccion) {
-        const f = this.cal.malakh.bloqueo.factorVelocidad;
+        const f = perfilBloqueo(M, this.cal, this.armas).factorVelocidad;
         this._mover(M, escala(normaliza(intencion.direccion), M.perfil.velocidad * f * dt));
       }
       return;
     }
 
     if (intencion.accion === 'reposicionar' && intencion.direccion) {
-      // Rodear sin perder de vista al objetivo: el yaw ya se giro arriba.
       this._mover(M, escala(normaliza(intencion.direccion), M.perfil.velocidad * dt));
       return;
     }
 
     if (intencion.accion === 'atacar' || intencion.accion === 'atacarPesado') {
-      const perfil = intencion.accion === 'atacarPesado'
-        ? this.cal.malakh.ataquePesado : this.cal.malakh.ataqueLigero;
-      if (obj && this._enAlcance(M, obj, perfil.alcance) && M.stamina >= perfil.costeStamina) {
-        this._iniciarAtaque(M, perfil, intencion.accion === 'atacarPesado');
-        return;
+      const perfil = perfilAtaque(M, this.cal, this.armas, intencion.accion === 'atacarPesado');
+      if (obj && this._enAlcance(M, obj, perfil.alcance) && M.stamina >= (perfil.costeStamina || 0)) {
+        if (!perfil.necesitaVision ||
+            hayVision(M.pos, M.cota, obj.pos, obj.cota, this.coberturas, this.cal.malakh.alturaOjos)) {
+          this._iniciarAtaque(M, perfil);
+          return;
+        }
       }
     }
 
     if (obj && obj.estado !== ESTADOS.MUERTO) {
-      this._avanzarHacia(M, obj, this.cal.malakh.ataqueLigero.alcance * 0.7, dt);
+      const perfil = perfilAtaque(M, this.cal, this.armas, false);
+      this._avanzarHacia(M, obj, perfil.alcance * 0.7, dt);
     }
   }
 
@@ -266,6 +318,35 @@ export class Simulacion {
     M.tEstado = 0;
     M.accion = { ...e, dir: normaliza(direccion || { x: -1, y: 0 }) };
     this._evento('esquiva', { agente: M.id });
+  }
+
+  _completarRecogida(dropId) {
+    const i = this.drops.findIndex(d => d.id === dropId);
+    if (i < 0) return;
+    const drop = this.drops[i];
+    this.drops.splice(i, 1);
+    const M = this.malakh;
+    for (const ev of equipar(M, drop.familia, this.armas, drop.origenId)) {
+      this._evento(ev.tipo, { agente: M.id, ...ev });
+    }
+    M.armasRecogidas.push({ familia: drop.familia, t: +this.t.toFixed(2), origen: drop.origenId });
+    M.tUltimaArma = this.t;
+  }
+
+  _iniciarDescarte(M, d) {
+    M.estado = ESTADOS.ANTICIPACION;
+    M.tEstado = 0;
+    M.accion = {
+      ...d,
+      esDescarte: true,
+      ventana: d.ventana ?? 0.12,
+      arco: d.arco ?? 360,
+      yaGolpeo: false,
+      dano: d.dano + (d.danoPorFlechaRestante ? d.danoPorFlechaRestante * (M.temporal?.municion || 0) : 0)
+    };
+    M.descartesUsados += 1;
+    const ev = M.temporal ? consumirPorDescarte(M) : consumirOffHandPorDescarte(M);
+    this._evento('descarte', { agente: M.id, nombre: d.nombre, arma: ev?.arma, objetivo: M.objetivoId });
   }
 
   // -------------------------------------------------------------------- enemigos
@@ -285,7 +366,6 @@ export class Simulacion {
       return;
     }
 
-    // aggro
     if (!E.alertado) {
       const d = dist(E.pos, M.pos);
       const ve = hayVision(E.pos, E.cota, M.pos, M.cota, this.coberturas, this.cal.malakh.alturaOjos);
@@ -305,7 +385,7 @@ export class Simulacion {
     this._evento('alerta', { agente: E.id });
     for (const otro of this.enemigos) {
       if (otro.alertado || otro.estado === ESTADOS.MUERTO) continue;
-      if (dist(otro.pos, E.pos) <= RADIO_ALERTA_ALIADOS) { otro.alertado = true; }
+      if (dist(otro.pos, E.pos) <= RADIO_ALERTA_ALIADOS) otro.alertado = true;
     }
   }
 
@@ -328,56 +408,62 @@ export class Simulacion {
     const d = dist(E.pos, M.pos);
     const ve = hayVision(E.pos, E.cota, M.pos, M.cota, this.coberturas, this.cal.malakh.alturaOjos);
 
-    if (d < p.distanciaMinima) {           // demasiado cerca: retroceder
-      const huida = normaliza(resta(E.pos, M.pos));
-      this._mover(E, escala(huida, p.velocidad * dt));
+    // Retirada con presupuesto. Un arquero que retrocede sin limite contra un
+    // Malakh que tiene que esquivar flechas produce tablas eternas: los dos
+    // movimientos se cancelan y la arena no se cierra nunca. Agotado el
+    // presupuesto se planta y dispara a bocajarro.
+    if (d < p.distanciaMinima && (E.tRetirada || 0) < (p.segundosDeRetirada ?? Infinity)) {
+      E.tRetirada = (E.tRetirada || 0) + dt;
+      this._mover(E, escala(normaliza(resta(E.pos, M.pos)), this._velocidadDe(E) * dt));
       return;
     }
-    if (!ve) {                              // sin linea: reposicionar lateralmente
+    if (d > p.distanciaMinima * 1.4) E.tRetirada = 0;   // recupera el presupuesto al abrir hueco
+    if (!ve) {
       const hacia = normaliza(resta(M.pos, E.pos));
-      const lateral = { x: -hacia.y, y: hacia.x };
-      this._mover(E, escala(lateral, p.velocidad * 0.6 * dt));
+      this._mover(E, escala({ x: -hacia.y, y: hacia.x }, this._velocidadDe(E) * 0.6 * dt));
       return;
     }
-    if (d > p.alcanceAtaque) {
-      this._avanzarHacia(E, M, p.distanciaPreferida, dt);
-      return;
-    }
+    if (d > p.alcanceAtaque) { this._avanzarHacia(E, M, p.distanciaPreferida, dt); return; }
     if (E.recarga <= 0) {
-      this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: p.dano, proyectil: true });
+      this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: p.dano, proyectil: true, velocidad: p.velocidadProyectil });
     }
   }
 
   // ---------------------------------------------------------------- ataques
 
-  _iniciarAtaque(A, perfil, esPesado = false) {
+  _iniciarAtaque(A, perfil) {
     A.estado = ESTADOS.ANTICIPACION;
     A.tEstado = 0;
-    A.accion = {
-      ...perfil,
-      esPesado,
-      yaGolpeo: false,
-      dano: perfil.dano ?? (this.cal.malakh.danoBase + this.cal.malakh.armaBase.dano) *
-            (esPesado ? (this.cal.malakh.ataquePesado.multiplicadorDano || 1) : 1)
-    };
+    A.accion = { ...perfil, yaGolpeo: false };
     if (A.bando === 'malakh') A.stamina -= perfil.costeStamina || 0;
-    this._evento('ataque', { agente: A.id, pesado: esPesado, objetivo: A.objetivoId || 'malakh' });
+    this._evento('ataque', {
+      agente: A.id,
+      pesado: !!perfil.esPesado,
+      arma: perfil.familia || null,
+      objetivo: A.bando === 'malakh' ? A.objetivoId : 'malakh'
+    });
   }
 
   _avanzarAtaque(A, dt) {
     const a = A.accion;
     const t = A.tEstado;
-    const iniVentana = a.impacto;
-    const finVentana = a.impacto + a.ventana;
+    const ini = a.impacto, fin = a.impacto + (a.ventana ?? 0.12);
 
-    if (t < iniVentana) A.estado = ESTADOS.ANTICIPACION;
-    else if (t <= finVentana) A.estado = ESTADOS.ACTIVO;
+    if (t < ini) A.estado = ESTADOS.ANTICIPACION;
+    else if (t <= fin) A.estado = ESTADOS.ACTIVO;
     else A.estado = ESTADOS.RECUPERACION;
 
     if (A.estado === ESTADOS.ACTIVO && !a.yaGolpeo) {
       a.yaGolpeo = true;
-      if (a.proyectil) this._lanzarProyectil(A, a);
+      if (a.tipo === 'zona') this._plantarZona(A, a);
+      else if (a.tipo === 'aoe') this._golpeEnArea(A, a);
+      else if (a.proyectil || a.tipo === 'proyectil') this._lanzarProyectil(A, a);
       else this._resolverGolpeCuerpoACuerpo(A, a);
+
+      if (A.bando === 'malakh' && a.gastaMunicion) {
+        const ev = gastarRecurso(A, a.gastaMunicion);
+        if (ev) this._evento(ev.tipo, { agente: A.id, arma: ev.arma });
+      }
     }
 
     if (t >= a.duracion) {
@@ -393,63 +479,114 @@ export class Simulacion {
 
     let alcanzado = false;
     for (const O of candidatos) {
-      if (Math.abs((O.cota || 0) - (A.cota || 0)) > 120) continue;   // no se llega a otra cota
-      const d = dist(A.pos, O.pos) - O.radio;
-      if (d > a.alcance) continue;
-      const ang = Math.abs(deltaAngulo(A.yaw, yawDe(resta(O.pos, A.pos))));
-      if (ang > (a.arco || 90) / 2) continue;
-      this._aplicarDano(O, a.dano, A, a.esPesado);
+      if (Math.abs((O.cota || 0) - (A.cota || 0)) > 120) continue;
+      if (dist(A.pos, O.pos) - O.radio > a.alcance) continue;
+      if (Math.abs(deltaAngulo(A.yaw, yawDe(resta(O.pos, A.pos)))) > (a.arco || 90) / 2) continue;
+      this._aplicarDano(O, a.dano, A, a);
       alcanzado = true;
-      if (A.bando === 'malakh') break;   // un objetivo por golpe: nada de barridos gratis
+      if (A.bando === 'malakh' && !a.multiObjetivo) break;
     }
     if (A.bando === 'malakh') {
       if (alcanzado) A.golpesAsestados += 1; else A.golpesFallados += 1;
     }
   }
 
+  _golpeEnArea(A, a) {
+    const candidatos = A.bando === 'malakh'
+      ? this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO)
+      : [this.malakh];
+    let alcanzado = false;
+    for (const O of candidatos) {
+      if (Math.abs((O.cota || 0) - (A.cota || 0)) > 120) continue;
+      if (dist(A.pos, O.pos) - O.radio > a.radio) continue;
+      this._aplicarDano(O, a.dano, A, a);
+      alcanzado = true;
+    }
+    if (A.bando === 'malakh') { if (alcanzado) A.golpesAsestados += 1; else A.golpesFallados += 1; }
+  }
+
+  _plantarZona(A, a) {
+    this.zonas.push({
+      pos: { ...A.pos },
+      radio: a.radio,
+      ttl: a.duracionZona,
+      factorDano: a.factorDanoEnemigo ?? 1,
+      factorVelocidad: a.factorVelocidadEnemigo ?? 1
+    });
+    this._evento('zona', { agente: A.id, radio: a.radio, duracion: a.duracionZona });
+  }
+
+  _pasoZonas(dt) {
+    this.zonas = this.zonas.filter(z => (z.ttl -= dt) > 0);
+  }
+
+  _modificadorZona(agente, campo) {
+    let f = 1;
+    for (const z of this.zonas) {
+      if (dist(agente.pos, z.pos) <= z.radio) f *= z[campo];
+    }
+    return f;
+  }
+
+  _velocidadDe(A) {
+    const base = A.perfil.velocidad;
+    return A.bando === 'enemigo' ? base * this._modificadorZona(A, 'factorVelocidad') : base;
+  }
+
   _lanzarProyectil(A, a) {
-    const M = this.malakh;
-    const dir = normaliza(resta(M.pos, A.pos));
+    const objetivo = A.bando === 'malakh' ? this.agente(A.objetivoId) : this.malakh;
+    if (!objetivo || objetivo.estado === ESTADOS.MUERTO) return;
     this.proyectiles.push({
       pos: { ...A.pos },
       cota: A.cota,
-      dir,
-      velocidad: A.perfil.velocidadProyectil,
+      dir: normaliza(resta(objetivo.pos, A.pos)),
+      velocidad: a.velocidad || 3500,
       dano: a.dano,
+      aturde: !!a.aturde,
+      rompeGuardia: !!a.rompeGuardia,
       origenId: A.id,
-      vida: 3.0
+      bando: A.bando,
+      vida: (a.alcance || 2600) / (a.velocidad || 3500) + 0.2
     });
-    this._evento('disparo', { agente: A.id });
+    this._evento('disparo', { agente: A.id, arma: a.familia || null, descarte: !!a.esDescarte });
+    if (A.bando === 'malakh') A.golpesAsestados += 0;   // el impacto lo cuenta el proyectil
   }
 
   _pasoProyectiles(dt) {
-    const M = this.malakh;
     const vivos = [];
     for (const p of this.proyectiles) {
       const antes = { ...p.pos };
       p.pos = suma(p.pos, escala(p.dir, p.velocidad * dt));
       p.vida -= dt;
 
-      // ¿lo para una cobertura?
       let parado = false;
       for (const c of this.coberturas) {
         if (!c.bloqueaVision) continue;
         const cima = (c.cota || 0) + (c.altura || 0);
-        if (cima <= Math.max(p.cota, M.cota) + this.cal.malakh.alturaOjos - 10) continue;
+        if (cima <= p.cota + this.cal.malakh.alturaOjos - 10) continue;
         if (segmentoCortaPoligono(antes, p.pos, c.poli)) { parado = true; break; }
       }
       if (parado) { this._evento('proyectilParado', { origen: p.origenId }); continue; }
 
-      if (M.estado !== ESTADOS.MUERTO && dist(p.pos, M.pos) <= M.radio + 15) {
-        this._aplicarDano(M, p.dano, this.agente(p.origenId), false);
-        continue;
+      const objetivos = p.bando === 'malakh'
+        ? this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO)
+        : [this.malakh];
+      let impacto = false;
+      for (const O of objetivos) {
+        if (O.estado === ESTADOS.MUERTO) continue;
+        if (dist(p.pos, O.pos) > O.radio + 15) continue;
+        this._aplicarDano(O, p.dano, this.agente(p.origenId),
+                          { aturde: p.aturde, rompeGuardia: p.rompeGuardia, proyectil: true });
+        impacto = true;
+        break;
       }
+      if (impacto) continue;
       if (p.vida > 0) vivos.push(p);
     }
     this.proyectiles = vivos;
   }
 
-  _aplicarDano(O, cantidad, origen, esPesado) {
+  _aplicarDano(O, cantidad, origen, a = {}) {
     if (O.estado === ESTADOS.MUERTO) return;
 
     // i-frames de la esquiva
@@ -465,32 +602,34 @@ export class Simulacion {
     let dano = cantidad;
     let bloqueado = false;
 
-    // Guardia de Malakh: frontal, cuesta stamina, y si no queda se rompe.
+    // Guardia de Malakh. El Escudo Celestial la mejora mucho y ademas para flechas.
     if (O.bando === 'malakh' && O.bloqueando && origen) {
-      const b = this.cal.malakh.bloqueo;
+      const b = perfilBloqueo(O, this.cal, this.armas);
+      const puedeParar = !a.proyectil || b.paraProyectiles;
       const frontal = Math.abs(deltaAngulo(O.yaw, yawDe(resta(origen.pos, O.pos)))) < b.arco / 2;
-      if (frontal) {
+      if (frontal && puedeParar) {
         if (O.stamina >= b.costeStaminaPorGolpe) {
           O.stamina -= b.costeStaminaPorGolpe;
           dano *= 1 - b.reduccion;
           bloqueado = true;
         } else {
-          // guard break: pasa el golpe entero y ademas te tumba
-          O.stamina = 0;
-          O.aguante = 0;
+          O.stamina = 0; O.aguante = 0;
           this._evento('guardiaRota', { agente: O.id, de: origen.id });
         }
       }
     }
 
+    // Guardia del enemigo. El espadon y el bash la ignoran (guard break).
     const guardia = O.perfil?.guardia || 0;
-    if (guardia > 0 && origen) {
+    if (!a.rompeGuardia && guardia > 0 && origen) {
       const frontal = Math.abs(deltaAngulo(O.yaw, yawDe(resta(origen.pos, O.pos)))) < 70;
       if (frontal && this.azar.probabilidad(guardia)) {
         dano *= 1 - (O.perfil.reduccionGuardia ?? 0.75);
         bloqueado = true;
       }
     }
+
+    if (O.bando === 'enemigo') dano *= this._modificadorZona(O, 'factorDano');
 
     const factor = this.cal.reglas.factorArmadura || 0;
     if (factor > 0) dano = Math.max(1, dano - factor);
@@ -500,12 +639,14 @@ export class Simulacion {
     if (origen && origen.bando === 'enemigo') origen.danoInfligido += dano;
 
     this._evento('golpe', {
-      de: origen?.id, a: O.id, dano: +dano.toFixed(1), bloqueado, pesado: !!esPesado, hpRestante: Math.max(0, +O.hp.toFixed(1))
+      de: origen?.id, a: O.id, dano: +dano.toFixed(1), bloqueado,
+      arma: a.familia || null, descarte: !!a.esDescarte,
+      hpRestante: Math.max(0, +O.hp.toFixed(1))
     });
 
-    // aguante -> stagger
     if (!bloqueado) {
-      O.aguante -= dano * (esPesado ? 2 : 1);
+      O.aguante -= dano * (a.esPesado || a.aturde ? 2 : 1);
+      if (a.aturde) O.aguante = Math.min(O.aguante, 0);
       if (O.aguante <= 0 && O.estado !== ESTADOS.MUERTO) {
         O.aguante = O.aguanteMax;
         O.estado = ESTADOS.ATURDIDO;
@@ -523,23 +664,52 @@ export class Simulacion {
       if (O.bando === 'enemigo') {
         O.tMuerte = this.t;
         this._evento('baja', { agente: O.id, arquetipo: O.arquetipo, t: +this.t.toFixed(2), drop: O.drop });
+        this._quizaSoltarArma(O);
       }
     }
   }
 
+  // ------------------------------------------------------------------- drops
+
+  _quizaSoltarArma(E) {
+    const familia = E.perfil.arma;
+    if (!familia || !this.armas.familias[familia]) return;
+    const M = this.malakh;
+    const contexto = {
+      segundosSinArma: M.tUltimaArma == null ? this.t : this.t - M.tUltimaArma,
+      fraccionVida: M.hp / M.hpMax
+    };
+    if (!decideDrop(E, this.azar, this.armas, contexto)) {
+      this._evento('sinDrop', { agente: E.id, politica: E.drop });
+      return;
+    }
+    const drop = {
+      id: `drop_${++this._contadorDrops}`,
+      familia,
+      pos: { ...E.pos },
+      cota: E.cota,
+      ttl: this.armas.reglas.ttlEnSuelo,
+      origenId: E.id
+    };
+    this.drops.push(drop);
+    this._evento('suelta', { agente: E.id, arma: familia, drop: drop.id, politica: E.drop });
+  }
+
+  _pasoDrops(dt) {
+    const vivos = [];
+    for (const d of this.drops) {
+      d.ttl -= dt;
+      if (d.ttl > 0) vivos.push(d);
+      else this._evento('dropExpirado', { drop: d.id, arma: d.familia });
+    }
+    this.drops = vivos;
+  }
+
   // -------------------------------------------------------------- movimiento
 
-  /**
-   * Camina hacia `objetivo` parandose a `distanciaParada`.
-   * Si hay cobertura de por medio, rodea por el vertice mas barato en vez de
-   * empotrarse: no es pathfinding de verdad, pero no miente sobre la geometria.
-   */
   _avanzarHacia(A, objetivo, distanciaParada, dt) {
     const ruta = this._rutaHacia(A, objetivo);
     const destino = ruta.punto;
-    // A un punto de paso se llega del todo. La distancia de parada es solo para
-    // el objetivo final: aplicarla al waypoint dejaba a Malakh clavado a 1,7 m
-    // de la rampa, mirando al arquero del balcon sin poder subir jamas.
     const parada = ruta.intermedio ? 0 : distanciaParada;
     const radio = ruta.intermedio ? 0 : (objetivo.radio || 0);
     const d = dist(A.pos, destino) - radio;
@@ -551,26 +721,19 @@ export class Simulacion {
       const vertice = this._verticeDeRodeo(A.pos, destino, bloqueo);
       if (vertice) dir = normaliza(resta(vertice, A.pos));
     }
-    const paso = (A.perfil.velocidad || 400) * dt;
     A.yaw = giraHacia(A.yaw, yawDe(dir), (A.perfil.velocidadGiro || 360) * dt);
-    this._mover(A, escala(dir, paso));
+    this._mover(A, escala(dir, this._velocidadDe(A) * dt));
   }
 
-  /**
-   * Ruta hasta el objetivo. Si esta en otra cota, el primer tramo es el acceso
-   * de su plataforma; al pisarlo, el agente cambia de cota.
-   * Devuelve {punto, intermedio}.
-   */
   _rutaHacia(A, objetivo) {
     const dCota = (objetivo.cota || 0) - (A.cota || 0);
     if (Math.abs(dCota) <= 50) return { punto: objetivo.pos, intermedio: false };
 
-    // Sube: acceso de la plataforma del objetivo. Baja: acceso de la propia.
     const plat = dCota > 0
       ? this.plataformas.find(p => dentroDePoligono(objetivo.pos, p.poli))
       : this.plataformas.find(p => dentroDePoligono(A.pos, p.poli));
     if (!plat || !plat.accesos || !plat.accesos.length) {
-      return { punto: objetivo.pos, intermedio: false };   // sin acceso: inalcanzable, ya lo canta validar()
+      return { punto: objetivo.pos, intermedio: false };
     }
 
     let mejor = plat.accesos[0], mejorD = Infinity;
@@ -606,15 +769,12 @@ export class Simulacion {
   _mover(A, delta) {
     let p = suma(A.pos, delta);
 
-    // Quien esta en alto se queda en alto: un balcon tiene barandilla. Sin esto,
-    // el arquero huia hacia atras, se salia de la plataforma conservando su cota
-    // y quedaba flotando fuera del alcance de nadie — la arena no se cerraba jamas.
+    // Quien esta en alto se queda en alto: un balcon tiene barandilla.
     if ((A.cota || 0) > 50) {
       const plat = this.plataformas.find(pl =>
         Math.abs((pl.cota || 0) - A.cota) <= 50 && dentroDePoligono(A.pos, pl.poli));
       if (plat && !dentroDePoligono(p, plat.poli)) {
-        const soloX = { x: p.x, y: A.pos.y };
-        const soloY = { x: A.pos.x, y: p.y };
+        const soloX = { x: p.x, y: A.pos.y }, soloY = { x: A.pos.x, y: p.y };
         if (dentroDePoligono(soloX, plat.poli)) p = soloX;
         else if (dentroDePoligono(soloY, plat.poli)) p = soloY;
         else p = A.pos;
@@ -623,14 +783,12 @@ export class Simulacion {
 
     for (const c of this.coberturas) {
       if (!c.bloqueaPaso) continue;
-      if ((c.cota || 0) + (c.altura || 0) <= (A.cota || 0) + 20) continue;  // se camina por encima
+      if ((c.cota || 0) + (c.altura || 0) <= (A.cota || 0) + 20) continue;
       if (dentroDePoligono(p, c.poli)) p = empujaFuera(p, c.poli, A.radio + 5);
     }
+
     if (this.enc.arena.bounds.length >= 3 && !dentroDePoligono(p, this.enc.arena.bounds)) {
-      // El sello: nadie sale de la arena. Deslizar contra el borde en vez de frenar en seco,
-      // que es lo que hace un Blocking Volume de verdad.
-      const soloX = { x: p.x, y: A.pos.y };
-      const soloY = { x: A.pos.x, y: p.y };
+      const soloX = { x: p.x, y: A.pos.y }, soloY = { x: A.pos.x, y: p.y };
       if (dentroDePoligono(soloX, this.enc.arena.bounds)) p = soloX;
       else if (dentroDePoligono(soloY, this.enc.arena.bounds)) p = soloY;
       else p = A.pos;
@@ -638,7 +796,6 @@ export class Simulacion {
     A.pos = p;
   }
 
-  /** Separacion barata para que no se solapen las capsulas. */
   _separarAgentes() {
     const vivos = this.agentes.filter(a => a.estado !== ESTADOS.MUERTO);
     for (let i = 0; i < vivos.length; i++) {
@@ -668,7 +825,6 @@ export class Simulacion {
     return dist(A.pos, O.pos) - O.radio <= alcance;
   }
 
-  /** ¿Hay un ataque enemigo a punto de aterrizar sobre Malakh? Lo usa la politica. */
   amenazaInminente(anticipacion = 0.25) {
     const M = this.malakh;
     for (const E of this.enemigos) {
@@ -677,10 +833,10 @@ export class Simulacion {
       const falta = E.accion.impacto - E.tEstado;
       if (falta < 0 || falta > anticipacion) continue;
       if (E.accion.proyectil) return { de: E, falta };
-      const d = dist(E.pos, M.pos) - M.radio;
-      if (d <= E.accion.alcance * 1.15) return { de: E, falta };
+      if (dist(E.pos, M.pos) - M.radio <= E.accion.alcance * 1.15) return { de: E, falta };
     }
     for (const p of this.proyectiles) {
+      if (p.bando === 'malakh') continue;
       const d = dist(p.pos, M.pos);
       if (d / p.velocidad <= anticipacion) return { de: this.agente(p.origenId), falta: d / p.velocidad, proyectil: p };
     }
@@ -692,39 +848,57 @@ export class Simulacion {
   }
 
   _grabarFotograma() {
+    const M = this.malakh;
     this.fotogramas.push({
       t: +this.t.toFixed(3),
+      arma: M.temporal?.familia || null,
+      offHand: M.offHand?.familia || null,
+      municion: M.temporal?.municion ?? null,
       agentes: this.agentes.map(a => ({
         id: a.id, x: Math.round(a.pos.x), y: Math.round(a.pos.y),
         cota: a.cota, yaw: Math.round(a.yaw), hp: Math.round(a.hp),
-        estado: a.estado
+        estado: a.bloqueando ? 'bloqueando' : a.estado
       })),
-      proyectiles: this.proyectiles.map(p => ({ x: Math.round(p.pos.x), y: Math.round(p.pos.y) }))
+      proyectiles: this.proyectiles.map(p => ({ x: Math.round(p.pos.x), y: Math.round(p.pos.y), bando: p.bando })),
+      drops: this.drops.map(d => ({ x: Math.round(d.pos.x), y: Math.round(d.pos.y), familia: d.familia })),
+      zonas: this.zonas.map(z => ({ x: Math.round(z.pos.x), y: Math.round(z.pos.y), radio: z.radio }))
     });
   }
 
   resultado() {
+    const M = this.malakh;
     const bajas = this.eventos.filter(e => e.tipo === 'baja');
     const danoPorFuente = {};
+    const danoPorArma = {};
     for (const ev of this.eventos) {
-      if (ev.tipo !== 'golpe' || ev.a !== 'malakh') continue;
-      const f = this.agente(ev.de);
-      const clave = f ? f.arquetipo : 'desconocido';
-      danoPorFuente[clave] = (danoPorFuente[clave] || 0) + ev.dano;
+      if (ev.tipo !== 'golpe') continue;
+      if (ev.a === 'malakh') {
+        const f = this.agente(ev.de);
+        const clave = f ? f.arquetipo : 'desconocido';
+        danoPorFuente[clave] = (danoPorFuente[clave] || 0) + ev.dano;
+      } else if (ev.de === 'malakh') {
+        const clave = ev.arma || 'espada_base';
+        danoPorArma[clave] = (danoPorArma[clave] || 0) + ev.dano;
+      }
     }
     return {
       semilla: this.semilla,
       victoria: this.razonFin === 'victoria',
       razonFin: this.razonFin,
       tiempo: +this.t.toFixed(2),
-      danoRecibido: +this.malakh.danoRecibido.toFixed(1),
-      hpFinal: Math.max(0, +this.malakh.hp.toFixed(1)),
-      golpesAsestados: this.malakh.golpesAsestados,
-      golpesFallados: this.malakh.golpesFallados,
-      esquivasLogradas: this.malakh.esquivasLogradas,
+      danoRecibido: +M.danoRecibido.toFixed(1),
+      hpFinal: Math.max(0, +M.hp.toFixed(1)),
+      pocionesBebidas: M.pocionesBebidas,
+      golpesAsestados: M.golpesAsestados,
+      golpesFallados: M.golpesFallados,
+      esquivasLogradas: M.esquivasLogradas,
       enemigosVivos: this.enemigosVivos().length,
       ordenDeBajas: bajas.map(b => ({ id: b.agente, arquetipo: b.arquetipo, t: b.t })),
+      armasRecogidas: M.armasRecogidas,
+      descartesUsados: M.descartesUsados,
+      maxDropsSimultaneos: this.maxDropsSimultaneos,
       danoPorFuente,
+      danoPorArma,
       eventos: this.eventos,
       fotogramas: this.fotogramas
     };

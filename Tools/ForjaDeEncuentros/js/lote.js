@@ -3,110 +3,113 @@
 // Esto es la razon de existir de la herramienta: contestar con numeros la
 // afirmacion del §5.2 del PDF, que hasta ahora nadie habia medido.
 //
-// Fase A mide lo que se puede medir con espada sola:
-//   - ¿es ganable sin armas temporales?           (§7.3, anti soft-lock)
-//   - ¿el orden de bajas cambia algo?             (§5, mitad de la pregunta)
-//   - ¿la arena enseña algo o es un paseo?
-// La otra mitad —¿la lanza acorta la pelea?— llega en la Fase B.
+//   "la ruta tactica ideal debe reducir tiempo, riesgo o recursos,
+//    pero nunca ser requisito"
+//
+// Son DOS afirmaciones y cada una tiene su puerta:
+//   - la ruta con armas tiene que ser MEJOR      -> puerta "la ventaja existe"
+//   - la espada sola tiene que BASTAR            -> puerta "ganable solo con espada"
+// Un encuentro que falla la primera no necesita armas temporales.
+// Un encuentro que falla la segunda incumple el §12.
 
 import { Simulacion } from './sim.js';
-import { crearPoliticas, POLITICA_BASE } from './politicas.js';
+import { crearPoliticas, crearPolitica, POLITICA_BASE, POLITICA_VENTAJA } from './politicas.js';
 import { validar } from './esquema.js';
 import { mediana, percentil, media } from './rng.js';
 
 export const PARTIDAS_POR_DEFECTO = 200;
 
-export function correrLote(encuentro, calibracion, opciones = {}) {
+export function correrLote(encuentro, calibracion, armas, opciones = {}) {
   const n = opciones.partidas || PARTIDAS_POR_DEFECTO;
   const semillaBase = opciones.semillaBase ?? 1234;
-  const politicas = crearPoliticas();
 
   const porPolitica = {};
-  let testigo = null;
-
-  for (const pol of politicas) {
+  for (const pol of crearPoliticas()) {
     const resultados = [];
     for (let i = 0; i < n; i++) {
-      const semilla = semillaBase + i;
-      const sim = new Simulacion(encuentro, calibracion, pol, semilla);
-      resultados.push(sim.correr());
+      resultados.push(new Simulacion(encuentro, calibracion, armas, pol, semillaBase + i).correr());
     }
     porPolitica[pol.id] = {
-      id: pol.id,
-      nombre: pol.nombre,
-      descripcion: pol.descripcion,
-      resultados,
-      resumen: resumir(resultados)
+      id: pol.id, nombre: pol.nombre, descripcion: pol.descripcion,
+      resultados, resumen: resumir(resultados)
     };
-  }
-
-  // Partida testigo: la mediana de la ruta guionizada, grabada para el reproductor.
-  const guion = porPolitica['guionizada'];
-  if (guion) {
-    const victorias = guion.resultados.filter(r => r.victoria);
-    const muestra = (victorias.length ? victorias : guion.resultados)
-      .slice().sort((a, b) => a.tiempo - b.tiempo);
-    const elegida = muestra[Math.floor(muestra.length / 2)];
-    if (elegida) {
-      const pol = crearPoliticas().find(p => p.id === 'guionizada');
-      const sim = new Simulacion(encuentro, calibracion, pol, elegida.semilla, { grabar: true });
-      testigo = sim.correr();
-    }
   }
 
   return {
     partidas: n,
     porPolitica,
-    testigo,
-    veredicto: dictaminar(encuentro, calibracion, porPolitica, n)
+    testigo: grabarTestigo(encuentro, calibracion, armas, porPolitica[POLITICA_VENTAJA]),
+    veredicto: dictaminar(encuentro, calibracion, armas, porPolitica, n)
   };
+}
+
+/** Graba la partida mediana de la ruta de ventaja, para el reproductor. */
+function grabarTestigo(encuentro, calibracion, armas, grupo) {
+  if (!grupo) return null;
+  const victorias = grupo.resultados.filter(r => r.victoria);
+  const muestra = (victorias.length ? victorias : grupo.resultados)
+    .slice().sort((a, b) => a.tiempo - b.tiempo);
+  const elegida = muestra[Math.floor(muestra.length / 2)];
+  if (!elegida) return null;
+  return new Simulacion(encuentro, calibracion, armas, crearPolitica(POLITICA_VENTAJA),
+                        elegida.semilla, { grabar: true }).correr();
 }
 
 function resumir(resultados) {
-  const tiemposVictoria = resultados.filter(r => r.victoria).map(r => r.tiempo);
-  const danos = resultados.filter(r => r.victoria).map(r => r.danoRecibido);
-  const todos = resultados.map(r => r.tiempo);
+  const gan = resultados.filter(r => r.victoria);
+  const tiempos = gan.map(r => r.tiempo);
+  const danos = gan.map(r => r.danoRecibido);
+
+  const recogidas = {};
+  for (const r of resultados) {
+    for (const a of r.armasRecogidas || []) {
+      recogidas[a.familia] = (recogidas[a.familia] || 0) + 1;
+    }
+  }
+
   return {
     partidas: resultados.length,
-    victorias: resultados.filter(r => r.victoria).length,
-    tasaVictoria: resultados.filter(r => r.victoria).length / resultados.length,
+    victorias: gan.length,
+    tasaVictoria: gan.length / resultados.length,
     porTiempo: resultados.filter(r => r.razonFin === 'tiempo').length,
     porMuerte: resultados.filter(r => r.razonFin === 'muerte').length,
-    tiempoMediana: tiemposVictoria.length ? +mediana(tiemposVictoria).toFixed(1) : null,
-    tiempoP10: tiemposVictoria.length ? +percentil(tiemposVictoria, 0.1).toFixed(1) : null,
-    tiempoP90: tiemposVictoria.length ? +percentil(tiemposVictoria, 0.9).toFixed(1) : null,
-    tiempoMedioTodas: +media(todos).toFixed(1),
+    tiempoMediana: tiempos.length ? +mediana(tiempos).toFixed(1) : null,
+    tiempoP10: tiempos.length ? +percentil(tiempos, 0.1).toFixed(1) : null,
+    tiempoP90: tiempos.length ? +percentil(tiempos, 0.9).toFixed(1) : null,
+    tiempoMedioTodas: +media(resultados.map(r => r.tiempo)).toFixed(1),
     danoMediana: danos.length ? +mediana(danos).toFixed(1) : null,
-    danoP90: danos.length ? +percentil(danos, 0.9).toFixed(1) : null,
-    hpFinalMediana: resultados.filter(r => r.victoria).length
-      ? +mediana(resultados.filter(r => r.victoria).map(r => r.hpFinal)).toFixed(1) : null,
-    danoPorFuente: agregarFuentes(resultados)
+    hpFinalMediana: gan.length ? +mediana(gan.map(r => r.hpFinal)).toFixed(1) : null,
+    pocionesMediana: gan.length ? +mediana(gan.map(r => r.pocionesBebidas)).toFixed(1) : null,
+    armasPorPartida: +media(resultados.map(r => (r.armasRecogidas || []).length)).toFixed(2),
+    descartesPorPartida: +media(resultados.map(r => r.descartesUsados || 0)).toFixed(2),
+    maxDropsSimultaneos: Math.max(0, ...resultados.map(r => r.maxDropsSimultaneos || 0)),
+    recogidas,
+    danoPorFuente: agregar(resultados, 'danoPorFuente'),
+    danoPorArma: agregar(resultados, 'danoPorArma')
   };
 }
 
-function agregarFuentes(resultados) {
+function agregar(resultados, campo) {
   const total = {};
   for (const r of resultados) {
-    for (const [k, v] of Object.entries(r.danoPorFuente || {})) {
-      total[k] = (total[k] || 0) + v;
-    }
+    for (const [k, v] of Object.entries(r[campo] || {})) total[k] = (total[k] || 0) + v;
   }
   const suma = Object.values(total).reduce((a, b) => a + b, 0) || 1;
   return Object.entries(total)
-    .map(([arquetipo, v]) => ({ arquetipo, total: +v.toFixed(0), fraccion: v / suma }))
+    .map(([clave, v]) => ({ clave, arquetipo: clave, total: +v.toFixed(0), fraccion: v / suma }))
     .sort((a, b) => b.total - a.total);
 }
 
 // ------------------------------------------------------------------ veredicto
 
-/** Cada puerta: {id, titulo, estado: 'ok'|'aviso'|'fallo'|'na', texto, referencia} */
-function dictaminar(encuentro, calibracion, porPolitica, n) {
+function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
   const puertas = [];
   const base = porPolitica[POLITICA_BASE];
   const guion = porPolitica['guionizada'];
-
-  // --- 1. Alcanzabilidad (estatica, sin simular) ---
+  const vent = porPolitica[POLITICA_VENTAJA];
   const problemas = validar(encuentro);
+
+  // --- 1. Alcanzabilidad (estatica) ---
   const inalcanzables = problemas.filter(p => p.codigo === 'inalcanzable');
   puertas.push({
     id: 'alcanzable',
@@ -123,23 +126,40 @@ function dictaminar(encuentro, calibracion, porPolitica, n) {
   puertas.push({
     id: 'ganable-espada',
     titulo: 'Ganable solo con la espada base',
-    referencia: '§5.2 Regla de oro / §12 Criterios de aceptacion',
+    referencia: '§5.2 Regla de oro / §12 Criterios',
     estado: tasa >= 0.90 ? 'ok' : tasa >= 0.70 ? 'aviso' : 'fallo',
-    texto: `La politica "${base?.nombre}" gana el ${(tasa * 100).toFixed(0)}% de ${n} partidas`
+    texto: `Sin tocar un arma del suelo, "${base?.nombre}" gana el ${(tasa * 100).toFixed(0)}% de ${n} partidas`
       + (base?.resumen.porMuerte ? `, muere en ${base.resumen.porMuerte}` : '')
-      + (base?.resumen.porTiempo ? ` y se queda sin tiempo en ${base.resumen.porTiempo}` : '')
-      + '.',
+      + (base?.resumen.porTiempo ? ` y se queda sin tiempo en ${base.resumen.porTiempo}` : '') + '.',
     dato: tasa
   });
 
-  // --- 3. El encuentro enseña algo ---
-  //     Se mide por la vida con la que SALE, no por el daño recibido: con pociones
-  //     el daño acumulado puede pasar de 100 y el porcentaje se volvia absurdo.
-  const danoBase = base?.resumen.danoMediana;
-  const hpMax = calibracion.malakh.hp;
-  const hpFinal = base?.resumen.hpFinalMediana;
-  const resto = hpFinal == null ? null : hpFinal / hpMax;
-  const vidas = danoBase == null ? null : danoBase / hpMax;
+  // --- 3. LA PREGUNTA DE LA FASE B: ¿la ventaja existe? ---
+  if (vent && base) {
+    const dT = delta(vent.resumen.tiempoMediana, base.resumen.tiempoMediana);
+    const dD = delta(vent.resumen.danoMediana, base.resumen.danoMediana);
+    const dV = (vent.resumen.tasaVictoria - base.resumen.tasaVictoria);
+    const mejora = (dT != null && dT <= -0.10) || (dD != null && dD <= -0.15) || dV >= 0.15;
+    const empeora = (dT != null && dT >= 0.10) || (dD != null && dD >= 0.20) || dV <= -0.15;
+    puertas.push({
+      id: 'ventaja-existe',
+      titulo: 'Las armas temporales pagan',
+      referencia: '§5.2 / §4 Arsenal de oportunidad',
+      estado: mejora ? 'ok' : empeora ? 'fallo' : 'aviso',
+      texto: (vent.resumen.armasPorPartida < 0.5)
+        ? `La ruta de ventaja apenas recoge armas (${vent.resumen.armasPorPartida} por partida). No hay ventaja que medir: revisa los drops.`
+        : mejora
+          ? `Recogiendo armas: ${pct(dV, true)} de victorias, ${pct(dT)} de tiempo, ${pct(dD)} de daño. La mecanica paga.`
+          : empeora
+            ? `Recoger armas sale PEOR que no recogerlas: ${pct(dV, true)} de victorias, ${pct(dT)} de tiempo, ${pct(dD)} de daño. O las armas estan flojas, o el desvio para cogerlas cuesta mas de lo que dan.`
+            : `Recoger armas da practicamente igual (${pct(dV, true)} victorias, ${pct(dT)} tiempo, ${pct(dD)} daño). El arsenal es decorativo en esta arena.`,
+      dato: { dT, dD, dV }
+    });
+  }
+
+  // --- 4. El encuentro enseña algo ---
+  const ref = vent?.resumen.hpFinalMediana != null ? vent : base;
+  const resto = ref?.resumen.hpFinalMediana == null ? null : ref.resumen.hpFinalMediana / calibracion.malakh.hp;
   puertas.push({
     id: 'no-trivial',
     titulo: 'El encuentro cuesta algo',
@@ -148,38 +168,68 @@ function dictaminar(encuentro, calibracion, porPolitica, n) {
     texto: resto == null
       ? 'Sin victorias que medir.'
       : resto > 0.85
-        ? `Malakh termina con el ${(resto * 100).toFixed(0)}% de vida casi sin despeinarse. La arena no enseña nada.`
+        ? `Termina con el ${(resto * 100).toFixed(0)}% de vida casi sin despeinarse. La arena no enseña nada.`
         : resto < 0.12
-          ? `Malakh termina con el ${(resto * 100).toFixed(0)}% de vida: gana por los pelos en la mediana. Con un error de mas, muere.`
-          : `Termina con el ${(resto * 100).toFixed(0)}% de vida tras encajar ${danoBase} de daño`
-            + (vidas > 1 ? ` (${vidas.toFixed(1)} barras, o sea que se cura por el camino)` : '')
-            + '. Cuesta sin ahogar.',
+          ? `Termina con el ${(resto * 100).toFixed(0)}% de vida: gana por los pelos en la mediana. Con un error de mas, muere.`
+          : `Termina con el ${(resto * 100).toFixed(0)}% de vida y ${ref.resumen.pocionesMediana} pociones bebidas. Cuesta sin ahogar.`,
     dato: resto
   });
 
-  // --- 4. ¿Importa el orden de bajas? ---
+  // --- 5. ¿Importa el orden, aun sin armas? ---
   if (guion && base && guion.resumen.tiempoMediana != null && base.resumen.tiempoMediana != null) {
-    const dT = (guion.resumen.tiempoMediana - base.resumen.tiempoMediana) / base.resumen.tiempoMediana;
-    const dD = base.resumen.danoMediana
-      ? (guion.resumen.danoMediana - base.resumen.danoMediana) / base.resumen.danoMediana
-      : 0;
+    const dT = delta(guion.resumen.tiempoMediana, base.resumen.tiempoMediana);
+    const dD = delta(guion.resumen.danoMediana, base.resumen.danoMediana);
     const mejora = dT <= -0.08 || dD <= -0.15;
     const igual = Math.abs(dT) < 0.08 && Math.abs(dD) < 0.15;
     puertas.push({
       id: 'orden-importa',
-      titulo: 'El orden de bajas cambia el resultado',
+      titulo: 'El orden de bajas ya cambia algo por si solo',
       referencia: '§5 Orden de bajas implicito',
       estado: mejora ? 'ok' : igual ? 'aviso' : 'fallo',
       texto: mejora
-        ? `Tu orden previsto es mejor que atacar al mas cercano: ${pct(dT)} de tiempo, ${pct(dD)} de daño.`
+        ? `Aun sin armas, tu orden es mejor que ir al mas cercano: ${pct(dT)} tiempo, ${pct(dD)} daño.`
         : igual
-          ? `Tu orden previsto y "atacar al mas cercano" dan practicamente lo mismo (${pct(dT)} tiempo, ${pct(dD)} daño). La composicion no premia leer la arena.`
-          : `Tu orden previsto es PEOR que atacar al mas cercano: ${pct(dT)} de tiempo, ${pct(dD)} de daño. O el orden esta mal, o la arena no es lo que crees.`,
+          ? `Sin armas, tu orden y "el mas cercano" dan lo mismo (${pct(dT)} tiempo, ${pct(dD)} daño). Toda la ventaja depende del arsenal.`
+          : `Sin armas tu orden es PEOR (${pct(dT)} tiempo, ${pct(dD)} daño). Puede estar bien si las armas lo compensan — mira la puerta de arriba.`,
       dato: { dT, dD }
     });
   }
 
-  // --- 5. Watchdog del §7.3 ---
+  // --- 6. Los drops garantizados llegan a las manos ---
+  const garantizados = encuentro.enemigos.filter(e => e.drop === 'garantizado');
+  if (garantizados.length && vent) {
+    const llegan = garantizados.map(e => {
+      const veces = vent.resultados.filter(r =>
+        (r.armasRecogidas || []).some(a => a.origen === e.id)).length;
+      return { id: e.id, etiqueta: e.etiqueta || e.id, fraccion: veces / vent.resultados.length };
+    });
+    const peor = llegan.reduce((a, b) => (a.fraccion <= b.fraccion ? a : b));
+    puertas.push({
+      id: 'drop-llega',
+      titulo: 'La llave tactica llega a las manos',
+      referencia: '§4.1 / §8 Guaranteed Tactical Drop',
+      estado: peor.fraccion >= 0.7 ? 'ok' : peor.fraccion >= 0.3 ? 'aviso' : 'fallo',
+      texto: peor.fraccion >= 0.7
+        ? `Los ${garantizados.length} drops garantizados se recogen casi siempre (el peor, "${peor.etiqueta}", en el ${(peor.fraccion * 100).toFixed(0)}%).`
+        : `El drop garantizado de "${peor.etiqueta}" solo llega a las manos en el ${(peor.fraccion * 100).toFixed(0)}% de las partidas. Marcarlo como garantizado no sirve de nada si cae donde no se pasa, o si expira antes (TTL ${armas.reglas.ttlEnSuelo}s).`,
+      dato: llegan
+    });
+  }
+
+  // --- 7. No saturar el suelo (§8) ---
+  const maxDrops = Math.max(0, ...Object.values(porPolitica).map(p => p.resumen.maxDropsSimultaneos));
+  puertas.push({
+    id: 'no-saturar',
+    titulo: 'El suelo no se llena de armas',
+    referencia: '§8 NO LOOT GAME',
+    estado: maxDrops <= 2 ? 'ok' : maxDrops <= 3 ? 'aviso' : 'fallo',
+    texto: maxDrops <= 2
+      ? `Como mucho ${maxDrops} armas en el suelo a la vez. La decision sigue siendo una decision.`
+      : `Hasta ${maxDrops} armas en el suelo a la vez. El PDF avisa (§8): con un arsenal tirado por ahi se diluye la eleccion. Baja el TTL o pon mas "No Drop".`,
+    dato: maxDrops
+  });
+
+  // --- 8. Watchdog del §7.3 ---
   const atascos = Object.values(porPolitica).reduce((a, p) => a + p.resumen.porTiempo, 0);
   puertas.push({
     id: 'watchdog',
@@ -192,24 +242,31 @@ function dictaminar(encuentro, calibracion, porPolitica, n) {
     dato: atascos
   });
 
-  // --- avisos estaticos que no son puertas ---
-  const otros = problemas.filter(p => p.codigo !== 'inalcanzable');
-
   const fallos = puertas.filter(p => p.estado === 'fallo').length;
   const avisos = puertas.filter(p => p.estado === 'aviso').length;
   return {
     puertas,
-    problemasEstaticos: otros,
+    problemasEstaticos: problemas.filter(p => p.codigo !== 'inalcanzable'),
     resumen: fallos ? 'fallo' : avisos ? 'aviso' : 'ok',
     titular: fallos
       ? `${fallos} puerta${fallos > 1 ? 's' : ''} en rojo: no lo lleves a Unreal todavia.`
       : avisos
         ? `Pasa, con ${avisos} aviso${avisos > 1 ? 's' : ''} que merecen una vuelta.`
-        : 'Las cinco puertas en verde. Este encuentro se sostiene solo con espada.'
+        : 'Todas las puertas en verde. La espada basta y las armas pagan.'
   };
 }
 
-function pct(x) {
+function delta(a, b) {
+  if (a == null || b == null || !b) return null;
+  return (a - b) / b;
+}
+
+function pct(x, esPuntos = false) {
+  if (x == null) return '—';
+  if (esPuntos) {
+    const s = (x * 100).toFixed(0);
+    return x >= 0 ? `+${s} pts` : `${s} pts`;
+  }
   const s = (x * 100).toFixed(0);
   return x <= 0 ? `${s}%` : `+${s}%`;
 }

@@ -32,18 +32,47 @@ export function pintarVeredicto(nodo, lote, extra = {}) {
   }
 
   // --- comparativa de politicas ---
-  partes.push('<h2>Politicas</h2><table class="datos"><tr><th>orden</th><th>gana</th><th>tiempo</th><th>daño</th></tr>');
+  partes.push('<h2>Politicas</h2><table class="datos"><tr><th>politica</th><th>gana</th><th>tiempo</th><th>daño</th><th>armas</th></tr>');
   for (const p of Object.values(lote.porPolitica)) {
     const r = p.resumen;
-    const destacada = p.id === 'guionizada' ? ' class="destacada"' : '';
+    const destacada = (p.id === 'ventaja' || p.id === 'cercano') ? ' class="destacada"' : '';
     partes.push(`<tr${destacada}>
       <td title="${esc(p.descripcion)}">${esc(p.nombre)}</td>
       <td>${(r.tasaVictoria * 100).toFixed(0)}%</td>
       <td>${r.tiempoMediana ?? '—'}${r.tiempoMediana != null ? 's' : ''}</td>
       <td>${r.danoMediana ?? '—'}</td>
+      <td>${r.armasPorPartida}</td>
     </tr>`);
   }
   partes.push('</table>');
+  partes.push('<p class="nota">Las dos resaltadas son la comparacion del §5.2: <strong>el mas cercano</strong> es la espada sola, <strong>ruta de ventaja</strong> es con armas.</p>');
+
+  // --- el arsenal: que se recoge y cuanto aporta ---
+  const vent = lote.porPolitica['ventaja'];
+  if (vent) {
+    const rec = Object.entries(vent.resumen.recogidas || {}).sort((a, b) => b[1] - a[1]);
+    partes.push('<h2>El arsenal en juego</h2>');
+    if (!rec.length) {
+      partes.push('<p class="nota">No se recoge ni un arma. O nadie las suelta, o expiran antes de que se pueda llegar.</p>');
+    } else {
+      partes.push('<table class="datos"><tr><th>arma</th><th>por partida</th><th>del daño</th></tr>');
+      for (const [fam, veces] of rec) {
+        const meta = FAMILIAS[fam] || {};
+        const dano = vent.resumen.danoPorArma.find(d => d.clave === fam);
+        partes.push(`<tr>
+          <td><span style="color:${meta.color || '#888'}">■</span> ${esc(meta.nombre || fam)}</td>
+          <td>${(veces / lote.partidas).toFixed(2)}</td>
+          <td>${dano ? (dano.fraccion * 100).toFixed(0) + '%' : '0%'}</td>
+        </tr>`);
+      }
+      const base = vent.resumen.danoPorArma.find(d => d.clave === 'espada_base');
+      partes.push(`<tr><td>Espada de Malakh</td><td>—</td><td>${base ? (base.fraccion * 100).toFixed(0) + '%' : '0%'}</td></tr>`);
+      partes.push('</table>');
+      partes.push(`<p class="nota">Descartes por partida: <strong>${vent.resumen.descartesPorPartida}</strong>.
+        Si un arma se recoge mucho pero apenas hace daño, es que se sacrifica nada mas cogerla:
+        mira si eso es la cadena que querias o un desperdicio.</p>`);
+    }
+  }
 
   // --- de que muere Malakh ---
   const base = lote.porPolitica['cercano'];

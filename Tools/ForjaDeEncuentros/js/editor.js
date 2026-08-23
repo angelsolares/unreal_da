@@ -4,7 +4,7 @@
 // La vista no es decoracion: es donde se comprueban las señales del §5.1 del PDF
 // —posicion, presion, silueta, geometria— antes de construir nada.
 
-import { ARQUETIPOS, ORDEN_ARQUETIPOS } from './catalogo.js';
+import { ARQUETIPOS, ORDEN_ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { cajaDelEncuentro, etiquetaDe, plataformaBajo } from './esquema.js';
 import { dist, hayVision, desdeYaw, dentroDePoligono, cajaDe } from './geometria.js';
 import { ESTADOS } from './sim.js';
@@ -400,6 +400,29 @@ export class Editor {
   /** Un fotograma de la partida testigo, en vez del planteamiento estatico. */
   _fotograma(enc, cal, f) {
     const ctx = this.ctx;
+
+    // Zonas del estandarte, debajo de todo.
+    for (const z of (f.zonas || [])) {
+      const s = this.aPantalla(z);
+      ctx.beginPath(); ctx.arc(s.x, s.y, z.radio * this.cam.z, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(181,138,216,.14)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(181,138,216,.5)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    // Armas en el suelo: el §4.1 pide que se noten.
+    for (const d of (f.drops || [])) {
+      const s = this.aPantalla(d);
+      const color = FAMILIAS[d.familia]?.color || '#d4af37';
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = color;
+      ctx.fillRect(-5, -5, 10, 10);
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, Math.PI * 2);
+      ctx.strokeStyle = color + '99'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+
     for (const a of f.agentes) {
       const meta = a.id === 'malakh'
         ? { color: COLOR_MALAKH, glifo: 'M' }

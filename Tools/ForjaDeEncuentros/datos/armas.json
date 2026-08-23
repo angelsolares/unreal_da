@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "nota": "Armas temporales del §4. Esto es DISEÑO, no medida: ninguna existe todavia en el proyecto salvo el arrojado de lanza. Por eso vive aparte de calibracion.json, que solo guarda lo que se ha leido del editor. Cada arma tiene que sentirse distinta en ALCANCE y RITMO, no en numeros de daño.",
+
+  "reglas": {
+    "ttlEnSuelo": 25,
+    "radioRecogida": 140,
+    "duracionRecogida": 0.7,
+    "probabilidadDropEstandar": 0.5,
+    "piedad": {
+      "segundosSinArma": 35,
+      "vidaPorDebajoDe": 0.5
+    }
+  },
+
+  "familias": {
+    "lanza_del_alba": {
+      "nombre": "Lanza del Alba",
+      "dosManos": true,
+      "recurso": { "tipo": "persistencia" },
+      "ataqueLigero": {
+        "duracion": 1.7, "impacto": 0.6, "ventana": 0.15,
+        "alcance": 340, "arco": 45, "costeStamina": 12, "dano": 24
+      },
+      "ataquePesado": {
+        "duracion": 2.4, "impacto": 1.0, "ventana": 0.2,
+        "alcance": 380, "arco": 55, "costeStamina": 26, "dano": 42
+      },
+      "descarte": {
+        "nombre": "Arrojar la lanza",
+        "tipo": "proyectil",
+        "duracion": 1.1, "impacto": 0.5,
+        "dano": 65, "velocidad": 4000, "alcance": 2600,
+        "aturde": true
+      },
+      "porQue": "Su valor es el ALCANCE, no el daño: 340 cm contra los 180 de la espada. Golpea al escudero sin entrar en su alcance, y llega al arquero antes de que el arquero llegue a ti."
+    },
+
+    "arco_del_firmamento": {
+      "nombre": "Arco del Firmamento",
+      "dosManos": true,
+      "recurso": { "tipo": "municion", "cantidad": 12 },
+      "ataqueLigero": {
+        "duracion": 1.6, "impacto": 1.1, "ventana": 0.05,
+        "alcance": 2400, "arco": 6, "costeStamina": 8, "dano": 28,
+        "proyectil": true, "velocidad": 3800, "gastaMunicion": 1,
+        "necesitaVision": true
+      },
+      "descarte": {
+        "nombre": "Descarga final",
+        "tipo": "proyectil",
+        "duracion": 1.8, "impacto": 0.9,
+        "dano": 22, "velocidad": 4200, "alcance": 2600,
+        "danoPorFlechaRestante": 8,
+        "aturde": false
+      },
+      "porQue": "Invierte la relacion de fuerzas con el balcon: el problema de los arqueros deja de ser el traslado. Se acaba solo, por las flechas, no por desgaste."
+    },
+
+    "escudo_celestial": {
+      "nombre": "Escudo Celestial",
+      "dosManos": false,
+      "esOffHand": true,
+      "recurso": { "tipo": "persistencia" },
+      "bloqueo": {
+        "reduccion": 0.88,
+        "arco": 150,
+        "costeStaminaPorGolpe": 12,
+        "factorVelocidad": 0.6,
+        "paraProyectiles": true
+      },
+      "descarte": {
+        "nombre": "Shield bash de sacrificio",
+        "tipo": "impacto",
+        "duracion": 1.2, "impacto": 0.45,
+        "dano": 30, "alcance": 240, "arco": 90,
+        "aturde": true, "rompeGuardia": true
+      },
+      "porQue": "No suma daño: cambia como se NAVEGA la arena. Con el escudo se cruza el campo de tiro de los arqueros, que es justo lo que la receta 6.2 quiere enseñar."
+    },
+
+    "espadon_alabarda": {
+      "nombre": "Espadon / Alabarda",
+      "dosManos": true,
+      "recurso": { "tipo": "persistencia" },
+      "ataqueLigero": {
+        "duracion": 2.1, "impacto": 0.8, "ventana": 0.22,
+        "alcance": 260, "arco": 150, "costeStamina": 18, "dano": 34,
+        "multiObjetivo": true, "rompeGuardia": true
+      },
+      "ataquePesado": {
+        "duracion": 3.0, "impacto": 1.3, "ventana": 0.28,
+        "alcance": 280, "arco": 180, "costeStamina": 34, "dano": 55,
+        "multiObjetivo": true, "rompeGuardia": true
+      },
+      "descarte": {
+        "nombre": "Golpe de suelo",
+        "tipo": "aoe",
+        "duracion": 2.2, "impacto": 1.2,
+        "dano": 60, "radio": 420,
+        "aturde": true, "rompeGuardia": true
+      },
+      "porQue": "Lento y ancho: ignora la guardia y pega a varios. Es la respuesta a los escuderos, y el precio es que cada golpe es un compromiso largo."
+    },
+
+    "estandarte_ritual": {
+      "nombre": "Estandarte ritual",
+      "dosManos": true,
+      "recurso": { "tipo": "persistencia" },
+      "ataqueLigero": {
+        "duracion": 2.0, "impacto": 0.7, "ventana": 0.18,
+        "alcance": 300, "arco": 120, "costeStamina": 14, "dano": 18,
+        "multiObjetivo": true
+      },
+      "descarte": {
+        "nombre": "Clavar el estandarte",
+        "tipo": "zona",
+        "duracion": 2.0, "impacto": 1.4,
+        "radio": 900, "duracionZona": 20,
+        "factorDanoEnemigo": 0.6, "factorVelocidadEnemigo": 0.7
+      },
+      "porQue": "La unica que no mata: controla. Su descarte convierte un objetivo prioritario en territorio, que es el aprendizaje de la receta 6.3."
+    }
+  },
+
+  "procedencia": {
+    "todo": "DISEÑO — ningun numero de aqui esta medido. Son la primera propuesta para que las cinco familias se diferencien por alcance y ritmo. El arrojado de lanza es lo unico que ya existe en el proyecto.",
+    "lanza_del_alba.descarte": "El ataque de descarte de la lanza ya esta montado en el juego; sus numeros reales deberian sustituir a estos."
+  }
+}

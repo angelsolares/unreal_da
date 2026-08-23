@@ -94,6 +94,7 @@
       "ataque": { "duracion": 1.8, "impacto": 1.3, "ventana": 0.05, "arco": 8 },
       "recarga": 2.2,
       "velocidadProyectil": 3500,
+      "segundosDeRetirada": 3,
       "guardia": 0,
       "elevable": true,
       "arma": "arco_del_firmamento"
@@ -184,6 +185,7 @@
     "arquetipos.lancero_del_alba.rangoAggro": "ESTIMADO — leer del AIPerception / Behavior Tree",
     "arquetipos.arquero_del_firmamento": "ESTIMADO en bloque — derivado de BP_ArcherAI de DCS, sin medir",
     "arquetipos.arquero_del_firmamento.velocidad": "DECISION DE DISEÑO, no medida — 350 para que sea mas lento que Malakh (400). Con 450 el arquero le daba esquinazo indefinidamente y la arena no se cerraba nunca. Al implementarlo en DCS hay que respetar esto o el encuentro se atasca.",
+    "arquetipos.arquero_del_firmamento.segundosDeRetirada": "DECISION DE DISEÑO — cuanto tiempo seguido puede retroceder antes de plantarse. Sin este limite el arquero y un Malakh que tiene que esquivar flechas se quedaban en tablas eternas: el retroceso del arquero y las esquivas de Malakh se cancelaban. Si al implementarlo en DCS el arquero puede huir sin fin, ese encuentro NO se cerrara.",
     "aviso.lancero": "OJO: el Lancero corre a 600 y Malakh a 400. Los dos numeros estan MEDIDOS. Significa que de un Lancero no se puede huir jamas. Es una decision de diseño heredada de DCS que conviene confirmar que es la que quieres.",
     "arquetipos.escudero_celestial": "ESTIMADO en bloque — el enemigo aun no existe en el proyecto",
     "arquetipos.elite_pesado": "ESTIMADO en bloque — el enemigo aun no existe en el proyecto",

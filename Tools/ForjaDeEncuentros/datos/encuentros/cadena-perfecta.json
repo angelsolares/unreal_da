@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "cadena-perfecta",
+  "nombre": "Cadena perfecta",
+  "unidades": "cm",
+  "origenMundo": { "x": 0, "y": 0, "z": 0 },
+  "submapa": "",
+  "arena": {
+    "bounds": [
+      { "x": -2000, "y": -1600 },
+      { "x": 2000, "y": -1600 },
+      { "x": 2000, "y": 1600 },
+      { "x": -2000, "y": 1600 }
+    ],
+    "entrada": { "x": -1700, "y": 0 },
+    "trigger": { "x": -1350, "y": 0, "radio": 220 },
+    "checkpoint": { "x": -1900, "y": 0 }
+  },
+  "coberturas": [
+    {
+      "id": "cob_columna_a",
+      "poli": [
+        { "x": -500, "y": -700 }, { "x": -200, "y": -700 },
+        { "x": -200, "y": -400 }, { "x": -500, "y": -400 }
+      ],
+      "cota": 0, "altura": 420, "bloqueaVision": true, "bloqueaPaso": true,
+      "etiqueta": "columna oeste"
+    },
+    {
+      "id": "cob_columna_b",
+      "poli": [
+        { "x": 400, "y": 400 }, { "x": 700, "y": 400 },
+        { "x": 700, "y": 700 }, { "x": 400, "y": 700 }
+      ],
+      "cota": 0, "altura": 420, "bloqueaVision": true, "bloqueaPaso": true,
+      "etiqueta": "columna este"
+    }
+  ],
+  "plataformas": [],
+  "enemigos": [
+    {
+      "id": "en_lancero", "arquetipo": "lancero_del_alba",
+      "pos": { "x": -600, "y": 100 }, "cota": 0, "yaw": 180,
+      "drop": "garantizado", "etiqueta": "adelantado"
+    },
+    {
+      "id": "en_arquero", "arquetipo": "arquero_del_firmamento",
+      "pos": { "x": 1300, "y": -900 }, "cota": 0, "yaw": 180,
+      "drop": "ninguno", "etiqueta": "al fondo"
+    },
+    {
+      "id": "en_escudero", "arquetipo": "escudero_celestial",
+      "pos": { "x": 300, "y": 700 }, "cota": 0, "yaw": 180,
+      "drop": "garantizado", "etiqueta": "guardia"
+    },
+    {
+      "id": "en_elite", "arquetipo": "elite_pesado",
+      "pos": { "x": 1200, "y": 600 }, "cota": 0, "yaw": 180,
+      "drop": "ninguno", "etiqueta": "al fondo"
+    }
+  ],
+  "victoria": { "tipo": "eliminar-todos" },
+  "purgePolicy": "purgar-todo-al-romper-sello",
+  "checkpointPolicy": "antes-del-trigger",
+  "ordenPrevisto": ["en_lancero", "en_arquero", "en_escudero", "en_elite"],
+  "notasDiseno": "Receta 6.5 del PDF. La cadena que el documento propone es: espada -> matar Lancero -> Lanza -> arrojar la Lanza al Arquero -> matar Escudero -> Escudo -> bloquear / Shield Bash -> romper Escudo -> volver a Espada -> rematar Elite.\n\nEl reparto de drops esta puesto para que esa cadena sea POSIBLE, no obligatoria: Lancero y Escudero garantizan su arma (son las dos llaves), Arquero y Elite no sueltan nada (el arco y el espadon saturarian la arena y el §8 avisa de eso). Cuatro enemigos y no cinco, porque el techo medido de la espada sola esta ahi.\n\nLo que hay que mirar en el veredicto: si 'Las armas temporales pagan' sale verde aqui pero rojo en Romper la linea, el problema de aquella no son las armas sino la composicion."
+}

@@ -1,4 +1,4 @@
-# Forja de Encuentros — Fase A
+# Forja de Encuentros — Fases A y B
 
 Banco de pruebas para los encuentros de Malkuth, según
 `Dark_Angels_Divine_Weapon_Corruption_Combat_Loop_v2.pdf`.
@@ -29,11 +29,14 @@ node Tools/ForjaDeEncuentros/pruebas/humo.mjs
 
 | script | para qué |
 |---|---|
-| `pruebas/humo.mjs` | lote completo + veredicto. Comprueba también el determinismo. |
-| `pruebas/escala.mjs` | ¿cuántos enemigos aguanta la espada sola? |
+| `pruebas/humo.mjs [encuentro]` | lote completo + veredicto. Comprueba también el determinismo. |
+| `pruebas/escala.mjs` | ¿cuántos enemigos aguanta la espada, y cuánto cambia con armas? |
+| `pruebas/lanza.mjs` | composiciones elegidas para que **sí** se recoja cada arma |
 | `pruebas/diag.mjs` | techo de la espada y daño necesario para este encuentro |
 | `pruebas/traza.mjs [semilla] [politica]` | una sola partida, evento a evento |
-| `pruebas/atasco.mjs` | busca la primera partida que agota el tiempo y la disecciona |
+| `pruebas/atasco.mjs [politica]` | busca la primera partida que agota el tiempo y la disecciona |
+
+Encuentros incluidos: `romper-la-linea` (§6.1) y `cadena-perfecta` (§6.5).
 
 ---
 
@@ -55,13 +58,40 @@ compromiso de animación, ventanas activas, esquiva con i-frames, bloqueo con co
 de stamina y guard break, aguante/stagger, pociones, proyectiles con vuelo y
 absorción por cobertura, cotas con acceso por rampa.
 
-**Cuatro políticas** (`js/politicas.js`) — todas con espada sola; lo único que
-cambia es el orden de bajas: `guionizada` (tu orden), `cercano` (línea base),
-`arqueros-primero`, `aleatoria`.
+**Cinco políticas** (`js/politicas.js`). Las dos que importan son la comparación
+del §5.2:
 
-**Panel de veredicto** (`js/lote.js`) — cinco puertas, cada una referenciada a su
+| política | qué es |
+|---|---|
+| `cercano` | espada sola, sin tocar el suelo. **La puerta anti-soft-lock.** |
+| `guionizada` | espada sola, tu orden. Aísla cuánto aporta el orden sin armas. |
+| `ventaja` | tu orden + recoge armas + las sacrifica. **La ruta que el PDF quiere.** |
+| `codicioso` | el más cercano, y recoge todo lo que ve. |
+| `aleatoria` | orden distinto por semilla. |
+
+**Panel de veredicto** (`js/lote.js`) — ocho puertas, cada una referenciada a su
 sección del PDF. Cuando la de "ganable" se pone roja, `js/diagnostico.js` calcula
 el **techo de la espada** y busca por bisección el daño que haría falta.
+
+## Fase B: el ciclo del arma temporal
+
+`js/armas.js` implementa las tres reglas que no se negocian (§3, §4.1 y la REGLA
+DE SEAL BREAK): la espada base nunca desaparece, el swap es irreversible, y **no
+hay durabilidad** — un arma solo termina por swap, descarte, agotar su recurso
+natural o el seal break. La corrupción visual no se modela: es cosmética y no toca
+la vida útil.
+
+`datos/armas.json` define las cinco familias del §4. Es **diseño, no medida**, y
+por eso vive aparte de `calibracion.json`. Cada familia se diferencia por alcance
+y ritmo, no por números de daño: la lanza vale 340 cm frente a los 180 de la
+espada, el espadón ignora la guardia y pega a varios, el escudo cambia cómo se
+navega la arena.
+
+Modelado: drops con TTL y política por enemigo (garantizado / estándar / piedad /
+ninguno), recogida con ventana de vulnerabilidad, swap irreversible con purga del
+off-hand ante armas a dos manos, munición del arco, los cinco ataques de descarte
+(proyectil, AoE, impacto y zona), bloqueo mejorado del escudo que además para
+flechas, y purga total al romper el sello.
 
 **Calibración** (`datos/calibracion.json`) — cada valor lleva su procedencia:
 `medido`, `parcial` o `ESTIMADO`. La interfaz lo enseña con una etiqueta de color.
@@ -123,6 +153,48 @@ Las palancas que sí mueven la aguja, por orden de coste:
 
 ---
 
+## Lo que salió en la Fase B
+
+**4. Las armas temporales SÍ pagan, y bastante.** En "Romper la línea":
+
+| política | gana | tiempo | daño | armas/partida |
+|---|---|---|---|---|
+| Espada · el más cercano | 23% | 119,6 s | 176 | 0 |
+| Espada · tu orden | 31% | 123,8 s | 174 | 0 |
+| **Ruta de ventaja** | **44%** | 118,2 s | 172 | 2,43 |
+
++21 puntos de victoria solo por recoger lo que sueltan. La mecánica del PDF se
+sostiene: la puerta "las armas temporales pagan" sale **verde**.
+
+**5. Pero la lanza casi no se usa como lanza.** El reparto de daño de la ruta de
+ventaja es 100% espada base y 0% lanza, con 0,81 descartes por partida. Es decir:
+la coge y la tira casi inmediatamente. Eso es fiel a la cadena del §6.5 —
+*"Lanza → arrojar Lanza al Arquero"*— pero significa que **el moveset de melé de
+la lanza no está aportando nada**. Y hay una consecuencia dura: el arrojado hace
+65 y un Arquero tiene 100 de vida, así que **la cadena del PDF no resuelve al
+arquero**: lo deja a 35 y sin lanza.
+
+Donde la lanza sí paga como arma es cuando no hay a quién tirársela:
+
+| composición | Δtiempo con lanza |
+|---|---|
+| 2 Lanceros (cae uno → lanza) | **−23%** |
+| Lancero + Escudero | −5% |
+| Lancero + Arquero | −3% |
+
+**6. Poner el arma anti-guardia en el enemigo con guardia es circular.** El
+espadón del Elite se recoge 0,01 veces por partida: para matar al Elite haría
+falta el espadón, que solo suelta el Elite. El §6.4 ya lo resuelve —dice *"eliminar
+Elite **secundario**/portador de arma pesada"*— y conviene respetarlo: el guard
+break tiene que venir de otro cuerpo.
+
+**7. Un arquero que retrocede sin límite hace tablas eternas.** Su retroceso y las
+esquivas de Malakh se cancelaban y la arena no se cerraba nunca. Está resuelto con
+`segundosDeRetirada: 3` en la calibración, marcado como decisión de diseño: **si al
+implementarlo en DCS el arquero puede huir sin fin, ese encuentro no se cerrará.**
+
+---
+
 ## Lo que este modelo NO sabe
 
 Importa tanto como lo que sabe, porque **todo tira del veredicto hacia abajo**:
@@ -139,10 +211,14 @@ Si aquí sale verde, en manos de un jugador decente sale más verde.
 
 ---
 
+Y una más, que la Fase B añade: **ningún número de `armas.json` está medido.** Son
+la primera propuesta de diseño. El arrojado de lanza es lo único que ya existe en
+el proyecto, y sus números reales deberían sustituir a los de aquí.
+
+---
+
 ## Lo que falta
 
-- **Fase B** — armas temporales: pickup, swap irreversible, discard special, y la
-  otra mitad de la pregunta del §5.2: *¿la lanza acorta de verdad la pelea?*
 - **Fase C** — vista 3D con Three.js. Hay terreno hecho: `ThreeJSPOC/` ya tiene los
   GLB de Malakh, el Arcángel y las armas, así que se puede pasar de primitivos a
   siluetas reales y comprobar la señal "Silueta / arma" del §5.1 desde la entrada.

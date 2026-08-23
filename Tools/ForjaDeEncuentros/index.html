@@ -35,6 +35,10 @@
     <label><input type="checkbox" id="capa-vision" /> Lineas de vision</label>
 
     <h2>Encuentro</h2>
+    <select id="sel-encuentro" style="width:100%;margin-bottom:6px">
+      <option value="romper-la-linea">Romper la linea (§6.1)</option>
+      <option value="cadena-perfecta">Cadena perfecta (§6.5)</option>
+    </select>
     <button id="btn-cargar">Cargar JSON…</button>
     <button id="btn-guardar">Guardar JSON</button>
     <button id="btn-encajar">Encajar vista <kbd>F</kbd></button>
@@ -50,6 +54,7 @@
     <div class="fila">
       <button id="btn-play">▶</button>
       <input type="range" id="linea-tiempo" min="0" max="0" value="0" />
+      <span id="arma-actual" style="min-width:210px;font-size:11.5px;letter-spacing:.5px">—</span>
       <span id="reloj" style="min-width:64px;text-align:right;font-variant-numeric:tabular-nums">—</span>
     </div>
     <div id="linea-eventos">Simula el encuentro para grabar una partida testigo.</div>

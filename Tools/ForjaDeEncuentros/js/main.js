@@ -3,7 +3,7 @@
 import { Editor } from './editor.js';
 import { pintarVeredicto, pintarPropiedades, pintarCalibracion } from './ui.js';
 import { desdeJSON, aJSON, nuevoEnemigo, nuevaCobertura, nuevaPlataforma, encuentroVacio } from './esquema.js';
-import { ARQUETIPOS, ORDEN_ARQUETIPOS } from './catalogo.js';
+import { ARQUETIPOS, ORDEN_ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { correrLote } from './lote.js';
 import { techoDeLaEspada, danoNecesario } from './diagnostico.js';
 
@@ -12,6 +12,7 @@ const E = {
   cal: null,
   seleccion: null,
   capas: { rangos: true, conos: true, presion: false, vision: false },
+  armas: null,
   lote: null,
   extra: {},
   testigo: null,
@@ -28,6 +29,7 @@ let editor;
 
 async function arrancar() {
   E.cal = await (await fetch('datos/calibracion.json')).json();
+  E.armas = await (await fetch('datos/armas.json')).json();
   try {
     E.enc = desdeJSON(await (await fetch('datos/encuentros/romper-la-linea.json')).text());
   } catch {
@@ -114,6 +116,7 @@ function conectarUI() {
     };
   });
 
+  $('#sel-encuentro').onchange = (e) => cargarDeDisco(e.target.value);
   $('#btn-simular').onclick = simular;
   $('#btn-encajar').onclick = () => editor.encajar();
   $('#btn-guardar').onclick = guardar;
@@ -223,14 +226,14 @@ async function simular() {
   await new Promise(r => setTimeout(r, 30));   // dejar pintar
 
   try {
-    E.lote = correrLote(E.enc, E.cal, { partidas: 200 });
+    E.lote = correrLote(E.enc, E.cal, E.armas, { partidas: 200 });
     E.extra = {};
     if (E.lote.veredicto.puertas.find(p => p.id === 'ganable-espada')?.estado !== 'ok') {
       // Solo cuando hace falta: es lo que mas tarda y lo que mas ayuda.
       boton.textContent = 'Diagnosticando…';
       await new Promise(r => setTimeout(r, 30));
-      E.extra.techo = techoDeLaEspada(E.enc, E.cal);
-      E.extra.dano = danoNecesario(E.enc, E.cal);
+      E.extra.techo = techoDeLaEspada(E.enc, E.cal, E.armas);
+      E.extra.dano = danoNecesario(E.enc, E.cal, E.armas);
     }
     E.testigo = E.lote.testigo;
     prepararReproductor();
@@ -267,11 +270,24 @@ function mostrarFotograma(i) {
   $('#reloj').textContent = E.fotograma ? `${E.fotograma.t.toFixed(1)} s` : '—';
 
   if (E.fotograma) {
-    const hasta = E.fotograma.t;
-    const recientes = t.eventos.filter(e => e.t <= hasta).slice(-3).reverse();
+    const f = E.fotograma;
+    // Que lleva en la mano ahora mismo: es la mitad de lo que se viene a mirar.
+    const principal = f.arma ? nombreArma(f.arma) : 'Espada de Malakh';
+    const municion = f.municion != null ? ` (${f.municion})` : '';
+    const off = f.offHand ? ` + ${nombreArma(f.offHand)}` : '';
+    $('#reloj').textContent = `${f.t.toFixed(1)} s`;
+    $('#arma-actual').textContent = `${principal}${municion}${off}`;
+    $('#arma-actual').style.color = f.arma
+      ? (FAMILIAS[f.arma]?.color || 'var(--oro)') : 'var(--texto-tenue)';
+
+    const recientes = t.eventos.filter(e => e.t <= f.t).slice(-3).reverse();
     $('#linea-eventos').textContent = recientes.map(describir).join('   ·   ') || '…';
   }
   editor.pintar();
+}
+
+function nombreArma(familia) {
+  return FAMILIAS[familia]?.nombre || familia;
 }
 
 function describir(ev) {
@@ -281,6 +297,14 @@ function describir(ev) {
     return e ? (e.etiqueta || e.arquetipo.split('_')[0]) : id;
   };
   switch (ev.tipo) {
+    case 'suelta': return `${ev.t}s ${n(ev.agente)} suelta ${nombreArma(ev.arma)}`;
+    case 'equipa': return `${ev.t}s Malakh empuña ${nombreArma(ev.arma)}`;
+    case 'desmaterializa': return `${ev.t}s se desmaterializa ${nombreArma(ev.arma)} (${ev.motivo})`;
+    case 'descarte': return `${ev.t}s ${ev.nombre}`;
+    case 'agotada': return `${ev.t}s se agota ${nombreArma(ev.arma)}`;
+    case 'sealBreak': return `${ev.t}s SEAL BREAK — purga ${ev.purgado.map(nombreArma).join(', ')}`;
+    case 'dropExpirado': return `${ev.t}s expira ${nombreArma(ev.arma)} en el suelo`;
+    case 'zona': return `${ev.t}s estandarte clavado`;
     case 'golpe': return `${ev.t}s ${n(ev.de)} → ${n(ev.a)} ${ev.dano}${ev.bloqueado ? ' (bloqueado)' : ''}`;
     case 'baja': return `${ev.t}s cae ${n(ev.agente)}`;
     case 'esquiva': return `${ev.t}s Malakh esquiva`;
@@ -311,6 +335,21 @@ function alternarReproduccion() {
 }
 
 // ------------------------------------------------------------------- ficheros
+
+async function cargarDeDisco(id) {
+  try {
+    E.enc = desdeJSON(await (await fetch(`datos/encuentros/${id}.json`)).text());
+  } catch (err) {
+    alert(`No se pudo cargar "${id}": ${err.message}`);
+    return;
+  }
+  E.seleccion = null; E.lote = null; E.testigo = null; E.fotograma = null; E.extra = {};
+  editor.invalidarPresion();
+  editor.encajar();
+  refrescarPaneles();
+  prepararReproductor();
+  pintarVeredicto($('#hoja-veredicto'), null);
+}
 
 function guardar() {
   const blob = new Blob([aJSON(E.enc)], { type: 'application/json' });

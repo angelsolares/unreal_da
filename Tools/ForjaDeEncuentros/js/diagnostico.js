@@ -14,8 +14,8 @@ const UMBRAL = 0.90;
 
 function clonar(o) { return JSON.parse(JSON.stringify(o)); }
 
-function tasa(enc, cal, partidas = PARTIDAS_SONDA) {
-  const lote = correrLote(enc, cal, { partidas });
+function tasa(enc, cal, armas, partidas = PARTIDAS_SONDA) {
+  const lote = correrLote(enc, cal, armas, { partidas });
   return lote.porPolitica[POLITICA_BASE].resumen.tasaVictoria;
 }
 
@@ -23,7 +23,7 @@ function tasa(enc, cal, partidas = PARTIDAS_SONDA) {
  * ¿Cuantos enemigos de esta composicion aguanta Malakh solo con espada?
  * Va añadiendo enemigos del encuentro, en el orden previsto, hasta que baja del 90%.
  */
-export function techoDeLaEspada(encuentro, calibracion) {
+export function techoDeLaEspada(encuentro, calibracion, armas) {
   const orden = ordenar(encuentro);
   const escalones = [];
   let techo = 0;
@@ -32,7 +32,7 @@ export function techoDeLaEspada(encuentro, calibracion) {
     const enc = clonar(encuentro);
     enc.enemigos = orden.slice(0, n).map(id => clonar(encuentro.enemigos.find(e => e.id === id)));
     enc.ordenPrevisto = (encuentro.ordenPrevisto || []).filter(id => enc.enemigos.some(e => e.id === id));
-    const t = tasa(enc, calibracion);
+    const t = tasa(enc, calibracion, armas);
     escalones.push({ n, tasa: t, ids: enc.enemigos.map(e => e.id) });
     if (t >= UMBRAL) techo = n;
   }
@@ -44,7 +44,7 @@ export function techoDeLaEspada(encuentro, calibracion) {
  * Busca el daño por golpe que hace falta para que este encuentro pase la puerta.
  * Busqueda binaria sobre el daño total de Malakh (base + arma).
  */
-export function danoNecesario(encuentro, calibracion, maximo = 120) {
+export function danoNecesario(encuentro, calibracion, armas, maximo = 120) {
   const actual = calibracion.malakh.danoBase + calibracion.malakh.armaBase.dano;
 
   const conDano = (d) => {
@@ -53,17 +53,17 @@ export function danoNecesario(encuentro, calibracion, maximo = 120) {
     return cal;
   };
 
-  if (tasa(encuentro, conDano(actual)) >= UMBRAL) {
+  if (tasa(encuentro, conDano(actual), armas) >= UMBRAL) {
     return { actual, necesario: actual, yaPasa: true };
   }
-  if (tasa(encuentro, conDano(maximo)) < UMBRAL) {
+  if (tasa(encuentro, conDano(maximo), armas) < UMBRAL) {
     return { actual, necesario: null, yaPasa: false, techoBusqueda: maximo };
   }
 
   let lo = actual, hi = maximo;
   while (hi - lo > 2) {
     const medio = Math.round((lo + hi) / 2);
-    if (tasa(encuentro, conDano(medio)) >= UMBRAL) hi = medio; else lo = medio;
+    if (tasa(encuentro, conDano(medio), armas) >= UMBRAL) hi = medio; else lo = medio;
   }
   return { actual, necesario: hi, yaPasa: false, factor: +(hi / actual).toFixed(2) };
 }
@@ -72,25 +72,25 @@ export function danoNecesario(encuentro, calibracion, maximo = 120) {
  * La otra palanca: bajar la vida de los enemigos en vez de subir el daño.
  * Devuelve el multiplicador de HP que hace pasar la puerta.
  */
-export function vidaNecesaria(encuentro, calibracion, minimo = 0.3) {
+export function vidaNecesaria(encuentro, calibracion, armas, minimo = 0.3) {
   const conFactor = (f) => {
     const cal = clonar(calibracion);
     for (const a of Object.values(cal.arquetipos)) a.hp = Math.round(a.hp * f);
     return cal;
   };
-  if (tasa(encuentro, conFactor(1)) >= UMBRAL) return { factor: 1, yaPasa: true };
-  if (tasa(encuentro, conFactor(minimo)) < UMBRAL) return { factor: null, yaPasa: false, sueloBusqueda: minimo };
+  if (tasa(encuentro, conFactor(1), armas) >= UMBRAL) return { factor: 1, yaPasa: true };
+  if (tasa(encuentro, conFactor(minimo), armas) < UMBRAL) return { factor: null, yaPasa: false, sueloBusqueda: minimo };
 
   let lo = minimo, hi = 1;
   while (hi - lo > 0.04) {
     const medio = (lo + hi) / 2;
-    if (tasa(encuentro, conFactor(medio)) >= UMBRAL) lo = medio; else hi = medio;
+    if (tasa(encuentro, conFactor(medio), armas) >= UMBRAL) lo = medio; else hi = medio;
   }
   return { factor: +lo.toFixed(2), yaPasa: false };
 }
 
 /** Escalado generico con arquetipos sueltos, para saber donde esta el techo del sistema. */
-export function techoDelSistema(calibracion, arquetipo = 'escudero_celestial', maximo = 6) {
+export function techoDelSistema(calibracion, armas, arquetipo = 'escudero_celestial', maximo = 6) {
   const filas = [];
   for (let n = 1; n <= maximo; n++) {
     const enc = encuentroVacio('sonda');
@@ -100,7 +100,7 @@ export function techoDelSistema(calibracion, arquetipo = 'escudero_celestial', m
       e.id = `s${i}`;
       return e;
     });
-    filas.push({ n, tasa: tasa(enc, calibracion) });
+    filas.push({ n, tasa: tasa(enc, calibracion, armas) });
   }
   return filas;
 }
