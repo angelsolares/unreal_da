@@ -90,21 +90,53 @@ export const FAMILIAS = {
   }
 };
 
-/** Como se pinta y se lee cada arquetipo en el editor. Los numeros van en calibracion.json. */
+/**
+ * Como se pinta y se lee cada arquetipo. Los numeros van en calibracion.json y
+ * la descripcion de que hace cada uno en datos/arquetipos.json.
+ *
+ * `blueprint` es el nombre acordado con la sesion de Unreal (contrato §1.2). El
+ * JSON del encuentro NO lo emite: la equivalencia vive del lado de Unreal en un
+ * Data Asset. Aqui solo existe para que el exportador sepa que colocar.
+ */
 export const ARQUETIPOS = {
-  lancero_del_alba:        { color: '#e8c76a', glifo: 'L', silueta: 'larga',   dropPorDefecto: 'garantizado' },
-  arquero_del_firmamento:  { color: '#9fd0e8', glifo: 'A', silueta: 'esbelta', dropPorDefecto: 'garantizado' },
-  escudero_celestial:      { color: '#c8d4e8', glifo: 'E', silueta: 'ancha',   dropPorDefecto: 'estandar'   },
-  elite_pesado:            { color: '#d89a7a', glifo: 'X', silueta: 'masiva',  dropPorDefecto: 'estandar'   },
-  portador_del_estandarte: { color: '#b58ad8', glifo: 'P', silueta: 'alta',    dropPorDefecto: 'garantizado' }
+  lancero_del_alba: {
+    color: '#e8c76a', glifo: 'L', silueta: 'larga',
+    blueprint: 'BP_DA_Lancero', sueltaPorDefecto: true, armaEsOffHand: false
+  },
+  arquero_del_firmamento: {
+    color: '#9fd0e8', glifo: 'A', silueta: 'esbelta',
+    blueprint: 'BP_DA_Arquero', sueltaPorDefecto: true, armaEsOffHand: false
+  },
+  escudero_celestial: {
+    color: '#c8d4e8', glifo: 'E', silueta: 'ancha',
+    blueprint: 'BP_DA_Vigilante', sueltaPorDefecto: false, armaEsOffHand: true
+  },
+  elite_pesado: {
+    // DECISION MIA, sin confirmar: el contrato dejaba sin nombre BP_DA_Heraldo y
+    // BP_DA_Inspector. "Heraldo" lee como quien porta un estandarte, asi que el
+    // Elite se queda con Inspector por descarte. Si en Unreal el Inspector no es
+    // un pesado con guardia, esta fila esta mal y hay que cambiarla.
+    color: '#d89a7a', glifo: 'X', silueta: 'masiva',
+    blueprint: 'BP_DA_Inspector', sueltaPorDefecto: false, armaEsOffHand: false
+  },
+  portador_del_estandarte: {
+    color: '#b58ad8', glifo: 'P', silueta: 'alta',
+    blueprint: 'BP_DA_Heraldo', sueltaPorDefecto: true, armaEsOffHand: false
+  }
 };
 
-/** Politica de drop segun §8. */
-export const POLITICAS_DROP = {
-  garantizado: { etiqueta: 'Guaranteed Tactical Drop', descripcion: 'Forma parte de la solucion elegante. Siempre aparece.' },
-  estandar:    { etiqueta: 'Standard Opportunity Drop', descripcion: 'Probabilidad o regla contextual. Variedad, no necesidad.' },
-  piedad:      { etiqueta: 'Mercy Drop', descripcion: 'El director lo eleva si el jugador lleva mucho sin herramienta y la presion es alta.' },
-  ninguno:     { etiqueta: 'No Drop', descripcion: 'Su arma no añade valor o saturaria la arena.' }
+/**
+ * El drop son DOS BOOLEANOS, no una politica.
+ *
+ * BP_DA_WeaponDropComponent solo tiene DropMainHandWeapon y DropOffHandWeapon:
+ * no existe probabilidad. Las cuatro politicas del §8 —garantizado, estandar,
+ * piedad, ninguno— no se pueden implementar hoy, y fingirlas en el simulador
+ * seria medir algo que el juego no sabe hacer. Vuelven cuando el componente
+ * tenga probabilidad.
+ */
+export const RANURAS_DROP = {
+  principal: { etiqueta: 'Arma principal', descripcion: 'DropMainHandWeapon del componente.' },
+  secundaria: { etiqueta: 'Off-hand', descripcion: 'DropOffHandWeapon. Es la ranura del escudo.' }
 };
 
 export const ORDEN_ARQUETIPOS = Object.keys(ARQUETIPOS);

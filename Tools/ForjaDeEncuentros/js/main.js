@@ -2,7 +2,7 @@
 
 import { Editor } from './editor.js';
 import { pintarVeredicto, pintarPropiedades, pintarCalibracion } from './ui.js';
-import { desdeJSON, aJSON, nuevoEnemigo, nuevaCobertura, nuevaPlataforma, encuentroVacio } from './esquema.js';
+import { desdeJSON, aJSON, nuevoEnemigo, nuevaCobertura, nuevaPlataforma, encuentroVacio, plataformaBajo } from './esquema.js';
 import { ARQUETIPOS, ORDEN_ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { correrLote } from './lote.js';
 import { techoDeLaEspada, danoNecesario } from './diagnostico.js';
@@ -78,16 +78,13 @@ function construirPaleta() {
 function crearCaja(modo, a, b) {
   const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
   const ancho = Math.abs(a.y - b.y), alto = Math.abs(a.x - b.x);
+  // El arrastre da una caja en pantalla; el schema v2 la guarda como min/max.
   if (modo === 'cobertura') {
-    const c = nuevaCobertura(cx, cy, ancho, alto);
-    c.poli = [{ x: cx - alto / 2, y: cy - ancho / 2 }, { x: cx + alto / 2, y: cy - ancho / 2 },
-              { x: cx + alto / 2, y: cy + ancho / 2 }, { x: cx - alto / 2, y: cy + ancho / 2 }];
+    const c = nuevaCobertura(cx, cy, alto, ancho);
     E.enc.coberturas.push(c);
     E.seleccion = { tipo: 'cobertura', ref: c, id: c.id };
   } else {
-    const p = nuevaPlataforma(cx, cy, ancho, alto);
-    p.poli = [{ x: cx - alto / 2, y: cy - ancho / 2 }, { x: cx + alto / 2, y: cy - ancho / 2 },
-              { x: cx + alto / 2, y: cy + ancho / 2 }, { x: cx - alto / 2, y: cy + ancho / 2 }];
+    const p = nuevaPlataforma(cx, cy, alto, ancho);
     E.enc.plataformas.push(p);
     E.seleccion = { tipo: 'plataforma', ref: p, id: p.id };
   }
@@ -158,6 +155,18 @@ function conectarUI() {
   });
 }
 
+/**
+ * El invariante del contrato §2.1: la cota de un enemigo es 0 o la de la
+ * plataforma que lo contiene. Se restablece solo cada vez que algo se mueve, en
+ * vez de dejar que el JSON se corrompa y avisar despues.
+ */
+function reasentarEnemigos() {
+  for (const e of E.enc.enemigos) {
+    const plat = plataformaBajo(E.enc, e.pos);
+    e.cota = plat ? plat.cota : 0;
+  }
+}
+
 function borrarSeleccion() {
   const s = E.seleccion;
   if (!s) return;
@@ -168,7 +177,7 @@ function borrarSeleccion() {
     E.enc.coberturas = E.enc.coberturas.filter(x => x.id !== s.id);
   } else if (s.tipo === 'plataforma') {
     E.enc.plataformas = E.enc.plataformas.filter(x => x.id !== s.id);
-  } else if (s.tipo === 'acceso' && s.padre) {
+  } else if (s.tipo === 'rampa' && s.padre) {
     s.padre.accesos = s.padre.accesos.filter(a => a !== s.ref);
   }
   E.seleccion = null;
@@ -494,7 +503,22 @@ function conectarPropiedades() {
       else if (campo === 'pos.x') destino.pos.x = valor;
       else if (campo === 'pos.y') destino.pos.y = valor;
       else destino[campo] = valor;
+      // Cambiar la cota de una plataforma deja a sus enemigos flotando o
+      // enterrados: el invariante del contrato §2.1 se restablece aqui mismo.
+      if (campo === 'cota' && E.seleccion.tipo === 'plataforma') reasentarEnemigos();
       editor.invalidarPresion();
+      editor.pintar();
+      refrescarPaneles();
+    };
+  });
+
+  // Las dos casillas del drop, que ya no son una politica sino dos booleanos.
+  hoja.querySelectorAll('[data-drop]').forEach(chk => {
+    chk.onchange = () => {
+      const e = E.seleccion?.ref;
+      if (!e) return;
+      e.drop = { principal: false, secundaria: false, ...e.drop };
+      e.drop[chk.dataset.drop] = chk.checked;
       editor.pintar();
       refrescarPaneles();
     };

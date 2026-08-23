@@ -5,7 +5,7 @@
 // —posicion, presion, silueta, geometria— antes de construir nada.
 
 import { ARQUETIPOS, ORDEN_ARQUETIPOS, FAMILIAS } from './catalogo.js';
-import { cajaDelEncuentro, etiquetaDe, plataformaBajo, obstaculosDe } from './esquema.js';
+import { cajaDelEncuentro, etiquetaDe, plataformaBajo, obstaculosDe, poliDeRect, dentroDeRect, centroDeRect, nuevaRampa, sueltaArma } from './esquema.js';
 import { dist, hayVision, desdeYaw, dentroDePoligono, cajaDe } from './geometria.js';
 import { ESTADOS } from './sim.js';
 
@@ -97,12 +97,25 @@ export class Editor {
         return;
       }
       if (this.modo === 'acceso') {
-        const plat = plataformaBajo(enc, m) || enc.plataformas[0];
-        if (plat) { (plat.accesos ||= []).push({ x: Math.round(m.x), y: Math.round(m.y) }); this.alCambiar(); }
+        // Se pincha AL PIE. La rampa sube hacia el centro de la plataforma, con
+        // el largo justo para no pasar de 45 grados. Se puede afinar arrastrando
+        // luego cualquiera de sus dos extremos.
+        const plat = enc.plataformas.find(p => dentroDeRect(m, p)) || enc.plataformas[0];
+        if (plat) {
+          const c = centroDeRect(plat);
+          const dx = c.x - m.x, dy = c.y - m.y;
+          const l = Math.hypot(dx, dy) || 1;
+          const largo = Math.max(200, (plat.cota || 0) * 1.5);
+          (plat.accesos ||= []).push(nuevaRampa(m, {
+            x: m.x + (dx / l) * largo,
+            y: m.y + (dy / l) * largo
+          }, 300));
+          this.alCambiar();
+        }
         return;
       }
       if (this.modo === 'entrada') {
-        enc.arena.entrada = { x: Math.round(m.x), y: Math.round(m.y) };
+        enc.jugador.pos = { x: Math.round(m.x), y: Math.round(m.y) };
         this.alCambiar();
         return;
       }
@@ -153,24 +166,28 @@ export class Editor {
 
   _posDe(o) {
     if (o.tipo === 'enemigo') return { ...o.ref.pos };
-    if (o.tipo === 'entrada') return { ...this.estado().enc.arena.entrada };
-    if (o.tipo === 'acceso') return { ...o.ref };
-    return { poli: o.ref.poli.map(p => ({ ...p })) };
+    if (o.tipo === 'entrada') return { ...this.estado().enc.jugador.pos };
+    if (o.tipo === 'rampa') return { desde: { ...o.ref.desde }, hasta: { ...o.ref.hasta } };
+    return { min: { ...o.ref.min }, max: { ...o.ref.max } };
   }
 
   _moverObjeto(o, original, dx, dy) {
+    const r = (v) => Math.round(v);
     if (o.tipo === 'enemigo') {
-      o.ref.pos = { x: Math.round(original.x + dx), y: Math.round(original.y + dy) };
+      o.ref.pos = { x: r(original.x + dx), y: r(original.y + dy) };
       const { enc } = this.estado();
+      // Invariante del contrato §2.1: la cota de un enemigo es 0 o la de la
+      // plataforma que lo contiene. Si no, se cae o se queda flotando.
       const plat = plataformaBajo(enc, o.ref.pos);
       o.ref.cota = plat ? plat.cota : 0;
-    } else if (o.tipo === 'acceso') {
-      o.ref.x = Math.round(original.x + dx);
-      o.ref.y = Math.round(original.y + dy);
+    } else if (o.tipo === 'rampa') {
+      o.ref.desde = { x: r(original.desde.x + dx), y: r(original.desde.y + dy) };
+      o.ref.hasta = { x: r(original.hasta.x + dx), y: r(original.hasta.y + dy) };
     } else if (o.tipo === 'entrada') {
-      this.estado().enc.arena.entrada = { x: Math.round(original.x + dx), y: Math.round(original.y + dy) };
+      this.estado().enc.jugador.pos = { x: r(original.x + dx), y: r(original.y + dy) };
     } else {
-      o.ref.poli = original.poli.map(p => ({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) }));
+      o.ref.min = { x: r(original.min.x + dx), y: r(original.min.y + dy) };
+      o.ref.max = { x: r(original.max.x + dx), y: r(original.max.y + dy) };
     }
   }
 
@@ -179,14 +196,15 @@ export class Editor {
     for (const e of enc.enemigos) {
       if (dist(m, e.pos) <= Math.max(60, 70 / this.cam.z * 0.5)) return { tipo: 'enemigo', ref: e, id: e.id };
     }
-    if (dist(m, enc.arena.entrada) <= 90) return { tipo: 'entrada', ref: enc.arena.entrada, id: 'entrada' };
+    if (dist(m, enc.jugador.pos) <= 90) return { tipo: 'entrada', ref: enc.jugador.pos, id: 'entrada' };
     for (const p of enc.plataformas) {
       for (const a of (p.accesos || [])) {
-        if (dist(m, a) <= 80) return { tipo: 'acceso', ref: a, id: 'acceso', padre: p };
+        if (a.desde && dist(m, a.desde) <= 90) return { tipo: 'rampa', ref: a, id: 'rampa', padre: p };
+        if (a.hasta && dist(m, a.hasta) <= 90) return { tipo: 'rampa', ref: a, id: 'rampa', padre: p };
       }
     }
-    for (const c of enc.coberturas) if (dentroDePoligono(m, c.poli)) return { tipo: 'cobertura', ref: c, id: c.id };
-    for (const p of enc.plataformas) if (dentroDePoligono(m, p.poli)) return { tipo: 'plataforma', ref: p, id: p.id };
+    for (const c of enc.coberturas) if (dentroDeRect(m, c)) return { tipo: 'cobertura', ref: c, id: c.id };
+    for (const p of enc.plataformas) if (dentroDeRect(m, p)) return { tipo: 'plataforma', ref: p, id: p.id };
     return null;
   }
 
@@ -248,9 +266,9 @@ export class Editor {
   }
 
   _arena(enc) {
-    if (enc.arena.bounds.length < 3) return;
+    if (!enc.arena.bounds) return;
     const ctx = this.ctx;
-    this._camino(enc.arena.bounds);
+    this._camino(poliDeRect(enc.arena.bounds));
     ctx.fillStyle = 'rgba(24,22,18,.7)';
     ctx.fill();
     ctx.strokeStyle = 'rgba(212,175,55,.55)';
@@ -263,39 +281,47 @@ export class Editor {
   _coberturas(enc, sel) {
     const ctx = this.ctx;
     for (const c of enc.coberturas) {
-      this._camino(c.poli);
+      this._camino(poliDeRect(c));
       ctx.fillStyle = 'rgba(120,120,140,.28)';
       ctx.fill();
       ctx.strokeStyle = sel?.id === c.id ? '#d4af37' : 'rgba(160,160,185,.6)';
       ctx.lineWidth = sel?.id === c.id ? 2 : 1;
       ctx.stroke();
-      this._texto(c.poli, `${c.etiqueta || 'cobertura'} · ${c.altura}cm`, 'rgba(200,200,220,.75)');
+      this._texto(poliDeRect(c), `${c.etiqueta || 'cobertura'} · ${c.altura}cm`, 'rgba(200,200,220,.75)');
     }
   }
 
   _plataformas(enc, sel) {
     const ctx = this.ctx;
     for (const p of enc.plataformas) {
-      this._camino(p.poli);
+      this._camino(poliDeRect(p));
       ctx.fillStyle = 'rgba(90,110,140,.22)';
       ctx.fill();
       ctx.strokeStyle = sel?.id === p.id ? '#d4af37' : 'rgba(140,170,210,.5)';
       ctx.lineWidth = sel?.id === p.id ? 2 : 1;
       ctx.stroke();
-      this._texto(p.poli, `${p.etiqueta || 'plataforma'} · cota ${p.cota}`, 'rgba(170,200,235,.8)');
+      this._texto(poliDeRect(p), `${p.etiqueta || 'plataforma'} · cota ${p.cota}`, 'rgba(170,200,235,.8)');
 
+      // Las rampas se dibujan como lo que son: un tramo con ancho, del pie a la
+      // cima. Un punto suelto no decia ni por donde se sube ni si cabe alguien.
       const sinAcceso = !p.accesos || !p.accesos.length;
       for (const a of (p.accesos || [])) {
-        const s = this.aPantalla(a);
-        ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+        if (!a.desde || !a.hasta) continue;
+        const d = this.aPantalla(a.desde), h = this.aPantalla(a.hasta);
+        const ancho = Math.max(2, (a.ancho || 300) * this.cam.z);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(124,179,66,.45)';
+        ctx.lineWidth = ancho;
+        ctx.lineCap = 'butt';
+        ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(h.x, h.y); ctx.stroke();
+        ctx.restore();
+        // El pie, marcado: es por donde se entra.
+        ctx.beginPath(); ctx.arc(d.x, d.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = '#7cb342'; ctx.fill();
         ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 1.5; ctx.stroke();
       }
       if (sinAcceso) {
-        const c = this.aPantalla({
-          x: (Math.min(...p.poli.map(q => q.x)) + Math.max(...p.poli.map(q => q.x))) / 2,
-          y: (Math.min(...p.poli.map(q => q.y)) + Math.max(...p.poli.map(q => q.y))) / 2
-        });
+        const c = this.aPantalla(centroDeRect(p));
         ctx.fillStyle = '#c4483f';
         ctx.font = '600 11px "Segoe UI", sans-serif';
         ctx.textAlign = 'center';
@@ -331,7 +357,7 @@ export class Editor {
       ctx.fillStyle = 'rgba(124,179,66,.9)'; ctx.font = '10px "Segoe UI", sans-serif';
       ctx.fillText('checkpoint', s.x + 8, s.y + 4);
     }
-    const e = this.aPantalla(enc.arena.entrada);
+    const e = this.aPantalla(enc.jugador.pos);
     ctx.beginPath(); ctx.arc(e.x, e.y, 9, 0, Math.PI * 2);
     ctx.fillStyle = COLOR_MALAKH; ctx.fill();
     ctx.strokeStyle = sel?.tipo === 'entrada' ? '#d4af37' : '#0b0b10';
@@ -374,7 +400,7 @@ export class Editor {
       ctx.strokeStyle = elegido ? '#fff' : '#0b0b10';
       ctx.lineWidth = elegido ? 2.5 : 1.5; ctx.stroke();
 
-      if (e.drop === 'garantizado') {
+      if (e.drop?.principal || e.drop?.secundaria) {
         ctx.beginPath(); ctx.arc(s.x, s.y, r + 4, 0, Math.PI * 2);
         ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 1.5; ctx.stroke();
       }
@@ -477,7 +503,7 @@ export class Editor {
   /** Mapa de presion: cuanta cobertura de arqueros hay en cada punto del suelo. */
   _presion(enc, cal) {
     const arqueros = enc.enemigos.filter(e => e.arquetipo === 'arquero_del_firmamento');
-    if (!arqueros.length || enc.arena.bounds.length < 3) return;
+    if (!arqueros.length) return;
 
     if (!this._cachePresion) {
       const caja = cajeaArena(enc);
@@ -486,7 +512,7 @@ export class Editor {
       for (let x = caja.minX; x <= caja.maxX; x += paso) {
         for (let y = caja.minY; y <= caja.maxY; y += paso) {
           const p = { x, y };
-          if (!dentroDePoligono(p, enc.arena.bounds)) continue;
+          if (!dentroDeRect(p, enc.arena.bounds)) continue;
           let n = 0;
           for (const a of arqueros) {
             const perfil = cal.arquetipos[a.arquetipo];
@@ -516,7 +542,7 @@ export class Editor {
       if (otro.id === desde.id) continue;
       this._raya(desde, otro.pos, otro.cota, enc, cal, a);
     }
-    this._raya(desde, enc.arena.entrada, 0, enc, cal, a);
+    this._raya(desde, enc.jugador.pos, 0, enc, cal, a);
   }
 
   _raya(desde, hasta, cotaHasta, enc, cal, a) {
@@ -554,6 +580,6 @@ export class Editor {
   }
 }
 
-function cajeaArena(enc) { return cajaDe(enc.arena.bounds); }
+function cajeaArena(enc) { const b = enc.arena.bounds; return { minX: b.min.x, maxX: b.max.x, minY: b.min.y, maxY: b.max.y }; }
 
 export { ORDEN_ARQUETIPOS, etiquetaDe };

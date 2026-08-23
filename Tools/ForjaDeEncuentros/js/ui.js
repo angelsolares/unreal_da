@@ -1,6 +1,6 @@
 // Los tres paneles de la derecha: veredicto, propiedades y calibracion.
 
-import { ARQUETIPOS, POLITICAS_DROP, FAMILIAS } from './catalogo.js';
+import { ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { validar, etiquetaDe } from './esquema.js';
 
 const MARCAS = { ok: '✓', aviso: '!', fallo: '×', na: '–' };
@@ -180,11 +180,17 @@ export function pintarPropiedades(nodo, enc, seleccion, cal, acciones) {
       <div style="flex:1"><label>Y (cm)</label><input type="number" data-campo="pos.y" value="${Math.round(e.pos.y)}" /></div>
       <div style="flex:1"><label>Cota</label><input type="number" data-campo="cota" value="${e.cota || 0}" /></div></div>`);
     partes.push(`<label>Yaw</label><input type="number" data-campo="yaw" value="${Math.round(e.yaw ?? 180)}" />`);
-    partes.push('<label>Politica de drop (§8)</label><select data-campo="drop">');
-    for (const [k, d] of Object.entries(POLITICAS_DROP)) {
-      partes.push(`<option value="${k}" ${e.drop === k ? 'selected' : ''}>${esc(d.etiqueta)}</option>`);
+    // Dos booleanos, no una politica: es lo unico que sabe hacer
+    // BP_DA_WeaponDropComponent. La probabilidad del §8 no existe todavia.
+    partes.push('<label>Que suelta al morir</label>');
+    partes.push(`<label style="margin:2px 0"><input type="checkbox" data-drop="principal"
+      ${e.drop?.principal ? 'checked' : ''} /> Arma principal</label>`);
+    partes.push(`<label style="margin:2px 0"><input type="checkbox" data-drop="secundaria"
+      ${e.drop?.secundaria ? 'checked' : ''} /> Off-hand (la ranura del escudo)</label>`);
+    if (fam) {
+      partes.push(`<p class="nota">Su ${esc(fam.nombre)} sale por la ranura
+        <strong>${fam.esOffHand ? 'off-hand' : 'principal'}</strong>: marca esa.</p>`);
     }
-    partes.push('</select>');
     if (fam) {
       partes.push(`<p class="nota">Suelta <strong>${esc(fam.nombre)}</strong> — ${esc(fam.rol)}.<br>
         Descarte: ${esc(fam.ataqueDescarte.nombre)}${fam.ataqueDescarte.implementado ? ' <span class="marca-fuente medido">ya existe</span>' : ' <span class="marca-fuente estimado">por hacer</span>'}</p>`);
@@ -196,13 +202,31 @@ export function pintarPropiedades(nodo, enc, seleccion, cal, acciones) {
     partes.push(`<h2>${seleccion.tipo}</h2>`);
     partes.push(campoTexto('etiqueta', 'Etiqueta', o.etiqueta || ''));
     if (seleccion.tipo === 'cobertura') {
+      partes.push(`<label>Cota de la BASE (cm)</label><input type="number" data-campo="cota" value="${o.cota || 0}" />`);
       partes.push(`<label>Altura (cm)</label><input type="number" data-campo="altura" value="${o.altura}" />`);
-      partes.push(`<p class="nota">Por encima de ${cal.malakh.alturaOjos} cm corta la linea de vision.
-        Un arquero en cota alta ve por encima igualmente.</p>`);
+      partes.push(`<p class="nota">En una cobertura, <strong>cota es la base</strong> del bloque y
+        <code>altura</code> lo que mide hacia arriba desde ahi. Por encima de
+        ${cal.malakh.alturaOjos} cm corta la linea de vision; un arquero en alto ve por encima igual.</p>`);
     } else {
       partes.push(`<label>Cota (cm)</label><input type="number" data-campo="cota" value="${o.cota}" />`);
-      partes.push(`<p class="nota">Accesos: ${(o.accesos || []).length}.
-        ${(o.accesos || []).length ? '' : '<strong>Sin acceso es un soft-lock.</strong> Usa el modo "Poner acceso".'}</p>`);
+      partes.push(`<p class="nota">En una plataforma, <strong>cota es la superficie que se pisa</strong>.
+        Unreal le pone el grosor por debajo.</p>`);
+      const rampas = o.accesos || [];
+      if (!rampas.length) {
+        partes.push(`<p class="nota"><strong>Sin rampa es un soft-lock.</strong>
+          Usa el modo "Poner acceso" y pincha <strong>al pie</strong>: la rampa sube sola
+          hacia el centro y luego se afina arrastrando sus extremos.</p>`);
+      } else {
+        partes.push('<table class="datos"><tr><th>rampa</th><th>largo</th><th>ancho</th><th>pendiente</th></tr>');
+        rampas.forEach((r, i) => {
+          const largo = Math.round(Math.hypot(r.hasta.x - r.desde.x, r.hasta.y - r.desde.y));
+          const grados = largo > 0 ? Math.round(Math.atan2(o.cota || 0, largo) * 180 / Math.PI) : 90;
+          partes.push(`<tr${grados > 45 ? ' class="destacada"' : ''}>
+            <td>${i + 1}</td><td>${largo}</td><td>${r.ancho}</td><td>${grados}°</td></tr>`);
+        });
+        partes.push('</table>');
+        partes.push('<p class="nota">Mas de 45° no se sube. El pie va marcado en verde en la planta.</p>');
+      }
     }
     partes.push(`<button data-borrar-forma="${esc(o.id)}" style="margin-top:8px">Borrar</button>`);
   } else {

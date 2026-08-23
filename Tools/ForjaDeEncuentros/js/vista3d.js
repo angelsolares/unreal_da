@@ -14,6 +14,7 @@
 import * as THREE from '../vendor/three/three.module.min.js';
 import { ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { cajaDe, centroide } from './geometria.js';
+import { poliDeRect, centroDeRect } from './esquema.js';
 import { lecturaDesdeLaEntrada } from './lectura.js';
 
 const M = 0.01;                       // cm -> m
@@ -108,8 +109,9 @@ export class Vista3D {
     this._vaciar(this.actores);
     this.grupos.clear();
 
-    const caja = cajaDe(enc.arena.bounds);
-    const centro = centroide(enc.arena.bounds);
+    const b = enc.arena.bounds;
+    const caja = { minX: b.min.x, maxX: b.max.x, minY: b.min.y, maxY: b.max.y };
+    const centro = centroDeRect(enc.arena.bounds);
     this.orbita.centro = aTres(centro, 0);
     this.orbita.radio = Math.max(24, Math.hypot(caja.maxX - caja.minX, caja.maxY - caja.minY) * M * 0.95);
 
@@ -146,7 +148,7 @@ export class Vista3D {
   }
 
   _suelo(enc) {
-    const g = new THREE.ShapeGeometry(this._formaDe(enc.arena.bounds));
+    const g = new THREE.ShapeGeometry(this._formaDe(poliDeRect(enc.arena.bounds)));
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
       color: 0x22201c, roughness: 0.95, metalness: 0
     }));
@@ -161,7 +163,7 @@ export class Vista3D {
 
   /** El sello del §7: barrera invisible, pero con lectura diegetica. */
   _sello(enc) {
-    const puntos = enc.arena.bounds.map(p => aTres(p, 0));
+    const puntos = poliDeRect(enc.arena.bounds).map(p => aTres(p, 0));
     puntos.push(puntos[0].clone());
     const alto = 5;
 
@@ -186,7 +188,7 @@ export class Vista3D {
   }
 
   _cobertura(c) {
-    const caja = cajaDe(c.poli);
+    const caja = { minX: c.min.x, maxX: c.max.x, minY: c.min.y, maxY: c.max.y };
     const ancho = (caja.maxY - caja.minY) * M;
     const fondo = (caja.maxX - caja.minX) * M;
     const alto = (c.altura || 200) * M;
@@ -202,7 +204,7 @@ export class Vista3D {
   }
 
   _plataforma(p) {
-    const caja = cajaDe(p.poli);
+    const caja = { minX: p.min.x, maxX: p.max.x, minY: p.min.y, maxY: p.max.y };
     const ancho = (caja.maxY - caja.minY) * M;
     const fondo = (caja.maxX - caja.minX) * M;
     const alto = (p.cota || 0) * M;
@@ -216,13 +218,23 @@ export class Vista3D {
     m.castShadow = true; m.receiveShadow = true;
     this.mundo.add(m);
 
+    // La rampa, como plano inclinado de verdad: del pie al remate, con su ancho.
+    // Como cilindro no se podia juzgar si la pendiente era subible ni si cabia
+    // alguien; asi se ve de un vistazo.
     for (const a of (p.accesos || [])) {
+      if (!a.desde || !a.hasta) continue;
+      const pie = aTres(a.desde, 0);
+      const cima = aTres(a.hasta, p.cota || 0);
+      const largo = pie.distanceTo(cima);
+      if (largo < 0.01) continue;
+
       const r = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.9, 0.9, alto, 12),
-        new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.8 })
+        new THREE.BoxGeometry((a.ancho || 300) * M, 0.12, largo),
+        new THREE.MeshStandardMaterial({ color: 0x5c7a44, roughness: 0.85 })
       );
-      r.position.copy(aTres(a, 0));
-      r.position.y = alto / 2;
+      r.position.copy(pie).lerp(cima, 0.5);
+      r.lookAt(cima);                    // el eje Z de la caja apunta a la cima
+      r.castShadow = true; r.receiveShadow = true;
       this.mundo.add(r);
     }
   }
@@ -233,7 +245,7 @@ export class Vista3D {
       new THREE.MeshBasicMaterial({ color: COLOR_MALAKH, transparent: true, opacity: 0.35 })
     );
     e.rotation.x = -Math.PI / 2;
-    e.position.copy(aTres(enc.arena.entrada, 0));
+    e.position.copy(aTres(enc.jugador.pos, 0));
     e.position.y = 0.02;
     this.mundo.add(e);
 
@@ -383,7 +395,7 @@ export class Vista3D {
     if (prop) g.add(prop);
 
     // Un aro en el suelo marca al portador de la llave tactica (solo debug).
-    if (e.drop === 'garantizado') {
+    if (e.drop?.principal || e.drop?.secundaria) {
       const aro = new THREE.Mesh(
         new THREE.RingGeometry(0.75, 0.9, 24),
         new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
@@ -462,7 +474,7 @@ export class Vista3D {
 
     const m = this.grupos.get('malakh');
     if (m) {
-      m.position.copy(aTres(enc.arena.entrada, 0));
+      m.position.copy(aTres(enc.jugador.pos, 0));
       m.rotation.set(0, 0, 0);
       m.visible = true;
       sano(m, 'malakh', cal.malakh.hp);
@@ -573,7 +585,7 @@ export class Vista3D {
 
     const { enc, cal } = this.estado();
     const grupo = new THREE.Group();
-    const ojos = aTres(enc.arena.entrada, 0);
+    const ojos = aTres(enc.jugador.pos, 0);
     ojos.y = cal.malakh.alturaOjos * M;
 
     for (const f of lecturaDesdeLaEntrada(enc, cal)) {
@@ -620,10 +632,10 @@ export class Vista3D {
 
   _colocarCamara() {
     const { enc, cal } = this.estado();
-    const centro = centroide(enc.arena.bounds);
+    const centro = centroDeRect(enc.arena.bounds);
 
     if (this.camaraActual === 'entrada') {
-      const p = aTres(enc.arena.entrada, 0);
+      const p = aTres(enc.jugador.pos, 0);
       p.y = cal.malakh.alturaOjos * M;
       this.cam.position.copy(p);
       const mira = aTres(centro, 0);

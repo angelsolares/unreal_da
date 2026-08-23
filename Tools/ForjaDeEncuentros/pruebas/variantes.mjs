@@ -35,9 +35,9 @@ const buena = {
   queEnsena: 'Un enemigo secundario puede ser la llave del grupo.',
   porQueFunciona: 'Geometria: el pasillo obliga a pasar por delante del lancero.',
   enemigos: [
-    { arquetipo: 'lancero_del_alba', x: -300, y: 0, cota: 0, drop: 'garantizado', etiqueta: 'guardia del paso' },
-    { arquetipo: 'escudero_celestial', x: 500, y: -400, cota: 0, drop: 'estandar', etiqueta: 'flanco' },
-    { arquetipo: 'arquero_del_firmamento', x: 1600, y: 600, cota: 350, drop: 'ninguno', etiqueta: 'balcon' }
+    { arquetipo: 'lancero_del_alba', x: -300, y: 0, cota: 0, sueltaArmaPrincipal: true, sueltaOffHand: false, etiqueta: 'guardia del paso' },
+    { arquetipo: 'escudero_celestial', x: 500, y: -400, cota: 0, sueltaArmaPrincipal: false, sueltaOffHand: true, etiqueta: 'flanco' },
+    { arquetipo: 'arquero_del_firmamento', x: 1600, y: 600, cota: 350, sueltaArmaPrincipal: false, sueltaOffHand: false, etiqueta: 'balcon' }
   ],
   coberturas: [{ x: 200, y: 0, ancho: 300, largo: 500, altura: 300, etiqueta: 'muro' }],
   ordenPrevisto: ['guardia del paso', 'balcon', 'flanco']
@@ -49,8 +49,9 @@ comprobar('hereda las plataformas', encB.plataformas.length === base.plataformas
 comprobar('crea los 3 enemigos', encB.enemigos.length === 3);
 comprobar('traduce el orden por etiqueta', encB.ordenPrevisto.length === 3 &&
   encB.enemigos.find(e => e.id === encB.ordenPrevisto[0])?.etiqueta === 'guardia del paso');
-comprobar('respeta las politicas de drop',
-  encB.enemigos.filter(e => e.drop === 'garantizado').length === 1);
+comprobar('el escudo sale por off-hand y la lanza por principal',
+  encB.enemigos.find(e => e.etiqueta === 'guardia del paso')?.drop.principal === true &&
+  encB.enemigos.find(e => e.etiqueta === 'flanco')?.drop.secundaria === true);
 comprobar('valida sin errores', validar(encB).filter(p => p.nivel === 'error').length === 0);
 const loteB = correrLote(encB, cal, armas, { partidas: 40 });
 comprobar('se simula', loteB.veredicto.puertas.length > 0,
@@ -59,11 +60,11 @@ comprobar('se simula', loteB.veredicto.puertas.length > 0,
 // --- 3. Propuestas malas: la herramienta no puede caerse ---
 console.log('\n--- propuestas defectuosas ---');
 const malas = [
-  ['arquetipo inventado', { nombre: 'x', enemigos: [{ arquetipo: 'dragon_rojo', x: 0, y: 0, cota: 0, drop: 'estandar', etiqueta: 'a' }], coberturas: [], ordenPrevisto: [] }],
-  ['drop inventado', { nombre: 'x', enemigos: [{ arquetipo: 'lancero_del_alba', x: 0, y: 0, cota: 0, drop: 'legendario', etiqueta: 'a' }], coberturas: [], ordenPrevisto: [] }],
-  ['orden con etiquetas que no existen', { nombre: 'x', enemigos: [{ arquetipo: 'lancero_del_alba', x: 0, y: 0, cota: 0, drop: 'estandar', etiqueta: 'a' }], coberturas: [], ordenPrevisto: ['fantasma', 'otro'] }],
+  ['arquetipo inventado', { nombre: 'x', enemigos: [{ arquetipo: 'dragon_rojo', x: 0, y: 0, cota: 0, sueltaArmaPrincipal: true, sueltaOffHand: false, etiqueta: 'a' }], coberturas: [], ordenPrevisto: [] }],
+  ['drop que no es booleano', { nombre: 'x', enemigos: [{ arquetipo: 'lancero_del_alba', x: 0, y: 0, cota: 0, sueltaArmaPrincipal: 'quiza', sueltaOffHand: null, etiqueta: 'a' }], coberturas: [], ordenPrevisto: [] }],
+  ['orden con etiquetas que no existen', { nombre: 'x', enemigos: [{ arquetipo: 'lancero_del_alba', x: 0, y: 0, cota: 0, sueltaArmaPrincipal: true, sueltaOffHand: false, etiqueta: 'a' }], coberturas: [], ordenPrevisto: ['fantasma', 'otro'] }],
   ['campos ausentes', { nombre: 'x', enemigos: [{ arquetipo: 'escudero_celestial', x: 100, y: 100 }] }],
-  ['cota alta sin plataforma', { nombre: 'x', enemigos: [{ arquetipo: 'arquero_del_firmamento', x: -1000, y: -1200, cota: 900, drop: 'garantizado', etiqueta: 'a' }, { arquetipo: 'lancero_del_alba', x: 0, y: 0, cota: 0, drop: 'estandar', etiqueta: 'b' }], coberturas: [], ordenPrevisto: [] }]
+  ['cota alta sin plataforma', { nombre: 'x', enemigos: [{ arquetipo: 'arquero_del_firmamento', x: -1000, y: -1200, cota: 900, sueltaArmaPrincipal: true, sueltaOffHand: false, etiqueta: 'a' }, { arquetipo: 'lancero_del_alba', x: 0, y: 0, cota: 0, sueltaArmaPrincipal: false, sueltaOffHand: false, etiqueta: 'b' }], coberturas: [], ordenPrevisto: [] }]
 ];
 
 for (const [nombre, propuesta] of malas) {
@@ -82,8 +83,18 @@ for (const [nombre, propuesta] of malas) {
 console.log('\n--- higiene ---');
 const conBasura = expandirPropuesta(malas[0][1], base);
 comprobar('el arquetipo inventado se descarta', conBasura.enemigos.length === 0);
+
 const conDropMalo = expandirPropuesta(malas[1][1], base);
-comprobar('el drop inventado cae a "estandar"', conDropMalo.enemigos[0]?.drop === 'estandar');
+const d = conDropMalo.enemigos[0]?.drop;
+comprobar('el drop se normaliza a dos booleanos',
+  typeof d?.principal === 'boolean' && typeof d?.secundaria === 'boolean',
+  JSON.stringify(d));
+
+// El invariante del §2.1 se aplica al expandir, no se deja para el veredicto.
+const conCotaMala = expandirPropuesta(malas[4][1], base);
+const flotante = conCotaMala.enemigos.find(e => e.etiqueta === 'a');
+comprobar('un enemigo a cota imposible se reasienta en el suelo',
+  flotante?.cota === 0, `cota ${flotante?.cota}`);
 
 // --- 5. Los hitos para el narrador ---
 console.log('\n--- hitos de la partida ---');

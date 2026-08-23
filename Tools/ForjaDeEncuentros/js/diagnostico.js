@@ -94,7 +94,7 @@ export function techoDelSistema(calibracion, armas, arquetipo = 'escudero_celest
   const filas = [];
   for (let n = 1; n <= maximo; n++) {
     const enc = encuentroVacio('sonda');
-    enc.arena.entrada = { x: -1200, y: 0 };
+    enc.jugador.pos = { x: -1200, y: 0 };
     enc.enemigos = Array.from({ length: n }, (_, i) => {
       const e = nuevoEnemigo(arquetipo, 300, (i - (n - 1) / 2) * 320);
       e.id = `s${i}`;

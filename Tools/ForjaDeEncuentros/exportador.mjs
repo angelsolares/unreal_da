@@ -21,25 +21,37 @@
 import { python } from './puente.mjs';
 
 /**
- * Que Blueprint representa a cada arquetipo HOY.
- * Tres no existen todavia: van con un suplente marcado, para que el trazado se
- * pueda pisar en el editor sin fingir que el enemigo ya esta hecho.
+ * Donde BUSCAR el Blueprint de cada arquetipo.
+ *
+ * Ojo con quien manda: el JSON del encuentro NO lleva rutas (contrato §3), solo
+ * el nombre de diseño. La equivalencia definitiva vive del lado de Unreal en un
+ * Data Asset. Esta tabla es solo para que el exportador de esta herramienta
+ * pueda colocar algo hoy; el dia que exista ese Data Asset, sobra.
+ *
+ * Los nombres acordados son BP_DA_Vigilante, BP_DA_Lancero, BP_DA_Arquero,
+ * BP_DA_Heraldo y BP_DA_Inspector. Los que aun no existen caen a un suplente
+ * MARCADO, para que el trazado se pueda pisar sin fingir que el enemigo ya esta.
  */
+const SUPLENTE = '/Game/DynamicCombatSystem/DCS/Blueprints/AI/Warrior/BP_WarriorAI';
+
 export const BLUEPRINTS = {
   lancero_del_alba: {
-    ruta: '/Game/DarkAngels/Blueprints/Enemies/BP_DA_Lancero', suplente: false
+    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Lancero'], suplente: SUPLENTE
   },
   arquero_del_firmamento: {
-    ruta: '/Game/DynamicCombatSystem/ArcheryModule/Blueprints/AI/Archer/BP_ArcherAI', suplente: false
+    candidatas: [
+      '/Game/DarkAngels/Blueprints/Enemies/BP_DA_Arquero',
+      '/Game/DynamicCombatSystem/ArcheryModule/Blueprints/AI/Archer/BP_ArcherAI'
+    ], suplente: SUPLENTE
   },
   escudero_celestial: {
-    ruta: '/Game/DynamicCombatSystem/DCS/Blueprints/AI/Warrior/BP_WarriorAI', suplente: true
+    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Vigilante'], suplente: SUPLENTE
   },
   elite_pesado: {
-    ruta: '/Game/DynamicCombatSystem/DCS/Blueprints/AI/Warrior/BP_WarriorAI', suplente: true
+    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Inspector'], suplente: SUPLENTE
   },
   portador_del_estandarte: {
-    ruta: '/Game/DynamicCombatSystem/DCS/Blueprints/AI/Warrior/BP_WarriorAI', suplente: true
+    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Heraldo'], suplente: SUPLENTE
   }
 };
 
@@ -49,7 +61,8 @@ const TOLERANCIA = 2;        // cm de diferencia admitida al releer
 
 /** Traduce el encuentro a lo que hay que colocar, ya en coordenadas de mundo. */
 export function planificar(enc, opciones = {}) {
-  const off = opciones.offset || enc.origenMundo || { x: 0, y: 0, z: 0 };
+  // v2: el mapa es un nivel suelto, asi que el offset es 0 salvo que se pida.
+  const off = opciones.offset || { x: 0, y: 0, z: 0 };
   const alMundo = (p, cota = 0) => ({
     x: Math.round(p.x + (off.x || 0)),
     y: Math.round(p.y + (off.y || 0)),
@@ -62,9 +75,11 @@ export function planificar(enc, opciones = {}) {
       id: e.id,
       clase: 'enemigo',
       arquetipo: e.arquetipo,
-      bp: bp?.ruta || null,
-      suplente: !!bp?.suplente,
-      etiqueta: `Forja_${e.arquetipo}_${e.etiqueta || e.id.slice(-4)}`.replace(/\s+/g, '_'),
+      // Se manda la lista y Unreal coge la primera que exista: asi el dia que
+      // aparezca BP_DA_Vigilante deja de usarse el suplente sin tocar nada.
+      candidatas: bp?.candidatas || [],
+      suplente: bp?.suplente || null,
+      etiqueta: `Forja_${e.arquetipo}_${e.etiqueta || String(e.id).slice(-4)}`.replace(/\s+/g, '_'),
       pos: alMundo(e.pos, e.cota),
       yaw: e.yaw ?? 180,
       drop: e.drop
@@ -72,8 +87,14 @@ export function planificar(enc, opciones = {}) {
   });
 
   // El sello del §7: una barrera por lado del perimetro.
+  // bounds es un rectangulo alineado a los ejes (contrato §1.4): cuatro muros y
+  // ninguna ambiguedad. Un poligono arbitrario queda fuera de v2 a proposito.
   const muros = [];
-  const b = enc.arena.bounds;
+  const bb = enc.arena.bounds;
+  const b = [
+    { x: bb.min.x, y: bb.min.y }, { x: bb.max.x, y: bb.min.y },
+    { x: bb.max.x, y: bb.max.y }, { x: bb.min.x, y: bb.max.y }
+  ];
   for (let i = 0; i < b.length; i++) {
     const a = b[i], c = b[(i + 1) % b.length];
     const dx = c.x - a.x, dy = c.y - a.y;
@@ -93,7 +114,7 @@ export function planificar(enc, opciones = {}) {
   }
 
   const marcas = [
-    { clase: 'marca', etiqueta: 'Forja_Entrada', pos: alMundo(enc.arena.entrada) },
+    { clase: 'marca', etiqueta: 'Forja_Jugador', pos: alMundo(enc.jugador.pos, enc.jugador.cota) },
     enc.arena.trigger && { clase: 'marca', etiqueta: 'Forja_TriggerSello', pos: alMundo(enc.arena.trigger) },
     enc.arena.checkpoint && { clase: 'marca', etiqueta: 'Forja_Checkpoint', pos: alMundo(enc.arena.checkpoint) }
   ].filter(Boolean);
@@ -188,16 +209,26 @@ def coloca(actor, spec):
     })
 
 for e in D["enemigos"]:
-    if not e["bp"] or not unreal.EditorAssetLibrary.does_asset_exist(e["bp"]):
-        informe["avisos"].append("Sin Blueprint para " + e["arquetipo"] + ": " + e["etiqueta"] + " no se coloca")
+    ruta = next((c for c in e["candidatas"] if unreal.EditorAssetLibrary.does_asset_exist(c)), None)
+    esSuplente = False
+    if ruta is None and e["suplente"] and unreal.EditorAssetLibrary.does_asset_exist(e["suplente"]):
+        ruta = e["suplente"]
+        esSuplente = True
+    if ruta is None:
+        informe["avisos"].append("Sin Blueprint para " + e["arquetipo"] + ": " + e["etiqueta"] + " NO se coloca")
         continue
-    cls = unreal.EditorAssetLibrary.load_blueprint_class(e["bp"])
+
+    cls = unreal.EditorAssetLibrary.load_blueprint_class(ruta)
+    # Rotator(roll, pitch, yaw) — comprobado en el editor. Y el convenio de yaw
+    # coincide 1:1 con la herramienta: forward = (cos yaw, sin yaw).
     a = subsys.spawn_actor_from_class(cls,
         unreal.Vector(e["pos"]["x"], e["pos"]["y"], e["pos"]["z"]),
         unreal.Rotator(0, 0, e["yaw"]))
     coloca(a, e)
-    if a and e["suplente"]:
-        informe["avisos"].append("SUPLENTE: " + e["arquetipo"] + " no tiene BP propio, va con BP_WarriorAI")
+    if a and esSuplente:
+        informe["avisos"].append(
+            "SUPLENTE: " + e["arquetipo"] + " deberia ser " + (e["candidatas"][0].split("/")[-1] if e["candidatas"] else "?")
+            + ", que aun no existe. Colocado BP_WarriorAI para poder pisar el trazado.")
 
 for m in D["muros"]:
     a = subsys.spawn_actor_from_class(unreal.BlockingVolume,

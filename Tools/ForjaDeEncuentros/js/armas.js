@@ -116,19 +116,22 @@ export function purgarPorSeal(M) {
   return purgado;
 }
 
-/** ¿Este enemigo suelta arma al morir? §8: diseñado, no caotico. */
-export function decideDrop(enemigo, azar, armas, contexto) {
-  const r = armas.reglas;
-  switch (enemigo.drop) {
-    case 'garantizado': return true;
-    case 'ninguno': return false;
-    case 'piedad':
-      return contexto.segundosSinArma >= r.piedad.segundosSinArma
-          && contexto.fraccionVida < r.piedad.vidaPorDebajoDe;
-    case 'estandar':
-    default:
-      return azar.probabilidad(r.probabilidadDropEstandar);
-  }
+/**
+ * ¿Este enemigo suelta arma al morir?
+ *
+ * Dos booleanos y ninguna probabilidad, porque eso es lo que sabe hacer
+ * BP_DA_WeaponDropComponent: DropMainHandWeapon y DropOffHandWeapon. Las cuatro
+ * politicas del §8 —garantizado, estandar, piedad, ninguno— no se pueden
+ * implementar hoy, y simularlas seria medir algo que el juego no puede hacer.
+ * Vuelven el dia que el componente tenga probabilidad.
+ *
+ * La ranura la decide el ARMA, no el enemigo: el escudo es off-hand, todo lo
+ * demas es principal.
+ */
+export function decideDrop(enemigo, familia, armas) {
+  const esOffHand = !!armas.familias[familia]?.esOffHand;
+  const d = enemigo.drop || {};
+  return esOffHand ? !!d.secundaria : !!d.principal;
 }
 
 export function etiquetaFamilia(familia, armas) {

@@ -7,7 +7,7 @@
 //  - Todo numero de balance viene de calibracion.json o armas.json, nunca a pelo.
 
 import { Azar } from './rng.js';
-import { obstaculosDe } from './esquema.js';
+import { obstaculosDe, dentroDeRect, centroDeRect, poliDeRect } from './esquema.js';
 import {
   dist, resta, suma, escala, normaliza, largo, yawDe, giraHacia, deltaAngulo,
   dentroDePoligono, hayVision, empujaFuera, segmentoCortaPoligono, centroide
@@ -71,7 +71,7 @@ export class Simulacion {
       id: 'malakh',
       bando: 'malakh',
       nombre: 'Malakh',
-      pos: { ...this.enc.arena.entrada },
+      pos: { ...this.enc.jugador.pos },
       cota: 0,
       yaw: 0,
       radio: m.radio,
@@ -99,7 +99,8 @@ export class Simulacion {
       golpesFallados: 0,
       esquivasLogradas: 0
     };
-    this.malakh.yaw = yawDe(resta(centroide(this.enc.arena.bounds), this.malakh.pos));
+    this.malakh.cota = this.enc.jugador.cota || 0;
+    this.malakh.yaw = yawDe(resta(centroDeRect(this.enc.arena.bounds), this.malakh.pos));
 
     this.enemigos = this.enc.enemigos.map(e => {
       const p = cal.arquetipos[e.arquetipo];
@@ -680,13 +681,8 @@ export class Simulacion {
   _quizaSoltarArma(E) {
     const familia = E.perfil.arma;
     if (!familia || !this.armas.familias[familia]) return;
-    const M = this.malakh;
-    const contexto = {
-      segundosSinArma: M.tUltimaArma == null ? this.t : this.t - M.tUltimaArma,
-      fraccionVida: M.hp / M.hpMax
-    };
-    if (!decideDrop(E, this.azar, this.armas, contexto)) {
-      this._evento('sinDrop', { agente: E.id, politica: E.drop });
+    if (!decideDrop(E, familia, this.armas)) {
+      this._evento('sinDrop', { agente: E.id, ranura: E.drop });
       return;
     }
     const drop = {
@@ -698,7 +694,7 @@ export class Simulacion {
       origenId: E.id
     };
     this.drops.push(drop);
-    this._evento('suelta', { agente: E.id, arma: familia, drop: drop.id, politica: E.drop });
+    this._evento('suelta', { agente: E.id, arma: familia, drop: drop.id, ranura: E.drop });
   }
 
   _pasoDrops(dt) {
@@ -736,22 +732,34 @@ export class Simulacion {
     if (Math.abs(dCota) <= 50) return { punto: objetivo.pos, intermedio: false };
 
     const plat = dCota > 0
-      ? this.plataformas.find(p => dentroDePoligono(objetivo.pos, p.poli))
-      : this.plataformas.find(p => dentroDePoligono(A.pos, p.poli));
+      ? this.plataformas.find(p => dentroDeRect(objetivo.pos, p))
+      : this.plataformas.find(p => dentroDeRect(A.pos, p));
     if (!plat || !plat.accesos || !plat.accesos.length) {
       return { punto: objetivo.pos, intermedio: false };
     }
 
-    let mejor = plat.accesos[0], mejorD = Infinity;
-    for (const ac of plat.accesos) {
-      const d = dist(A.pos, ac);
-      if (d < mejorD) { mejorD = d; mejor = ac; }
+    // Una rampa tiene dos extremos: `desde` al pie y `hasta` arriba. Para subir
+    // se va al pie; para bajar, al remate de arriba. Antes era un punto suelto y
+    // no se sabia por donde se entraba.
+    const subiendo = dCota > 0;
+    let mejor = null, mejorD = Infinity;
+    for (const r of plat.accesos) {
+      const boca = subiendo ? r.desde : r.hasta;
+      if (!boca) continue;
+      const d = dist(A.pos, boca);
+      if (d < mejorD) { mejorD = d; mejor = { boca, rampa: r }; }
     }
+    if (!mejor) return { punto: objetivo.pos, intermedio: false };
+
+    // Al pisar la boca, se recorre la rampa. No se simula la subida paso a paso:
+    // lo que importa del encuentro es cuanto se tarda en llegar, y eso ya lo
+    // cobra el rodeo hasta la boca.
     if (mejorD < 120) {
-      A.cota = dCota > 0 ? plat.cota : 0;
+      A.cota = subiendo ? plat.cota : 0;
+      A.pos = { ...(subiendo ? mejor.rampa.hasta : mejor.rampa.desde) };
       return { punto: objetivo.pos, intermedio: false };
     }
-    return { punto: mejor, intermedio: true };
+    return { punto: mejor.boca, intermedio: true };
   }
 
   _coberturaEnMedio(a, b) {
@@ -778,11 +786,11 @@ export class Simulacion {
     // Quien esta en alto se queda en alto: un balcon tiene barandilla.
     if ((A.cota || 0) > 50) {
       const plat = this.plataformas.find(pl =>
-        Math.abs((pl.cota || 0) - A.cota) <= 50 && dentroDePoligono(A.pos, pl.poli));
-      if (plat && !dentroDePoligono(p, plat.poli)) {
+        Math.abs((pl.cota || 0) - A.cota) <= 50 && dentroDeRect(A.pos, pl));
+      if (plat && !dentroDeRect(p, plat)) {
         const soloX = { x: p.x, y: A.pos.y }, soloY = { x: A.pos.x, y: p.y };
-        if (dentroDePoligono(soloX, plat.poli)) p = soloX;
-        else if (dentroDePoligono(soloY, plat.poli)) p = soloY;
+        if (dentroDeRect(soloX, plat)) p = soloX;
+        else if (dentroDeRect(soloY, plat)) p = soloY;
         else p = A.pos;
       }
     }
@@ -793,10 +801,10 @@ export class Simulacion {
       if (dentroDePoligono(p, c.poli)) p = empujaFuera(p, c.poli, A.radio + 5);
     }
 
-    if (this.enc.arena.bounds.length >= 3 && !dentroDePoligono(p, this.enc.arena.bounds)) {
+    if (!dentroDeRect(p, this.enc.arena.bounds)) {
       const soloX = { x: p.x, y: A.pos.y }, soloY = { x: A.pos.x, y: p.y };
-      if (dentroDePoligono(soloX, this.enc.arena.bounds)) p = soloX;
-      else if (dentroDePoligono(soloY, this.enc.arena.bounds)) p = soloY;
+      if (dentroDeRect(soloX, this.enc.arena.bounds)) p = soloX;
+      else if (dentroDeRect(soloY, this.enc.arena.bounds)) p = soloY;
       else p = A.pos;
     }
     A.pos = p;

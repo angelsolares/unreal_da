@@ -13,7 +13,7 @@
 // navegador y las pruebas de node lo cubren.
 
 import { dist, hayVision } from './geometria.js';
-import { obstaculosDe } from './esquema.js';
+import { obstaculosDe, sueltaArma } from './esquema.js';
 import { FAMILIAS } from './catalogo.js';
 
 /**
@@ -34,7 +34,7 @@ export function tamanoAngular(tamano, distancia) {
  * Devuelve una fila por enemigo.
  */
 export function lecturaDesdeLaEntrada(encuentro, calibracion) {
-  const ojos = encuentro.arena.entrada;
+  const ojos = encuentro.jugador.pos;
   const alturaOjos = calibracion.malakh.alturaOjos;
 
   return encuentro.enemigos.map(e => {
@@ -62,7 +62,7 @@ export function lecturaDesdeLaEntrada(encuentro, calibracion) {
       arquetipo: e.arquetipo,
       arma: perfil.arma || null,
       nombreArma: fam?.nombre || null,
-      llaveTactica: e.drop === 'garantizado',
+      llaveTactica: sueltaArma(e, !!fam?.esOffHand),
       distancia: Math.round(d),
       cota: e.cota || 0,
       visible,
