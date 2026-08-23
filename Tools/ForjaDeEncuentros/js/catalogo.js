@@ -109,7 +109,7 @@ export const ARQUETIPOS = {
   },
   escudero_celestial: {
     color: '#c8d4e8', glifo: 'E', silueta: 'ancha',
-    blueprint: 'BP_DA_Vigilante', sueltaPorDefecto: false, armaEsOffHand: true
+    blueprint: 'BP_DA_Vigilante', sueltaPorDefecto: true, armaEsOffHand: true
   },
   elite_pesado: {
     // DECISION MIA, sin confirmar: el contrato dejaba sin nombre BP_DA_Heraldo y

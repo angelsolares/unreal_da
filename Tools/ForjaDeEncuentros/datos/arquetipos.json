@@ -1,7 +1,6 @@
 {
   "version": 1,
   "nota": "QUE HACE CADA ENEMIGO, en palabras. Esto lo lees tu y lo lee la IA: va entero al prompt cuando pides una critica o variantes, asi que si aqui dice algo falso, el modelo razonara con algo falso. Editalo a mano cuando cambie el diseno; no hace falta tocar codigo. Los NUMEROS viven en calibracion.json — aqui va la intencion.",
-
   "arquetipos": {
     "lancero_del_alba": {
       "nombre": "Lancero del Alba",
@@ -12,7 +11,6 @@
       "dondeColocarlo": "Donde el jugador lo vea desde la puerta: su silueta es la mas legible de todas (el 72% del contorno es la lanza). Si quieres que la ruta se descubra mirando, este es el enemigo que la señala.",
       "cuidadoCon": "Ponerlo lejos y detras de otros: el jugador tiene que cruzar la arena para llegar a su arma, y por el camino lo muele todo lo demas."
     },
-
     "arquero_del_firmamento": {
       "nombre": "Arquero del Firmamento",
       "papel": "Presion a distancia; obliga a moverse",
@@ -22,7 +20,6 @@
       "dondeColocarlo": "En alto o al fondo, donde su fuego cruce el camino natural del jugador. En un balcon necesita rampa: sin ella es decorado inalcanzable y la arena no se cierra nunca.",
       "cuidadoCon": "Dos arqueros con lineas de tiro que se solapan cubriendo toda la arena: no queda sitio donde respirar y el encuentro deja de tener respuesta."
     },
-
     "escudero_celestial": {
       "nombre": "Escudero Celestial",
       "papel": "Muro; fija al jugador en el sitio",
@@ -32,7 +29,6 @@
       "dondeColocarlo": "Entre la entrada y el objetivo, o cubriendo a un arquero. Es el enemigo que convierte la distancia en un problema.",
       "cuidadoCon": "Dos escuderos y algo mas a la vez: tres cuerpo a cuerpo encima no dejan hueco para comprometer una animacion, y ahi la espada sola deja de bastar. El techo medido son 2-3 enemigos simultaneos."
     },
-
     "elite_pesado": {
       "nombre": "Elite pesado",
       "papel": "Pared con dientes; el que decide si la pelea es larga",
@@ -42,7 +38,6 @@
       "dondeColocarlo": "Al fondo, como remate. Nunca de apertura.",
       "cuidadoCon": "El bucle circular: si el unico guard break sale del Elite, y para matar al Elite hace falta guard break, el arma no llega nunca. El PDF ya lo resuelve en §6.4 diciendo 'Elite SECUNDARIO': que el espadon lo suelte otro cuerpo."
     },
-
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
       "papel": "Multiplicador; convierte el tiempo en presion",
@@ -53,7 +48,6 @@
       "cuidadoCon": "Que su buff empiece antes de que al jugador le de tiempo a leer la arena: entonces no es una decision, es un impuesto."
     }
   },
-
   "reglasDeComposicion": {
     "techoDeLaEspada": "Medido en 1000 partidas: la espada base sola aguanta 2-3 enemigos SIMULTANEOS. No es cuantos pones, es cuantos llegan a la vez.",
     "escalonar": "Separar con distancia, cortar la vision con coberturas y usar la cota es lo que convierte una composicion imposible en una legible.",

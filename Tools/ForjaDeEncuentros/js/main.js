@@ -1,7 +1,7 @@
 // Arranque y cableado. El estado vive aqui y todo lo demas lo lee.
 
 import { Editor } from './editor.js';
-import { pintarVeredicto, pintarPropiedades, pintarCalibracion } from './ui.js';
+import { pintarVeredicto, pintarPropiedades, pintarCalibracion, ponerFichasIA } from './ui.js';
 import { desdeJSON, aJSON, nuevoEnemigo, nuevaCobertura, nuevaPlataforma, encuentroVacio, plataformaBajo } from './esquema.js';
 import { ARQUETIPOS, ORDEN_ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { correrLote } from './lote.js';
@@ -50,6 +50,8 @@ async function arrancar() {
   refrescarPaneles();
   pintarCalibracion($('#hoja-calibracion'), E.cal);
   prepararReproductor();
+  await cargarFichasIA();
+  refrescarPaneles();
   comprobarIA();
   comprobarUnreal();
 }
@@ -153,6 +155,15 @@ function conectarUI() {
     if (e.key === ' ') { e.preventDefault(); alternarReproduccion(); }
     if (e.key === 'Delete' || e.key === 'Backspace') borrarSeleccion();
   });
+}
+
+/** Trae las fichas de arquetipo del servidor y las deja listas para el panel. */
+async function cargarFichasIA() {
+  try {
+    ponerFichasIA(await (await fetch('/arquetipos/leer')).json());
+  } catch (err) {
+    console.warn('No se pudieron leer las fichas de arquetipo:', err.message);
+  }
 }
 
 /**
@@ -511,6 +522,35 @@ function conectarPropiedades() {
       refrescarPaneles();
     };
   });
+
+  // El editor de la ficha que lee la IA.
+  const guardarFicha = hoja.querySelector('[data-guardar-ficha]');
+  if (guardarFicha) guardarFicha.onclick = async () => {
+    const det = hoja.querySelector('.ficha-ia');
+    const estado = hoja.querySelector('[data-estado-ficha]');
+    const campos = {};
+    det.querySelectorAll('[data-ficha]').forEach(t => { campos[t.dataset.ficha] = t.value; });
+
+    guardarFicha.disabled = true;
+    estado.textContent = 'Guardando…';
+    try {
+      const r = await fetch('/arquetipos/guardar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ arquetipo: det.dataset.arquetipo, campos })
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      // Repone las fichas desde el disco, no desde lo que acabamos de teclear.
+      await cargarFichasIA();
+      estado.textContent = `Guardado (${j.campos} campos).`;
+      estado.style.color = 'var(--ok)';
+    } catch (err) {
+      estado.textContent = 'No se guardo: ' + err.message;
+      estado.style.color = 'var(--fallo)';
+    }
+    guardarFicha.disabled = false;
+  };
 
   // Las dos casillas del drop, que ya no son una politica sino dos booleanos.
   hoja.querySelectorAll('[data-drop]').forEach(chk => {
