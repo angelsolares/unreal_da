@@ -3,7 +3,8 @@
 Documento compartido entre **la sesión del emulador (HTML)** y **la sesión de Unreal**.
 Si algo de aquí cambia, se cambia aquí primero y se sube el `schemaVersion`.
 
-Estado: **v2 IMPLEMENTADA en el emulador** (2026-08-23). Los dos encuentros de
+Estado: **v2 IMPLEMENTADA en el emulador** (2026-08-23), y el **§6.1 cerrado en Unreal**
+el mismo dia: los cinco arquetipos ya tienen Blueprint y equipo real (ver §1.2). Los dos encuentros de
 `Tools/ForjaDeEncuentros/datos/encuentros/` ya están en v2, y la herramienta migra
 sola los v1 que se le carguen. Lo que decidió el emulador por su cuenta —porque
 este documento no lo decía— está en la **sección 6, al final**. Léela: hay cosas
@@ -51,13 +52,25 @@ La herramienta emite **nombres de diseño**, nunca rutas de assets. La equivalen
 Blueprints vive **del lado de Unreal**, en un Data Asset. Si mañana cambia el Blueprint,
 cambia la tabla y los JSON viejos siguen valiendo.
 
-| arquetipo | Blueprint |
-|---|---|
-| `escudero_celestial` | `BP_DA_Vigilante` |
-| `lancero_del_alba` | `BP_DA_Lancero` |
-| `arquero_del_firmamento` | `BP_DA_Arquero` |
-| *(falta nombre)* | `BP_DA_Heraldo` |
-| *(falta nombre)* | `BP_DA_Inspector` |
+**Tabla CERRADA el 2026-08-23.** Los cinco arquetipos tienen Blueprint, y los Blueprints
+tienen el equipo que dice la tabla — comprobado leyendo el `BP_EquipmentComponent` de cada uno,
+no de memoria.
+
+| arquetipo | Blueprint | equipo real | papel en combate |
+|---|---|---|---|
+| `escudero_celestial` | `BP_DA_Vigilante` | `DA_SteelSword` + `DA_WoodenShield` | guardia; hay que romperle la defensa |
+| `lancero_del_alba` | `BP_DA_Lancero` | `DA_DA_Lanza` a dos manos, **sin escudo** | alcance; su arma es la que arrojas |
+| `arquero_del_firmamento` | `BP_DA_Arquero` | `DA_ElvenBow` + flechas (hereda de `BP_ArcherAI`) | presión a distancia; obliga a moverse |
+| `elite_pesado` | `BP_DA_Heraldo` | `DA_GreatAxe` a dos manos, **sin escudo** | lento y sin guardia, pero pega fuerte |
+| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` | **buff/debuff**; su valor no es el arma |
+
+**`BP_DA_WarriorAI` no es un arquetipo.** No tiene equipo propio: es el genérico que invoca el
+`BP_DA_GiantBoss`. No lo metas en la tabla.
+
+**Lo que al `portador_del_estandarte` le falta:** el aura de buff/debuff **no existe todavía**,
+ni el estandarte como objeto. Hoy es, mecánicamente, un `escudero_celestial` con otro nombre.
+Se puede colocar en un encuentro y pelea, pero **no aporta lo que promete**, así que cuidado al
+sacar conclusiones de una simulación que dependa de él.
 
 **Regla:** un `arquetipo` que no esté en la tabla es un error de carga, no un enemigo
 silenciosamente ausente.
@@ -164,11 +177,16 @@ Lo que le falta para casar con este contrato, y es trabajo de la sesión de Unre
 
 ## 5. El aviso que se lleva las tardes
 
-**NavMesh.** Sin él los enemigos se quedan plantados: en El Claro el arquero disparó
-**0 flechas en 25 segundos** exactamente por eso. Y aquí la geometría es dinámica —las
-coberturas y plataformas salen del JSON—, así que un navmesh horneado una vez no las
-conoce. El mapa necesita **RuntimeGeneration = Dynamic** y un volumen que lo cubra entero.
-Es ajuste de proyecto, no de schema, pero conviene decidirlo antes de construir nada.
+**NavMesh — ✅ HECHO el 2026-08-23.** Sin él los enemigos se quedan plantados: en El Claro el
+arquero disparó **0 flechas en 25 segundos** exactamente por eso. Y aquí la geometría es
+dinámica —las coberturas y plataformas salen del JSON—, así que un navmesh horneado una vez no
+las conocería.
+
+Ya está puesto **`RuntimeGeneration = Dynamic`** en `Config/DefaultEngine.ini`, así que lo
+heredará el navmesh del mapa del emulador cuando se cree. Verificado midiendo rutas con
+`find_path_to_location_synchronously` contra una barrera que aparece en juego: la ruta deja de
+pasar cuando la barrera se levanta y vuelve a pasar cuando se baja. **El mapa solo necesita un
+`NavMeshBoundsVolume` que lo cubra entero**; no hay que hornear nada a mano.
 
 **Colisión de las coberturas.** Está bien separar `bloqueaVision` de `bloqueaPaso`, porque
 la percepción de DCS traza contra el canal **Visibility**. Ojo: la barrera de la arena usa
@@ -182,22 +200,61 @@ puntería. Una cobertura con `bloqueaVision: true` necesita colisión distinta.
 Todo lo que el contrato no cerraba y hubo que resolver para poder implementar v2.
 **Las tres primeras necesitan tu visto bueno**; el resto son mecánicas.
 
-### 6.1 ⚠️ Los dos nombres que faltaban
+### 6.1 ✅ RESUELTO — los dos nombres que faltaban
 
-| arquetipo | Blueprint | estado |
+**Angel lo cerró el 2026-08-23, y ya está aplicado en Unreal.** La asignación quedó
+**al revés** de lo que proponía esta sección:
+
+| arquetipo | Blueprint | qué se hizo |
 |---|---|---|
-| `portador_del_estandarte` | `BP_DA_Heraldo` | propuesto; un heraldo porta el estandarte, encaja solo |
-| `elite_pesado` | ~~`BP_DA_Inspector`~~ | **CONFIRMADO INCORRECTO — sin resolver** |
+| `elite_pesado` | **`BP_DA_Heraldo`** | se le quitó la lanza y el escudo; ahora lleva `DA_GreatAxe` a dos manos |
+| `portador_del_estandarte` | **`BP_DA_Inspector`** | se queda como estaba (espada + escudo); su papel es el **buff/debuff** |
 
-**Angel confirmó el 2026-08-23 que el Inspector es otra cosa.** No sabemos todavía
-qué Blueprint le corresponde al `elite_pesado`, ni qué arquetipo (si alguno) le
-corresponde al Inspector. `js/catalogo.js` sigue apuntando a `BP_DA_Inspector`
-**y eso está mal**: el exportador de la herramienta colocará un suplente ahí hasta
-que se cierre.
+El razonamiento: Heraldo e Inspector eran **duplicados** de lo que ya había. El Heraldo
+llevaba la misma lanza que el Lancero más un escudo, así que en pantalla leía como
+«Lancero con escudo»; y el Inspector era un clon exacto del Vigilante. Ninguno aportaba
+una lectura distinta en combate, que es lo único que le importa al emulador. Convertirlos
+salió casi gratis porque los chasis ya existían.
 
-**No bloquea el JSON.** El encuentro solo emite `elite_pesado` como nombre de
-diseño; la equivalencia con el Blueprint vive del lado de Unreal (§1.2). Lo único
-que hay que hacer es no meter esa fila en el Data Asset hasta saber cuál es.
+`DA_GreatAxe` ya venía con `TwoHanded = True`, así que **no hizo falta animación nueva**:
+es el mismo truco que se usó con la lanza.
+
+**Para el emulador:** `js/catalogo.js` puede apuntar ya a los dos Blueprints, y el
+suplente sobra. La tabla completa está en el §1.2, con el equipo real de cada uno.
+
+**Lo único que sigue pendiente**, y conviene tenerlo delante: el aura de buff/debuff del
+`portador_del_estandarte` **no existe todavía**. Hoy pelea como un escudero. Un encuentro
+cuya lectura dependa de ese buff estará midiendo algo que el juego aún no hace.
+
+#### 6.1.b Lo que el emulador hizo con esta información (2026-08-23)
+
+Aplicado, y de paso **medidos los cinco Blueprints** en vez de seguir estimando. La
+recalibración es grande y el veredicto empeora mucho, así que conviene saber por qué.
+
+| lo que yo tenía | lo que mide el motor |
+|---|---|
+| velocidades 350–420 según el arquetipo | **los cinco a 600**, mismo chasis, mismo radio 50 |
+| escudero 12 de daño | **20** (`Stat.Damage` 10 + `DA_SteelSword` +10) |
+| arquero 16 | **30** (+ `DA_ElvenBow` +20) |
+| lancero 14 | **30** (+ `DA_DA_Lanza` +20) |
+| elite con guardia 0,7 | **guardia 0** — lleva hacha a dos manos, sin escudo |
+| portador sin guardia | **guardia 0,4** — lleva espada y escudo |
+
+Dos consecuencias que no son cosméticas:
+
+**Ya no se puede huir de nadie.** Antes solo el Lancero corría más que Malakh; medido,
+**los cinco** van a 600 contra sus 400. Y el `segundosDeRetirada` del arquero, que yo
+había puesto como decisión de diseño, pasa de ser un ajuste fino a ser **lo único que
+hace que la arena se cierre**: sin ese tope, un arquero a 600 no se alcanza nunca.
+
+**El techo de la espada baja de 3 enemigos a 2.** Con los números reales, «Romper la
+línea» se gana el **1%** con espada sola (antes 24%) y el **2%** con armas (antes 34%).
+No es que el encuentro haya empeorado: es que antes lo estaba midiendo con estadísticas
+inventadas más benévolas que el juego.
+
+**El buff del portador no se simula**, a propósito. El campo estaba declarado en la
+calibración y ahora está fuera, con su razón escrita: modelar un aura que Unreal no tiene
+sería medir humo, exactamente el mismo error que las probabilidades de drop del §6.2.
 
 ### 6.2 ⚠️ `drop` se resuelve como dos booleanos, y eso cuesta algo
 

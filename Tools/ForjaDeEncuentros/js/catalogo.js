@@ -112,16 +112,19 @@ export const ARQUETIPOS = {
     blueprint: 'BP_DA_Vigilante', sueltaPorDefecto: true, armaEsOffHand: true
   },
   elite_pesado: {
-    // DECISION MIA, sin confirmar: el contrato dejaba sin nombre BP_DA_Heraldo y
-    // BP_DA_Inspector. "Heraldo" lee como quien porta un estandarte, asi que el
-    // Elite se queda con Inspector por descarte. Si en Unreal el Inspector no es
-    // un pesado con guardia, esta fila esta mal y hay que cambiarla.
+    // Cerrado en Unreal el 2026-08-23, y salio AL REVES de lo que supuse: el
+    // Heraldo es el pesado. Le quitaron la lanza y el escudo y lleva DA_GreatAxe
+    // a dos manos, asi que NO tiene guardia — justo lo contrario de lo que decia
+    // mi calibracion.
     color: '#d89a7a', glifo: 'X', silueta: 'masiva',
-    blueprint: 'BP_DA_Inspector', sueltaPorDefecto: false, armaEsOffHand: false
+    blueprint: 'BP_DA_Heraldo', sueltaPorDefecto: false, armaEsOffHand: false
   },
   portador_del_estandarte: {
+    // El Inspector se queda con espada + escudo. Su valor es el buff/debuff...
+    // que TODAVIA NO EXISTE. Hoy pelea como un Vigilante con otro nombre.
     color: '#b58ad8', glifo: 'P', silueta: 'alta',
-    blueprint: 'BP_DA_Heraldo', sueltaPorDefecto: true, armaEsOffHand: false
+    blueprint: 'BP_DA_Inspector', sueltaPorDefecto: true, armaEsOffHand: false,
+    incompleto: 'Su aura de buff/debuff no existe todavia en Unreal: hoy pelea como un escudero.'
   }
 };
 

@@ -25,34 +25,21 @@ import { python } from './puente.mjs';
  *
  * Ojo con quien manda: el JSON del encuentro NO lleva rutas (contrato §3), solo
  * el nombre de diseño. La equivalencia definitiva vive del lado de Unreal en un
- * Data Asset. Esta tabla es solo para que el exportador de esta herramienta
- * pueda colocar algo hoy; el dia que exista ese Data Asset, sobra.
- *
- * Los nombres acordados son BP_DA_Vigilante, BP_DA_Lancero, BP_DA_Arquero,
- * BP_DA_Heraldo y BP_DA_Inspector. Los que aun no existen caen a un suplente
- * MARCADO, para que el trazado se pueda pisar sin fingir que el enemigo ya esta.
+ * Data Asset. Esta tabla es solo para que el exportador pueda colocar algo hoy;
+ * el dia que exista ese Data Asset, sobra.
  */
-const SUPLENTE = '/Game/DynamicCombatSystem/DCS/Blueprints/AI/Warrior/BP_WarriorAI';
+// Ya NO hay suplente. El contrato lo dice claro: `BP_DA_WarriorAI` no es un
+// arquetipo —es el generico sin equipo que invoca el GiantBoss— y colocarlo
+// disfrazado de Vigilante era ensuciar la prueba. Los cinco Blueprints existen
+// desde el 2026-08-23; si alguno faltara, el informe lo dice y no se coloca.
+const BASE = '/Game/DarkAngels/Blueprints/Enemies/';
 
 export const BLUEPRINTS = {
-  lancero_del_alba: {
-    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Lancero'], suplente: SUPLENTE
-  },
-  arquero_del_firmamento: {
-    candidatas: [
-      '/Game/DarkAngels/Blueprints/Enemies/BP_DA_Arquero',
-      '/Game/DynamicCombatSystem/ArcheryModule/Blueprints/AI/Archer/BP_ArcherAI'
-    ], suplente: SUPLENTE
-  },
-  escudero_celestial: {
-    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Vigilante'], suplente: SUPLENTE
-  },
-  elite_pesado: {
-    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Inspector'], suplente: SUPLENTE
-  },
-  portador_del_estandarte: {
-    candidatas: ['/Game/DarkAngels/Blueprints/Enemies/BP_DA_Heraldo'], suplente: SUPLENTE
-  }
+  lancero_del_alba:        { candidatas: [BASE + 'BP_DA_Lancero'] },
+  arquero_del_firmamento:  { candidatas: [BASE + 'BP_DA_Arquero'] },
+  escudero_celestial:      { candidatas: [BASE + 'BP_DA_Vigilante'] },
+  elite_pesado:            { candidatas: [BASE + 'BP_DA_Heraldo'] },
+  portador_del_estandarte: { candidatas: [BASE + 'BP_DA_Inspector'] }
 };
 
 const GROSOR_SELLO = 60;     // cm de espesor de las barreras del perimetro
@@ -75,10 +62,9 @@ export function planificar(enc, opciones = {}) {
       id: e.id,
       clase: 'enemigo',
       arquetipo: e.arquetipo,
-      // Se manda la lista y Unreal coge la primera que exista: asi el dia que
-      // aparezca BP_DA_Vigilante deja de usarse el suplente sin tocar nada.
+      // Se manda la lista y Unreal coge la primera que exista.
       candidatas: bp?.candidatas || [],
-      suplente: bp?.suplente || null,
+      // sin suplente: el contrato dice que BP_DA_WarriorAI no es un arquetipo
       etiqueta: `Forja_${e.arquetipo}_${e.etiqueta || String(e.id).slice(-4)}`.replace(/\s+/g, '_'),
       pos: alMundo(e.pos, e.cota),
       yaw: e.yaw ?? 180,
@@ -210,12 +196,12 @@ def coloca(actor, spec):
 
 for e in D["enemigos"]:
     ruta = next((c for c in e["candidatas"] if unreal.EditorAssetLibrary.does_asset_exist(c)), None)
-    esSuplente = False
-    if ruta is None and e["suplente"] and unreal.EditorAssetLibrary.does_asset_exist(e["suplente"]):
-        ruta = e["suplente"]
-        esSuplente = True
     if ruta is None:
-        informe["avisos"].append("Sin Blueprint para " + e["arquetipo"] + ": " + e["etiqueta"] + " NO se coloca")
+        # Sin suplente a proposito: un enemigo que falta se DICE, no se disfraza.
+        informe["avisos"].append(
+            "FALTA el Blueprint de " + e["arquetipo"] + " ("
+            + (e["candidatas"][0].split("/")[-1] if e["candidatas"] else "?")
+            + "): " + e["etiqueta"] + " NO se coloca.")
         continue
 
     cls = unreal.EditorAssetLibrary.load_blueprint_class(ruta)
@@ -225,10 +211,10 @@ for e in D["enemigos"]:
         unreal.Vector(e["pos"]["x"], e["pos"]["y"], e["pos"]["z"]),
         unreal.Rotator(0, 0, e["yaw"]))
     coloca(a, e)
-    if a and esSuplente:
+    if a and e["arquetipo"] == "portador_del_estandarte":
         informe["avisos"].append(
-            "SUPLENTE: " + e["arquetipo"] + " deberia ser " + (e["candidatas"][0].split("/")[-1] if e["candidatas"] else "?")
-            + ", que aun no existe. Colocado BP_WarriorAI para poder pisar el trazado.")
+            "OJO con " + e["etiqueta"] + ": el aura de buff/debuff del Inspector no existe todavia. "
+            "Hoy pelea como un Vigilante, asi que no midas nada que dependa de ese buff.")
 
 for m in D["muros"]:
     a = subsys.spawn_actor_from_class(unreal.BlockingVolume,

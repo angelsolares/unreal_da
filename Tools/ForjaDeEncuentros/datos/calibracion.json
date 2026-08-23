@@ -3,14 +3,12 @@
   "medidoEl": "2026-08-23",
   "medidoEn": "DarkAngelsPOC 5.8 / DCS / editor abierto en L_DA_Malkuth_Master",
   "nota": "Unidades: cm y segundos, igual que Unreal. Cada valor lleva procedencia en el bloque 'procedencia'. Los marcados 'estimado' son los que hay que medir en PIE antes de creerse un veredicto.",
-
   "reglas": {
     "dt": 0.0333333,
     "tiempoLimite": 180,
     "factorArmadura": 0,
     "comentarioArmadura": "DCS expone Stat.Armor=25 pero no su formula. Con factor 0 el dano es plano y legible (20 por golpe = 5 golpes por enemigo de 100 HP). Subirlo solo cuando se mida la formula real."
   },
-
   "malakh": {
     "hp": 100,
     "stamina": 100,
@@ -20,7 +18,10 @@
     "alturaOjos": 160,
     "velocidadGiro": 540,
     "danoBase": 10,
-    "armaBase": { "nombre": "Espada de acero", "dano": 10 },
+    "armaBase": {
+      "nombre": "Espada de acero",
+      "dano": 10
+    },
     "ataqueLigero": {
       "duracion": 1.5,
       "impacto": 0.55,
@@ -48,7 +49,10 @@
       "costeStamina": 10
     },
     "reaccionGolpe": 0.687,
-    "parry": { "duracion": 1.082, "ventana": 0.25 },
+    "parry": {
+      "duracion": 1.082,
+      "ventana": 0.25
+    },
     "bloqueo": {
       "reduccion": 0.7,
       "arco": 130,
@@ -62,7 +66,6 @@
       "umbralUso": 0.45
     }
   },
-
   "arquetipos": {
     "lancero_del_alba": {
       "nombre": "Lancero del Alba",
@@ -70,11 +73,16 @@
       "velocidad": 600,
       "radio": 50,
       "velocidadGiro": 360,
-      "dano": 14,
+      "dano": 30,
       "alcanceAtaque": 320,
       "distanciaPreferida": 280,
       "rangoAggro": 1400,
-      "ataque": { "duracion": 2.0, "impacto": 0.6, "ventana": 0.18, "arco": 60 },
+      "ataque": {
+        "duracion": 2.5,
+        "impacto": 0.6,
+        "ventana": 0.18,
+        "arco": 60
+      },
       "recarga": 1.6,
       "guardia": 0,
       "elevable": false,
@@ -83,15 +91,20 @@
     "arquero_del_firmamento": {
       "nombre": "Arquero del Firmamento",
       "hp": 100,
-      "velocidad": 350,
-      "radio": 42,
+      "velocidad": 600,
+      "radio": 50,
       "velocidadGiro": 360,
-      "dano": 16,
+      "dano": 30,
       "alcanceAtaque": 2200,
       "distanciaPreferida": 1200,
       "distanciaMinima": 500,
       "rangoAggro": 2400,
-      "ataque": { "duracion": 1.8, "impacto": 1.3, "ventana": 0.05, "arco": 8 },
+      "ataque": {
+        "duracion": 1.8,
+        "impacto": 1.3,
+        "ventana": 0.05,
+        "arco": 8
+      },
       "recarga": 2.2,
       "velocidadProyectil": 3500,
       "segundosDeRetirada": 3,
@@ -102,14 +115,19 @@
     "escudero_celestial": {
       "nombre": "Escudero Celestial",
       "hp": 100,
-      "velocidad": 420,
+      "velocidad": 600,
       "radio": 50,
-      "velocidadGiro": 300,
-      "dano": 12,
+      "velocidadGiro": 360,
+      "dano": 20,
       "alcanceAtaque": 200,
       "distanciaPreferida": 170,
       "rangoAggro": 1200,
-      "ataque": { "duracion": 2.0, "impacto": 0.65, "ventana": 0.15, "arco": 70 },
+      "ataque": {
+        "duracion": 2,
+        "impacto": 0.65,
+        "ventana": 0.15,
+        "arco": 70
+      },
       "recarga": 2.2,
       "guardia": 0.4,
       "reduccionGuardia": 0.6,
@@ -119,39 +137,47 @@
     "elite_pesado": {
       "nombre": "Elite pesado",
       "hp": 200,
-      "velocidad": 380,
-      "radio": 60,
-      "velocidadGiro": 240,
-      "dano": 32,
+      "velocidad": 600,
+      "radio": 50,
+      "velocidadGiro": 360,
+      "dano": 30,
       "alcanceAtaque": 280,
       "distanciaPreferida": 240,
       "rangoAggro": 1400,
-      "ataque": { "duracion": 2.6, "impacto": 1.2, "ventana": 0.22, "arco": 110 },
+      "ataque": {
+        "duracion": 3.1,
+        "impacto": 1.2,
+        "ventana": 0.22,
+        "arco": 110
+      },
       "recarga": 2.6,
-      "guardia": 0.7,
-      "reduccionGuardia": 0.85,
+      "guardia": 0,
       "elevable": false,
       "arma": "espadon_alabarda"
     },
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
-      "hp": 90,
-      "velocidad": 400,
+      "hp": 100,
+      "velocidad": 600,
       "radio": 50,
-      "velocidadGiro": 300,
-      "dano": 10,
+      "velocidadGiro": 360,
+      "dano": 20,
       "alcanceAtaque": 220,
       "distanciaPreferida": 600,
       "rangoAggro": 1600,
-      "ataque": { "duracion": 2.2, "impacto": 0.7, "ventana": 0.15, "arco": 60 },
-      "recarga": 3.0,
-      "guardia": 0,
+      "ataque": {
+        "duracion": 2.2,
+        "impacto": 0.7,
+        "ventana": 0.15,
+        "arco": 60
+      },
+      "recarga": 3,
+      "guardia": 0.4,
       "elevable": false,
       "arma": "estandarte_ritual",
-      "buff": { "retardo": 6, "radio": 1200, "multiplicadorDanoAliados": 1.3 }
+      "reduccionGuardia": 0.6
     }
   },
-
   "procedencia": {
     "malakh.hp": "medido — StatsManager BP_Malakh_DCS, Stat.Health.Max = 100",
     "malakh.stamina": "medido — Stat.Stamina.Max = 100",
@@ -173,22 +199,14 @@
     "malakh.pocion.cantidad": "DECISION DE DISEÑO — cuantos frascos entra el jugador a la arena. Es la palanca de balance mas barata que tienes.",
     "malakh.pocion.duracion": "ESTIMADO — medir la animacion de beber en PIE. Si se puede interrumpir, el frasco se pierde igual.",
     "malakh.bloqueo": "ESTIMADO — DCS tiene M_1HS_Block y Stat.Block=25, pero no su formula. Sin bloqueo el modelo exageraba la dificultad: un jugador real con espada bloquea, no solo esquiva.",
-    "arquetipos.lancero_del_alba.hp": "medido — StatsManager BP_DA_Lancero, Stat.Health.Max = 100",
-    "arquetipos.lancero_del_alba.velocidad": "medido — MaxWalkSpeed = 600",
-    "arquetipos.lancero_del_alba.radio": "medido — CapsuleRadius = 50",
-    "arquetipos.lancero_del_alba.velocidadGiro": "medido — RotationRate.Yaw = 360",
-    "arquetipos.lancero_del_alba.ataque.duracion": "medido — M_AI_LightAttack_01, 2.000 s",
-    "arquetipos.*.hp": "medido de rebote — el StatsManager de DCS arranca todo con Stat.Health.Max = 100, y es con lo que spawnearian hoy. El Elite se sube a 200 como decision de diseño, no como medida.",
-    "arquetipos.*.dano": "PARCIAL — Stat.Damage = 10 esta medido; el extra por arma es estimado, porque ningun enemigo de DA tiene todavia un item con modificador de daño",
-    "arquetipos.lancero_del_alba.dano": "PARCIAL — 10 medidos + 4 estimados de la lanza",
-    "arquetipos.lancero_del_alba.alcanceAtaque": "ESTIMADO — reach de la lanza; medir con el trace real",
-    "arquetipos.lancero_del_alba.rangoAggro": "ESTIMADO — leer del AIPerception / Behavior Tree",
-    "arquetipos.arquero_del_firmamento": "ESTIMADO en bloque — derivado de BP_ArcherAI de DCS, sin medir",
-    "arquetipos.arquero_del_firmamento.velocidad": "DECISION DE DISEÑO, no medida — 350 para que sea mas lento que Malakh (400). Con 450 el arquero le daba esquinazo indefinidamente y la arena no se cerraba nunca. Al implementarlo en DCS hay que respetar esto o el encuentro se atasca.",
-    "arquetipos.arquero_del_firmamento.segundosDeRetirada": "DECISION DE DISEÑO — cuanto tiempo seguido puede retroceder antes de plantarse. Sin este limite el arquero y un Malakh que tiene que esquivar flechas se quedaban en tablas eternas: el retroceso del arquero y las esquivas de Malakh se cancelaban. Si al implementarlo en DCS el arquero puede huir sin fin, ese encuentro NO se cerrara.",
-    "aviso.lancero": "OJO: el Lancero corre a 600 y Malakh a 400. Los dos numeros estan MEDIDOS. Significa que de un Lancero no se puede huir jamas. Es una decision de diseño heredada de DCS que conviene confirmar que es la que quieres.",
-    "arquetipos.escudero_celestial": "ESTIMADO en bloque — el enemigo aun no existe en el proyecto",
-    "arquetipos.elite_pesado": "ESTIMADO en bloque — el enemigo aun no existe en el proyecto",
-    "arquetipos.portador_del_estandarte": "ESTIMADO en bloque — el enemigo aun no existe en el proyecto"
+    "arquetipos.*.velocidad": "medido 2026-08-23 — los CINCO Blueprints (Vigilante, Lancero, Arquero, Heraldo, Inspector) comparten chasis: MaxWalkSpeed 600, CapsuleRadius 50, RotationRate.Yaw 360. Mis estimaciones anteriores (350-420) eran invencion.",
+    "arquetipos.*.hp": "medido — el StatsManager arranca todo en Stat.Health.Max = 100. Los 200 del Elite son DECISION DE DISEÑO, no medida.",
+    "arquetipos.*.dano": "medido — Stat.Damage 10 del StatsManager mas el modificador del arma equipada: SteelSword +10 (Vigilante, Inspector), Lanza +20, ElvenBow +20, GreatAxe +20.",
+    "arquetipos.*.guardia": "derivado del EQUIPO REAL, no estimado. Llevan DA_WoodenShield el Vigilante y el Inspector, y por eso bloquean. El Heraldo lleva hacha a dos manos SIN escudo: guardia 0. El contrato lo dice en su §1.2 — \"lento y sin guardia, pero pega fuerte\".",
+    "arquetipos.lancero_del_alba.ataque.duracion": "derivado — M_AI_LightAttack_01 mide 2.000 s medidos, y DA_DA_Lanza trae Stat.AttackSpeed.Melee = -0.2. El 2.5 sale de aplicar ese -20%; la formula exacta de DCS no se ha leido.",
+    "arquetipos.elite_pesado.ataque.duracion": "derivado igual: DA_GreatAxe tambien trae Stat.AttackSpeed.Melee = -0.2.",
+    "arquetipos.arquero_del_firmamento.segundosDeRetirada": "DECISION DE DISEÑO, y ahora CRITICA. Antes puse el arquero a 350 para que Malakh (400) lo alcanzara; medido, el arquero corre a 600 y NUNCA se le alcanza. Este presupuesto de retirada es lo unico que hace que la arena se cierre. Si en el juego el arquero puede retroceder sin limite, ese encuentro no termina jamas.",
+    "arquetipos.portador_del_estandarte.buff": "NO MODELADO A PROPOSITO. El aura de buff/debuff no existe todavia en Unreal (contrato §1.2): hoy el Inspector pelea como un Vigilante. Simular un buff que el juego no hace seria medir humo. Vuelve cuando exista.",
+    "aviso.velocidad": "OJO: los cinco enemigos corren a 600 y Malakh a 400. No se puede huir de NINGUNO. Antes esto solo pasaba con el Lancero; medido, pasa con todos."
   }
 }

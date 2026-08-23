@@ -216,6 +216,22 @@ distancia, i-frames).
 
 ---
 
+## ⚠️ Las cifras de las tres secciones siguientes son de ANTES de medir
+
+El 2026-08-23, al cerrarse la tabla de arquetipos del contrato, se midieron los
+cinco Blueprints de verdad en vez de estimarlos. Los números cambiaron mucho y
+**a peor**: los cinco enemigos corren a 600 (no 350–420), el arquero pega 30 (no
+16), el lancero 30 (no 14), el escudero 20 (no 12), el Heraldo **no** tiene
+guardia y el Inspector **sí**.
+
+**Con los números reales el techo de la espada sola son DOS enemigos, y «Romper la
+línea» se gana el 1%.** Lo de abajo sigue valiendo como razonamiento y como
+historia de qué se rompió y por qué, pero las cifras concretas hay que releerlas
+de `datos/calibracion.json` y de una simulación nueva. El detalle del cambio está
+en el §6.1.b del contrato.
+
+---
+
 ## Lo que salió (y no es cómodo)
 
 **1. El Lancero corre a 600 y Malakh a 400. Los dos números están medidos.**
