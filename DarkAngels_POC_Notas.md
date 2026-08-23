@@ -11093,3 +11093,43 @@ De paso, una cosa que no toque pero conviene mirar: `BP_DA_ZoneTrigger` castea a
 `BP_DA_PlayerCharacter_V2` en su solape, y **Malakh no hereda de V2** (hereda de
 `BP_DA_PlayerCharacter`). Ese cast falla siempre; lo que salva a los ZoneTrigger es su timer
 `CheckPlayerInside`.
+
+### Paso 2: morir en la arena reinicia el encuentro (2026-08-23)
+
+El agujero que tapa esto: **el juego ya te respawnea al morir, pero en el PlayerStart** — te
+mata un guardian de El Claro y reapareces en el Jardin, al principio del mapa. Comprobado en
+PIE: el pawn pasa de `BP_Malakh_DCS_C_0` a `..._C_1` en (-59565, -60088).
+
+**Que hace ahora la arena.** Al sellar, `TomarInstantanea` guarda tres cosas: el pawn del
+jugador (`JugadorAlSellar`), su transform (`PuntoEntrada`) y el transform de cada enemigo
+detectado (`TransformsEnemigos`, paralelo a `Enemigos`). Si el jugador muere,
+`ReiniciarEncuentro` lo devuelve a la entrada, borra las armas tiradas dentro del cuadrado y
+**cambia los cuatro enemigos por copias nuevas** en sus sitios originales. La arena sigue
+sellada; se reintenta hasta ganar. `ReintentarAlMorir` a `false` vuelve al comportamiento
+viejo (se abre y te vas).
+
+**La deteccion de muerte NO puede ser `IsAlive`.** El respawn del GameMode es mas rapido que
+el timer de 0,5 s, asi que un sondeo de `IsAlive` sobre `GetPlayerCharacter` casi siempre
+llega tarde y ve al jugador vivo otra vez. Lo que sí es fiable es **comparar el objeto**:
+si `GetPlayerCharacter(0)` ya no es el mismo actor que `JugadorAlSellar`, es que murio.
+
+**Los cadaveres no pueden desaparecer.** `ReiniciarEncuentro` saca las copias nuevas con
+`Utilities|GetClass` sobre el enemigo viejo — o sea que necesita la referencia viva. `BP_BaseAI`
+se pone `SetLifeSpan(5)` al morir, asi que a los 5 s el hueco quedaria a `null` y ese enemigo
+no volveria. `VigilarArena` lo evita llamando a `Actor|SetLifeSpan(0)` sobre cada uno en cada
+pasada mientras la arena este sellada.
+
+**Y el orden importa dentro del bucle**: primero `SpawnActorFromClass`, luego
+`DestroyActor`, luego `SetArrayElem`. En la primera version destruia antes de leer la clase.
+El DSL ademas **iza los `bind` de nodos puros fuera del bucle** al reescribirlo, asi que hay
+que releer el grafo y mirar el orden real de la cadena de ejecucion, no el que escribiste.
+
+**Verificado en el Master con Malakh y el HUD reales**: entrar sella y guarda la instantanea;
+morir con dos guardianes ya muertos devuelve al jugador a (44000,−12000) y repone **los cuatro**
+como actores nuevos (`Vigilante_C_2`, `_C_3`, `Lancero_C_1`, `Arquero_C_1`), **cada uno con su
+`BP_BaseAIController`**; ganar despues del reintento abre la arena y devuelve el objetivo del
+HUD a su indice 1.
+
+Lo unico que quedo escrito pero **sin ejercitar**: `LimpiarArmasTiradas`. En la prueba rapida
+no llego a caer ninguna arma (el drop de DCS va con la animacion de muerte, no es instantaneo),
+asi que compila y corre pero no vi su efecto.
