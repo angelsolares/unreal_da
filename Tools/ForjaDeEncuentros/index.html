@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forja de Encuentros — Dark Angels</title>
+  <link rel="stylesheet" href="css/forja.css" />
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <h1>Forja de Encuentros</h1>
+    <span class="sub" id="sub-encuentro">—</span>
+    <span class="crece"></span>
+    <span class="sub" id="sub-calibracion">—</span>
+    <button id="btn-simular" class="principal">Simular (200 partidas)</button>
+  </header>
+
+  <aside id="herramientas">
+    <h2>Modo</h2>
+    <button data-modo="seleccionar" class="activo">Seleccionar <kbd>V</kbd></button>
+    <button data-modo="cobertura">Dibujar cobertura</button>
+    <button data-modo="plataforma">Dibujar plataforma</button>
+    <button data-modo="acceso">Poner acceso</button>
+    <button data-modo="entrada">Mover entrada</button>
+
+    <h2>Añadir enemigo</h2>
+    <div id="paleta"></div>
+
+    <h2>Capas</h2>
+    <label><input type="checkbox" id="capa-rangos" checked /> Anillos de alcance</label>
+    <label><input type="checkbox" id="capa-conos" checked /> Conos de vision</label>
+    <label><input type="checkbox" id="capa-presion" /> Mapa de presion</label>
+    <label><input type="checkbox" id="capa-vision" /> Lineas de vision</label>
+
+    <h2>Encuentro</h2>
+    <button id="btn-cargar">Cargar JSON…</button>
+    <button id="btn-guardar">Guardar JSON</button>
+    <button id="btn-encajar">Encajar vista <kbd>F</kbd></button>
+    <input type="file" id="fichero" accept=".json" hidden />
+  </aside>
+
+  <div id="lienzo-envoltura">
+    <canvas id="lienzo"></canvas>
+    <div id="pista">rueda: zoom · arrastrar fondo: mover · supr: borrar</div>
+  </div>
+
+  <div id="reproductor">
+    <div class="fila">
+      <button id="btn-play">▶</button>
+      <input type="range" id="linea-tiempo" min="0" max="0" value="0" />
+      <span id="reloj" style="min-width:64px;text-align:right;font-variant-numeric:tabular-nums">—</span>
+    </div>
+    <div id="linea-eventos">Simula el encuentro para grabar una partida testigo.</div>
+  </div>
+
+  <aside id="panel">
+    <div class="pestanas">
+      <button data-hoja="veredicto" class="activo">Veredicto</button>
+      <button data-hoja="propiedades">Propiedades</button>
+      <button data-hoja="calibracion">Calibracion</button>
+    </div>
+
+    <section class="hoja visible" id="hoja-veredicto">
+      <p class="nota">Aun no has simulado. El veredicto contesta con numeros la regla del §5.2:
+      la ruta buena debe ser mejor, pero nunca obligatoria.</p>
+    </section>
+
+    <section class="hoja" id="hoja-propiedades"></section>
+
+    <section class="hoja" id="hoja-calibracion"></section>
+  </aside>
+
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
