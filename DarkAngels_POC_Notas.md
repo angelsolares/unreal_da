@@ -10788,3 +10788,98 @@ Empate practico, un actor de diferencia. Mando el nombre original: **queda
 
 El script es `Tools/MCP/jardin_landscapes_dedup.py`, relanzable. El `_Sub` se abrio como
 nivel normal, **sin el ciclo edit/commit de la Level Instance**.
+
+---
+
+# Sesion 2026-08-22 — Arqueria, armas recogibles y pulido del Debug HUD
+
+Sesion larga. Cuatro bloques de trabajo, todos terminados y verificados en PIE, mas dos
+crashes del editor causados por mi y un metodo de prueba que resulto ser poco fiable.
+
+## 1. Arqueria funcionando
+
+El arco ya se equipa y dispara. Lo que estaba roto no era la arqueria:
+
+- **Los `BP_DA_ZoneTrigger` se comian todas las trazas.** Respondian `ECR_BLOCK` a Visibility
+  aunque su perfil dijera `OverlapOnlyPawn` — **el nombre del perfil no aplica las respuestas**.
+  Su BeginPlay hace ahora `SetCollisionResponseToAllChannels(Ignore)` y luego
+  `SetCollisionResponseToChannel(Pawn, Overlap)`. Antes, cualquier traza nacida dentro del
+  volumen impactaba a distancia 0: la punteria apuntaba al techo de la zona y la flecha moria
+  en el primer centimetro. Con el arreglo la flecha vuela 130 m a 7000 uu/s.
+- `BP_Malakh_DCS` necesitaba el arco y las flechas **en el array `Inventory`**, no solo en
+  Equipment. Sin eso no se equipan.
+- `Max(alpha, 0.8)` entre `GetDrawBowAlpha` y los multiplicadores de `InitialSpeed` y `Damage`:
+  con alpha 0 la flecha salia a velocidad 0 y habia divide-by-zero en
+  `BP_BaseMovingProjectile:UpdateLifeTime`.
+- Los slots de arco y flechas del HUD estaban **ocultos en el disenador** de
+  `WB_ActiveEquipmentSlots` (el DCS base no tiene arco). Y `WB_ActiveEquipmentSlot:SetIsHidden`
+  se reescribio: el overlay `T_Hidden` (cristal roto) ya no se pinta; ahora el slot inactivo se
+  **colapsa**.
+
+## 2. Los enemigos dejan sus armas en el suelo
+
+- `BP_DA_DroppedWeapon` (hijo de `BP_DA_Interactuable`) + `BP_DA_WeaponDropComponent`, ambos
+  nuestros y en git. Anadido a los 5 hijos de `BP_BaseAI_C`.
+- Interruptores por mano: `DropMainHandWeapon` (por defecto **false**), `DropOffHandWeapon`
+  (**true**) y `DropLifeSpan` (0 = para siempre). Editables por clase y por actor colocado.
+- Cartel "Recoger" + recogida al inventario + **auto-equipado** + el arma desaparece.
+- **Arma temporal**: `BP_DA_PlayerCharacter` guarda `ArmaTemporal` y `SustituirArmaTemporal()`.
+  Solo se conserva una a la vez; el equipo de partida no se toca nunca.
+- VFX: luz ambar que **late** (`PulsarLuz`, 3360-6000 de intensidad). Sin Niagara: `NS_Embers`
+  no se ve nada ni a escala 4.
+
+## 3. Debug HUD con retroalimentacion
+
+Resalte al pasar el raton por los **120 botones de accion**, las **7 pestanas** y los **TAM
++/-**; sonido al pulsar (solo si el clic cae en un boton, no en hueco) y al abrir/cerrar el
+panel con `.` (pitch 1.25 al abrir, 0.75 al cerrar).
+
+## 4. Lo que mas costo, y por que
+
+Dos fallos que **no estaban en el codigo sino en como yo lo medi**. Merece la pena leerlos
+antes de depurar nada por MCP:
+
+- **`set_editor_property` sobre un COMPONENTE vivo en PIE** hace que Unreal lo re-registre y
+  DCS **destruya y regenere sus displayed items**. Las armas viejas quedan *pending kill*: su
+  nombre se sigue leyendo pero `IsValid` las rechaza. Perdi horas persiguiendo un "bug" en la
+  rama de la mano principal que no existia. **Para probar opciones, cambialas en el asset antes
+  de dar a Play.**
+- **`read_graph_dsl` miente en dos direcciones**: omite valores por defecto, y describio
+  `UpdateItemInSlot` como si su rama de "guids distintos" solo limpiara duplicados. Es falso:
+  esa rama equipa. Cuando una funcion de DCS no hace lo que dice el DSL, **probarla en vivo con
+  `call_method`** es mucho mas rapido que leer el grafo.
+- Corolario: cuando algo falla **sin dejar error en el log**, instrumentar con
+  `Development|PrintString` antes que seguir midiendo desde fuera. Un solo pase de prints
+  resolvio lo que cinco ciclos de PIE a ciegas no resolvieron.
+
+## 5. Dos crashes del editor, ambos mios
+
+- `WidgetService.get_hierarchy` con PIE corriendo -> acceso invalido en D3D12RHI.
+- `EditorLoadingAndSavingUtils.reload_packages` de un paquete usado por actores del nivel
+  cargado -> *Cannot generate unique name*. Para volver al estado de disco, **cerrar y reabrir
+  el editor**, no recargar paquetes.
+- Secuela: al reabrir, `BP_DA_WeaponDropComponent` tenia de padre `BP_DA_Interactuable_C` (un
+  Actor) y habia desaparecido de los 3 enemigos colocados. Tras un crash a mitad de una
+  operacion de paquetes, **verificar padre y componentes de todo lo que estuvieras tocando**.
+
+## 6. Aviso que sigue vigente
+
+**Ocho modificaciones vivas dentro de `Content/DynamicCombatSystem/`**, que esta gitignorado
+por ser asset de pago. Nada de la arqueria ni de los slots del HUD esta en GitHub. El inventario
+completo esta en la memoria del proyecto (`dcs-modificaciones-vivas`) y hay copias en
+`_Backups/DarkAngels_Checkpoint_ArqueriaFuncional_2026-08-21/`. Una actualizacion de DCS lo
+borra todo sin avisar.
+
+## 7. Por donde seguir
+
+Nada quedo a medias. Lo natural ahora:
+
+1. **Jugarlo de verdad.** Todo se probo matando enemigos por script; falta matarlos a
+   espadazos. Ojo a un caso que no pude reproducir: si DCS le ha quitado las armas visibles al
+   enemigo en el instante de morir, no suelta nada.
+2. **Afinar a oido** los sonidos del Debug HUD (volumen 0.8, pitch 1.25/0.75) y la luz de las
+   armas (intensidad 6000, radio 420).
+3. **Dual wielding**: sigue sin existir en DCS mas que como valor de un enum. Habria que
+   construirlo entero.
+4. Opcional: el arma tirada copia el mesh pero **no los materiales**. Vale porque espada y
+   escudo no los sobreescriben; si alguna futura si, saldria con los del mesh.
