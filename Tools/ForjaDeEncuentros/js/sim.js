@@ -637,6 +637,10 @@ export class Simulacion {
     if (factor > 0) dano = Math.max(1, dano - factor);
 
     O.hp -= dano;
+    // Cuando le entro el ultimo golpe. Un golpe que no aturde no deja estado, y
+    // sin esto ni la planta ni la 3D pueden enseñar que a alguien le estan dando.
+    O.tUltimoGolpe = this.t;
+    O.ultimoGolpeBloqueado = bloqueado;
     if (O.bando === 'malakh') O.danoRecibido += dano;
     if (origen && origen.bando === 'enemigo') origen.danoInfligido += dano;
 
@@ -872,7 +876,11 @@ export class Simulacion {
       agentes: this.agentes.map(a => ({
         id: a.id, x: Math.round(a.pos.x), y: Math.round(a.pos.y),
         cota: a.cota, yaw: Math.round(a.yaw), hp: Math.round(a.hp),
-        estado: a.bloqueando ? 'bloqueando' : a.estado
+        hpMax: a.hpMax,
+        estado: a.bloqueando ? 'bloqueando' : a.estado,
+        // Destello de impacto: dura un cuarto de segundo, lo justo para verse.
+        golpeado: (this.t - (a.tUltimoGolpe ?? -99)) < 0.25,
+        golpeBloqueado: !!a.ultimoGolpeBloqueado
       })),
       proyectiles: this.proyectiles.map(p => ({ x: Math.round(p.pos.x), y: Math.round(p.pos.y), bando: p.bando })),
       drops: this.drops.map(d => ({ x: Math.round(d.pos.x), y: Math.round(d.pos.y), familia: d.familia })),

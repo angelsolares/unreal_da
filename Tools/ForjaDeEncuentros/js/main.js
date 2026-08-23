@@ -141,6 +141,7 @@ function conectarUI() {
   $('#fichero').onchange = cargar;
   $('#btn-play').onclick = alternarReproduccion;
   $('#linea-tiempo').oninput = (e) => mostrarFotograma(+e.target.value);
+  // La leyenda solo tiene sentido cuando hay una partida que mirar.
   // Cambiar de velocidad en marcha: reengancha el temporizador con el ritmo nuevo.
   $('#velocidad').onchange = () => {
     if (!E.reproduciendo) return;
@@ -577,6 +578,7 @@ function prepararReproductor() {
     barra.disabled = true;
     play.disabled = true;
     play.title = 'Simula primero: el reproductor muestra la partida testigo';
+    $('#leyenda').classList.add('oculto');
     E.fotograma = null;
     $('#reloj').textContent = '—';
     $('#arma-actual').textContent = '—';
@@ -587,6 +589,7 @@ function prepararReproductor() {
 
   barra.disabled = false;
   play.disabled = false;
+  $('#leyenda').classList.remove('oculto');
   play.title = 'Reproducir la partida testigo (espacio)';
   barra.max = t.fotogramas.length - 1;
   barra.value = 0;

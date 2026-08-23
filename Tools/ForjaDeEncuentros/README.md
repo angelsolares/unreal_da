@@ -112,6 +112,14 @@ Cuatro cámaras:
 | Tras Malakh | seguir la partida testigo en tercera persona |
 | Cenital | contrastar contra la planta 2D |
 
+Durante la reproducción, **planta y 3D enseñan lo mismo**: barra de vida sobre cada
+agente, el glifo de lo que está haciendo (`!` levanta el arma, `✳` el golpe está
+saliendo, `~` esquiva, `▮` bloquea, `+` bebe, `⌾` recoge arma, `×` aturdido) y un
+destello de impacto — rojo si el golpe entró, azul si lo paró la guardia. Hay una
+leyenda en la esquina, porque un `✳` no significa nada por sí solo. Un golpe que no
+aturde no deja estado, así que el destello es la única forma de ver que a alguien le
+están dando.
+
 La silueta **es** la señal. Cada arquetipo lleva su arma con su tamaño real: la
 lanza mide 3,2 m y se ve desde la puerta, el escudo va pegado al cuerpo y apenas
 cambia el contorno. Eso es lo que hay que poder juzgar mirando, no leyendo la

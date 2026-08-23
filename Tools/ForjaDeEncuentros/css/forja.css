@@ -220,3 +220,15 @@ table.datos tr.destacada td { color: var(--oro-palido); }
   white-space: pre-wrap;
 }
 .prosa strong { color: var(--oro-palido); }
+
+/* Leyenda de los glifos de estado, compartida por la planta y la 3D:
+   un "!" o un "✳" no significan nada sin una clave al lado. */
+#leyenda {
+  position: absolute; right: 10px; bottom: 10px;
+  display: flex; flex-wrap: wrap; gap: 3px 10px; max-width: 340px;
+  background: rgba(11,11,16,.88); border: 1px solid var(--borde);
+  padding: 6px 9px; border-radius: 3px;
+  font-size: 10.5px; color: var(--texto-tenue);
+  pointer-events: none;
+}
+#leyenda b { font-size: 12px; margin-right: 2px; }

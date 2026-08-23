@@ -432,6 +432,15 @@ export class Editor {
       const r = Math.max(5, 48 * this.cam.z);
 
       ctx.globalAlpha = muerto ? 0.22 : 1;
+
+      // Destello de impacto, igual que en la 3D: rojo si entro, azul si lo paro
+      // la guardia. Un golpe que no aturde no deja estado, y sin esto no se ve.
+      if (a.golpeado && !muerto) {
+        ctx.beginPath(); ctx.arc(s.x, s.y, r + 6, 0, Math.PI * 2);
+        ctx.fillStyle = a.golpeBloqueado ? 'rgba(127,168,232,.45)' : 'rgba(255,92,72,.5)';
+        ctx.fill();
+      }
+
       ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
       ctx.fillStyle = meta.color || '#888'; ctx.fill();
       ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 1.5; ctx.stroke();
@@ -449,7 +458,7 @@ export class Editor {
         ctx.fillStyle = a.id === 'malakh' ? '#d85c67' : '#7cb342';
         ctx.fillRect(s.x - r, s.y - r - 8, r * 2 * Math.max(0, a.hp / hpMax), 3);
 
-        const marca = { anticipacion: '!', activo: '✳', esquiva: '~', curando: '+', aturdido: '×', bloqueando: '▮' }[a.estado];
+        const marca = { anticipacion: '!', activo: '✳', esquiva: '~', curando: '+', aturdido: '×', bloqueando: '▮', recogiendo: '⌾' }[a.estado];
         if (marca) {
           ctx.fillStyle = '#fff'; ctx.font = '700 11px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
           ctx.fillText(marca, s.x, s.y - r - 12);
