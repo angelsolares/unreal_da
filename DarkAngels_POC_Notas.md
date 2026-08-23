@@ -10984,3 +10984,31 @@ sm.call_method('TakeDamage', args=(9999.0, False))   # (dano, was_blocked)
 **Lo que falta.** Los muros son invisibles: mecanicamente sellan, pero te chocas contra
 nada. Y falta el paso 2 del plan — el checkpoint antes del sello y el reinicio del
 encuentro al morir.
+
+### La barrera se ve (2026-08-23)
+
+Los muros eran `BoxComponent` invisibles: sellaban sin que se notara. Ahora la arena lleva
+cuatro `StaticMeshComponent` mas (`LuzNorte/Sur/Este/Oeste`), un cubo escalado a la medida
+del muro con **`MI_DA_MuroArena`**, instancia de `M_DA_HazLuz` — el mismo aditivo sin
+iluminar que usan los orbes de las sefirot, con sus tres parametros: `Color`, `Brillo`,
+`Opacidad`. El color es el de Malkuth (0.83, 0.69, 0.38), asi que la barrera se lee como
+la propia zona cerrandose. Valores actuales: **Brillo 1.2, Opacidad 0.18**. A 3.0/0.30 era
+un muro de leche que tapaba la puerta; a 0.6/0.12 no se distinguia de la niebla.
+
+`Sellar` los muestra y suena `CUE_GroundExplosion` a pitch 0,6; `Abrir` los esconde.
+`ColocarMuros` les pone malla, material, escala y `NoCollision`, asi que tambien se ven en
+el viewport sin darle a play.
+
+**Trampas nuevas:**
+
+- **Al anadir componentes a un Blueprint por MCP, los actores ya colocados no los heredan.**
+  `Arena_Claro` se quedaba con `StaticMesh = None` y `bHiddenInGame = False` por mucho que
+  se recompilara o se moviera para forzar el Construction Script. Se cura **borrando y
+  volviendo a colocar el actor**. Lo mismo pasaba con `Estado`.
+- **`unreal.Rotator(...)` en Python es `(roll, pitch, yaw)`**, no `(pitch, yaw, roll)`.
+  Dos capturas se fueron a mirar al cielo por esto.
+- `PlaySound2D` en el DSL **no lleva el pin de contexto**: el primer argumento es el sonido.
+
+**Lo que le falta a la barrera:** no tiene borde superior ni estructura, asi que se lee
+como bruma dorada y no como muro. Para que lea de verdad hace falta material propio con
+degradado en el canto y algun patron en movimiento.
