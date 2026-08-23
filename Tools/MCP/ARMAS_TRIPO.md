@@ -136,3 +136,57 @@ resuelva a `CombatStyle.Melee.Armed.OneHandedWeapon`.
   resuelve a `CombatStyle.Melee.Armed.TwoHandedWeapon`, que reusa las
   animaciones de una mano igual que el GreatAxe. Icono: `T_DA_Lanza_Icon`
   (del `lanza.png` de Angel).
+
+---
+
+# El material de arma, parametrizado (2026-08-23)
+
+**Toda arma que salga de Tripo nace con este material, no con uno plano.** No es capricho: la
+corrupcion visual necesita tener sobre que actuar, y retrofitear materiales despues es peor que
+hacerlo bien la primera vez. La lanza nacio con `M_DA_Lanza` — tres nodos y **cero parametros**—
+y ha habido que rehacerla.
+
+## Como se le pone a un arma nueva
+
+1. **No crees un material.** Crea una **instancia** de
+   `/Game/DarkAngels/Weapons/Materials/M_DA_ArmaDivina`, llamada `MI_DA_<Arma>`.
+2. Enchufa la textura del arma en el parametro **`BaseColor`**.
+3. Asigna la instancia al slot 0 de la malla.
+4. Ya esta. El resto de parametros tienen defectos que valen para empezar.
+
+## Los parametros
+
+| grupo | parametro | para que |
+|---|---|---|
+| Arma | `BaseColor` | la textura del arma; es lo unico que cambia entre armas |
+| **Corrupcion** | **`Corrupcion`** | **0 limpia, 1 corrompida del todo. Es el UNICO que mueve la maquina de estados** |
+| Corrupcion | `ColorCorrupto` | tinte que multiplica sobre la textura donde ya prendio |
+| Corrupcion | `ColorVena` | el color del borde que arde |
+| Corrupcion | `BrilloVena` | cuanto arde ese borde |
+| Corrupcion | `EscalaVeta` | tamano del patron. Depende del tamano del arma |
+| Corrupcion | `BordeVeta` | anchura de la transicion |
+| Superficie | `RugosidadLimpia` / `RugosidadCorrupta` | el metal divino esta pulido; la carne corrompida no |
+| Superficie | `MetalicoLimpio` / `MetalicoCorrupto` | deja de comportarse como metal al corromperse |
+
+## Como funciona, para poder tocarlo
+
+Ruido procedural en **espacio LOCAL** —no de mundo, o el patron se quedaria quieto y el arma
+nadaria por dentro de el al moverse—. Ese ruido pasa por un `SmoothStep` cuyo umbral **baja
+segun sube `Corrupcion`**: a 0 el umbral esta en 1 y no prende nada; a 1 esta en 0 y ha prendido
+todo. Eso es la "mancha".
+
+La vena es `mancha * (1 - mancha) * 4`: un pico justo en el **borde** de la mancha. Es lo que
+hace que se lea como algo que **avanza**, en vez de como un tinte. Cuando ya no queda borde
+—corrupcion al maximo— la vena se apagaria, asi que se le suma un rescoldo de `mancha * 0.25`
+para que el arma corrompida siga viva.
+
+`BaseColor`, `Roughness` y `Metallic` son un `lerp` limpio↔corrupto con la mancha de alfa. El
+emisivo es solo la vena.
+
+**Coste: 457 instrucciones de pixel**, y casi todo es el ruido procedural. Si algun dia pesa,
+lo que toca es hornear el ruido a una textura y cambiar el nodo, no bajar `Levels`.
+
+## Lo que NO esta hecho
+
+La maquina de estados. Este material es la superficie sobre la que actuara: alguien tendra que
+crear una instancia dinamica del arma equipada y mover `Corrupcion`. Un solo `float` por arma.
