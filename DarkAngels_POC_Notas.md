@@ -11051,3 +11051,45 @@ del motor va de −50 a +50 en Z **pase lo que pase con la escala**, asi que `h`
 Los const de los nodos (`const_a`, `const_b`, `const_min`, `const_max`) evitan tener que crear
 un `Constant` por cada numero. Y el pin unico sin nombre se cablea con `''`, aunque
 `get_material_expression_input_names` lo llame `"None"`.
+
+### Poner una arena nueva en cualquier zona (2026-08-23)
+
+La arena esta pensada para caer en sitios que todavia no existen. **Tres pasos y ya:**
+
+1. Arrastrar `BP_DA_Arena` al **centro** de la zona, a la cota del suelo.
+2. `RadioArena` = la mitad del lado del cuadrado. `AlturaMuro` = la mitad de lo alto que
+   quieras la barrera (400 da un muro de 800). Los muros y la caja de entrada se
+   redimensionan **en el viewport**, sin darle a play, porque `ColocarMuros` corre tambien
+   en el Construction Script.
+3. `TextoObjetivo` = lo que quieras que diga el HUD mientras dure el encuentro.
+
+**Los enemigos no hay que listarlos.** `AutoDetectarEnemigos` viene a `true`: al sellar,
+`BuscarEnemigos` recorre todos los `BP_BaseAI` del mundo y se queda con los que esten dentro
+del cuadrado, comprobandolo con `InverseTransformLocation` sobre el transform de la arena —
+un test exacto de caja, no un radio, asi que las esquinas cuentan. Sirve para Vigilante,
+Lancero, Arquero, Heraldo e Inspector.
+
+**Lo que hay que meter a mano en `Enemigos`**: cualquier cosa que **no** sea `BP_BaseAI`.
+Hoy eso es el `BP_DA_GiantBoss` — es un `Pawn` pero cuelga de otra rama. La deteccion
+automatica **anade** a lo que ya haya en la lista (`AddUnique`), asi que se pueden mezclar:
+el jefe a mano y su escolta automatica.
+
+**Para dispararla desde fuera** —un evento de guion, un dialogo, el Debug HUD— `Sellar` y
+`Abrir` son funciones publicas del actor: `Class|BPDAArena|Sellar` desde cualquier blueprint
+que tenga la referencia. No hace falta pisar la caja.
+
+**Probado en el Master, con Malakh y el HUD de verdad** (2026-08-23): entrar sella con el
+solape real, la deteccion encuentra los cuatro guardianes con la lista manual vacia, matarlos
+abre y el objetivo del HUD vuelve exactamente a *"Avanza por el Sendero de Setos hacia El
+Claro"* con su indice 1.
+
+**Cuidado con los actores temporales.** Spawnear un `BP_DA_Arena` a (0,0,100000) para
+inspeccionarle los componentes y llamar a `destroy_actor` **no siempre lo borra**: uno se
+quedo y se guardo dentro del `L_DA_Malkuth_Master`. Se veia en PIE como una segunda arena, y
+`get_all_actors_of_class(...)[0]` cogia esa en vez de la buena. Si spawneas para inspeccionar,
+**comprueba despues que no queda ninguno** antes de guardar el nivel.
+
+De paso, una cosa que no toque pero conviene mirar: `BP_DA_ZoneTrigger` castea a
+`BP_DA_PlayerCharacter_V2` en su solape, y **Malakh no hereda de V2** (hereda de
+`BP_DA_PlayerCharacter`). Ese cast falla siempre; lo que salva a los ZoneTrigger es su timer
+`CheckPlayerInside`.
