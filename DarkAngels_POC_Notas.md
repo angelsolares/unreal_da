@@ -11175,3 +11175,40 @@ Queda el mismo margen bajo el mensaje que tenia el diseno original (24 unidades)
 
 **Moraleja para la proxima fila que se anada a cualquier pestana**: comprobar si esa pestana
 dibuja algo a Y fija por debajo de `filas_*()`, y si el alto del panel le da.
+
+### NavMesh dinamico (2026-08-23)
+
+`RuntimeGeneration` pasa de **Static** a **Dynamic**, que era el bloqueo de fondo del emulador
+de encuentros: con Static el navmesh se hornea en el editor y en juego ya no se toca, asi que
+una cobertura colocada desde un JSON no existiria para la IA — el suelo le parece libre, se
+choca y se queda plantada. Es el mismo fallo que dejo al arquero de El Claro con **0 flechas
+en 25 segundos** cuando alli no habia navmesh.
+
+Tres sitios, porque uno solo no basta:
+
+1. `Config/DefaultEngine.ini`, seccion nueva `[/Script/NavigationSystem.RecastNavMesh]` con
+   `RuntimeGeneration=Dynamic`. Es el valor de clase, el que heredaran los navmesh de los
+   mapas que aun no existen — el del emulador, sin ir mas lejos.
+2. El **CDO** de `RecastNavMesh` en memoria, para que valga en esta sesion sin reiniciar el
+   editor (el `.ini` solo se lee al arrancar).
+3. Los dos actores del Master, `RecastNavMesh-Default` y `RecastNavMesh-Giant`, explicitamente
+   y guardados. Asi queda serializado y no depende de la serializacion delta contra el CDO.
+
+**Verificado midiendo, no suponiendo.** Con `find_path_to_location_synchronously` de
+(44000, −11000) a (44000, −8200), cruzando el muro norte de `Arena_Claro`:
+
+| | ruta |
+|---|---|
+| arena abierta | 2 puntos, **2800 uu** — recta, llega |
+| tras `Sellar` | 2 puntos, **1614 uu** — muere en y = −9386, contra la barrera |
+| tras `Abrir` | 2 puntos, **2800 uu** otra vez |
+
+O sea que el navmesh se rehace en juego en los dos sentidos.
+
+**Efecto secundario que sale gratis:** la barrera de `BP_DA_Arena` ahora existe para la IA.
+Con Static, los enemigos de una arena sellada creian que podian salir y empujaban contra un
+muro invisible; ahora la ruta no pasa por ahi.
+
+**El coste esta acotado por los volumenes**: solo se genera dentro de los
+`NavMeshBoundsVolume`, que en Malkuth son tres (Claro, GabrielC2, GabrielC3), no en todo el
+mapa. Y Dynamic **no tira lo horneado**: parte de ello y solo reconstruye las zonas sucias.
