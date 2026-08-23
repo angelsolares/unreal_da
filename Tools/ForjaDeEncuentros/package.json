@@ -1,0 +1,16 @@
+{
+  "name": "forja-de-encuentros",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "Banco de pruebas de encuentros de Dark Angels. Herramienta externa: no forma parte del juego.",
+  "scripts": {
+    "start": "node serve.mjs",
+    "test": "node pruebas/humo.mjs && node pruebas/ejes3d.mjs && node pruebas/variantes.mjs && node pruebas/lectura.mjs",
+    "start:ia": "node --env-file=.env serve.mjs"
+  },
+  "optionalDependencies": {
+    "openai": "^6.49.0"
+  },
+  "comentario": "openai es OPCIONAL y solo la usa la capa de IA (fase D). El editor, el simulador y la vista 3D funcionan sin instalar nada: Three.js va vendorizado en vendor/three. Si no instalas openai, la pestaña IA se apaga sola y lo explica."
+}
