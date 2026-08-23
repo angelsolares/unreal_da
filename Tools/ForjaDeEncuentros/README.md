@@ -39,6 +39,7 @@ node Tools/ForjaDeEncuentros/pruebas/humo.mjs
 | `pruebas/lectura.mjs [encuentro]` | qué se ve desde la puerta, enemigo a enemigo (§5.1) |
 | `pruebas/ejes3d.mjs` | el mapeo de ejes de la vista 3D, sin navegador |
 | `pruebas/variantes.mjs` | la tubería de la IA **sin gastar una llamada** |
+| `pruebas/solidos.mjs` | recorre partidas enteras comprobando que nadie atraviesa un muro |
 
 Encuentros incluidos: `romper-la-linea` (§6.1) y `cadena-perfecta` (§6.5).
 

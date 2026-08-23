@@ -145,6 +145,36 @@ export function validar(enc) {
   return problemas;
 }
 
+/**
+ * Todo lo solido del encuentro, en una sola lista.
+ *
+ * Una plataforma NO es solo un suelo elevado: es un bloque. Desde abajo tapa el
+ * paso y tapa la vista igual que un muro de su altura. El simulador la trataba
+ * como aire y los agentes cruzaban por dentro del balcon —se veia clarisimo en
+ * la vista 3D, donde si esta dibujada maciza—. Aqui se unifican los dos para que
+ * el simulador, la lectura del §5.1 y el editor no puedan discrepar.
+ */
+export function obstaculosDe(enc) {
+  const coberturas = (enc.coberturas || []).map(c => ({
+    id: c.id,
+    poli: c.poli,
+    cota: c.cota || 0,
+    altura: c.altura || 0,
+    bloqueaVision: c.bloqueaVision !== false,
+    bloqueaPaso: c.bloqueaPaso !== false
+  }));
+  const plataformas = (enc.plataformas || []).map(p => ({
+    id: p.id,
+    poli: p.poli,
+    cota: 0,                    // arranca en el suelo
+    altura: p.cota || 0,        // y su cima es la cota a la que se camina encima
+    bloqueaVision: true,
+    bloqueaPaso: true,
+    esPlataforma: true
+  })).filter(p => p.altura > 20);
+  return [...coberturas, ...plataformas];
+}
+
 export function plataformaBajo(enc, p) {
   for (const plat of enc.plataformas) {
     if (dentroDePoligono(p, plat.poli)) return plat;

@@ -7,6 +7,7 @@
 //  - Todo numero de balance viene de calibracion.json o armas.json, nunca a pelo.
 
 import { Azar } from './rng.js';
+import { obstaculosDe } from './esquema.js';
 import {
   dist, resta, suma, escala, normaliza, largo, yawDe, giraHacia, deltaAngulo,
   dentroDePoligono, hayVision, empujaFuera, segmentoCortaPoligono, centroide
@@ -129,7 +130,8 @@ export class Simulacion {
     });
 
     this.agentes = [this.malakh, ...this.enemigos];
-    this.coberturas = this.enc.coberturas || [];
+    // Muros Y plataformas: desde abajo una plataforma es un bloque, no aire.
+    this.coberturas = obstaculosDe(this.enc);
     this.plataformas = this.enc.plataformas || [];
   }
 
@@ -809,6 +811,19 @@ export class Simulacion {
         a.pos = resta(a.pos, empuje);
         b.pos = suma(b.pos, empuje);
       }
+    }
+    // Separar puede meter a alguien DENTRO de un muro: el empujon de arriba no
+    // sabe nada de geometria. Sin este repaso, dos agentes apretandose contra un
+    // pilar acababan dentro de el, y en la vista 3D se veia al personaje metido
+    // en la caja. El solido gana siempre.
+    for (const a of vivos) this._sacarDeSolidos(a);
+  }
+
+  _sacarDeSolidos(A) {
+    for (const c of this.coberturas) {
+      if (!c.bloqueaPaso) continue;
+      if ((c.cota || 0) + (c.altura || 0) <= (A.cota || 0) + 20) continue;
+      if (dentroDePoligono(A.pos, c.poli)) A.pos = empujaFuera(A.pos, c.poli, A.radio + 5);
     }
   }
 

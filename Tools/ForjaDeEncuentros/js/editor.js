@@ -5,7 +5,7 @@
 // —posicion, presion, silueta, geometria— antes de construir nada.
 
 import { ARQUETIPOS, ORDEN_ARQUETIPOS, FAMILIAS } from './catalogo.js';
-import { cajaDelEncuentro, etiquetaDe, plataformaBajo } from './esquema.js';
+import { cajaDelEncuentro, etiquetaDe, plataformaBajo, obstaculosDe } from './esquema.js';
 import { dist, hayVision, desdeYaw, dentroDePoligono, cajaDe } from './geometria.js';
 import { ESTADOS } from './sim.js';
 
@@ -482,7 +482,7 @@ export class Editor {
           for (const a of arqueros) {
             const perfil = cal.arquetipos[a.arquetipo];
             if (dist(p, a.pos) > perfil.alcanceAtaque) continue;
-            if (!hayVision(a.pos, a.cota || 0, p, 0, enc.coberturas, cal.malakh.alturaOjos)) continue;
+            if (!hayVision(a.pos, a.cota || 0, p, 0, obstaculosDe(enc), cal.malakh.alturaOjos)) continue;
             n++;
           }
           if (n) celdas.push({ x, y, n, paso });
@@ -511,7 +511,7 @@ export class Editor {
   }
 
   _raya(desde, hasta, cotaHasta, enc, cal, a) {
-    const ve = hayVision(desde.pos, desde.cota || 0, hasta, cotaHasta || 0, enc.coberturas, cal.malakh.alturaOjos);
+    const ve = hayVision(desde.pos, desde.cota || 0, hasta, cotaHasta || 0, obstaculosDe(enc), cal.malakh.alturaOjos);
     const b = this.aPantalla(hasta);
     const ctx = this.ctx;
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
