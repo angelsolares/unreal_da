@@ -3,7 +3,12 @@
 Documento compartido entre **la sesión del emulador (HTML)** y **la sesión de Unreal**.
 Si algo de aquí cambia, se cambia aquí primero y se sube el `schemaVersion`.
 
-Estado: **v2 propuesta** (v1 es el JSON de `romper-la-linea` del 2026-08-23).
+Estado: **v2 IMPLEMENTADA en el emulador** (2026-08-23), y el **§6.1 cerrado en Unreal**
+el mismo dia: los cinco arquetipos ya tienen Blueprint y equipo real (ver §1.2). Los dos encuentros de
+`Tools/ForjaDeEncuentros/datos/encuentros/` ya están en v2, y la herramienta migra
+sola los v1 que se le carguen. Lo que decidió el emulador por su cuenta —porque
+este documento no lo decía— está en la **sección 6, al final**. Léela: hay cosas
+que necesitan tu visto bueno.
 
 ---
 
@@ -47,13 +52,25 @@ La herramienta emite **nombres de diseño**, nunca rutas de assets. La equivalen
 Blueprints vive **del lado de Unreal**, en un Data Asset. Si mañana cambia el Blueprint,
 cambia la tabla y los JSON viejos siguen valiendo.
 
-| arquetipo | Blueprint |
-|---|---|
-| `escudero_celestial` | `BP_DA_Vigilante` |
-| `lancero_del_alba` | `BP_DA_Lancero` |
-| `arquero_del_firmamento` | `BP_DA_Arquero` |
-| *(falta nombre)* | `BP_DA_Heraldo` |
-| *(falta nombre)* | `BP_DA_Inspector` |
+**Tabla CERRADA el 2026-08-23.** Los cinco arquetipos tienen Blueprint, y los Blueprints
+tienen el equipo que dice la tabla — comprobado leyendo el `BP_EquipmentComponent` de cada uno,
+no de memoria.
+
+| arquetipo | Blueprint | equipo real | papel en combate |
+|---|---|---|---|
+| `escudero_celestial` | `BP_DA_Vigilante` | `DA_SteelSword` + `DA_WoodenShield` | guardia; hay que romperle la defensa |
+| `lancero_del_alba` | `BP_DA_Lancero` | `DA_DA_Lanza` a dos manos, **sin escudo** | alcance; su arma es la que arrojas |
+| `arquero_del_firmamento` | `BP_DA_Arquero` | `DA_ElvenBow` + flechas (hereda de `BP_ArcherAI`) | presión a distancia; obliga a moverse |
+| `elite_pesado` | `BP_DA_Heraldo` | `DA_GreatAxe` a dos manos, **sin escudo** | lento y sin guardia, pero pega fuerte |
+| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` | **buff/debuff**; su valor no es el arma |
+
+**`BP_DA_WarriorAI` no es un arquetipo.** No tiene equipo propio: es el genérico que invoca el
+`BP_DA_GiantBoss`. No lo metas en la tabla.
+
+**Lo que al `portador_del_estandarte` le falta:** el aura de buff/debuff **no existe todavía**,
+ni el estandarte como objeto. Hoy es, mecánicamente, un `escudero_celestial` con otro nombre.
+Se puede colocar en un encuentro y pelea, pero **no aporta lo que promete**, así que cuidado al
+sacar conclusiones de una simulación que dependa de él.
 
 **Regla:** un `arquetipo` que no esté en la tabla es un error de carga, no un enemigo
 silenciosamente ausente.
@@ -160,13 +177,145 @@ Lo que le falta para casar con este contrato, y es trabajo de la sesión de Unre
 
 ## 5. El aviso que se lleva las tardes
 
-**NavMesh.** Sin él los enemigos se quedan plantados: en El Claro el arquero disparó
-**0 flechas en 25 segundos** exactamente por eso. Y aquí la geometría es dinámica —las
-coberturas y plataformas salen del JSON—, así que un navmesh horneado una vez no las
-conoce. El mapa necesita **RuntimeGeneration = Dynamic** y un volumen que lo cubra entero.
-Es ajuste de proyecto, no de schema, pero conviene decidirlo antes de construir nada.
+**NavMesh — ✅ HECHO el 2026-08-23.** Sin él los enemigos se quedan plantados: en El Claro el
+arquero disparó **0 flechas en 25 segundos** exactamente por eso. Y aquí la geometría es
+dinámica —las coberturas y plataformas salen del JSON—, así que un navmesh horneado una vez no
+las conocería.
+
+Ya está puesto **`RuntimeGeneration = Dynamic`** en `Config/DefaultEngine.ini`, así que lo
+heredará el navmesh del mapa del emulador cuando se cree. Verificado midiendo rutas con
+`find_path_to_location_synchronously` contra una barrera que aparece en juego: la ruta deja de
+pasar cuando la barrera se levanta y vuelve a pasar cuando se baja. **El mapa solo necesita un
+`NavMeshBoundsVolume` que lo cubra entero**; no hay que hornear nada a mano.
 
 **Colisión de las coberturas.** Está bien separar `bloqueaVision` de `bloqueaPaso`, porque
 la percepción de DCS traza contra el canal **Visibility**. Ojo: la barrera de la arena usa
 el preset `InvisibleWall`, que **ignora Visibility** a propósito para no envenenar la
 puntería. Una cobertura con `bloqueaVision: true` necesita colisión distinta.
+
+---
+
+## 6. Decisiones que tomó el emulador (2026-08-23)
+
+Todo lo que el contrato no cerraba y hubo que resolver para poder implementar v2.
+**Las tres primeras necesitan tu visto bueno**; el resto son mecánicas.
+
+### 6.1 ✅ RESUELTO — los dos nombres que faltaban
+
+**Angel lo cerró el 2026-08-23, y ya está aplicado en Unreal.** La asignación quedó
+**al revés** de lo que proponía esta sección:
+
+| arquetipo | Blueprint | qué se hizo |
+|---|---|---|
+| `elite_pesado` | **`BP_DA_Heraldo`** | se le quitó la lanza y el escudo; ahora lleva `DA_GreatAxe` a dos manos |
+| `portador_del_estandarte` | **`BP_DA_Inspector`** | se queda como estaba (espada + escudo); su papel es el **buff/debuff** |
+
+El razonamiento: Heraldo e Inspector eran **duplicados** de lo que ya había. El Heraldo
+llevaba la misma lanza que el Lancero más un escudo, así que en pantalla leía como
+«Lancero con escudo»; y el Inspector era un clon exacto del Vigilante. Ninguno aportaba
+una lectura distinta en combate, que es lo único que le importa al emulador. Convertirlos
+salió casi gratis porque los chasis ya existían.
+
+`DA_GreatAxe` ya venía con `TwoHanded = True`, así que **no hizo falta animación nueva**:
+es el mismo truco que se usó con la lanza.
+
+**Para el emulador:** `js/catalogo.js` puede apuntar ya a los dos Blueprints, y el
+suplente sobra. La tabla completa está en el §1.2, con el equipo real de cada uno.
+
+**Lo único que sigue pendiente**, y conviene tenerlo delante: el aura de buff/debuff del
+`portador_del_estandarte` **no existe todavía**. Hoy pelea como un escudero. Un encuentro
+cuya lectura dependa de ese buff estará midiendo algo que el juego aún no hace.
+
+### 6.2 ⚠️ `drop` se resuelve como dos booleanos, y eso cuesta algo
+
+Adoptada la opción A del §2.2: `"drop": { "principal": bool, "secundaria": bool }`.
+La ranura la decide el **arma**, no el enemigo: el escudo es off-hand, todo lo
+demás principal. El emulador lo mapea solo.
+
+Lo que se pierde y conviene saber: el simulador **ya no modela** las cuatro
+políticas del §8 (Guaranteed / Standard / Mercy / No Drop), porque tres de ellas
+son probabilidad y el componente no la tiene. Simularlas sería medir algo que el
+juego no sabe hacer. Vuelven el día que `BP_DA_WeaponDropComponent` tenga
+probabilidad — y entonces esto sube a v3.
+
+### 6.3 ⚠️ `arena.entrada` desaparece; manda `jugador.pos`
+
+v1 tenía `arena.entrada` (dónde empieza Malakh) **y** `arena.checkpoint` (dónde
+reaparece). Como v2 añade la sección `jugador`, tener las dos era decir lo mismo
+dos veces. Ahora:
+
+- `jugador.pos` — dónde arranca el encuentro. Es también desde donde se mide la
+  lectura del §5.1 («¿se ve la lanza desde la puerta?»).
+- `arena.checkpoint` — dónde reaparece al morir. Sigue existiendo, y sigue sin
+  poder caer dentro del trigger.
+
+Si en Unreal `BP_DA_Arena` necesita los dos puntos por separado por algún motivo,
+avisa y vuelve `entrada`.
+
+### 6.4 Coberturas y plataformas también pasan a min/max
+
+El §1.4 solo hablaba de `bounds`, pero las cajas tenían el mismo problema: se
+guardaban como polígono de cuatro puntos y **solo se usaba su bounding box**. Era
+una mentira silenciosa: parecía que se podía dibujar un polígono y no era verdad.
+Ahora las tres cosas se declaran igual, `{min, max}`, y la geometría interna
+deriva el polígono cuando lo necesita.
+
+### 6.5 `origenMundo` y `submapa` fuera del schema
+
+El §0 dice que siempre valen `{0,0,0}` y `""`. Un campo que solo puede tener un
+valor es ruido, así que no está en v2. El exportador conserva un `offset`
+opcional, pero es una opción de la herramienta, no parte del JSON.
+
+### 6.6 Vocabulario de `loadout`
+
+Cerrado, como pedía el §1.1: `espada`, `lanza`, `arco`, `escudo`, `espadon`,
+`estandarte`. Fase A es `["espada"]`. Además, si el loadout no incluye `espada`
+salta un aviso: el PDF dice que Malakh **siempre** la conserva.
+
+### 6.7 El invariante de cota se corrige solo, no se denuncia
+
+El §2.1 pedía garantizar que la cota de un enemigo sea 0 o la de su plataforma.
+El emulador va más lejos: al mover un enemigo, al cambiar la cota de una
+plataforma o al expandir una propuesta de la IA, **reasienta** al enemigo en el
+acto. Es más difícil generar un JSON inválido que uno válido. Si aun así llega
+uno mal (editado a mano), `validar()` lo marca como error de carga.
+
+### 6.8 Rampas: qué se guarda y qué se supone
+
+`{ desde, hasta, ancho }` tal cual pedía el §1.3. Añadidos dos avisos de la
+herramienta, que **no** son parte del contrato pero sí de lo que se comprueba:
+ancho menor de 100 cm («no cabe un enemigo con holgura») y pendiente de más de
+45° («no se sube»).
+
+Al migrar de v1, los puntos de acceso viejos **no tenían dirección**, así que la
+rampa se inventó: sube desde el punto hacia el centro de la plataforma, con largo
+`max(200, cota × 1.5)` y ancho 300. Queda anotado en `notasDiseno` de cada
+encuentro migrado. **Revísalas antes de construir.**
+
+### 6.9 El convenio de yaw, verificado contra el motor
+
+No me fié de la descripción en palabras y lo medí spawneando actores:
+
+```
+yaw  |  forward (X, Y)
+  0  |  ( 1,  0)
+ 90  |  ( 0,  1)
+180  |  (-1,  0)
+270  |  ( 0, -1)
+```
+
+Es decir **`forward = (cos yaw, sin yaw)`**, que es exactamente `atan2(Δy, Δx)`.
+El emulador ya usaba esa fórmula, así que **no hay espejo** entre las dos partes.
+Y en Python el constructor es `unreal.Rotator(roll, pitch, yaw)` — el yaw va
+tercero, no primero.
+
+### 6.10 Dónde vive «qué hace cada enemigo»
+
+Fichero nuevo: `Tools/ForjaDeEncuentros/datos/arquetipos.json`. Papel, cómo pelea,
+cómo se le contesta, qué aporta su arma, dónde colocarlo y con qué tener cuidado
+— por arquetipo. **Se lee entero en cada petición a la IA**, así que es lo que el
+modelo usa para razonar al criticar o proponer variantes. Se edita a mano y no
+hace falta reiniciar nada.
+
+No está en el JSON del encuentro ni le hace falta a Unreal: es documentación de
+diseño con un consumidor que resulta ser una máquina.

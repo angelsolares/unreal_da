@@ -11260,3 +11260,50 @@ bloquea nada. Los cuatro muros ya estaban bien: usan `InvisibleWall`, que si ign
 | despues | z = **−37** (en el suelo) |
 
 Y con los enemigos en su sitio normal, las tres armas soltadas acaban en z = −37.
+
+### El Heraldo pasa a elite pesado (2026-08-23)
+
+Heraldo e Inspector eran **duplicados**: el Heraldo llevaba la misma lanza que el Lancero mas un
+escudo —en pantalla leia como "Lancero con escudo"— y el Inspector era un clon exacto del
+Vigilante. Ninguno aportaba una lectura distinta en combate. Se reconvierten, que sale casi
+gratis porque los chasis ya estaban:
+
+- **`BP_DA_Heraldo` → `elite_pesado`**: fuera la lanza y el escudo, entra `DA_GreatAxe` a dos
+  manos. Ese item ya venia con `TwoHanded = True`, asi que **no hizo falta animacion nueva**;
+  es el mismo truco que con la lanza.
+- **`BP_DA_Inspector` → `portador_del_estandarte`**: se queda con espada y escudo. Su papel es
+  el buff/debuff, que **todavia no existe**.
+
+**Como se edita el equipo de un enemigo sin darselo a todos.** El `Equipment` es un componente
+HEREDADO de `BP_BaseAI`, y `SubobjectDataSubsystem` devuelve para el la plantilla del **PADRE**
+(`BP_BaseAI_C:Equipment_GEN_VARIABLE`). Escribir ahi le habria puesto el hacha a Vigilante,
+Lancero, Arquero e Inspector de golpe. El override propio del hijo esta en:
+
+```
+/Game/DarkAngels/Blueprints/Enemies/BP_DA_Heraldo.BP_DA_Heraldo_C:Equipment_GEN_VARIABLE
+```
+
+**Mira siempre el `get_path_name()`**: si dice `BP_BaseAI_C`, no escribas.
+
+Y las ranuras (`MeleeWeaponSlots`, `ShieldSlots`) son structs anidados que no se pueden recorrer
+desde Python — `dir()` no lista campos. Lo que si funciona es **texto**:
+
+```python
+eq = unreal.load_object(None, '<ruta del _GEN_VARIABLE del hijo>')
+s = eq.get_editor_property('MeleeWeaponSlots')
+print(s.export_text())          # sale con los nombres de campo con GUID
+s.import_text(nuevo_texto)
+eq.set_editor_property('MeleeWeaponSlots', s)
+```
+
+Esto ademas **esquiva la trampa de los arrays de structs por MCP**, que pierden el ultimo
+elemento: aqui se escribe la estructura entera de una vez.
+
+**Verificado releyendo los cuatro**: Heraldo con `DA_GreatAxe` y sin escudo; Vigilante, Lancero
+e Inspector **sin tocar**. Y en juego, el Heraldo colocado sale con `BP_DI_GreatAxe_C` adjunto
+y ningun escudo.
+
+**Aviso:** los enemigos que spawneas para inspeccionar **no siempre se borran** con
+`destroy_actor`. Se me quedaron dos Heraldos en el Master, en (44000,−11000), con el equipo
+viejo. Se veian en PIE como enemigos legitimos y casi me hacen diagnosticar mal. Cuenta los
+actores de esa clase antes de guardar el nivel.
