@@ -47,6 +47,7 @@ async function arrancar() {
   refrescarCabecera();
   refrescarPaneles();
   pintarCalibracion($('#hoja-calibracion'), E.cal);
+  prepararReproductor();
 }
 
 function construirPaleta() {
@@ -124,6 +125,12 @@ function conectarUI() {
   $('#fichero').onchange = cargar;
   $('#btn-play').onclick = alternarReproduccion;
   $('#linea-tiempo').oninput = (e) => mostrarFotograma(+e.target.value);
+  // Cambiar de velocidad en marcha: reengancha el temporizador con el ritmo nuevo.
+  $('#velocidad').onchange = () => {
+    if (!E.reproduciendo) return;
+    pararReproduccion();
+    alternarReproduccion();
+  };
 
   window.addEventListener('keydown', (e) => {
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
@@ -218,10 +225,11 @@ function conectarPropiedades() {
 // ---------------------------------------------------------------- simulacion
 
 async function simular() {
+  pararReproduccion();
   const boton = $('#btn-simular');
   boton.disabled = true;
   boton.textContent = 'Simulando…';
-  $('#hoja-veredicto').innerHTML = '<p class="nota">Corriendo 4 politicas × 200 partidas…</p>';
+  $('#hoja-veredicto').innerHTML = '<p class="nota">Corriendo 5 politicas × 200 partidas…</p>';
   $$('.pestanas button')[0].click();
   await new Promise(r => setTimeout(r, 30));   // dejar pintar
 
@@ -250,39 +258,63 @@ async function simular() {
 // ---------------------------------------------------------------- reproductor
 
 function prepararReproductor() {
+  pararReproduccion();
   const t = E.testigo;
   const barra = $('#linea-tiempo');
+  const play = $('#btn-play');
+
   if (!t || !t.fotogramas.length) {
+    // Sin partida grabada no hay nada que reproducir. Decirlo, en vez de que el
+    // boton se quede mudo: un Play que no responde parece roto.
     barra.max = 0;
-    $('#linea-eventos').textContent = 'La partida testigo no se grabo.';
+    barra.value = 0;
+    barra.disabled = true;
+    play.disabled = true;
+    play.title = 'Simula primero: el reproductor muestra la partida testigo';
+    E.fotograma = null;
+    $('#reloj').textContent = '—';
+    $('#arma-actual').textContent = '—';
+    $('#linea-eventos').textContent = 'Pulsa "Simular" para grabar una partida testigo y poder verla aqui.';
+    if (editor) editor.pintar();
     return;
   }
+
+  barra.disabled = false;
+  play.disabled = false;
+  play.title = 'Reproducir la partida testigo (espacio)';
   barra.max = t.fotogramas.length - 1;
   barra.value = 0;
+
+  // Los fotogramas no se graban uno por tick: el intervalo real sale de sus
+  // propias marcas de tiempo, o la reproduccion iria al doble de velocidad.
+  const a = t.fotogramas[0]?.t ?? 0;
+  const b = t.fotogramas[1]?.t ?? (a + 1 / 30);
+  E.msPorFotograma = Math.max(16, (b - a) * 1000);
+
   mostrarFotograma(0);
 }
 
 function mostrarFotograma(i) {
   const t = E.testigo;
-  if (!t) return;
-  E.fotograma = t.fotogramas[i] || null;
-  $('#linea-tiempo').value = i;
-  $('#reloj').textContent = E.fotograma ? `${E.fotograma.t.toFixed(1)} s` : '—';
+  if (!t || !t.fotogramas.length) return;
 
-  if (E.fotograma) {
-    const f = E.fotograma;
-    // Que lleva en la mano ahora mismo: es la mitad de lo que se viene a mirar.
-    const principal = f.arma ? nombreArma(f.arma) : 'Espada de Malakh';
-    const municion = f.municion != null ? ` (${f.municion})` : '';
-    const off = f.offHand ? ` + ${nombreArma(f.offHand)}` : '';
-    $('#reloj').textContent = `${f.t.toFixed(1)} s`;
-    $('#arma-actual').textContent = `${principal}${municion}${off}`;
-    $('#arma-actual').style.color = f.arma
-      ? (FAMILIAS[f.arma]?.color || 'var(--oro)') : 'var(--texto-tenue)';
+  const idx = Math.max(0, Math.min(t.fotogramas.length - 1, Math.round(i)));
+  const f = t.fotogramas[idx];
+  E.fotograma = f;
+  $('#linea-tiempo').value = idx;
+  $('#reloj').textContent = `${f.t.toFixed(1)} s`;
 
-    const recientes = t.eventos.filter(e => e.t <= f.t).slice(-3).reverse();
-    $('#linea-eventos').textContent = recientes.map(describir).join('   ·   ') || '…';
-  }
+  // Que lleva en la mano ahora mismo: es la mitad de lo que se viene a mirar.
+  const principal = f.arma ? nombreArma(f.arma) : 'Espada de Malakh';
+  const municion = f.municion != null ? ` (${f.municion})` : '';
+  const off = f.offHand ? ` + ${nombreArma(f.offHand)}` : '';
+  $('#arma-actual').textContent = `${principal}${municion}${off}`;
+  $('#arma-actual').style.color = f.arma
+    ? (FAMILIAS[f.arma]?.color || 'var(--oro)') : 'var(--texto-tenue)';
+
+  const recientes = t.eventos.filter(e => e.t <= f.t).slice(-3).reverse();
+  $('#linea-eventos').textContent = recientes.map(describir).join('   ·   ') || '…';
+
   editor.pintar();
 }
 
@@ -320,18 +352,31 @@ function describir(ev) {
 }
 
 let temporizador = null;
-function alternarReproduccion() {
-  if (!E.testigo) return;
-  E.reproduciendo = !E.reproduciendo;
-  $('#btn-play').textContent = E.reproduciendo ? '❚❚' : '▶';
+
+function pararReproduccion() {
   clearInterval(temporizador);
-  if (!E.reproduciendo) return;
+  temporizador = null;
+  E.reproduciendo = false;
+  $('#btn-play').textContent = '▶';
+}
+
+function alternarReproduccion() {
+  if (!E.testigo || !E.testigo.fotogramas.length) return;
+
+  if (E.reproduciendo) { pararReproduccion(); return; }
+
+  const barra = $('#linea-tiempo');
+  // Si se acabo, rebobinar: pulsar Play al final no debe quedarse quieto.
+  if (+barra.value >= +barra.max) mostrarFotograma(0);
+
+  E.reproduciendo = true;
+  $('#btn-play').textContent = '❚❚';
+  const factor = parseFloat($('#velocidad').value) || 1;
   temporizador = setInterval(() => {
-    const barra = $('#linea-tiempo');
     const i = +barra.value + 1;
-    if (i > +barra.max) { alternarReproduccion(); return; }
+    if (i > +barra.max) { pararReproduccion(); return; }
     mostrarFotograma(i);
-  }, 1000 / 30);
+  }, (E.msPorFotograma || 1000 / 30) / factor);
 }
 
 // ------------------------------------------------------------------- ficheros
@@ -371,6 +416,7 @@ function cargar(ev) {
       editor.invalidarPresion();
       editor.encajar();
       refrescarPaneles();
+      prepararReproductor();
       pintarVeredicto($('#hoja-veredicto'), null);
     } catch (err) {
       alert('Ese JSON no se pudo leer: ' + err.message);
