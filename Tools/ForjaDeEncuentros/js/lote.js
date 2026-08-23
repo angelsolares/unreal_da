@@ -197,7 +197,7 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
   }
 
   // --- 6. Los drops garantizados llegan a las manos ---
-  const garantizados = encuentro.enemigos.filter(e => e.drop === 'garantizado');
+  const garantizados = encuentro.enemigos.filter(e => e.drop?.principal || e.drop?.secundaria);
   if (garantizados.length && vent) {
     const llegan = garantizados.map(e => {
       const veces = vent.resultados.filter(r =>

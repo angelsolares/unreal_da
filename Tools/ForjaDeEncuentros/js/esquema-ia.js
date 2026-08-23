@@ -14,8 +14,8 @@
 //
 // Nada de lo que salga de aqui se enseña sin pasar por validar() y por el lote.
 
-import { encuentroVacio, nuevoEnemigo, nuevaCobertura, nuevoId } from './esquema.js';
-import { ORDEN_ARQUETIPOS, POLITICAS_DROP } from './catalogo.js';
+import { encuentroVacio, nuevoEnemigo, nuevaCobertura, nuevoId, plataformaBajo } from './esquema.js';
+import { ORDEN_ARQUETIPOS } from './catalogo.js';
 
 /** JSON Schema estricto para la generacion de variantes. */
 export const ESQUEMA_PROPUESTA = {
@@ -53,13 +53,23 @@ export const ESQUEMA_PROPUESTA = {
             items: {
               type: 'object',
               additionalProperties: false,
-              required: ['arquetipo', 'x', 'y', 'cota', 'drop', 'etiqueta'],
+              required: ['arquetipo', 'x', 'y', 'cota', 'sueltaArmaPrincipal', 'sueltaOffHand', 'etiqueta'],
               properties: {
                 arquetipo: { type: 'string', enum: ORDEN_ARQUETIPOS },
                 x: { type: 'number', description: 'cm. Positivo = hacia el fondo, lejos de la entrada.' },
                 y: { type: 'number', description: 'cm. Positivo = a la derecha mirando desde la entrada.' },
-                cota: { type: 'number', description: 'cm de altura. 0 = suelo.' },
-                drop: { type: 'string', enum: Object.keys(POLITICAS_DROP) },
+                cota: {
+                  type: 'number',
+                  description: 'cm. La superficie sobre la que esta de pie. 0 = suelo. Solo distinto de 0 si hay una plataforma a esa misma cota debajo, o el enemigo flota y es un soft-lock.'
+                },
+                sueltaArmaPrincipal: {
+                  type: 'boolean',
+                  description: 'Si al morir deja su arma de mano principal. Lanza, arco, espadon y estandarte van por aqui.'
+                },
+                sueltaOffHand: {
+                  type: 'boolean',
+                  description: 'Si al morir deja su off-hand. Es la ranura del ESCUDO: el escudero_celestial suelta por aqui, no por la principal.'
+                },
                 etiqueta: { type: 'string' }
               }
             }
@@ -115,7 +125,7 @@ export function expandirPropuesta(variante, encuentroBase) {
     if (!ORDEN_ARQUETIPOS.includes(e.arquetipo)) continue;
     const nuevo = nuevoEnemigo(e.arquetipo, Math.round(e.x), Math.round(e.y));
     nuevo.cota = Math.round(e.cota || 0);
-    nuevo.drop = POLITICAS_DROP[e.drop] ? e.drop : 'estandar';
+    nuevo.drop = { principal: !!e.sueltaArmaPrincipal, secundaria: !!e.sueltaOffHand };
     nuevo.etiqueta = e.etiqueta || '';
     nuevo.yaw = 180;
     enc.enemigos.push(nuevo);
@@ -137,6 +147,14 @@ export function expandirPropuesta(variante, encuentroBase) {
     if (!enc.ordenPrevisto.includes(e.id)) enc.ordenPrevisto.push(e.id);
   }
 
+  // El invariante del contrato §2.1: nadie flota. Si el modelo puso una cota que
+  // no cuadra con ninguna plataforma, se le baja al suelo en vez de generar un
+  // soft-lock que luego habria que cazar en el veredicto.
+  for (const e of enc.enemigos) {
+    const plat = plataformaBajo(enc, e.pos);
+    e.cota = plat ? plat.cota : 0;
+  }
+
   return enc;
 }
 
@@ -150,18 +168,19 @@ export function resumirParaIA(enc, cal, lote) {
     nombre: enc.nombre,
     arena: {
       limites: enc.arena.bounds,
-      entradaDeMalakh: enc.arena.entrada,
+      entradaDeMalakh: enc.jugador.pos,
       trigger: enc.arena.trigger
     },
     enemigos: enc.enemigos.map(e => ({
       etiqueta: e.etiqueta || e.id,
       arquetipo: e.arquetipo,
       x: Math.round(e.pos.x), y: Math.round(e.pos.y), cota: e.cota || 0,
-      drop: e.drop,
+      sueltaArmaPrincipal: !!e.drop?.principal,
+      sueltaOffHand: !!e.drop?.secundaria,
       arma: cal.arquetipos[e.arquetipo]?.arma || null
     })),
     coberturas: (enc.coberturas || []).map(c => ({ etiqueta: c.etiqueta, altura: c.altura })),
-    plataformas: (enc.plataformas || []).map(p => ({ etiqueta: p.etiqueta, cota: p.cota, accesos: (p.accesos || []).length })),
+    plataformas: (enc.plataformas || []).map(p => ({ etiqueta: p.etiqueta, cota: p.cota, rampas: (p.accesos || []).length })),
     ordenPrevisto: (enc.ordenPrevisto || []).map(id => {
       const e = enc.enemigos.find(x => x.id === id);
       return e ? (e.etiqueta || e.id) : id;

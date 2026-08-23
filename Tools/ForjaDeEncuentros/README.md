@@ -1,4 +1,4 @@
-# Forja de Encuentros — Fases A, B, C y D
+# Forja de Encuentros — Fases A a E
 
 Banco de pruebas para los encuentros de Malkuth, según
 `Dark_Angels_Divine_Weapon_Corruption_Combat_Loop_v2.pdf`.
@@ -39,6 +39,7 @@ node Tools/ForjaDeEncuentros/pruebas/humo.mjs
 | `pruebas/lectura.mjs [encuentro]` | qué se ve desde la puerta, enemigo a enemigo (§5.1) |
 | `pruebas/ejes3d.mjs` | el mapeo de ejes de la vista 3D, sin navegador |
 | `pruebas/variantes.mjs` | la tubería de la IA **sin gastar una llamada** |
+| `pruebas/solidos.mjs` | recorre partidas enteras comprobando que nadie atraviesa un muro |
 
 Encuentros incluidos: `romper-la-linea` (§6.1) y `cadena-perfecta` (§6.5).
 
@@ -110,6 +111,14 @@ Cuatro cámaras:
 | **Ojos de Malakh en la entrada** | **la prueba del §5.1**, con FOV 70 como el juego |
 | Tras Malakh | seguir la partida testigo en tercera persona |
 | Cenital | contrastar contra la planta 2D |
+
+Durante la reproducción, **planta y 3D enseñan lo mismo**: barra de vida sobre cada
+agente, el glifo de lo que está haciendo (`!` levanta el arma, `✳` el golpe está
+saliendo, `~` esquiva, `▮` bloquea, `+` bebe, `⌾` recoge arma, `×` aturdido) y un
+destello de impacto — rojo si el golpe entró, azul si lo paró la guardia. Hay una
+leyenda en la esquina, porque un `✳` no significa nada por sí solo. Un golpe que no
+aturde no deja estado, así que el destello es la única forma de ver que a alguien le
+están dando.
 
 La silueta **es** la señal. Cada arquetipo lleva su arma con su tamaño real: la
 lanza mide 3,2 m y se ve desde la puerta, el escudo va pegado al cuerpo y apenas
@@ -334,15 +343,56 @@ números se calibran con una captura y el veredicto se vuelve mucho más fiable.
 
 ---
 
+## Fase E: el puente con Unreal
+
+Pestaña **Unreal**. El servidor de la Forja habla con el MCP del editor por
+JSON-RPC en `127.0.0.1:8000`; el navegador no toca el editor directamente.
+
+**Exportar** coloca el encuentro en el nivel abierto: los enemigos con su
+Blueprint, el sello del §7 como `BlockingVolume` por cada lado del perímetro, y
+`TargetPoint` en entrada, trigger y checkpoint. Todo va etiquetado `Forja` y
+`Forja:<id>`, así que volver a exportar limpia lo suyo y no toca nada más.
+
+**Leer lo que hay en el editor** trae de vuelta las posiciones y las compara con
+el JSON: te dice cuáles se han movido y cuánto, y ofrece traer esos cambios al
+encuentro. Ese es el bucle que cierra la fase — colocar a ojo en Unreal y volver
+a simular.
+
+### Tres decisiones que vienen de haberse quemado
+
+**Esto no cambia de nivel.** La primera versión creaba un nivel propio con
+`new_level`. Tras esa llamada el editor se queda sin mundo unos segundos y parece
+roto — no lo está, pero el diagnóstico equivocado casi lleva a "arreglarlo" con un
+`load_level`, que en este proyecto sí tumba el editor de verdad. Ahora abres tú el
+nivel y la herramienta coloca ahí.
+
+**Malkuth Master y los `_Sub` están protegidos.** Sin marcar la casilla de
+confirmar, la exportación se niega. Volcarle un encuentro encima por descuido sería
+mucho más caro de deshacer que de evitar.
+
+**Todo lo que se escribe se vuelve a leer.** El editor devuelve éxito en llamadas
+que no han hecho nada, así que el informe compara lo pedido con lo que el editor
+dice tener, coordenada a coordenada. En la prueba real: 12 actores, 0 desviados, e
+ida y vuelta exacta.
+
+### Lo que hay que saber antes de usarlo
+
+- **El offset del submapa no es opcional.** Dentro de un `_Sub` los actores van en
+  coordenadas del submapa y la Level Instance les suma su transform. Exportar con
+  offset 0 a un `_Sub` manda el encuentro a kilómetros de donde toca.
+- **Tres arquetipos no tienen Blueprint todavía** — escudero, elite y portador
+  salen con `BP_WarriorAI` como suplente, y el informe lo dice cada vez. Sirve para
+  pisar el trazado, no para juzgar el combate.
+- **El nivel no se guarda.** Eso lo decides tú después de mirarlo.
+
+---
+
 ## Lo que falta
 
 - **Siluetas reales en la 3D.** `ThreeJSPOC/` ya tiene los GLB de Malakh, el
   Arcángel y las armas. Los primitivos bastan para juzgar posición y oclusión,
   pero para juzgar *lectura* de silueta el modelo real diría más.
-- **Fase E** — export/import por MCP: volcar el JSON a actores y Blocking Volumes,
-  e importar la geometría real de Malkuth para planificar sobre suelo verdadero.
-  Es la que cierra el círculo: hasta entonces esto planifica sobre rectángulos
-  abstractos, no sobre el suelo de Malkuth.
+
 
 Antes de la Fase B conviene **cerrar la calibración en PIE**: las ventanas activas,
 el alcance de las trazas y la esquiva. Son los tres números de los que más depende

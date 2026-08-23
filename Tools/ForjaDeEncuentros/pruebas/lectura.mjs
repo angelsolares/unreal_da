@@ -5,7 +5,7 @@ import { lecturaDesdeLaEntrada, LIMITE_LECTURA } from '../js/lectura.js';
 import { cal, encuentro } from './cargar.mjs';
 
 const enc = encuentro(process.argv[2]);
-console.log(`${enc.nombre} — desde la entrada (${enc.arena.entrada.x}, ${enc.arena.entrada.y}), ojos a ${cal.malakh.alturaOjos} cm\n`);
+console.log(`${enc.nombre} — desde la entrada (${enc.jugador.pos.x}, ${enc.jugador.pos.y}), ojos a ${cal.malakh.alturaOjos} cm\n`);
 console.log('enemigo'.padEnd(20) + 'llave  estado    dist    silueta  de eso, arma');
 for (const f of lecturaDesdeLaEntrada(enc, cal)) {
   console.log(

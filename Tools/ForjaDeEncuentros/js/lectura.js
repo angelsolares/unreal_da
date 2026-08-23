@@ -13,6 +13,7 @@
 // navegador y las pruebas de node lo cubren.
 
 import { dist, hayVision } from './geometria.js';
+import { obstaculosDe, sueltaArma } from './esquema.js';
 import { FAMILIAS } from './catalogo.js';
 
 /**
@@ -33,13 +34,13 @@ export function tamanoAngular(tamano, distancia) {
  * Devuelve una fila por enemigo.
  */
 export function lecturaDesdeLaEntrada(encuentro, calibracion) {
-  const ojos = encuentro.arena.entrada;
+  const ojos = encuentro.jugador.pos;
   const alturaOjos = calibracion.malakh.alturaOjos;
 
   return encuentro.enemigos.map(e => {
     const perfil = calibracion.arquetipos[e.arquetipo] || {};
     const d = dist(ojos, e.pos);
-    const visible = hayVision(ojos, 0, e.pos, e.cota || 0, encuentro.coberturas || [], alturaOjos);
+    const visible = hayVision(ojos, 0, e.pos, e.cota || 0, obstaculosDe(encuentro), alturaOjos);
 
     // La silueta es el cuerpo mas lo que lleva. Eso es justo lo que el §5.1
     // quiere que se lea: no "hay un enemigo" sino "ese lleva una lanza".
@@ -61,7 +62,7 @@ export function lecturaDesdeLaEntrada(encuentro, calibracion) {
       arquetipo: e.arquetipo,
       arma: perfil.arma || null,
       nombreArma: fam?.nombre || null,
-      llaveTactica: e.drop === 'garantizado',
+      llaveTactica: sueltaArma(e, !!fam?.esOffHand),
       distancia: Math.round(d),
       cota: e.cota || 0,
       visible,

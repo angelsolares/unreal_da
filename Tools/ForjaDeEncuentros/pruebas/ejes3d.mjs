@@ -25,7 +25,7 @@ esperar('combinado', aTres({ x: -200, y: 400 }, 50), { x: 4, y: 0.5, z: 2 });
 
 console.log('\n--- coherencia con el encuentro real ---');
 const enc = encuentro();
-const entrada = aTres(enc.arena.entrada, 0);
+const entrada = aTres(enc.jugador.pos, 0);
 const balcon = enc.enemigos.find(e => (e.cota || 0) > 50);
 
 // La entrada esta al oeste (X negativo) -> en Three debe quedar en +Z.

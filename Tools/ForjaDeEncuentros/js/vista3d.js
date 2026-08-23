@@ -14,6 +14,7 @@
 import * as THREE from '../vendor/three/three.module.min.js';
 import { ARQUETIPOS, FAMILIAS } from './catalogo.js';
 import { cajaDe, centroide } from './geometria.js';
+import { poliDeRect, centroDeRect } from './esquema.js';
 import { lecturaDesdeLaEntrada } from './lectura.js';
 
 const M = 0.01;                       // cm -> m
@@ -108,8 +109,9 @@ export class Vista3D {
     this._vaciar(this.actores);
     this.grupos.clear();
 
-    const caja = cajaDe(enc.arena.bounds);
-    const centro = centroide(enc.arena.bounds);
+    const b = enc.arena.bounds;
+    const caja = { minX: b.min.x, maxX: b.max.x, minY: b.min.y, maxY: b.max.y };
+    const centro = centroDeRect(enc.arena.bounds);
     this.orbita.centro = aTres(centro, 0);
     this.orbita.radio = Math.max(24, Math.hypot(caja.maxX - caja.minX, caja.maxY - caja.minY) * M * 0.95);
 
@@ -146,7 +148,7 @@ export class Vista3D {
   }
 
   _suelo(enc) {
-    const g = new THREE.ShapeGeometry(this._formaDe(enc.arena.bounds));
+    const g = new THREE.ShapeGeometry(this._formaDe(poliDeRect(enc.arena.bounds)));
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
       color: 0x22201c, roughness: 0.95, metalness: 0
     }));
@@ -161,7 +163,7 @@ export class Vista3D {
 
   /** El sello del §7: barrera invisible, pero con lectura diegetica. */
   _sello(enc) {
-    const puntos = enc.arena.bounds.map(p => aTres(p, 0));
+    const puntos = poliDeRect(enc.arena.bounds).map(p => aTres(p, 0));
     puntos.push(puntos[0].clone());
     const alto = 5;
 
@@ -186,7 +188,7 @@ export class Vista3D {
   }
 
   _cobertura(c) {
-    const caja = cajaDe(c.poli);
+    const caja = { minX: c.min.x, maxX: c.max.x, minY: c.min.y, maxY: c.max.y };
     const ancho = (caja.maxY - caja.minY) * M;
     const fondo = (caja.maxX - caja.minX) * M;
     const alto = (c.altura || 200) * M;
@@ -202,7 +204,7 @@ export class Vista3D {
   }
 
   _plataforma(p) {
-    const caja = cajaDe(p.poli);
+    const caja = { minX: p.min.x, maxX: p.max.x, minY: p.min.y, maxY: p.max.y };
     const ancho = (caja.maxY - caja.minY) * M;
     const fondo = (caja.maxX - caja.minX) * M;
     const alto = (p.cota || 0) * M;
@@ -216,13 +218,23 @@ export class Vista3D {
     m.castShadow = true; m.receiveShadow = true;
     this.mundo.add(m);
 
+    // La rampa, como plano inclinado de verdad: del pie al remate, con su ancho.
+    // Como cilindro no se podia juzgar si la pendiente era subible ni si cabia
+    // alguien; asi se ve de un vistazo.
     for (const a of (p.accesos || [])) {
+      if (!a.desde || !a.hasta) continue;
+      const pie = aTres(a.desde, 0);
+      const cima = aTres(a.hasta, p.cota || 0);
+      const largo = pie.distanceTo(cima);
+      if (largo < 0.01) continue;
+
       const r = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.9, 0.9, alto, 12),
-        new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.8 })
+        new THREE.BoxGeometry((a.ancho || 300) * M, 0.12, largo),
+        new THREE.MeshStandardMaterial({ color: 0x5c7a44, roughness: 0.85 })
       );
-      r.position.copy(aTres(a, 0));
-      r.position.y = alto / 2;
+      r.position.copy(pie).lerp(cima, 0.5);
+      r.lookAt(cima);                    // el eje Z de la caja apunta a la cima
+      r.castShadow = true; r.receiveShadow = true;
       this.mundo.add(r);
     }
   }
@@ -233,7 +245,7 @@ export class Vista3D {
       new THREE.MeshBasicMaterial({ color: COLOR_MALAKH, transparent: true, opacity: 0.35 })
     );
     e.rotation.x = -Math.PI / 2;
-    e.position.copy(aTres(enc.arena.entrada, 0));
+    e.position.copy(aTres(enc.jugador.pos, 0));
     e.position.y = 0.02;
     this.mundo.add(e);
 
@@ -264,6 +276,84 @@ export class Vista3D {
     return m;
   }
 
+  // ------------------------------------------------- chapas de estado y vida
+
+  /**
+   * La planta 2D enseña vida y estado de un vistazo; la 3D era ciega al lado.
+   * Cada agente lleva una "chapa": un sprite con la barra de vida y el glifo del
+   * estado, dibujado en un canvas. Un solo sprite por agente, y solo se redibuja
+   * cuando cambia algo — mover la camara no cuesta nada.
+   */
+  _chapa() {
+    const lienzo = document.createElement('canvas');
+    lienzo.width = 128; lienzo.height = 48;
+    const tex = new THREE.CanvasTexture(lienzo);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, depthTest: false, depthWrite: false
+    }));
+    sprite.scale.set(1.6, 0.6, 1);
+    sprite.renderOrder = 999;      // por encima de todo: es informacion, no escenario
+    sprite.userData = { lienzo, tex, firma: null };
+    return sprite;
+  }
+
+  /** Glifos y colores, los mismos que la planta para no tener que traducir. */
+  static get ESTADOS_CHAPA() {
+    return {
+      anticipacion: { glifo: '!', color: '#d9a441' },   // levanta el arma
+      activo:       { glifo: '✳', color: '#ff5c48' },   // el golpe esta saliendo
+      recuperacion: { glifo: '·', color: '#8a8a96' },
+      esquiva:      { glifo: '~', color: '#9fd0e8' },
+      bloqueando:   { glifo: '▮', color: '#7fa8e8' },
+      curando:      { glifo: '+', color: '#7cb342' },
+      recogiendo:   { glifo: '⌾', color: '#d4af37' },
+      aturdido:     { glifo: '×', color: '#ffffff' }
+    };
+  }
+
+  _pintarChapa(sprite, a, hpMax) {
+    const est = Vista3D.ESTADOS_CHAPA[a.estado];
+    const frac = Math.max(0, Math.min(1, a.hp / (hpMax || 100)));
+    const firma = `${Math.round(frac * 100)}|${a.estado}|${a.golpeado ? (a.golpeBloqueado ? 'b' : 'g') : ''}`;
+    if (sprite.userData.firma === firma) return;     // nada que redibujar
+    sprite.userData.firma = firma;
+
+    const { lienzo, tex } = sprite.userData;
+    const c = lienzo.getContext('2d');
+    c.clearRect(0, 0, 128, 48);
+
+    // Destello de impacto: rojo si entro, azul si lo paro la guardia.
+    if (a.golpeado) {
+      c.fillStyle = a.golpeBloqueado ? 'rgba(127,168,232,.55)' : 'rgba(255,92,72,.55)';
+      c.beginPath();
+      c.arc(64, 30, 26, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    // Barra de vida
+    c.fillStyle = 'rgba(0,0,0,.75)';
+    c.fillRect(20, 24, 88, 10);
+    c.fillStyle = frac > 0.5 ? '#7cb342' : frac > 0.22 ? '#d9a441' : '#c4483f';
+    c.fillRect(21, 25, 86 * frac, 8);
+    c.strokeStyle = 'rgba(255,255,255,.35)';
+    c.lineWidth = 1;
+    c.strokeRect(20.5, 24.5, 87, 9);
+
+    // Glifo del estado, encima
+    if (est) {
+      c.font = 'bold 22px "Segoe UI Symbol", "Segoe UI", sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.lineWidth = 4;
+      c.strokeStyle = 'rgba(0,0,0,.9)';
+      c.strokeText(est.glifo, 64, 11);
+      c.fillStyle = est.color;
+      c.fillText(est.glifo, 64, 11);
+    }
+    tex.needsUpdate = true;
+  }
+
   _agenteMalakh(cal) {
     const g = new THREE.Group();
     g.add(this._capsula(cal.malakh.radio, 190, COLOR_MALAKH));
@@ -280,6 +370,11 @@ export class Vista3D {
     const arma = new THREE.Group();       // arma temporal, se rellena en cada fotograma
     arma.name = 'temporal';
     g.add(arma);
+
+    const chapa = this._chapa();
+    chapa.name = 'chapa';
+    chapa.position.y = 2.5;
+    g.add(chapa);
     return g;
   }
 
@@ -300,7 +395,7 @@ export class Vista3D {
     if (prop) g.add(prop);
 
     // Un aro en el suelo marca al portador de la llave tactica (solo debug).
-    if (e.drop === 'garantizado') {
+    if (e.drop?.principal || e.drop?.secundaria) {
       const aro = new THREE.Mesh(
         new THREE.RingGeometry(0.75, 0.9, 24),
         new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
@@ -309,6 +404,11 @@ export class Vista3D {
       aro.position.y = 0.04;
       g.add(aro);
     }
+
+    const chapa = this._chapa();
+    chapa.name = 'chapa';
+    chapa.position.y = (altura / 100) + 0.6;
+    g.add(chapa);
     return g;
   }
 
@@ -364,14 +464,29 @@ export class Vista3D {
   }
 
   _plantarEnPosicionInicial(enc, cal) {
+    const sano = (g, id, hpMax) => {
+      const chapa = g.getObjectByName('chapa');
+      if (chapa) {
+        chapa.visible = true;
+        this._pintarChapa(chapa, { id, hp: hpMax, estado: 'libre', golpeado: false }, hpMax);
+      }
+    };
+
     const m = this.grupos.get('malakh');
-    if (m) { m.position.copy(aTres(enc.arena.entrada, 0)); m.rotation.y = 0; m.visible = true; }
+    if (m) {
+      m.position.copy(aTres(enc.jugador.pos, 0));
+      m.rotation.set(0, 0, 0);
+      m.visible = true;
+      sano(m, 'malakh', cal.malakh.hp);
+    }
     for (const e of enc.enemigos) {
       const g = this.grupos.get(e.id);
       if (!g) continue;
       g.position.copy(aTres(e.pos, e.cota));
-      g.rotation.y = -(e.yaw ?? 180) * Math.PI / 180;
+      g.rotation.set(0, -(e.yaw ?? 180) * Math.PI / 180, 0);
       g.visible = true;
+      g.traverse(h => { if (h.material) { h.material.transparent = false; h.material.opacity = 1; } });
+      sano(g, e.id, cal.arquetipos[e.arquetipo]?.hp || 100);
     }
     this._pintarDrops([]);
   }
@@ -391,7 +506,27 @@ export class Vista3D {
       g.visible = true;
       // Los caidos se tumban: se sigue viendo donde cayo cada uno.
       g.rotation.x = muerto ? -Math.PI / 2.2 : 0;
-      g.traverse(o => { if (o.material) { o.material.transparent = muerto; o.material.opacity = muerto ? 0.35 : 1; } });
+
+      const chapa = g.getObjectByName('chapa');
+      for (const o of g.children) {
+        if (o === chapa) continue;
+        o.traverse(h => {
+          if (!h.material) return;
+          h.material.transparent = muerto;
+          h.material.opacity = muerto ? 0.35 : 1;
+        });
+      }
+
+      if (chapa) {
+        // A un muerto no se le pone barra de vida: solo estorba.
+        chapa.visible = !muerto;
+        if (!muerto) {
+          const hpMax = a.hpMax || (a.id === 'malakh'
+            ? cal.malakh.hp
+            : cal.arquetipos[enc.enemigos.find(e => e.id === a.id)?.arquetipo]?.hp) || 100;
+          this._pintarChapa(chapa, a, hpMax);
+        }
+      }
     }
 
     // El arma temporal que lleva Malakh ahora mismo.
@@ -450,7 +585,7 @@ export class Vista3D {
 
     const { enc, cal } = this.estado();
     const grupo = new THREE.Group();
-    const ojos = aTres(enc.arena.entrada, 0);
+    const ojos = aTres(enc.jugador.pos, 0);
     ojos.y = cal.malakh.alturaOjos * M;
 
     for (const f of lecturaDesdeLaEntrada(enc, cal)) {
@@ -497,10 +632,10 @@ export class Vista3D {
 
   _colocarCamara() {
     const { enc, cal } = this.estado();
-    const centro = centroide(enc.arena.bounds);
+    const centro = centroDeRect(enc.arena.bounds);
 
     if (this.camaraActual === 'entrada') {
-      const p = aTres(enc.arena.entrada, 0);
+      const p = aTres(enc.jugador.pos, 0);
       p.y = cal.malakh.alturaOjos * M;
       this.cam.position.copy(p);
       const mira = aTres(centro, 0);

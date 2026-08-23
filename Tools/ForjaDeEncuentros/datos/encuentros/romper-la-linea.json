@@ -1,92 +1,207 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "romper-la-linea",
   "nombre": "Romper la linea",
   "unidades": "cm",
-  "origenMundo": { "x": 0, "y": 0, "z": 0 },
-  "submapa": "",
   "arena": {
-    "bounds": [
-      { "x": -2200, "y": -1700 },
-      { "x": 2200, "y": -1700 },
-      { "x": 2200, "y": 1700 },
-      { "x": -2200, "y": 1700 }
-    ],
-    "entrada": { "x": -1900, "y": 0 },
-    "trigger": { "x": -1500, "y": 0, "radio": 250 },
-    "checkpoint": { "x": -2100, "y": 0 }
+    "bounds": {
+      "min": {
+        "x": -2200,
+        "y": -1700
+      },
+      "max": {
+        "x": 2200,
+        "y": 1700
+      }
+    },
+    "trigger": {
+      "x": -1500,
+      "y": 0,
+      "radio": 250
+    },
+    "checkpoint": {
+      "x": -2100,
+      "y": 0
+    }
+  },
+  "jugador": {
+    "pos": {
+      "x": -1900,
+      "y": 0
+    },
+    "cota": 0,
+    "yaw": 0,
+    "vida": 100,
+    "loadout": [
+      "espada"
+    ]
   },
   "coberturas": [
     {
       "id": "cob_muro_n",
-      "poli": [
-        { "x": -400, "y": -1300 }, { "x": 200, "y": -1300 },
-        { "x": 200, "y": -1100 }, { "x": -400, "y": -1100 }
-      ],
-      "cota": 0, "altura": 250, "bloqueaVision": true, "bloqueaPaso": true,
+      "min": {
+        "x": -400,
+        "y": -1300
+      },
+      "max": {
+        "x": 200,
+        "y": -1100
+      },
+      "cota": 0,
+      "altura": 250,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
       "etiqueta": "muro roto norte"
     },
     {
       "id": "cob_muro_s",
-      "poli": [
-        { "x": -400, "y": 1100 }, { "x": 200, "y": 1100 },
-        { "x": 200, "y": 1300 }, { "x": -400, "y": 1300 }
-      ],
-      "cota": 0, "altura": 250, "bloqueaVision": true, "bloqueaPaso": true,
+      "min": {
+        "x": -400,
+        "y": 1100
+      },
+      "max": {
+        "x": 200,
+        "y": 1300
+      },
+      "cota": 0,
+      "altura": 250,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
       "etiqueta": "muro roto sur"
     },
     {
       "id": "cob_pilar",
-      "poli": [
-        { "x": 350, "y": -180 }, { "x": 650, "y": -180 },
-        { "x": 650, "y": 180 }, { "x": 350, "y": 180 }
-      ],
-      "cota": 0, "altura": 400, "bloqueaVision": true, "bloqueaPaso": true,
+      "min": {
+        "x": 350,
+        "y": -180
+      },
+      "max": {
+        "x": 650,
+        "y": 180
+      },
+      "cota": 0,
+      "altura": 400,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
       "etiqueta": "pilar central"
     }
   ],
   "plataformas": [
     {
       "id": "plat_balcon",
-      "poli": [
-        { "x": 1100, "y": -1400 }, { "x": 2000, "y": -1400 },
-        { "x": 2000, "y": 1400 }, { "x": 1100, "y": 1400 }
-      ],
+      "min": {
+        "x": 1100,
+        "y": -1400
+      },
+      "max": {
+        "x": 2000,
+        "y": 1400
+      },
       "cota": 350,
-      "accesos": [ { "x": 1050, "y": 0 } ],
+      "accesos": [
+        {
+          "desde": {
+            "x": 1050,
+            "y": 0
+          },
+          "hasta": {
+            "x": 1575,
+            "y": 0
+          },
+          "ancho": 300
+        }
+      ],
       "etiqueta": "balcon del firmamento"
     }
   ],
   "enemigos": [
     {
-      "id": "en_escudero_a", "arquetipo": "escudero_celestial",
-      "pos": { "x": -700, "y": -280 }, "cota": 0, "yaw": 180,
-      "drop": "estandar", "etiqueta": "frontal norte"
+      "id": "en_escudero_a",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": -700,
+        "y": -280
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "etiqueta": "frontal norte"
     },
     {
-      "id": "en_escudero_b", "arquetipo": "escudero_celestial",
-      "pos": { "x": -700, "y": 280 }, "cota": 0, "yaw": 180,
-      "drop": "garantizado", "etiqueta": "frontal sur"
+      "id": "en_escudero_b",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": -700,
+        "y": 280
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": true
+      },
+      "etiqueta": "frontal sur"
     },
     {
-      "id": "en_lancero", "arquetipo": "lancero_del_alba",
-      "pos": { "x": 100, "y": -850 }, "cota": 0, "yaw": 180,
-      "drop": "garantizado", "etiqueta": "lateral"
+      "id": "en_lancero",
+      "arquetipo": "lancero_del_alba",
+      "pos": {
+        "x": 100,
+        "y": -850
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": true,
+        "secundaria": false
+      },
+      "etiqueta": "lateral"
     },
     {
-      "id": "en_arquero_a", "arquetipo": "arquero_del_firmamento",
-      "pos": { "x": 1600, "y": -700 }, "cota": 350, "yaw": 180,
-      "drop": "garantizado", "etiqueta": "balcon norte"
+      "id": "en_arquero_a",
+      "arquetipo": "arquero_del_firmamento",
+      "pos": {
+        "x": 1600,
+        "y": -700
+      },
+      "cota": 350,
+      "yaw": 180,
+      "drop": {
+        "principal": true,
+        "secundaria": false
+      },
+      "etiqueta": "balcon norte"
     },
     {
-      "id": "en_arquero_b", "arquetipo": "arquero_del_firmamento",
-      "pos": { "x": 1600, "y": 700 }, "cota": 350, "yaw": 180,
-      "drop": "estandar", "etiqueta": "balcon sur"
+      "id": "en_arquero_b",
+      "arquetipo": "arquero_del_firmamento",
+      "pos": {
+        "x": 1600,
+        "y": 700
+      },
+      "cota": 350,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "etiqueta": "balcon sur"
     }
   ],
-  "victoria": { "tipo": "eliminar-todos" },
+  "victoria": {
+    "tipo": "eliminar-todos"
+  },
   "purgePolicy": "purgar-todo-al-romper-sello",
   "checkpointPolicy": "antes-del-trigger",
-  "ordenPrevisto": ["en_lancero", "en_arquero_a", "en_arquero_b", "en_escudero_a", "en_escudero_b"],
-  "notasDiseno": "Receta 6.1 del PDF. La ruta de ventaja que propone el documento es: bajar al Lancero, tomar la Lanza, castigar a los arqueros y romper la formacion, luego tomar el Escudo de un Escudero para cerrar distancia seguro. OJO: el orden previsto de aqui es esa ruta, pero la Fase A la simula SOLO CON ESPADA, sin las armas. Si con espada sola ese orden sale peor que atacar al mas cercano, no significa que el diseño este mal: significa que la ventaja depende enteramente de las armas temporales, y eso hay que confirmarlo en la Fase B."
+  "ordenPrevisto": [
+    "en_lancero",
+    "en_arquero_a",
+    "en_arquero_b",
+    "en_escudero_a",
+    "en_escudero_b"
+  ],
+  "notasDiseno": "Receta 6.1 del PDF. La ruta de ventaja que propone el documento es: bajar al Lancero, tomar la Lanza, castigar a los arqueros y romper la formacion, luego tomar el Escudo de un Escudero para cerrar distancia seguro. OJO: el orden previsto de aqui es esa ruta, pero la Fase A la simula SOLO CON ESPADA, sin las armas. Si con espada sola ese orden sale peor que atacar al mas cercano, no significa que el diseño este mal: significa que la ventaja depende enteramente de las armas temporales, y eso hay que confirmarlo en la Fase B.\n\nMIGRADO DE v1: las rampas se han inventado a partir de los puntos de acceso viejos (direccion hacia el centro de la plataforma, ancho 300). Reviselas."
 }

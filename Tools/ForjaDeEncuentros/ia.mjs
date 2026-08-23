@@ -12,7 +12,39 @@
 // Se carga de forma perezosa: si no hay clave o no esta instalado el paquete,
 // el resto de la herramienta funciona igual y la interfaz lo dice.
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 const MODELO = process.env.OPENAI_MODEL || 'gpt-5.6-sol';
+const AQUI = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Que hace cada enemigo, en palabras. Vive en datos/arquetipos.json para que se
+ * pueda editar sin tocar codigo, y se lee en cada peticion: cambias el fichero,
+ * recargas, y el modelo ya razona con lo nuevo. Sin reiniciar el servidor.
+ */
+function fichasDeArquetipos() {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(AQUI, 'datos/arquetipos.json'), 'utf8'));
+    const trozos = [];
+    for (const [id, a] of Object.entries(j.arquetipos || {})) {
+      trozos.push(
+        `### ${id} — ${a.nombre}\n` +
+        `Papel: ${a.papel}\n` +
+        `Como pelea: ${a.comoPelea}\n` +
+        `Como se le contesta: ${a.comoSeContesta}\n` +
+        `Que aporta su arma: ${a.queAporta}\n` +
+        `Donde colocarlo: ${a.dondeColocarlo}\n` +
+        `Cuidado con: ${a.cuidadoCon}`
+      );
+    }
+    const reglas = Object.values(j.reglasDeComposicion || {}).map(r => `- ${r}`).join('\n');
+    return `\n\n## QUE HACE CADA ENEMIGO\n\n${trozos.join('\n\n')}\n\n## AL COMPONER\n\n${reglas}`;
+  } catch (err) {
+    return `\n\n(No se pudo leer datos/arquetipos.json: ${err.message})`;
+  }
+}
 
 let cliente = null;
 let motivoNoDisponible = null;
@@ -158,12 +190,9 @@ Sus reglas, que no se discuten:
 - Los drops se diseñan, no se sortean: Guaranteed Tactical Drop para las llaves
   del puzzle, Standard u No Drop para el resto (§8).
 
-Arquetipos disponibles y el arma que suelta cada uno:
-  lancero_del_alba        -> Lanza del Alba (alcance/control; su descarte es arrojarla)
-  arquero_del_firmamento  -> Arco del Firmamento (rango; flechas como recurso)
-  escudero_celestial      -> Escudo Celestial (off-hand; defensa/parry)
-  elite_pesado            -> Espadon/Alabarda (guard break/AoE)
-  portador_del_estandarte -> Estandarte ritual (control de zona)
+Los drops son DOS BOOLEANOS por enemigo, no una probabilidad: sueltaArmaPrincipal
+y sueltaOffHand. El componente del juego solo sabe hacer eso. El ESCUDO va por la
+ranura off-hand; todo lo demas por la principal.
 
 Coordenadas: centimetros. X positivo se aleja de la entrada de Malakh, Y positivo
 va a su derecha. La cota es altura; una plataforma alta necesita un acceso o el
@@ -179,7 +208,7 @@ export async function criticar(cuerpo) {
   const { datos } = cuerpo;
   return {
     texto: await pedir({
-      sistema: REGLAS,
+      sistema: REGLAS + fichasDeArquetipos(),
       usuario: `Este es un encuentro y los numeros que ha dado el simulador tras 200 partidas
 por politica. Critícalo como diseñador.
 
@@ -204,7 +233,7 @@ Si algo del veredicto te parece que mide mal, dilo.`,
 export async function variantes(cuerpo) {
   const { datos, esquema, cuantas = 3 } = cuerpo;
   const bruto = await pedir({
-    sistema: REGLAS,
+    sistema: REGLAS + fichasDeArquetipos(),
     usuario: `Aqui tienes un encuentro y como le ha ido en el simulador.
 
 ${JSON.stringify(datos, null, 2)}
@@ -249,7 +278,7 @@ export async function narrar(cuerpo) {
   const { datos } = cuerpo;
   return {
     texto: await pedir({
-      sistema: REGLAS,
+      sistema: REGLAS + fichasDeArquetipos(),
       usuario: `Este es el registro de una sola partida del simulador, reducido a sus hitos.
 
 ${JSON.stringify(datos, null, 2)}
