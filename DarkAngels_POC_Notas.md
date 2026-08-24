@@ -11852,3 +11852,66 @@ cualquier otra cosa → golpe de suelo.
 
 Queda pendiente el botón **ARCO** en la fila TEMPORARY WEAPON del Debug HUD: regenerar el panel
 es todo o nada y no tocaba hacerlo en la misma pasada.
+
+## El botón ARCO del §10, y por qué costó tres intentos (2026-08-24)
+
+El arco era la única familia sin botón en la fila TEMPORARY WEAPON — justo la que
+acababa de estrenar descarte. Añadirlo eran dos líneas. Lo que costó fue **volver a poder
+regenerar el panel**, que llevaba roto sin que nadie lo supiera.
+
+Seis no caben a 114 de paso y 110 de ancho: `PW = 580`, `x0 = 8`, o sea 564 útiles, y el
+quinto ya acababa en 574. A **94 de paso y 90 de ancho** el último acaba en 568.
+Verificado en el panel: **LANZA · TROMPETA · HACHA · ESPADON · ARCO · ESCUDO**, y TROMPETA
+—la etiqueta más larga— no se sale de sus 80 px de hueco.
+
+### Los tres bloqueos, en el orden en que aparecieron
+
+**1. `BP_DA_DebugZonas` guardaba la ruta del panel como referencia de CLASE.** Eso deja al
+HUD de debug con un referenciador en el registro de assets, y con un referenciador
+`delete_asset` **devuelve `True` y no borra nada** — lo peor de los dos mundos. El propio
+generador afirmaba lo contrario: *«se puede borrar sin miedo porque nadie lo referencia de
+forma dura»*. Arreglado pasando por `MakeSoftClassPath` desde un **string**, el mismo patrón
+que ya usaba `DbgSpawnUno`. Medido tras un rescan del registro:
+
+| | referenciadores |
+|---|---|
+| antes | `["/Game/DarkAngels/Blueprints/Level/BP_DA_DebugZonas"]` |
+| después | `[]` |
+
+**Y aun así `delete_asset` sigue sin borrar.** Con cero referenciadores, el asset descargado
+de memoria (`find_asset` → `None`), el fichero sin atributo de solo lectura y el editor
+recién arrancado, las dos APIs mienten. **La única vía que funciona es borrar el `.uasset`
+del disco** y hacer `scan_paths_synchronous` para que el registro se entere.
+
+**2. El porte de la mañana estaba a medias.** Las cuatro funciones del resalte y el sonido
+estaban escritas como `dsl_*` pero **nunca registradas en `grafos`**, y encima `DbgBoton` no
+llamaba a `DbgHoverBoton` ni `DbgToggle` a `DbgSonarPanel`. La guarda del script
+—`hasattr(d,'dsl_hover_boton')`— daba `True`: **comprueba que la función exista en el
+módulo, no que se genere.** La pasada moría con *«CallFunction|DbgSonarClick does not
+exist»*.
+
+**3. El multi-bind del ratón cableaba al revés.** `Game|Player|GetMousePosition` devuelve
+**(LocationX, LocationY, ReturnValue)** — medido con `get_node_type_pins` —, no
+`(bool, X, Y)` como decía el comentario del que se portó. El booleano acababa en una
+coordenada.
+
+### El prevuelo, que es lo que evita repetir el día
+
+La regeneración es **todo o nada**, y hoy me dejó sin panel dos veces. Ahora la lista
+`grafos` se construye **antes** de borrar el hijo, y una pasada previa escanea todas las
+llamadas `CallFunction|Dbg*` y **aborta si alguna no está registrada**, sin tocar nada.
+En seco: 101 funciones, cero llamadas huérfanas.
+
+### Dos cosas que quedan dichas para no volver a suponerlas
+
+- **El tamaño CRECE con una regeneración limpia**, no baja. Sospechaba que los 17,9 MB del
+  asset viejo eran copias huérfanas acumuladas; falso: la pasada limpia da **19,6 MB**,
+  porque ahora genera cuatro funciones más y un botón más. La hipótesis del engorde era mía
+  y estaba equivocada.
+- **`Responding: False` en el proceso del editor no es un cuelgue.** Escribiendo 101 grafos
+  el message pump se bloquea media hora larga, pero el MCP **sigue contestando** — se le
+  puede preguntar por `list_graphs` y ver cuántos lleva. Es la forma de distinguir «está
+  trabajando» de «se ha muerto», que hoy confundí una vez.
+
+Roce cosmético anterior a esto: la etiqueta `COMBAT LOG` está fijada en y=512 y los botones
+de CORRUPTION STAGE acaban en 516, así que se pisan 4 px.

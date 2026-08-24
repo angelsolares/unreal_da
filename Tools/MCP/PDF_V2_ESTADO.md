@@ -142,8 +142,8 @@ pero hoy los cuatro estados no los ve nadie que no abra el HUD.
 
 De la lista del §10 faltan:
 
-- **Give Arco** — la fila TEMPORARY WEAPON tiene LANZA, TROMPETA, HACHA, ESPADON y ESCUDO.
-  ✅ verificado: **no hay botón de arco**.
+- ~~Give Arco~~ — **hecho el 24/08.** La fila tiene ya los seis: LANZA, TROMPETA, HACHA,
+  ESPADON, **ARCO** y ESCUDO, verificado en el panel en PIE.
 - **Force Shield Discard** — no existe el descarte, así que tampoco el botón.
 - **Show Weapon State** — arma actual, **enemigo de origen**, moveset, off-hand compatible,
   ammo y **motivo de salida** (Swap / Discard / Seal Break). No hay nada de esto.
