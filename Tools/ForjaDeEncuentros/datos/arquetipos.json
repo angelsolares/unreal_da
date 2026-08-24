@@ -6,7 +6,7 @@
       "nombre": "Lancero del Alba",
       "papel": "Alcance y control del espacio",
       "comoPelea": "MEDIDO Y NO ES LO QUE PARECE: su lanza NO da alcance. Llega a 245 cm y la espada de un Vigilante a 241 — cuatro centimetros. La lanza mide 175 cm contra los 138,8 de la espada, pero se agarra a un tercio del asta, asi que sobresale casi lo mismo por delante de la mano. Ademas los cuatro de mele comparten ANIMACION (no existe animacion de lanza), asi que pelea exactamente igual que un Vigilante. Pega 30, tarda 2,21 s por ataque, y SI bloquea: la lanza tiene BlockValue 75.",
-      "comoSeContesta": "Igual que a un Vigilante, porque mecanicamente es un Vigilante que pega mas fuerte y bloquea algo menos. No hay que \"ganarle el alcance\": no lo tiene.",
+      "comoSeContesta": "Igual que a un Vigilante, porque mecanicamente es un Vigilante que pega mas fuerte y bloquea algo menos. No hay que \"ganarle el alcance\": no lo tiene. Y NO alejandose: por encima de 250 cm entra su estocada, que avanza cinco metros y llega a 698.",
       "queAporta": "Su Lanza del Alba es la unica arma que le gana el alcance a un Escudero sin entrar en su rango, y la unica que se puede arrojar a un balcon.",
       "dondeColocarlo": "Donde el jugador lo vea desde la puerta: su silueta es la mas legible de todas (el 72% del contorno es la lanza). Si quieres que la ruta se descubra mirando, este es el enemigo que la señala.",
       "cuidadoCon": "No montes un encuentro cuya leccion sea \"el Lancero te supera en alcance, hazte con su lanza\". Eso no pasa en el juego. Su Lanza del Alba tendra que justificarse por otra cosa —el arrojado, que si esta implementado— o habra que alargarle el arma de verdad."
@@ -24,7 +24,7 @@
       "nombre": "Escudero Celestial",
       "papel": "Muro; fija al jugador en el sitio",
       "comoPelea": "Espada y escudo: 20 de daño, alcance 241, ataque de 1,77 s. Su guardia es la mejor del juego: el DA_WoodenShield tiene BlockValue 100, o sea que el golpe que para no le hace NADA. Su trabajo no es matar: es que no puedas moverte mientras otro te mata.",
-      "comoSeContesta": "Rodeandolo, o con algo que ignore la guardia. De frente y a espadazos es la pelea mas larga del juego.",
+      "comoSeContesta": "Rodeandolo, o con algo que ignore la guardia. De frente y a espadazos es la pelea mas larga del juego. Y NO alejandose: por encima de 250 cm entra su estocada, que avanza cinco metros y llega a 698.",
       "queAporta": "Su Escudo Celestial no suma daño: cambia como se NAVEGA la arena. Con el se cruza un campo de tiro que sin el no se cruza.",
       "dondeColocarlo": "Entre la entrada y el objetivo, o cubriendo a un arquero. Es el enemigo que convierte la distancia en un problema.",
       "cuidadoCon": "Dos escuderos y algo mas a la vez: tres cuerpo a cuerpo encima no dejan hueco para comprometer una animacion, y ahi la espada sola deja de bastar. El techo medido son 2-3 enemigos simultaneos."
@@ -33,7 +33,7 @@
       "nombre": "Elite pesado",
       "papel": "Pared con dientes; el que decide si la pelea es larga",
       "comoPelea": "CORREGIDO OTRA VEZ: SI BLOQUEA. Su DA_GreatAxe tiene BlockValue 75 y el arbol de comportamiento tiene nodos de bloqueo, asi que para el 75% del golpe que pare. En DCS se bloquea con el arma, no hace falta escudo — Malakh lo hace con la espada sola. Pega 30, tarda 2,21 s, tiene 200 de vida y llega a 239 cm.",
-      "comoSeContesta": "Con paciencia y con sus ventanas de recuperacion, que son enormes. No hace falta romperle la guardia porque no tiene: hace falta sobrevivir a golpes de 30 y aprovechar los huecos.",
+      "comoSeContesta": "Con paciencia y con sus ventanas de recuperacion, que son enormes. No hace falta romperle la guardia porque no tiene: hace falta sobrevivir a golpes de 30 y aprovechar los huecos. Y NO alejandose: por encima de 250 cm entra su estocada, que avanza cinco metros y llega a 698.",
       "queAporta": "Su Espadon/Alabarda ignora la guardia y pega a varios: es la respuesta a los escuderos.",
       "dondeColocarlo": "Al fondo, como remate. Nunca de apertura.",
       "cuidadoCon": "Su Espadon ya no es \"el arma anti-guardia porque solo el Vigilante bloquea\": bloquean CUATRO de los cinco. Si quieres una leccion de guard break, tiene que apoyarse en otra cosa."
@@ -42,7 +42,7 @@
       "nombre": "Portador del Estandarte",
       "papel": "Multiplicador; convierte el tiempo en presion",
       "comoPelea": "Espada y escudo como el Vigilante (20 de daño, alcance 241, guardia total con el escudo), pero eso no es lo que hace. Lo que hace es su AURA: mientras este vivo, todo aliado a menos de 1200 cm pega +15. Un Vigilante a su lado pasa de 20 a 35 — un +75%, medido en juego.",
-      "comoSeContesta": "Yendo a por el primero, aunque este detras y aunque cueste llegar. Cada segundo que vive, todos los demas pegan casi el doble. Es exactamente la decision que su presencia quiere provocar.",
+      "comoSeContesta": "Yendo a por el primero, aunque este detras y aunque cueste llegar. Cada segundo que vive, todos los demas pegan casi el doble. Es exactamente la decision que su presencia quiere provocar. Y NO alejandose: por encima de 250 cm entra su estocada, que avanza cinco metros y llega a 698.",
       "queAporta": "Su Estandarte ritual seria la unica arma que no mata: se clava y convierte un trozo de arena en territorio propio. Como objeto todavia no existe — hoy el portador lleva espada y escudo.",
       "dondeColocarlo": "Protegido, y VISIBLE. El aura no tiene efecto visual todavia: si el jugador no ve al portador, el buff sale de la nada y la leccion no se aprende. Hasta que haya VFX, la colocacion es lo unico que lo señala.",
       "cuidadoCon": "Su radio son 1200 cm, que es medio campo: colocado \"lejos y a salvo\" probablemente sigue buffeando a todo el mundo. Si lo quieres fuera del aura, mide. Y dos portadores APILAN: dos auras son +30, o sea 50 de daño por Vigilante. Eso mata a Malakh en dos golpes."
@@ -57,8 +57,9 @@
     "ritmo": "Malakh mata a un enemigo de 100 en cinco golpes de 1,0 s, o sea unos 5 s si no le interrumpen. Un escudero le pega cada 2,2 s. La cuenta que decide un encuentro es esa: cuantos enemigos le estan pegando mientras el gasta esos 5 s.",
     "stamina": "Cuatro esquivas y se queda sin stamina. Si la composicion obliga a esquivar mas de cuatro veces seguidas sin un respiro de 1 s, no es dificil: es imposible.",
     "alcance": "MEDIDO: los cuatro de mele llegan practicamente igual —239 a 245 cm— y Malakh a 243. Nadie gana a nadie por alcance, ni la lanza ni el hacha. Lo que decide es quien llega antes y cuantos te rodean.",
-    "laEstocada": "NO SIMULADO, y conviene tenerlo delante: los cuatro de mele tienen un ataque especial que AVANZA 5 METROS. Su alcance efectivo son 698 cm contra los 241 de un ataque normal. En el juego pueden cerrar siete metros de golpe, asi que \"mantenerse a distancia\" no es una respuesta. El simulador usa la media de los ataques normales y por tanto los SUBESTIMA.",
-    "losVen": "Los cinco detectan a 2000 cm, con un cono de 75 grados, y ademas se despiertan al recibir daño. Picotear a uno por la espalda sin que el resto se entere no funciona si estan a menos de 20 metros."
+    "laEstocada": "YA SE SIMULA. Los cuatro de mele tienen una estocada que AVANZA 5 METROS: alcance efectivo 698 cm contra los 241 de un ataque normal. Y no es un ataque mas del repertorio: cuelga de su propia rama del arbol, con la condicion de que el jugador este a MAS de 250 cm. O sea que es un cierra-distancias — se lanza precisamente cuando crees que estas a salvo. 40% de probabilidad, 4 s de enfriamiento, y se telegrafia con un \"Show Attack Warning\" antes.",
+    "losVen": "Los cinco detectan a 2000 cm, con un cono de 75 grados, y ademas se despiertan al recibir daño. Picotear a uno por la espalda sin que el resto se entere no funciona si estan a menos de 20 metros.",
+    "apartarse": "Apartarse NO es una respuesta contra los de mele. Corren a 600 contra los 400 de Malakh, y ademas tienen la estocada, que existe justamente para castigar la distancia. Contra ellos solo hay dos respuestas: cobertura que corte la linea, o matarlos."
   },
   "malakh": {
     "nombre": "Malakh (el jugador)",
@@ -69,6 +70,7 @@
     "beber": "El frasco cura 25 y la animacion dura 1,89 s, con la cura a los 1,17 s. Beber delante de dos enemigos es regalar un golpe de 20 o 30.",
     "velocidad": "Corre a 400 (trote, su estado por defecto) y a 550 esprintando. Los cinco enemigos corren a 600. NO PUEDE HUIR DE NADIE, ni esprintando. Cualquier retirada es una retirada peleando.",
     "loQueNoSabemos": "No estan medidos: cuanto se desplaza el rodillo (es root motion) y el multiplicador de daño del ataque pesado. Todo lo demas de esta ficha sale del motor.",
-    "alcance": "Su espada llega a 179 cm con el ataque ligero y 174 con el pesado, medido de la pose real a lo largo de la ventana de golpe. Para comparar: el Lancero pincha desde 320. Malakh tiene que meterse DENTRO del alcance del Lancero para poder tocarle, y eso es la pelea entera."
+    "alcance": "Su espada llega a 179 cm con el ataque ligero y 174 con el pesado, medido de la pose real a lo largo de la ventana de golpe. Para comparar: el Lancero pincha desde 320. Malakh tiene que meterse DENTRO del alcance del Lancero para poder tocarle, y eso es la pelea entera.",
+    "laDistancia": "No puede usarla. Corre a 400 y ellos a 600; esprintando llega a 550 y sigue sin bastar; y si abre hueco por encima de 250 cm se come una estocada de cinco metros. La distancia es una herramienta de los enemigos, no suya."
   }
 }

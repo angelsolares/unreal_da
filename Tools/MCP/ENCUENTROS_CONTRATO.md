@@ -466,3 +466,35 @@ el arma da enemigos que se plantan a 200 y nunca entran en su propio rango de go
 se quedan congelados sin atacar jamás. El alcance que hay que usar es el **efectivo
 desde donde se comprometen** — arma **más** lo que el root motion los lleva hacia
 delante, que en estos ataques son entre 15 y 154 cm.
+
+### 6.14 La estocada, simulada
+
+El §6.13 la dejó apuntada como «no modelada, y es gorda». Ya está dentro, con sus
+números del árbol:
+
+```
+Sequence [Chance 40] [Distance Check > 250] [Cooldown 4s]
+   Show Attack Warning
+   SpecialAttack        <- M_AI_SpecialAttack_01
+```
+
+**Lo importante no es que pegue lejos: es de qué rama cuelga.** La condición es
+`DistanceToTarget > 250`, o sea que **solo se lanza cuando el jugador está lejos**.
+Es un cierra-distancias, no un ataque más del repertorio. Se telegrafía con un
+`Show Attack Warning`, avanza 500 cm de root motion y su alcance efectivo son 698 cm
+(703 con lanza, 697 con hacha) contra los 241 de un ataque normal. Dura 2,29 s con el
+golpe en el 1,06; los de arma a dos manos llevan el −20% y quedan en 2,87.
+
+**Consecuencia de diseño, y es la que importa:** apartarse no es una respuesta contra
+estos enemigos. Corren a 600 contra los 400 de Malakh (550 esprintando), y si abre
+hueco por encima de 250 cm entra la estocada. Las únicas respuestas son cobertura que
+corte la línea, o matarlos.
+
+**Lo que le hace al veredicto:** dos enemigos dejan de ser un trámite. Un Escudero más
+un Lancero en campo abierto pasa del 100% al **42%**; dos Escuderos, del 100% al 68%.
+
+**Lo único de este bloque que no sale del motor** es cada cuánto se reintenta la
+tirada del 40%. En el árbol el decorador `Chance` va **antes** del `Cooldown`, así que
+una tirada fallida no gasta el enfriamiento y se vuelve a tirar — pero tirar a 30 Hz
+convierte el 40% en certeza en dos fotogramas. El emulador reintenta cada 0,5 s, que
+es un supuesto: la cadencia real de re-evaluación del árbol no se ha medido.

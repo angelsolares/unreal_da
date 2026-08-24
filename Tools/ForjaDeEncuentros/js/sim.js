@@ -123,6 +123,8 @@ export class Simulacion {
         tEstado: 0,
         accion: null,
         recarga: this.azar.rango(0, p.recarga * 0.5),
+        estocadaEnfriando: 0,
+        estocadaReintento: 0,
         alertado: false,
         perfil: p,
         danoInfligido: 0,
@@ -359,6 +361,8 @@ export class Simulacion {
     const M = this.malakh;
     E.tEstado += dt;
     E.recarga = Math.max(0, E.recarga - dt);
+    E.estocadaEnfriando = Math.max(0, (E.estocadaEnfriando || 0) - dt);
+    E.estocadaReintento = Math.max(0, (E.estocadaReintento || 0) - dt);
 
     if (E.estado === ESTADOS.ATURDIDO) {
       if (E.tEstado >= E.accion.duracion) this._aLibre(E);
@@ -408,12 +412,59 @@ export class Simulacion {
     const d = dist(E.pos, M.pos) - M.radio;
     const decide = p.distanciaDecision ?? p.alcanceAtaque;
     if (d > decide) {
+      if (this._intentaEstocada(E, d, dt)) return;
       this._avanzarHacia(E, M, p.distanciaPreferida, dt);
       return;
     }
     if (E.recarga <= 0 && Math.abs(deltaAngulo(E.yaw, yawDe(resta(M.pos, E.pos)))) < 35) {
       this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: this._danoDe(E) });
     }
+  }
+
+  /**
+   * La estocada: el ataque que cierra la distancia.
+   *
+   * Es una rama propia del BT_WarriorAI, hermana de la de acercarse:
+   *
+   *   Sequence [Chance 40] [Distance Check > 250] [Cooldown 4s]
+   *      Show Attack Warning
+   *      SpecialAttack
+   *
+   * O sea: SOLO se lanza cuando el jugador esta LEJOS —por encima de 250 cm de
+   * centro a centro—, con un 40% de probabilidad y 4 s de enfriamiento. No es
+   * un ataque mas del repertorio: es un cierra-distancias, y por eso apartarse
+   * no funciona contra estos enemigos.
+   *
+   * Avanza 500 cm de root motion, asi que aqui SI se mueve al enemigo: si solo
+   * le diera alcance sin moverlo, se quedaria lejos despues de la estocada y el
+   * jugador podria repetir la distancia indefinidamente.
+   *
+   * Devuelve true si la lanzo, para que el paso no siga con el acercamiento.
+   */
+  _intentaEstocada(E, d, dt) {
+    const est = E.perfil.estocada;
+    if (!est) return false;
+    if (E.estocadaEnfriando > 0) return false;
+    if (d > est.distanciaMaxima) return false;      // fuera de la rama de combate
+    // OJO: NO se mira E.recarga. La recarga es del ataque normal; la estocada
+    // cuelga de otra rama del arbol y tiene su propio Cooldown de 4 s. Mirarla
+    // hacia que casi no saliera, porque los enemigos entran en combate con la
+    // recarga a medias y para cuando se vacia ya estan encima del jugador.
+
+    // En el arbol el decorador Chance va ANTES del Cooldown, asi que una tirada
+    // fallida no gasta el enfriamiento: se vuelve a tirar. Lo que no se puede es
+    // tirar a 30 Hz, o el 40% se convierte en certeza en dos fotogramas; el
+    // reintento cada 0,5 s es SUPUESTO —la cadencia real del arbol no se ha
+    // medido— y es lo unico de este bloque que no sale del motor.
+    if ((E.estocadaReintento || 0) > 0) return false;
+    E.estocadaReintento = 0.5;
+    if (!this.azar.probabilidad(est.probabilidad)) return false;
+
+    E.estocadaEnfriando = est.enfriamiento;
+    this._iniciarAtaque(E, {
+      ...est, alcance: est.alcance, dano: this._danoDe(E), esEstocada: true
+    });
+    return true;
   }
 
   _pasoArquero(E, dt) {
@@ -462,6 +513,22 @@ export class Simulacion {
     const a = A.accion;
     const t = A.tEstado;
     const ini = a.impacto, fin = a.impacto + (a.ventana ?? 0.12);
+
+    // Root motion de la estocada: los 500 cm se reparten entre el arranque y el
+    // impacto, que es cuando la animacion los recorre. Se para al tocar al
+    // objetivo — el motor tiene colision, y sin esto la estocada lo atraviesa.
+    if (a.avance && t <= fin) {
+      const objetivo = A.bando === 'malakh' ? this.agente(A.objetivoId) : this.malakh;
+      if (objetivo && objetivo.estado !== ESTADOS.MUERTO) {
+        const hueco = dist(A.pos, objetivo.pos) - A.radio - objetivo.radio;
+        if (hueco > 0) {
+          const paso = Math.min((a.avance / Math.max(fin, 0.01)) * dt, hueco);
+          const dir = normaliza(resta(objetivo.pos, A.pos));
+          A.yaw = giraHacia(A.yaw, yawDe(dir), (A.perfil.velocidadGiro || 360) * dt);
+          this._mover(A, escala(dir, paso));
+        }
+      }
+    }
 
     if (t < ini) A.estado = ESTADOS.ANTICIPACION;
     else if (t <= fin) A.estado = ESTADOS.ACTIVO;

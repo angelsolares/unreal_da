@@ -91,7 +91,19 @@
       "elevable": false,
       "arma": "lanza_del_alba",
       "reduccionGuardia": 0.75,
-      "distanciaDecision": 208
+      "distanciaDecision": 208,
+      "estocada": {
+        "nombre": "Estocada",
+        "alcance": 703,
+        "avance": 500,
+        "duracion": 2.865,
+        "impacto": 1.329,
+        "ventana": 0.216,
+        "arco": 40,
+        "probabilidad": 0.4,
+        "enfriamiento": 4,
+        "distanciaMaxima": 458
+      }
     },
     "arquero_del_firmamento": {
       "nombre": "Arquero del Firmamento",
@@ -138,7 +150,19 @@
       "reduccionGuardia": 1,
       "elevable": false,
       "arma": "escudo_celestial",
-      "distanciaDecision": 208
+      "distanciaDecision": 208,
+      "estocada": {
+        "nombre": "Estocada",
+        "alcance": 698,
+        "avance": 500,
+        "duracion": 2.292,
+        "impacto": 1.063,
+        "ventana": 0.173,
+        "arco": 40,
+        "probabilidad": 0.4,
+        "enfriamiento": 4,
+        "distanciaMaxima": 458
+      }
     },
     "elite_pesado": {
       "nombre": "Elite pesado",
@@ -161,7 +185,19 @@
       "elevable": false,
       "arma": "espadon_alabarda",
       "reduccionGuardia": 0.75,
-      "distanciaDecision": 208
+      "distanciaDecision": 208,
+      "estocada": {
+        "nombre": "Estocada",
+        "alcance": 697,
+        "avance": 500,
+        "duracion": 2.865,
+        "impacto": 1.329,
+        "ventana": 0.216,
+        "arco": 40,
+        "probabilidad": 0.4,
+        "enfriamiento": 4,
+        "distanciaMaxima": 458
+      }
     },
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
@@ -184,7 +220,19 @@
       "elevable": false,
       "arma": "estandarte_ritual",
       "reduccionGuardia": 1,
-      "distanciaDecision": 208
+      "distanciaDecision": 208,
+      "estocada": {
+        "nombre": "Estocada",
+        "alcance": 698,
+        "avance": 500,
+        "duracion": 2.292,
+        "impacto": 1.063,
+        "ventana": 0.173,
+        "arco": 40,
+        "probabilidad": 0.4,
+        "enfriamiento": 4,
+        "distanciaMaxima": 458
+      }
     }
   },
   "procedencia": {
@@ -232,7 +280,7 @@
     "arquetipos.*.alcanceAtaque": "medido 2026-08-24 — alcance EFECTIVO desde donde el atacante se compromete: la longitud del arma MAS lo que el root motion lo lleva hacia delante durante el golpe. Medir solo el arma daba enemigos que no llegaban nunca (se plantan a 200 y el arma llega a 171), y eso es falso: los ataques de la IA avanzan entre 15 y 154 cm. Media de los cinco ataques normales: espada 241,3 / hacha 238,5 / lanza 245,1. Los CUATRO de mele comparten animacion, asi que la unica diferencia es el arma.",
     "arquetipos.lancero_del_alba.alcanceAtaque": "medido 2026-08-24 — LA LANZA SIGUE SIN DAR ALCANCE: 245 contra los 241 de la espada. Cuatro centimetros. Mide 175 cm contra los 138,8 de la espada, pero se agarra a un tercio del asta y sobresale casi lo mismo por delante de la mano. Los 320 que tenia eran invencion, y con ellos se cae la premisa de que al Lancero se le responde por el alcance.",
     "arquetipos.arquero_del_firmamento.alcanceAtaque": "medido 2026-08-24 — NO TIENE LIMITE DE ALCANCE. El decorador D_CanShootArrow solo comprueba un cono de 25 grados y la vision: no hay comprobacion de distancia. La flecha sale a 3500 cm/s, vive 4 s y su projectile_gravity_scale es 0 — no cae. Eso son 14.000 cm en linea recta, tres veces la diagonal de la arena de \"Romper la linea\". El arquero dispara desde donde sea con tal de verte. Los 2200 que tenia eran invencion, y ademas dulcificaban el problema: cortar la linea de vision no es UNA respuesta, es LA respuesta.",
-    "arquetipos.*.ataque.duracion": "medido 2026-08-24 — los montages de IA tambien llevan rate_scale (1,3 y 1,4), igual que los del jugador. Reales: ligero 1,555 s, pesado 1,729, especial 2,292; media de los seis 1,765. Mi \"2,000 s medidos\" del Lancero era la longitud EN CRUDO. Con el -20% de las armas a dos manos, Lancero y Heraldo quedan en 2,206 — no en los 2,5 y 3,1 que tenia.",
+    "arquetipos.*.ataque.duracion": "medido 2026-08-24 — los montages de IA tambien llevan rate_scale (1,3 y 1,4), igual que los del jugador. Reales: ligero 1,555 s, pesado 1,729, especial 2,292; media de los seis 1,765. Mi \"2,000 s medidos\" del Lancero era la longitud EN CRUDO. Con el -20% de las armas a dos manos, Lancero y Heraldo quedan en 2,206 — no en los 2,5 y 3,1 que tenia. El reparto ligero/pesado tambien esta medido: el LightAttack lleva un decorador Chance 60, asi que son 60% ligero y 40% pesado; el simulador usa la media de los dos y no los distingue.",
     "arquetipos.*.distanciaPreferida": "medido 2026-08-24 — BT_WarriorAI, BTTask_MoveTo de combate: AcceptableRadius 150, y bReachTestIncludesAgentRadius y bReachTestIncludesGoalRadius estan los DOS en True (comprobado, no supuesto). O sea que los 150 son entre SUPERFICIES: centro a centro son 150 + 50 del enemigo + 42 de Malakh = 242. El simulador mide esta distancia como centro-a-superficie, asi que le corresponden 200. Es el mismo arbol para los cuatro de mele: no hay preferencia por arquetipo, y el Lancero ya no se queda atras.",
     "arquetipos.*.rangoAggro": "medido 2026-08-24 — BP_BaseAIController, AIPerception: AISenseConfig_Sight con SightRadius 2000, LoseSightRadius 2500 y un cono de vision de 75 grados. Los cinco comparten controlador, asi que es el mismo numero para todos; mis 1200-2400 por arquetipo eran invencion. NO confundir con el < 500 del decorador \"Is In Attack Range?\" del Behaviour Tree: eso es la puerta de la rama de combate, no la deteccion. Ponerlo como aggro dejaba al Lancero plantado sin enterarse de nada mientras mataban a sus companeros a 20 metros.",
     "arquetipos.arquero_del_firmamento.distanciaMinima": "medido 2026-08-24 — BT_ArcherAI, decorador \"Is Close to Target\": DistanceToTarget < 300. Tenia 500.",
@@ -241,8 +289,9 @@
     "arquetipos.elite_pesado.guardia": "CORREGIDO igual que el Lancero. El Heraldo lleva hacha a dos manos con BlockValue 75 y el mismo arbol, asi que bloquea. Deroga lo que decia el contrato en su §1.2 —\"lento y sin guardia\"— y deroga tambien mi propia nota de que el hacha es el arma anti-guardia porque solo el Vigilante bloquea: bloquean CUATRO de los cinco.",
     "aviso.medicionDeEnemigos": "Segunda pasada sobre los enemigos (24/08). Tres cosas que daba por buenas eran falsas: la lanza no da alcance (4 cm sobre la espada, no 120), el arquero no tiene limite de alcance (14.000 cm, no 2200), y el Lancero y el Heraldo SI bloquean (75%, no 0). Los veredictos anteriores a esta fecha se calcularon con enemigos mas faciles de lo que son.",
     "arquetipos.*.distanciaDecision": "medido 2026-08-24 — BT_WarriorAI, decorador \"Distance Check\": la rama que ataca pide DistanceToTarget < 250, que es centro a centro; menos los 42 de la capsula de Malakh son 208 de centro a superficie. NO es lo mismo que alcanceAtaque: el enemigo LANZA el golpe desde 208 pero su arma solo llega a 171, asi que amaga y falla a maxima distancia. Tenerlos como un solo numero dejaba al enemigo parado sin atacar nunca, porque su MoveTo lo planta a 200 y eso ya esta fuera de su rango de golpe.",
-    "aviso.ataqueEspecial": "NO MODELADO, y es gordo. El M_AI_SpecialAttack_01 del Behaviour Tree es una estocada que avanza 500 cm: su alcance efectivo son 698 cm, casi tres veces el de un ataque normal. Esta en el arbol como una de las tres ramas de ataque, asi que los cuatro de mele lo tienen. El simulador usa un solo perfil de ataque por enemigo y se queda con la media de los CINCO ataques normales (241), o sea que HOY SUBESTIMA a los enemigos: en el juego pueden cerrar siete metros de golpe. Modelarlo pide un segundo perfil de ataque por arquetipo.",
-    "aviso.percepcion": "NO MODELADO: el cono de vision de 75 grados (el simulador usa un radio, asi que sus enemigos ven por detras) y el AISenseConfig_Damage, que hace que golpear a uno lo despierte aunque no te vea. El segundo importa para el diseno: no se puede ir picoteando enemigos por la espalda sin que se enteren."
+    "aviso.ataqueEspecial": "YA SE SIMULA (24/08). Antes decia \"NO MODELADO, y es gordo\". El simulador lanza la estocada con su probabilidad, su enfriamiento y su puerta de distancia reales, y MUEVE al enemigo los 500 cm en vez de solo darle alcance: si solo le diera alcance, el enemigo se quedaria lejos despues de estocar y el jugador podria repetir la distancia indefinidamente.",
+    "aviso.percepcion": "NO MODELADO: el cono de vision de 75 grados (el simulador usa un radio, asi que sus enemigos ven por detras) y el AISenseConfig_Damage, que hace que golpear a uno lo despierte aunque no te vea. El segundo importa para el diseno: no se puede ir picoteando enemigos por la espalda sin que se enteren.",
+    "arquetipos.*.estocada": "medido 2026-08-24 — M_AI_SpecialAttack_01. Es una rama PROPIA del BT_WarriorAI, hermana de la de acercarse: Sequence [Chance 40] [Distance Check > 250] [Cooldown 4s] -> Show Attack Warning -> SpecialAttack. O sea que NO es un ataque mas del repertorio: solo se lanza cuando el jugador esta LEJOS. Avanza 500 cm de root motion y su alcance efectivo son 698 cm (703 con lanza, 697 con hacha). Dura 2,292 s reales con el golpe en el 1,063; los de arma a dos manos llevan el -20% y quedan en 2,865. El distanciaMaxima 458 es la puerta \"Is In Attack Range? < 500\" pasada a centro-superficie."
   },
   "aura": {
     "arquetipo": "portador_del_estandarte",

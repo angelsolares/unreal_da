@@ -272,13 +272,22 @@ premisas del diseño no sobrevivieron:
 - **Bloquean cuatro de los cinco**, no uno. En DCS se bloquea con el arma: escudo 100%,
   lanza y hacha 75%. Lo de «sin escudo no bloquea» era invención mía.
 
+- **Y tienen una estocada de cinco metros.** `M_AI_SpecialAttack_01` avanza 500 cm:
+  alcance efectivo **698 cm**. No es un ataque más del repertorio — cuelga de su
+  propia rama del árbol, con la condición de que el jugador esté a **más** de 250 cm.
+  Es un cierra-distancias: se lanza justo cuando crees que estás a salvo. Simulada
+  desde el 24/08 con su 40% de probabilidad, sus 4 s de enfriamiento y su avance real.
+
 **Dónde queda el techo con todo medido:**
 
 | | espada sola gana |
 |---|---|
-| 2 enemigos | **95%** |
+| 2 enemigos | **68%** en campo abierto, 95% en la geometría de «Romper la línea» |
 | 3 enemigos en campo abierto | **0%** |
 | «Romper la línea» entera, 5 enemigos | **0%**, 200 muertes de 200 |
+
+Con la estocada simulada, **dos enemigos ya no son un trámite**: un Escudero más un
+Lancero se gana el 42% en campo abierto. Apartarse dejó de ser una respuesta.
 
 El techo son **dos enemigos**, y la caída del tercero es un acantilado, no una
 pendiente. Lo que la herramienta existía para responder ya está respondido, y la
