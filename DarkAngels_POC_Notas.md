@@ -11556,3 +11556,32 @@ Malakh**, y sus alas tapan la escena. Para fotos de entorno: `set_actor_hidden_i
 encuadras**: plantar y fotografiar en el MISMO script.
 
 Pendiente de la familia: sin animación de clavado — el gesto es instantáneo.
+
+## Recrear M_DA_ClavarEstandarte (2026-08-23)
+
+El clavado de la trompeta ya no es instantáneo: `ArrojarLanza` con la trompeta reproduce
+`M_DA_ClavarEstandarte` y el notify dispara `PlantarEstandarte` en el golpe. Como todo
+`Content/DarkAngels/Animations/`, el montage **no viaja en git** — receta para rehacerlo
+(pide el Throwing Animation Pack, y los esqueletos ya están marcados compatibles del
+montage de arrojar):
+
+1. **La fuente es `AS_T_BH_Overslam`** (1,467 s, rate 1.0): levanta a dos manos, sostiene,
+   y golpea hacia abajo. Leído como "clavar", es el gesto exacto.
+2. ```python
+   unreal.AnimMontageService.create_montage_from_animation(
+       '/Game/Throwing_Pack/Animation/Both_Hand/AS_T_BH_Overslam',
+       '/Game/DarkAngels/Animations/Estandarte', 'M_DA_ClavarEstandarte')
+   unreal.AnimMontageService.set_slot_name('<ruta>', 0, 'FullBody')
+   unreal.AnimMontageService.add_notify('<ruta>',
+       '/Game/DarkAngels/Blueprints/Combat/BP_DA_NotifyClavar.BP_DA_NotifyClavar_C',
+       0.85, 'Clavar')
+   ```
+3. **La marca de 0,85 s no es a ojo: está medida de la pose.** `get_pose_at_time` sobre la
+   SECUENCIA (nunca el montage — el assert de siempre) muestra `hand_r` subiendo a z=183
+   hasta t=0,73 y tocando fondo (z=64,6) en **t=0,856**. Ahí golpea. Afinable arrastrándola
+   en el editor.
+4. `BP_DA_NotifyClavar` **sí viaja en git**: duplicado de `BP_DA_NotifyArrojar` con
+   `Received_Notify` llamando a `PlantarEstandarte` en vez de `ArrojarArmaTemporal`.
+
+Verificado en PIE: la tecla con la trompeta suena `M_DA_ClavarEstandarte`, a los 0,85 s
+aparece la zona y la espada vuelve; con la lanza sigue sonando `M_DA_ArrojarLanza`.
