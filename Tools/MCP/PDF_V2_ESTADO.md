@@ -19,7 +19,7 @@ de descarte**, **las cinco recetas de encuentro sin construir** y **el director 
 | § | Bloque | Estado |
 |---|---|---|
 | 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
-| 3.2 | Ataque de descarte por familia | 🟠 **3 de 5** (+ el resto ya no cae en vacío) |
+| 3.2 | Ataque de descarte por familia | 🟠 **4 de 5** (+ el resto ya no cae en vacío) |
 | 4 | Arsenal de oportunidad | 🟠 5 familias existen; **2 chocan con el equipo base** |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
 | 5 | Orden de bajas implícito | 🟠 falta la reacción enemiga |
@@ -46,13 +46,20 @@ La tabla del PDF pide uno por familia. Hay dos:
 | Estandarte | clavarlo para una última zona | ✅ `M_DA_ClavarEstandarte` + zona de 15 s |
 | **Espadón/Alabarda** | golpe de suelo de stagger/guard break | ✅ **`M_DA_GolpeDeSuelo`** (24/08) |
 | **Escudo** | shield bash final o lanzamiento | ❌ sin gesto propio |
-| **Arco** | consumir las flechas en una descarga | ❌ sin gesto propio |
+| **Arco** | consumir las flechas en una descarga | ✅ **`M_DA_LluviaFirmamento`** (24/08) |
 
 **Hecho el 24/08.** El golpe de suelo daña, derriba y lanza a todo enemigo en 600 uu. Medido
 en PIE con cinco en corro: vida 100 → 40 en los cinco, todos por el aire (z 116 → 212) y en el
 suelo 1 s después, de pie a los 3 s. Sin `HitData.CanBeBlocked`, que un guard break bloqueable
 no rompe ninguna guardia. La caída sale del **Knockdown & Get-Up Pack** de Raise Creation
 (`AS_KG_Heavy`, la única que sube antes de caer).
+
+**La Lluvia del Firmamento** (24/08) cierra la cuarta familia. Radio 450 uu a 1.600 del
+jugador — sin solaparse con los 600 del golpe de suelo—, con 1,2 s de telegrafiado y un anillo
+en el suelo que marca donde va a caer. **El daño es 3 × las flechas que te queden**, así que es
+el único descarte cuya potencia acumulas: medido en PIE, 30 flechas = 90 de daño, los tres de
+dentro a 10 de vida y el de 1.200 uu intacto. Tope de 24 flechas en pantalla; por encima sube el
+daño, no el número. Malakh no se hace daño si se mete dentro.
 
 **Y el agujero de fondo, tapado:** el último caso de `ArrojarLanza` era un `elif` sobre el arma
 arrojadiza, así que **todo lo demás caía por un camino vacío** — con el hacha, FORCE DISCARD no

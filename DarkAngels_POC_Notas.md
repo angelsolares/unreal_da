@@ -11746,3 +11746,109 @@ S.set_slot_name(p2, 0, 'FullBody')
 demás caía por un camino vacío**. Ahora ese último caso es un `else` y va al golpe de suelo:
 trompeta → clavar, arrojadiza → arrojar, **cualquier otra cosa → golpe de suelo**. No queda
 arma temporal sin remate, que es lo que el §3.2 pide de toda la familia.
+
+## La Lluvia del Firmamento: el descarte del arco (2026-08-24)
+
+Cuarta familia del §3.2 con remate. El PDF daba dos opciones —descarga o disparo perforante—
+y el perforante no valía: el §6.16 midió que **el arco no tiene límite de alcance**, así que un
+tiro que atraviesa sería un tiro normal un poco mejor. La lluvia sí es un evento, y encima es
+**el único AoE a distancia** del arsenal: el golpe de suelo limpia lo que tienes encima, la
+lluvia castiga a un grupo al que no llegas.
+
+### Los números, y por qué encajan entre sí
+
+| | |
+|---|---|
+| radio | **450 uu** |
+| distancia al centro | **1.600 uu** al frente |
+| daño | **3 por flecha del carcaj** |
+| tope en pantalla | **24 flechas** |
+| retardo | **1,2 s** desde la suelta |
+
+El borde interior cae en 1.600 − 450 = **1.150 uu**, muy por fuera de los 600 del golpe de
+suelo: **los dos ataques no se solapan**. Y 1.600 pasa de los 1.000-1.100 a los que un enemigo
+se planta, así que la lluvia siempre cae en terreno que no pisas.
+
+**El tamaño de la descarga es lo que hayas ahorrado.** Es el único descarte con potencia
+variable — la lanza y el golpe siempre pegan igual—, y convierte el contador de flechas en una
+decisión. Por encima de 24 no salen más flechas en pantalla, pero el daño **sigue subiendo**.
+
+**Malakh no se hace daño** aunque se meta dentro: el barrido solo mira `BP_BaseAI` y filtra por
+`DCS|Utility|IsEnemy`, igual que el golpe de suelo.
+
+### Las piezas
+
+| pieza | qué es |
+|---|---|
+| `M_DA_LluviaFirmamento` | el gesto, de `Anim_AR_ShootAndGetNew`. **DCS solo usa 0..0,21 de esa secuencia**; entera dura 0,856 y es suelta + coger otra flecha, que como remate lee mucho mejor |
+| `BP_DA_NotifyLluvia` | a 0,15 s, justo tras soltar la cuerda |
+| `LluviaDelFirmamento` | calcula el punto, lanza la marca, arma el temporizador y purga la temporal |
+| `ImpactoLluvia` | a 1,2 s: barre el radio y aplica el daño |
+| `BP_DA_MarcaLluvia` | el anillo del suelo y las flechas que caen |
+| `BP_DA_FlechaLluvia` | una flecha que baja y se clava |
+| `MI_DA_MarcaLluvia` | el anillo, con el brillo bajado |
+
+### Tres decisiones de arquitectura
+
+- **Las flechas no hacen daño: son espectáculo.** El daño se aplica de una vez al vencer el
+  temporizador. Así un remate no puede fallar por dispersión, el coste está acotado (24 actores
+  como mucho) y no dependemos del cableado de daño de los proyectiles de DCS.
+- **El radio se evalúa AL IMPACTAR**, no al disparar: quien se salga durante los 1,2 s se
+  libra. Eso es lo que hace justo el telegrafiado.
+- **La flecha no recibe parámetros: le pregunta a su dueño.** Exponer variables al spawn no lo
+  cubre el toolset, así que la flecha lee la Z de `GetOwner()` — y su dueño es la marca, que
+  está plantada justo en el suelo donde cae la lluvia.
+
+Y una que sí es de diseño: **la dirección del impacto se calcula desde 1.200 uu por encima del
+centro**, no desde el centro. Son flechas: la reacción tiene que venir de arriba.
+
+### Medido en PIE
+
+Cuatro enemigos, tres dentro (233-250 uu del centro) y uno fuera a 1.200:
+
+- daño `90` = **30 flechas × 3** — el carcaj de partida son 30, y el contador se leyó bien
+- los tres de dentro: 100 → **10**. El de fuera, **100 intacto**: el radio corta donde debe
+- en pantalla, **24 flechas** con 30 en el carcaj: el tope funciona
+- a t=0,99 volaban entre z=185 y z=795; a t=1,70 las 24 a z=20, clavadas
+- el arco desaparece de la mano y vuelve la espada sola
+
+**Con `DanoPorFlecha` a 4 el carcaj lleno hacía 120 y mataba al grupo entero de un botón.**
+Bajado a 3: 30 × 3 = 90, justo por debajo de los 100 de vida. Ablanda, no borra.
+
+### Trampas nuevas
+
+- **`Getters|FindItem` es multi-salida `(ItemFound, Index)`.** En línea, el escritor coge el
+  **bool** y lo mete por un `ToInteger`, así que el índice sale 0 o 1. Hay que multi-bindear.
+  Lo mismo con **`BreakFStoredItem`, que saca `(Id, Item, Amount)`**: un bind suelto se lleva el
+  Guid. *(Y `ReponerFlechas`, escrita antes, tiene la primera forma: funciona de casualidad
+  porque solo usa el Amount para comparar.)*
+- **`Game|AddComponentbyClass` acepta 2 argumentos al escribir** (`self`, `Class`) aunque el
+  lector muestre 4.
+- **No edites Blueprints con PIE corriendo**: `write_graph_dsl` devuelve los *Accessed None* del
+  AnimInstance de DCS y la llamada falla.
+- **Y no llames al mundo de PIE antes de que exista.** `editor_request_begin_play` es asíncrono;
+  si el script siguiente hace `get_player_pawn(None, 0)` y luego `call_method`, **se lleva por
+  delante el intérprete y con él todo el MCP** — dejan de responder hasta los toolsets de C++, y
+  el editor no cierra ni con `CloseMainWindow`. Hay que separar el arranque de PIE de la primera
+  llamada al mundo, y comprobar que `get_game_world()` no es nulo antes de tocar nada.
+
+### Recrear el montage (vive fuera de git)
+
+```python
+S = unreal.AnimMontageService
+p = S.create_montage_from_animation(
+    '/Game/DynamicCombatSystem/ArcheryModule/Animations/Archery/Actions/'
+    'Anim_AR_ShootAndGetNew',
+    '/Game/DarkAngels/Animations/Arco', 'M_DA_LluviaFirmamento')
+S.set_slot_name(p, 0, 'FullBody')
+S.add_notify(p, '/Game/DarkAngels/Blueprints/Combat/BP_DA_NotifyLluvia'
+                '.BP_DA_NotifyLluvia_C', 0.15, 'Lluvia')
+```
+
+### El enrutado, ya con cuatro familias
+
+`ArrojarLanza`: trompeta → clavar · arrojadiza → arrojar · **`DA_ElvenBow` → lluvia** ·
+cualquier otra cosa → golpe de suelo.
+
+Queda pendiente el botón **ARCO** en la fila TEMPORARY WEAPON del Debug HUD: regenerar el panel
+es todo o nada y no tocaba hacerlo en la misma pasada.
