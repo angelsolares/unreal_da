@@ -20,7 +20,7 @@ de descarte**, **las cinco recetas de encuentro sin construir** y **el director 
 |---|---|---|
 | 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
 | 3.2 | Ataque de descarte por familia | 🟠 **4 de 5** (+ el resto ya no cae en vacío) |
-| 4 | Arsenal de oportunidad | 🟠 5 familias existen; **2 chocan con el equipo base** |
+| 4 | Arsenal de oportunidad | 🟢 las 5 familias existen y las 5 aportan |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
 | 5 | Orden de bajas implícito | 🟠 falta la reacción enemiga |
 | 6 | Recetas de encuentro | 🔴 **0 de 5 construidas** |
@@ -101,7 +101,17 @@ El emulador ya renunció a modelarlo por esto mismo (§6.2 del contrato).
 
 ## 🟠 Lo que está a medias
 
-### El Arco y el Escudo chocan con el equipo base (§4)
+### ~~El Arco y el Escudo chocan con el equipo base~~ (§4) — **resuelto el 24/08**
+
+Malakh ya **no** lleva arco ni escudo — ni el `DA_GreatAxe` que también arrastraba sin que
+nadie lo supiera. Arranca solo con `DA_SteelSword` y su carcaj de 30 flechas, que se conserva
+porque si no el arco robado llegaría sin munición. El arco del Arquero y el escudo del
+Vigilante vuelven a ser recompensa táctica, que es lo que el §4 les pide.
+
+Y de paso salió a la luz que **el arma temporal iba siempre a la ranura de melé**, con lo que
+un arco robado se equipaba pero no se veía. Corregido: ahora enruta por tipo de item.
+
+Lo que sigue debajo es el diagnóstico original, que se deja por su valor de medida:
 
 ✅ **VERIFICADO en PIE** — el loadout de partida de Malakh son **cinco** displayed items:
 
