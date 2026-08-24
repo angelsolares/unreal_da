@@ -57,6 +57,8 @@ TAB_W, TAB_H, TAB_SEP = 139.0, 28.0, 143.0
 TAB_Y0 = 46.0               # desplazamiento desde el borde superior del panel
 FILA = 26.0                 # alto de fila de la lista de destinos
 BOTON_H = 26.0
+# El cue de click. NO usar los UI_*_MS: los MetaSounds de UI matan el editor.
+CUE_CLICK = "/Game/CustomAssets/CommentaryBox/Audio/Text_Pop_Cue.Text_Pop_Cue"
 # La lista arranca en 238 y el titulo TELEPORT se dibuja 26 por encima (212).
 # El bloque de INFORMACION acaba en 190, asi que quedan 22 de separacion: lo
 # mismo que hay entre sus propias lineas. Con los valores anteriores (204 y 210)
@@ -82,6 +84,7 @@ VARIABLES = [
     ("DbgInicioRot", "Rotator", None), ("DbgTieneInicio", "bool", None),
     ("DbgMensaje", "string", None), ("DbgHabilitado", "bool", None),
     ("DbgEscala", "float", None),
+    ("DbgSobreBoton", "bool", None),
     # --- PLAYER ---
     ("DbgGod", "bool", None), ("DbgManaInf", "bool", None),
     ("DbgMovMult", "float", None),
@@ -238,6 +241,90 @@ def dsl_permitido():
     Este booleano es solo el interruptor manual, para apagarlo en el editor."""
     return ('(fn DbgPermitido ()\n'
             '  (return (Variables|Default|GetDbgHabilitado)))')
+
+
+# ------------------------------------------------------- hover y sonido de UI
+#
+# PORTADO DEL ASSET el 2026-08-23. Estas cuatro se habian hecho por cirugia
+# (`create_node`/`connect_pins`) sobre el .uasset y NO estaban aqui, asi que la
+# regeneracion del 15:38 se las llevo por delante. Se recuperaron con
+# `git checkout` del binario y se leyeron con `read_graph_dsl`.
+#
+# OJO al portar desde el lector: `read_graph_dsl` COLAPSA los nodos de varias
+# salidas. `Game|Player|GetMousePosition` devuelve (bool, X, Y) y el lector lo
+# imprime como si fuera un valor suelto repetido cuatro veces. Pegarlo tal cual
+# crea cuatro nodos y cablea el pin equivocado. Por eso aqui va con multi-bind.
+
+def dsl_hover_boton():
+    """Resalte del boton bajo el raton. La llama `DbgBoton` al final.
+
+    El alto que asume (26*esc) es el de un boton; las pestañas miden 28*esc y
+    reusan esta funcion — 2 px de diferencia, imperceptible."""
+    return ('(fn DbgHoverBoton (X Y W)\n'
+            '  (bind esc (Variables|Default|GetDbgEscala))\n'
+            '  (bind alto (* %.1f esc))\n'
+            '  (bind (hay mx my) (Game|Player|GetMousePosition'
+            ' (Game|GetPlayerController 0)))\n'
+            '  (if (and hay (and (and (>= mx X) (< mx (+ X W)))'
+            ' (and (>= my Y) (< my (+ Y alto)))))\n'
+            '    (Variables|Default|SetDbgSobreBoton true)\n'
+            '    (HUD|DrawRect self'
+            ' (Utilities|Struct|MakeLinearColor 1.0 1.0 1.0 0.13) X Y W alto)\n'
+            '    (HUD|DrawRect self'
+            ' (Utilities|Struct|MakeLinearColor 1.0 0.78 0.3 1.0)'
+            ' X Y (* 4.0 esc) alto)))' % BOTON_H)
+
+
+def dsl_hover_tabs():
+    """Lo que `DbgBoton` no cubre: las 7 pestañas y los dos botones TAM +/-,
+    que `DbgDibujar` pinta con DrawRect sueltos.
+
+    Recalcula sus 9 rects con la MISMA formula que `DbgClick`, para que no se
+    puedan descuadrar."""
+    lin = []
+    lin.append('(fn DbgHoverTabs ()\n')
+    lin.append('  (bind esc (Variables|Default|GetDbgEscala))\n')
+    lin.append('  (bind vp (Math|Conversions|ToVector(Vector2D)'
+               ' (Viewport|GetViewportSize)))\n')
+    lin.append('  (bind base (- (* (.x vp) 0.5) (* 290.0 esc)))\n')
+    lin.append('  (bind fila1 (+ 92.0 (* 46.0 esc)))\n')
+    lin.append('  (bind fila2 (+ 92.0 (* 78.0 esc)))\n')
+    lin.append('  (bind w (* 139.0 esc))\n')
+    for y in ("fila1", "fila2"):
+        for dx in (6.0, 149.0, 292.0, 435.0):
+            if y == "fila2" and dx == 435.0:
+                continue          # la fila 2 solo tiene 3 pestañas
+            lin.append('  (CallFunction|DbgHoverBoton :X (+ base (* %.1f esc))'
+                       ' :Y %s :W w)\n' % (dx, y))
+    for dx in (400.0, 440.0):
+        lin.append('  (CallFunction|DbgHoverBoton :X (+ base (* %.1f esc))'
+                   ' :Y (+ 92.0 (* 10.0 esc)) :W (* 30.0 esc))\n' % dx)
+    lin.append('  (return))')
+    return "".join(lin)
+
+
+def dsl_sonar_click():
+    """Suena solo si el clic cayo en un boton, no en hueco. Va empalmada en la
+    ENTRADA de `DbgClick`, que es cuando `DbgSobreBoton` aun vale del ultimo
+    dibujado."""
+    return ('(fn DbgSonarClick ()\n'
+            '  (if (Variables|Default|GetDbgSobreBoton)\n'
+            '    (Audio|PlaySound2D "%s" 0.7))\n'
+            '  (return))' % CUE_CLICK)
+
+
+def dsl_sonar_panel():
+    """El mismo cue al abrir y cerrar, distinguidos por TONO: 1.25 al abrir,
+    0.75 al cerrar.
+
+    Se llama DESPUES del `SetDbgVisible` para que lea el estado ya cambiado y
+    elija el tono sola."""
+    return ('(fn DbgSonarPanel ()\n'
+            '  (if (Variables|Default|GetDbgVisible)\n'
+            '    (Audio|PlaySound2D "%s" 0.8 1.25)\n'
+            '    (else\n'
+            '      (Audio|PlaySound2D "%s" 0.8 0.75)))\n'
+            '  (return))' % (CUE_CLICK, CUE_CLICK))
 
 
 def dsl_boton():
@@ -440,6 +527,9 @@ def dsl_dibujar():
          '  (if (not (CallFunction|DbgPermitido))',
          '    (return false))',
          '  (CallFunction|DbgCargar)',
+         # Reset por frame del flag de hover: lo pone a false ANTES de repintar,
+         # y cada DbgBoton que pase por debajo del raton lo vuelve a poner.
+         '  (Variables|Default|SetDbgSobreBoton false)',
          BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))',
          # WORLD crece con la lista de destinos; las demas tienen alto fijo, y
@@ -471,6 +561,9 @@ def dsl_dibujar():
         etiqueta = '"%s"' % nombre if i < 7 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
                        ORO if i < 7 else GRIS, 1.0))
+    # El hover de las 7 pestañas y los dos TAM: aqui, que es el unico punto por
+    # el que pasan todos los caminos y donde la tira ya esta pintada.
+    l.append('  (CallFunction|DbgHoverTabs)')
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
@@ -994,9 +1087,20 @@ def dsl_spawn_uno():
             # spawn va DENTRO de su rama :then.
             '  (bind ac (Utilities|Casting|CastToActorClass :Class clase)\n'
             '    (:then\n'
+            # ENCARADO AL JUGADOR. Sin esto el MakeTransform nace con rotacion
+            # literal 0,0,0 y todo enemigo invocado mira a +X: como el cono de
+            # AIPerception de DCS es de 75 grados, uno que nazca de espaldas NO
+            # TE VE NUNCA si te quedas quieto. Medido: 0 flechas en 25 s con yaw
+            # 0 contra 9 girado. Solo el yaw, para que no salga inclinado si el
+            # suelo del spawn esta a otra altura.
+            '      (bind mirar (Math|Rotator|FindLookAtRotation'
+            ' :Start (select ok destino base)'
+            ' :Target (Transformation|GetActorLocation :self pawn)))' '\n'
             '      (bind nuevo (Game|SpawnActorfromClass :Class ac'
             ' :SpawnTransform (Math|Transform|MakeTransform'
-            ' :Location (select ok destino base))'
+            ' :Location (select ok destino base)'
+            ' :Rotation (Math|Rotator|MakeRotator :Roll 0.0 :Pitch 0.0'
+            ' :Yaw (.yaw mirar)))'
             ' :CollisionHandlingOverride "AdjustIfPossibleButAlwaysSpawn"))\n'
             '      (Utilities|Array|Add :TargetArray (Variables|Default|GetDbgSpawned)'
             ' :NewItem nuevo))\n'
@@ -2576,6 +2680,10 @@ def dsl_cfg_cargar():
 
 def dsl_click():
     l = ['(fn DbgClick (MX MY)',
+         # El sonido va en la ENTRADA, antes de resolver nada: asi lee el
+         # DbgSobreBoton del ultimo dibujado y solo suena si el clic cayo en un
+         # boton, no en hueco.
+         '  (CallFunction|DbgSonarClick)',
          BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))']
     # Los dos botones de tamano, en la cabecera.
