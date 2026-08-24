@@ -437,3 +437,37 @@ escuderos a 560 cm flanqueando el camino— se ganan el **5%**. La composición 
 decide: decide la colocación. El encuentro completo de cinco sigue en el 1% con
 espada sola, así que la ruta de armas sigue siendo obligatoria ahí, que es
 precisamente lo que el §5.2 del PDF prohíbe.
+
+### 6.12 La arena del juego se puso al día (2026-08-23, del lado de Unreal)
+
+Cinco cierres en `BP_DA_Arena` y compañía, **todos medidos en PIE**, que cambian lo que
+el emulador puede dar por hecho:
+
+1. **La purga del sello YA EXISTE.** `Abrir` limpia las armas del suelo (dos barridos: uno
+   inmediato y otro a los 2 s, porque el drop del último muerto cae *después* del primero) y
+   llama a `PurgarTemporales` del jugador: fuera la temporal, espada base reequipada. El
+   `purgePolicy: "purgar-todo-al-romper-sello"` del §1.5 ya no es aspiracional. Medido:
+   victoria con la lanza en la mano → `ArmaTemporal = None`, `BP_DI_SteelSword` adjunto, 0
+   drops dentro del radio.
+
+2. **El checkpoint ya no puede caer dentro del trigger.** `TomarInstantanea` calcula
+   `PuntoEntrada` empujando desde el centro por el **eje dominante** (Chebyshev) hasta
+   `0.85·RadioArena + 150`: fuera de la caja `Entrada`, dentro de los muros. Ojo emulador:
+   `Arena_Claro` tiene `RadioArena = 2800`, no 3000. La instantánea guarda además
+   **vida, stamina y pociones** del jugador (leído: 63/100/10 con la vida bajada a propósito).
+
+3. **`ReintentarAlMorir = False` es el default.** Al morir: la arena se abre, **repone los
+   cuatro enemigos** en sus transforms iniciales (`ReponerEnemigos`), y vuelve a `Estado 0`
+   — el jugador reaparece en su respawn normal y decide si reentra (re-sella al cruzar,
+   verificado) o se va. Con `True`, `ReiniciarEncuentro` teleporta al punto de entrada y
+   **restaura vida/stamina/pociones** de la instantánea. Es el ciclo Failed → Armed del §11.2.
+
+4. **El Arquero suelta el arco.** `BP_DA_WeaponDropComponent` ahora lee el slot de arma a
+   distancia como fallback cuando la mano principal no tiene melé válida. Medido: muere el
+   Arquero → drop con `DA_ElvenBow`, recogible. Cosmética pendiente: el arco del DI es
+   esquelético y el drop enseña la malla estática que encuentra (`SM_ElvenArrow`).
+   Los dos booleanos del §2.2 siguen siendo dos booleanos: probabilidad sigue sin existir.
+
+5. **El watchdog del §7.3 existe.** `VigilarArena` (0,5 s): sellada + array de enemigos
+   vacío + victoria falsa → línea `WATCHDOG BP_DA_Arena` en el log y apertura de emergencia.
+   Verificado vaciando el array en caliente: `Estado 1 → 2` en el siguiente tick.

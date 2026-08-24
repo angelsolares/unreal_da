@@ -11412,3 +11412,85 @@ corrupt"*. Hubo que reiniciar el editor descartando lo no guardado.
 
 Lo que si es seguro: **`get_node_type_pins`**, que lee los pines del nodo sin ejecutarlo. Asi
 salio la firma de `AddModifier` y la de `Interface|GetStatValue` en dos llamadas y sin riesgo.
+
+## La Trompeta del Juicio: el Inspector ya tiene silueta (2026-08-23)
+
+El portador del estandarte dejó de ser un Vigilante clonado. Lleva la **Trompeta del
+Juicio**, un cuerno ceremonial de Tripo (`thrumpeth.zip` de `D:\Game Projects\Dark
+Angels\Weapons\`), a dos manos y sin escudo — el blanco blando que el §6.3 del PDF pide.
+
+La cadena, que es la misma receta de la lanza y sirve de molde para cualquier arma nueva:
+
+1. `SM_DA_Trompeta` (61k tris, pivote en la base, 98 uu) en `Weapons/Meshes/Trompeta/`.
+   Importado con el FBX **con su nombre original** — renombrarlo rompe el enlace al `.fbm`.
+2. `MI_DA_Trompeta`, instancia de `M_DA_ArmaDivina` con el basecolor de Tripo y
+   `Corrupcion = 0`. La textura acotada a 1024.
+3. `BP_DI_DA_Trompeta`, duplicado del DI de la lanza: escala **1.15** (113 cm — a 1.8
+   parecía una tuba), rotación (roll 180, pitch 22, yaw 90), offset z = 66.7·escala.
+4. `DA_DA_Trompeta`, duplicado del item de la lanza: "Trompeta del Juicio",
+   `Stat.Damage +10` (su valor no es el arma), icono renderizado del propio mesh.
+5. El override del Inspector (`BP_DA_Inspector_C:Equipment_GEN_VARIABLE`, por
+   `export_text`/`import_text`): trompeta en melé, escudo fuera. Drop: main=True, off=False.
+
+**Y la corrupción visual ya distingue bando.** `MI_DA_Lanza` llevaba `Corrupcion = 0.45`
+horneado en el material del MESH: todas las lanzas del juego nacían corruptas. Ahora el
+material base va limpio, y `CorromperArmaTemporal` (en `BP_DA_PlayerCharacter`) crea un
+**material dinámico** al recoger y le sube `Corrupcion` — disparado con un temporizador de
+0,6 s desde `CanjearTemporal`, porque DCS spawnea el displayed item *después* de equipar.
+Medido: la lanza del Lancero a 0.0, la misma en manos de Malakh a 0.45.
+
+## Las cinco deudas del PDF, cerradas en la arena (2026-08-23)
+
+Todas medidas en PIE sobre `Arena_Claro` (que tiene `RadioArena = 2800`, no el 3000 del CDO).
+
+1. **Purga al romper el sello** (§3.1, REGLA DE SEAL BREAK). `Abrir` limpia las armas del
+   suelo y llama a `PurgarTemporales` del jugador (quita la temporal del inventario,
+   reequipa `EspadaBase`, anula la variable). **Dos barridos de suelo**: el drop del último
+   enemigo cae *después* del primero — su temporizador de 0,5 s corre en paralelo al
+   vigilante de la arena — así que hay un segundo barrido a los 2 s.
+2. **Checkpoint fuera del volumen** (§7.2). `TomarInstantanea` empuja `PuntoEntrada` desde
+   el centro por el **eje dominante** hasta `0.85·R + 150`. Euclídea no vale: la caja es
+   cuadrada, y 2700 por la diagonal deja ambos ejes bajo 2550. También guarda **vida,
+   stamina y pociones** (StatsManager por `Stat.Health.Current` / `Stat.Stamina.Current`;
+   pociones por `FindItem` + `BreakFStoredItem.Amount`).
+3. **`ReintentarAlMorir = False` por defecto.** Al morir: abrir, `ReponerEnemigos`
+   (respawn en los transforms de la instantánea) y `Estado = 0` — la pelea NO se reanuda
+   sola y el cruce vuelve a sellar. Con `True`, `ReiniciarEncuentro` además restaura
+   vida/stamina/pociones. La instancia de El Claro hereda el default nuevo sin tocar el
+   `_Sub`: la propiedad nunca se serializó (verificado con grep sobre el binario).
+4. **El Arquero suelta el arco.** `CheckOwnerDeath` lee el slot de melé y, si su item no es
+   válido, cae al de **arma a distancia** (`NewEnumerator19`). Muere el Arquero → drop con
+   `DA_ElvenBow` recogible. Pendiente cosmético: el DI del arco es esquelético y el drop
+   enseña la malla estática que encuentra (`SM_ElvenArrow`).
+5. **Watchdog del §7.3.** En `VigilarArena`: sellada + array vacío + victoria falsa →
+   `PrintString` con prefijo `WATCHDOG` y apertura de emergencia. Verificado en caliente.
+
+La muerte de verdad probó el punto 3 sola: los Vigilantes mataron a Malakh (63 de vida)
+mientras yo tecleaba, y la arena abrió, repuso los cuatro y se rearmó sin replantarlo.
+
+### El escritor del DSL tiene gramática propia, y muerde distinto que el lector
+
+Todo esto salió de reescribir cinco grafos. Lo que el lector enseña NO es lo que el
+escritor acepta:
+
+- **`Utilities|IsValid` con ramas es TERMINAL**: nada puede seguirle en su secuencia. O da
+  *"Unreachable code after branch/return"*, o —peor— **convierte el siguiente `if` hermano
+  en un `elif`** sin avisar. Así se me colgó el drop del off-hand del `else` de la mano
+  principal. **Releer siempre el grafo tras escribir** y mirar la estructura, no solo que
+  no dé error.
+- Los nodos con **varias implementaciones** (`CanBeAttacked|IsAlive`,
+  `DisplayedItems|GetMainHandDisplayedItem`) fallan con *"pins may be incompatible"*
+  porque el escritor elige la de una clase concreta. La forma portátil es **`(Message)`**.
+- En `CallFunction|X` con argumentos, **el primer posicional es `self`**. El lector lo
+  omite cuando coincide, y copiarle la forma al lector conecta el primer argumento a self.
+- Nombres que difieren: el lector muestra `Game|SpawnActor` pero se escribe
+  **`Game|SpawnActorfromClass`** (y sin pin Instigator); `Math|Vector|vector-vector` es
+  solo del lector — se escriben los **operadores genéricos** `(+ - * / == != >)`, que
+  resuelven por tipo (y un `(+ escalar escalar)` puede resolver a `vector+vector` con
+  splat: mismo resultado, otro nodo).
+- `(bind (_a _b _c) (Utilities|Struct|BreakFStoredItem x))` funciona y el escritor asigna
+  los pines por orden — así se saca el campo `Item` (nombre con GUID) sin conocerlo.
+- `add_variable` del toolset: el parámetro es `name`, y los tipos son los básicos
+  (`float`, no `double`).
+- `save_loaded_asset` devolvió `False` una vez tras recompilar; el reintento con
+  `save_asset(..., only_if_is_dirty=False)` guardó de verdad. Verificar por mtime.
