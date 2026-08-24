@@ -11977,3 +11977,44 @@ lluvia sigue leyendo las 30 flechas del carcaj.
 - **`add_function_graph` no recrea los parámetros.** Tras borrar y volver a crear una función
   hay que declararlos otra vez con `add_function_param`, o el escritor se queja de que no
   encuentra `Ruta`.
+
+## El Muro del Escudero: el descarte del escudo (2026-08-24)
+
+Quinta y última familia del §3.2, y la única sin daño propio: los otros cuatro descartes
+restan vida en el momento; este **cambia la geometría de la pelea**. Malakh estampa el
+escudo a 300 uu al frente y queda plantado como muro **12 segundos**, con dos efectos, uno
+por tipo de amenaza — la petición exacta de Angel:
+
+- **De lejos, rebota.** Todo proyectil **enemigo** que cruce la caja del muro invierte su
+  velocidad (`SetVelocityInLocalSpace` con −rapidez en X local) y **cambia de dueño a
+  Malakh**, con lo que el `IsEnemy` del `HandleHit` del proyectil hiere al arquero que lo
+  disparó. Y como tras el rebote el dueño ya es Malakh, la flecha devuelta no rebota en bucle.
+- **De cerca, amortigua.** `BP_DA_AuraComponent` con `Bonificacion = -10` y radio 600: para
+  pegarte en melé tienen que meterse en la zona, y ahí dentro pegan 10 menos. La misma pieza
+  medida del estandarte (−15 → el testigo pasó de 20 a 5), a media fuerza.
+
+Es la respuesta directa a la medida del §6.16 (*el Arquero no tiene límite de alcance;
+cortarle la visión ES la respuesta*): el jugador se fabrica su propia cobertura.
+
+**El molde fue duplicar `BP_DA_EstandartePlantado`** — malla clavada + aura + vida útil ya
+resueltos — y encima: `SM_WoodenShield` a escala 4 en vertical, caja `BoxComponent` de
+440×120×360 en `OverlapAllDynamic` (añadida por `SubobjectDataSubsystem.add_new_subobject`,
+que funciona bien para AÑADIR; lo que corrompe es `make_new_scene_root`), y el aura a −10/600.
+
+`DarArmaTemporal` completa el enrutado de ranuras: rango → `NewEnumerator19`, **escudo →
+`NewEnumerator6`** — sacado del `CheckOwnerDeath` del drop del Vigilante, que lee esa ranura
+para soltar el escudo — y melé → 18. `ArrojarLanza` queda con las cinco familias.
+
+**Recrear el montage** (fuera de git): `create_montage_from_animation` del
+`AS_T_BH_Overslam` a `/Game/DarkAngels/Animations/Escudo/M_DA_LanzarEscudo`, slot
+`FullBody`, notify `BP_DA_NotifyEscudo_C` en 0,856.
+
+**PENDIENTE: el rebote sin verificar en PIE.** El editor dejó de contestar (arranque frío +
+PIE del Master) justo antes de la prueba. Lo que asume y hay que ver: que la X local del
+proyectil es su dirección de vuelo. El resto del camino (notify → plantar → purga) es
+idéntico al del estandarte, que sí está medido.
+
+Trampa nueva del ciclo borrar-recrear: **el nombre no siempre se libera en la misma sesión
+de compilación** — `add_function_graph` tras un `remove` puede devolver `Nombre_0` incluso
+con el hueco "limpio"; si pasa, borrar el `_0` y volver a crear en una llamada MCP nueva, y
+**mirar siempre el nombre que devuelve** antes de escribir el DSL.

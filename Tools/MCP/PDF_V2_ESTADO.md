@@ -19,7 +19,7 @@ de descarte**, **las cinco recetas de encuentro sin construir** y **el director 
 | § | Bloque | Estado |
 |---|---|---|
 | 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
-| 3.2 | Ataque de descarte por familia | 🟠 **4 de 5** (+ el resto ya no cae en vacío) |
+| 3.2 | Ataque de descarte por familia | 🟢 **5 de 5** (el escudo, pendiente de ver el rebote en PIE) |
 | 4 | Arsenal de oportunidad | 🟢 las 5 familias existen y las 5 aportan |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
 | 5 | Orden de bajas implícito | 🟠 falta la reacción enemiga |
@@ -45,7 +45,7 @@ La tabla del PDF pide uno por familia. Hay dos:
 | Lanza | arrojarla para empalar | ✅ `M_DA_ArrojarLanza` + notify |
 | Estandarte | clavarlo para una última zona | ✅ `M_DA_ClavarEstandarte` + zona de 15 s |
 | **Espadón/Alabarda** | golpe de suelo de stagger/guard break | ✅ **`M_DA_GolpeDeSuelo`** (24/08) |
-| **Escudo** | shield bash final o lanzamiento | ❌ sin gesto propio |
+| **Escudo** | shield bash final o lanzamiento | ✅ **Muro del Escudero** (24/08): plantado 12 s, rebota proyectiles y amortigua el melé en 600 uu |
 | **Arco** | consumir las flechas en una descarga | ✅ **`M_DA_LluviaFirmamento`** (24/08) |
 
 **Hecho el 24/08.** El golpe de suelo daña, derriba y lanza a todo enemigo en 600 uu. Medido
