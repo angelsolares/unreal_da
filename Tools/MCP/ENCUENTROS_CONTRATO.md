@@ -349,3 +349,50 @@ hace falta reiniciar nada.
 
 No está en el JSON del encuentro ni le hace falta a Unreal: es documentación de
 diseño con un consumidor que resulta ser una máquina.
+
+### 6.12 El alcance de la espada, medido — y cómo medir el de cualquier arma
+
+**179 cm el ataque ligero, 174 el pesado**, del centro de la cápsula al extremo más
+lejano de la traza. Ya no queda nada estimado en los alcances de Malakh.
+
+| montage | secuencia | máximo |
+|---|---|---|
+| `M_1H_LightAttack_01` | `Anim_1HS_Attack_01` | 176,8 cm |
+| `M_1H_LightAttack_02` | `Anim_1HS_Attack_02` | 180,4 cm |
+| `M_1H_HeavyAttack_01` | `Anim_1HS_HeavyAttack_01` | 167,1 cm |
+| `M_1H_HeavyAttack_02` | `Anim_1HS_HeavyAttack_02` | 181,5 cm |
+
+**La receta**, que vale para la lanza, el hacha y lo que venga:
+
+1. `AnimMontageService.list_anim_segments(montage, 0)` da la secuencia fuente y su
+   `anim_start_pos`. **Los montages pesados arrancan en 0,100**, así que el tiempo
+   del notify hay que desplazarlo antes de evaluar nada. Los ligeros van a 0.
+2. El `ANS_HitBox` es un notify **de estado**: tiene duración, y la traza barre todo
+   ese rato. El alcance es el máximo del barrido, no el valor del instante en que
+   salta. En el ligero, al saltar el notify la punta está a **50 cm**; el pico llega
+   0,1 s después, a **180**. Medir el instante da un número cuatro veces menor y
+   perfectamente creíble.
+3. `secuencia.get_anim_pose_at_time(t, unreal.AnimPoseEvaluationOptions())`.
+4. La hoja se cuelga del socket **`sword_use`** (hueso `hand_r`, offset
+   −6,60 / 3,69 / 0,82). Los sockets del `SkeletalMesh` son propiedad protegida en
+   Python: se leen con `SkeletalMeshTools.get_socket_names` /
+   `get_socket_transform` / `get_socket_bone`.
+5. Medir desde el hueso **`root`**, no desde el origen del componente: la cápsula
+   sigue al root motion y estas animaciones avanzan 89 cm mientras golpean.
+
+**Tres trampas, las tres pagadas hoy:**
+
+- Pedirle la pose a un **`AnimMontage`** en vez de a la secuencia revienta el editor
+  con un assert en `AnimMontage.h:781` y **el intérprete de Python no vuelve** hasta
+  reiniciar. Los toolsets C++ sí siguen respondiendo.
+- En Python el constructor es **`unreal.Rotator(roll, pitch, yaw)`**. Poner el yaw
+  primero te da un pitch: la espada acaba apuntando bajo tierra, con una cifra que
+  parece razonable hasta que miras la altura.
+- Los notifies de un montage con `rate_scale ≠ 1` están en **tiempo de animación**,
+  no en segundos reales. Para la pose se usan tal cual; para la duración se dividen
+  por el rate. Mezclar los dos da ventanas que no existen.
+
+**Lo que esto cambia en el JSON: nada.** El alcance no viaja en el encuentro, vive en
+la calibración del emulador. Se anota aquí porque los alcances de los cinco enemigos
+(`alcanceAtaque`: 320 el Lancero, 280 el Heraldo, 200 el Vigilante…) **siguen siendo
+estimaciones mías**, y ahora hay método para medirlos de verdad.

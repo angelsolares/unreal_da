@@ -207,6 +207,7 @@ el veredicto lo usa sin navegador y las pruebas de node lo cubren. La casilla
 | Ataque ligero: dura / golpea / ventana | 1,000 s / 0,40 s / 0,117 s | `M_1H_LightAttack_01` y `_02`, notify `ANS_HitBox` |
 | Ataque pesado: dura / golpea / ventana | 1,212 s / 0,53 s / 0,121 s | `M_1H_HeavyAttack_01` y `_02` |
 | Esquiva: dura / i-frames / cuesta | 0,917 s / 0,107–0,459 s / 25 | `M_Roll`, notify `IsImmortal`, `Stat.Cost.Roll` |
+| Alcance: ligero / pesado | 179 cm / 174 cm | pose evaluada a lo largo del `ANS_HitBox` |
 | Bloqueo con espada sola | −55% | `DA_SteelSword.BlockValue` (el escudo vale 100) |
 | Parry / reacción a golpe | 0,700 s / 0,750 s | `M_1H_Parry`, `M_GetHitFront_Add` |
 | Poción: cura / te clava | 25 HP / 1,893 s | `DA_HealthPotion`, `M_DrinkPotion` |
@@ -224,13 +225,28 @@ calibración anterior. Los tiempos de arriba ya están en segundos reales.
 Lo de que eran "propiedad protegida" era falso — estaba buscando la propiedad en el
 asset en vez de la librería.
 
-**Sin medir todavía** (marcado en la interfaz): el alcance de la espada —la hoja
-mide 118 cm desde el agarre, eso sí está medido; falta cuánto adelanta el brazo—,
-la distancia del rodillo (es root motion) y el multiplicador de daño del pesado.
+**El alcance sí se puede medir**, y no hace falta PIE. La receta, que sirve para
+cualquier arma:
 
-> **Ojo si vas a medir root motion.** Pedirle la pose a un `AnimMontage` revienta el
-> editor con un assert y el intérprete de Python **no vuelve** hasta reiniciar. Hay
-> que evaluar la secuencia fuente, nunca el montage.
+1. `AnimMontageService.list_anim_segments(montage, 0)` da la **secuencia** fuente y
+   su `anim_start_pos` — los montages pesados arrancan en 0,100, así que el tiempo
+   del notify hay que desplazarlo antes de evaluar nada.
+2. El `ANS_HitBox` es un notify **de estado**: tiene duración. El alcance es el
+   máximo del barrido, no el valor del instante en que se dispara. Al disparar, la
+   punta de la espada está a 50 cm; el pico llega 0,1 s después, a 180.
+3. `secuencia.get_anim_pose_at_time(t, ...)` da la pose. Se cuelga la hoja del
+   socket `sword_use` (hueso `hand_r`) y se mide del hueso **`root`** al extremo
+   más lejano — del root, no del origen del componente, porque la cápsula sigue al
+   root motion y estas animaciones avanzan 89 cm.
+
+> **Dos trampas que cuestan una tarde.** Pedirle la pose a un `AnimMontage` en vez
+> de a la secuencia revienta el editor con un assert y el intérprete de Python **no
+> vuelve** hasta reiniciar. Y en Python el constructor es
+> `unreal.Rotator(roll, pitch, yaw)`: poner el yaw primero te da un pitch, y la
+> espada acaba apuntando bajo tierra con una cifra creíble.
+
+**Sin medir todavía**: la distancia del rodillo (root motion del montage de roll) y
+el multiplicador de daño del pesado, que vive en el grafo del `BP_CombatComponent`.
 
 ---
 
@@ -445,7 +461,7 @@ ida y vuelta exacta.
   pero para juzgar *lectura* de silueta el modelo real diría más.
 
 
-La calibración ya está cerrada por los dos lados —los cinco enemigos y Malakh, todo
-medido del motor el 23/08/2026— salvo tres cosas: el alcance de la espada (medio
-medido: 118 cm de hoja, falta el brazo), la distancia del rodillo y el multiplicador
-del ataque pesado. Las tres necesitan PIE o la secuencia fuente, no el montage.
+La calibración está cerrada por los dos lados —los cinco enemigos y Malakh, medidos
+del motor el 23 y el 24/08/2026— salvo dos cosas: la distancia del rodillo y el
+multiplicador de daño del ataque pesado. Ninguna de las dos mueve un veredicto por
+sí sola, así que no corre prisa.

@@ -65,6 +65,7 @@
     "bloquear": "Bloquear con la espada sola absorbe el 55% del golpe. Con el Escudo Celestial en la mano absorbe el 100%: por eso el escudo cambia la arena y no solo el daño.",
     "beber": "El frasco cura 25 y la animacion dura 1,89 s, con la cura a los 1,17 s. Beber delante de dos enemigos es regalar un golpe de 20 o 30.",
     "velocidad": "Corre a 400 (trote, su estado por defecto) y a 550 esprintando. Los cinco enemigos corren a 600. NO PUEDE HUIR DE NADIE, ni esprintando. Cualquier retirada es una retirada peleando.",
-    "loQueNoSabemos": "No estan medidos: cuanto se desplaza el rodillo, el multiplicador de daño del ataque pesado, y el alcance exacto de la espada (la hoja mide 118 cm desde el agarre; lo que falta es cuanto adelanta el brazo)."
+    "loQueNoSabemos": "No estan medidos: cuanto se desplaza el rodillo (es root motion) y el multiplicador de daño del ataque pesado. Todo lo demas de esta ficha sale del motor.",
+    "alcance": "Su espada llega a 179 cm con el ataque ligero y 174 con el pesado, medido de la pose real a lo largo de la ventana de golpe. Para comparar: el Lancero pincha desde 320. Malakh tiene que meterse DENTRO del alcance del Lancero para poder tocarle, y eso es la pelea entera."
   }
 }
