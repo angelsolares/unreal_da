@@ -485,3 +485,11 @@ Para el emulador: el descarte de la familia `estandarte` es
 `{ tipo: "zona", bonificacion: -15, radio: 800, duracion: 15 }`, y el arrojadizo de
 proyectil queda **solo** para la familia `lanza` — con el hacha o la trompeta la tecla ya
 no dispara lanzas fantasma.
+
+### 6.14 Colores de aura y el arco tirado (2026-08-23, del lado de Unreal)
+
+Dos remates del §6.13: el anillo de la zona clavada ya no se confunde con el del portador
+— **naranja = buff aliado, azul frío = debuff** (el color sale del signo de `Bonificacion`,
+así que cualquier aura futura hereda la regla sin tocar nada). Y el drop del Arquero ya
+enseña **el arco esquelético de verdad** en el suelo, no la flecha que hacía de malla.
+Nada de esto cambia números: es lectura, la del §5.1.

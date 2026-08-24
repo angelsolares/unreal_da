@@ -11534,6 +11534,25 @@ Y una del PIE: si teleportas el pawn a una cámara y el script revienta antes de
 z = −250 000, con la pantalla de «caído al vacío» pegada. El estandarte de la foto se
 plantó dos veces en el abismo antes de salir.
 
-Pendiente de la familia: la zona plantada reusa el anillo naranja del aura de buff — un
-debuff pediría otro color (el material del anillo no tiene parámetro de color todavía). Y
-sin animación de clavado: el gesto es instantáneo.
+### Y ahora cada aura tiene su color, y el arco tirado es un arco (2026-08-23)
+
+**El color no pidió cirugía de material**: `M_DA_Aura` ya traía un parámetro `Color`
+(con Brillo, Intensidad, Grosor y Velocidad) cuyo default es el naranja. `MontarVisual`
+ahora crea un **material dinámico** para el anillo y elige color por el **signo de
+`Bonificacion`**: positivo → naranja (1, 0.35, 0.12); negativo → azul frío
+(0.22, 0.45, 1.0). La luz acompaña. Verificado por dato (luz de la zona clavada b=255,
+la del portador vivo r=255) y en imagen con las dos zonas en el mismo encuadre.
+
+**El arco tirado ya enseña el arco.** `DropOne` mira si el displayed item trae una malla
+esquelética con asset: si sí, la copia a la `Malla` del drop (heredada de
+`BP_DA_Interactuable`), la engancha al `Mesh` físico con `SnapToTarget` y esconde el
+proxy estático — que sigue haciendo la física, porque `bHidden` no quita colisión.
+Medido: el drop del Arquero sale con `Malla = SK_ElvenBow` y `Mesh = SM_ElvenArrow`
+oculto; el de la lanza, intacto (`SM_DA_Lanza` visible, sin esquelético).
+
+Trampa de PIE que costó cuatro fotos: la camara en tercera persona **siempre encuadra a
+Malakh**, y sus alas tapan la escena. Para fotos de entorno: `set_actor_hidden_in_game
+(True)` al pawn, disparar, y devolverlo. Y las zonas de 15 s **expiran mientras
+encuadras**: plantar y fotografiar en el MISMO script.
+
+Pendiente de la familia: sin animación de clavado — el gesto es instantáneo.
