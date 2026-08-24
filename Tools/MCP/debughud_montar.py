@@ -188,6 +188,36 @@ def tab_pos(i):
     return (6.0 + (i % 4) * TAB_SEP, TAB_Y0 + (i // 4) * 32.0)
 
 
+# ###########################################################################
+# ##  DEUDA ABIERTA — LEER ANTES DE LANZAR UNA PASADA (2026-08-23)         ##
+# ###########################################################################
+#
+# Este script ha quedado POR DETRAS del asset: hay tres mejoras que se
+# aplicaron por CIRUGIA sobre `BP_DA_DebugHUD` (create_node/connect_pins) y
+# que NUNCA se portaron aqui. Sus commits tocan solo el .uasset:
+#
+#   1f73493  sonidos de panel y click  -> DbgSonarPanel, DbgSonarClick
+#   (mismo lote) resalte de hover      -> DbgHoverBoton, DbgHoverTabs
+#   fed1528  spawn encarado al jugador -> los 5 nodos de FindLookAtRotation
+#            dentro de DbgSpawnUno
+#
+# UNA PASADA DE ESTE SCRIPT LAS BORRA LAS TRES. Ya paso: el 2026-08-23 sobre
+# las 15:38 alguien regenero y el asset perdio las tres; se recuperaron con
+# `git checkout` del .uasset.
+#
+# ANTES de volver a lanzarlo hay que portarlas. Estan en el asset commiteado
+# en HEAD: se leen con `read_graph_dsl` y se pegan aqui como cualquier otra
+# `dsl_*`. Comprobacion de que ya estan:
+#
+#   python -c "import debughud_montar as d; print(hasattr(d,'dsl_hover_boton'))"
+#
+# Si eso dice False, NO LANCES LA PASADA. (Se pregunta por la FUNCION, no por
+# el nombre en texto: este comentario ya los menciona y un grep se enganaria.)
+#
+# La leccion de fondo: sobre este Blueprint no se hace cirugia. Lo que no
+# entre por aqui, se pierde en la siguiente regeneracion.
+# ###########################################################################
+
 # ---------------------------------------------------------------- grafos
 
 def dsl_permitido():
@@ -1418,6 +1448,79 @@ def dsl_reset_combat():
             '  (Variables|Default|SetDbgMensaje "Reset del debug de combate"))')
 
 
+# ------------------------------------------------- COMBAT: el arma temporal
+#
+# Los cinco puntos del §10 del PDF que faltaban. Todo pasa por castear el Pawn
+# a `BP_DA_PlayerCharacter` -que SI se puede, porque es Blueprint nuestro; con
+# las clases de DCS no habria nodo de cast (ver dsl_matar)- y llamar a la API
+# que vive en el jugador. Ahi es donde tiene que estar la logica: el HUD solo
+# dispara, para que valga tambien desde consola o desde otra herramienta.
+
+def jugador_accion(nombre, cuerpo, mensaje):
+    """Molde: castea el Pawn a BP_DA_PlayerCharacter y ejecuta `cuerpo`.
+
+    El `IsValid` del cast TERMINA el flujo (nada puede ir detras), asi que el
+    mensaje va DENTRO de la rama valida y no despues."""
+    return ('(fn NOMBRE ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind j (Utilities|Casting|CastToBP_DA_PlayerCharacter (Game|GetPlayerPawn 0)))\n'
+            '  (Utilities|IsValid j\n'
+            '    (:"Is Valid"\n'
+            'CUERPO'
+            '      (Variables|Default|SetDbgMensaje "MENSAJE"))\n'
+            '    (:"Is Not Valid"\n'
+            '      (Variables|Default|SetDbgMensaje "No es el Malakh de DA"))))'
+            ).replace("NOMBRE", nombre).replace("CUERPO", cuerpo).replace("MENSAJE", mensaje)
+
+
+def dsl_dar_arma(clave, ruta, etiqueta):
+    """GIVE TEMPORARY WEAPON — §10, primera linea.
+
+    Da el arma, la EQUIPA y arranca la corrupcion: el mismo camino que recoger
+    una del suelo. Si solo la metiera en el inventario el boton mentiria —
+    parece que te la ha dado y no la llevas en la mano."""
+    return jugador_accion(
+        "DbgDarArma" + clave,
+        '      (Class|BPDAPlayerCharacter|DarArmaTemporal j "' + ruta + '")\n',
+        "Arma temporal: " + etiqueta)
+
+
+def dsl_corrupcion(clave, valor, etiqueta):
+    """SET VISUAL CORRUPTION STAGE — §10, tercera linea.
+
+    Los cuatro estados del §3.1 son COSMETICOS: mueven el parametro `Corrupcion`
+    de `M_DA_ArmaDivina` en el material dinamico del arma en mano y nada mas. No
+    tocan vida util, que es justo lo que el PDF prohibe."""
+    return jugador_accion(
+        "DbgCorrupcion" + clave,
+        '      (Class|BPDAPlayerCharacter|FijarCorrupcion j ' + valor + ')\n',
+        "Corrupcion: " + etiqueta)
+
+
+def dsl_forzar_descarte():
+    """FORCE DISCARD ATTACK — §10.
+
+    Llama al mismo `ArrojarLanza` que la tecla, asi que respeta el enrutado por
+    familia: la lanza se arroja, la trompeta se clava, y con cualquier otra no
+    pasa nada."""
+    return jugador_accion(
+        "DbgForzarDescarte",
+        '      (Class|BPDAPlayerCharacter|ArrojarLanza j)\n',
+        "Descarte forzado")
+
+
+def dsl_municion_toggle():
+    """INFINITE AMMO ON/OFF — §10.
+
+    Toggle con temporizador de 1 s, no un "dame 99 flechas": el PDF pide
+    municion infinita, y rellenar una sola vez se agota igual."""
+    return jugador_accion(
+        "DbgMunicionToggle",
+        '      (Class|BPDAPlayerCharacter|AlternarMunicionInfinita j)\n',
+        "Municion infinita alternada")
+
+
 # ---------------------------------------------------------- COMBAT: la arena
 #
 # No hay "arena seleccionada": el criterio es DONDE ESTAS. Los tres botones
@@ -1703,13 +1806,29 @@ def filas_combat():
              "(CallFunction|DbgColisionesToggle)",
              "(Variables|Default|GetDbgColisiones)"),
         ]),
-        ("ARENA YOU ARE IN", 408.0, 430.0, [
+        ("TEMPORARY WEAPON", 408.0, 430.0, [
+            (x0 + i * 114.0, 110.0, e, "(CallFunction|DbgDarArma%s)" % c, "false")
+            for i, (c, e) in enumerate([("Lanza", "LANZA"), ("Trompeta", "TROMPETA"),
+                                        ("Hacha", "HACHA"), ("Espadon", "ESPADON"),
+                                        ("Escudo", "ESCUDO")])
+        ]),
+        ("CORRUPTION STAGE", 468.0, 490.0, [
+            (x0 + i * 142.0, 138.0, e, "(CallFunction|DbgCorrupcion%s)" % c, "false")
+            for i, (c, e) in enumerate([("Cel", "CELESTIAL"), ("Tai", "TAINTED"),
+                                        ("Cor", "CORRUPTA"), ("Fra", "FRACTURED")])
+        ]),
+        ("", None, 528.0, [
+            (x0, 278.0, "FORCE DISCARD", "(CallFunction|DbgForzarDescarte)", "false"),
+            (x0 + 286.0, 278.0, "INFINITE AMMO", "(CallFunction|DbgMunicionToggle)",
+             "(Class|BPDAPlayerCharacter|GetMunicionInfinita (Utilities|Casting|CastToBP_DA_PlayerCharacter (Game|GetPlayerPawn 0)))"),
+        ]),
+        ("ARENA YOU ARE IN", 588.0, 610.0, [
             (x0, 182.0, "SEAL ARENA", "(CallFunction|DbgArenaSellar)", "false"),
             (x0 + 190.0, 182.0, "OPEN ARENA", "(CallFunction|DbgArenaAbrir)", "false"),
             (x0 + 380.0, 182.0, "RESTART FIGHT",
              "(CallFunction|DbgArenaReiniciar)", "false"),
         ]),
-        ("", None, 468.0, [
+        ("", None, 648.0, [
             (x0, 564.0, "RESET COMBAT DEBUG", "(CallFunction|DbgResetCombat)", "false"),
         ]),
     ]
@@ -2682,6 +2801,17 @@ def run():
         ("DbgArenaSellar", dsl_arena_sellar, []),
         ("DbgArenaAbrir", dsl_arena_abrir, []),
         ("DbgArenaReiniciar", dsl_arena_reiniciar, []),
+        ("DbgDarArmaLanza", lambda c='Lanza', r='/Game/DarkAngels/Weapons/Items/DA_DA_Lanza.DA_DA_Lanza', e='Lanza del Alba': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaTrompeta", lambda c='Trompeta', r='/Game/DarkAngels/Weapons/Items/DA_DA_Trompeta.DA_DA_Trompeta', e='Trompeta del Juicio': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaHacha", lambda c='Hacha', r='/Game/DarkAngels/Weapons/Items/DA_DA_HachaMano.DA_DA_HachaMano', e='Hacha': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaEspadon", lambda c='Espadon', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_GreatAxe.DA_GreatAxe', e='Espadon': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaEscudo", lambda c='Escudo', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_WoodenShield.DA_WoodenShield', e='Escudo Celestial': dsl_dar_arma(c, r, e), []),
+        ("DbgCorrupcionCel", lambda c='Cel', v='0.0', e='Celestial': dsl_corrupcion(c, v, e), []),
+        ("DbgCorrupcionTai", lambda c='Tai', v='0.33', e='Tainted': dsl_corrupcion(c, v, e), []),
+        ("DbgCorrupcionCor", lambda c='Cor', v='0.66', e='Corrupta': dsl_corrupcion(c, v, e), []),
+        ("DbgCorrupcionFra", lambda c='Fra', v='1.0', e='Fractured': dsl_corrupcion(c, v, e), []),
+        ("DbgForzarDescarte", dsl_forzar_descarte, []),
+        ("DbgMunicionToggle", dsl_municion_toggle, []),
         ("DbgResetCombat", dsl_reset_combat, []),
         # --- BOSS ---
         ("DbgCampoBoss", dsl_campo_boss, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),
