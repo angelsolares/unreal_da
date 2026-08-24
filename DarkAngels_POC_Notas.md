@@ -11915,3 +11915,65 @@ En seco: 101 funciones, cero llamadas huérfanas.
 
 Roce cosmético anterior a esto: la etiqueta `COMBAT LOG` está fijada en y=512 y los botones
 de CORRUPTION STAGE acaban en 516, así que se pisan 4 px.
+
+## Malakh arranca solo con su espada (2026-08-24)
+
+Decisión de Angel, y cierra el choque que la auditoría del PDF dejó abierto: el §4 quiere el
+Arco del Firmamento y el Escudo Celestial como **armas de oportunidad**, pero Malakh los
+llevaba de serie y el Arquero soltaba el mismo `DA_ElvenBow`, el Vigilante el mismo
+`DA_WoodenShield`. Robarlos no cambiaba nada.
+
+El equipo de partida era más de lo que creíamos — había también un **hacha**:
+
+| ranura | antes | ahora |
+|---|---|---|
+| `MeleeWeaponSlots` | `DA_SteelSword`, **`DA_GreatAxe`**, None | solo `DA_SteelSword` |
+| `ShieldSlots` | `DA_WoodenShield` | vacía |
+| `RangedWeaponSlots` | `DA_ElvenBow`, None, None | vacía |
+| `ArrowsSlots` | `DA_ElvenArrow ×30` | **se queda** |
+| `SpellSlots` | vacía | vacía |
+
+**Las flechas se conservan a propósito**: sin carcaj, el arco que le robas al Arquero llega
+sin munición y la Lluvia del Firmamento haría 0 de daño. La alternativa —que el drop del arco
+traiga su propio carcaj— queda para cuando toque.
+
+Escrito poniendo los items a `None` **sin tocar la longitud de los arrays**: reescribir un
+array de structs entero por `set_properties` se come el último elemento.
+
+**Y la tabla de imports del `.uasset` no sirve de prueba**: sigue nombrando los cuatro items
+después del cambio. Lo que prueba algo es el pawn vivo, y lleva tres cosas:
+`BP_DI_Quiver_ElvenArrows_C`, `BP_DI_Potion_C`, `BP_DI_SteelSword_C`.
+
+### Lo que esto destapó: el arma temporal iba siempre a la ranura de melé
+
+`DarArmaTemporal` hacía, fijo:
+
+```
+Equipment|UpdateItemInSlot(Equipment, "NewEnumerator18", 0, 0, item, ...)
+```
+
+Vale para la lanza, el hacha y la trompeta. Con un arco, DCS **lo equipa pero no lo
+muestra** — un arma a distancia no pinta en la ranura de melé. **No se notaba porque Malakh
+llevaba arco de serie en su propia ranura de rango**: el arco «robado» nunca había pasado de
+verdad por ahí. El bug estaba tapado, no ausente.
+
+Ahora enruta por tipo: si el item castea a `BP_DA_Item_RangeWeapon` va a **`NewEnumerator19`**
+—la ranura de rango, la misma que ya usa el drop del Arquero— y si no, a la de melé.
+
+**El cast no puede ir de condición de un `if`**: con ramas es TERMINAL y se lleva por delante
+lo que venga detrás. Se usa el propio cast como la bifurcación, y el temporizador de
+`CorromperArmaTemporal` se repite en las dos ramas.
+
+Verificado en PIE: de partida `Quiver + Potion + SteelSword`; con el arco robado aparece
+`BP_DI_ElvenBow_C`; tras el descarte vuelve la espada y `DanoLluvia = 90`, o sea que la
+lluvia sigue leyendo las 30 flechas del carcaj.
+
+### Tres desajustes más del escritor del DSL
+
+- Se lee `Utilities|LoadAsset_Blocking` y **se escribe sin guion bajo**: `LoadAssetBlocking`.
+  Igual que `LoadClassAssetBlocking`.
+- En `CallFunction|X` el primer **posicional** se cablea a `self`. Hay que nombrar el
+  parámetro (`:NuevaArma item`) o el item se va por donde no es.
+- **`add_function_graph` no recrea los parámetros.** Tras borrar y volver a crear una función
+  hay que declararlos otra vez con `add_function_param`, o el escritor se queja de que no
+  encuentra `Ruta`.
