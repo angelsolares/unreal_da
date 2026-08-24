@@ -26,7 +26,7 @@
       "duracion": 1,
       "impacto": 0.398,
       "ventana": 0.117,
-      "alcance": 180,
+      "alcance": 179,
       "arco": 100,
       "costeStamina": 10,
       "empuje": 20
@@ -35,7 +35,7 @@
       "duracion": 1.212,
       "impacto": 0.53,
       "ventana": 0.121,
-      "alcance": 180,
+      "alcance": 174,
       "arco": 110,
       "costeStamina": 25,
       "multiplicadorDano": 2,
@@ -195,7 +195,7 @@
     "malakh.reaccionGolpe": "medido 2026-08-23 — M_GetHitFront_Add, 0.750 s a rate 1.0. Antes puse 0.687 leyendo la secuencia, no el montage.",
     "malakh.ataqueLigero.impacto": "medido 2026-08-23 — AnimNotifyState ANS_HitBox, ya en tiempo real: 0.494 s en el _01 y 0.302 s en el _02. El 0.398 es la media de los dos golpes del combo.",
     "malakh.ataqueLigero.ventana": "medido 2026-08-23 — duracion del mismo ANS_HitBox: 0.099 s y 0.135 s. Media 0.117.",
-    "malakh.ataqueLigero.alcance": "PARCIAL — la hoja de SM_SteelSword mide 138.8 cm de bounds y sobresale 118 cm del punto de agarre (eso es medido). Lo que falta es cuanto adelanta la mano en el fotograma del impacto, y eso solo sale evaluando la pose, que hoy tira el editor. Los 180 cm son 118 de hoja mas ~60 de brazo estimados. El pesado usa la misma espada y la misma traza, asi que le pongo el mismo alcance: no habia razon para que fuese 200.",
+    "malakh.ataqueLigero.alcance": "medido 2026-08-24 — geometria, no estimacion. Se evalua la POSE de la secuencia (Anim_1HS_Attack_01 y _02) a lo largo de toda la ventana del ANS_HitBox, se cuelga la hoja del socket sword_use (hueso hand_r, offset -6.60/3.69/0.82), y se mide del hueso root al extremo mas lejano de la hoja. Maximos: 176.8 y 180.4 cm. Media 179. Es distancia centro->superficie, que es como la compara el simulador.",
     "malakh.ataquePesado.impacto": "medido 2026-08-23 — ANS_HitBox a 0.448 s y 0.612 s reales. Media 0.53.",
     "malakh.esquiva": "medido 2026-08-23 — M_Roll: 1.375 s a rate 1.50 = 0.917 s reales. Los i-frames son el ANS_Activity llamado \"IsImmortal\", de 0.107 a 0.459 s reales — 0.353 s de invulnerabilidad, no los 0.35 que estime por casualidad bien. El coste son 25 de stamina (Stat.Cost.Roll), no 10: con 100 de stamina caben CUATRO esquivas, no diez.",
     "malakh.pocion.curacion": "medido — DA_HealthPotion.value = 25",
@@ -221,7 +221,8 @@
     "malakh.ataquePesado.costeStamina": "ESTIMADO — Stat.Cost.MeleeAttack es 10 y es unico: si el pesado cuesta mas, el multiplicador esta en el grafo y no se ha leido.",
     "aviso.medicionDeMalakh": "Los ataques de Malakh son MUCHO mas rapidos de lo que este simulador creyo hasta hoy (ligero 1.0 s en vez de 1.5; pesado 1.21 en vez de 2.3), y su esquiva cuesta 2.5 veces mas. Los veredictos de antes del 23/08 estaban calculados con un Malakh lento y con esquivas baratas: no se comparan con los de ahora.",
     "aviso.pythonCaido": "Pedirle la pose a un AnimMontage (get_anim_pose_at_time) revienta el interprete de Python del editor con un assert y ya no vuelve: hay que reiniciar el editor. Los toolsets C++ siguen funcionando despues del golpe. Si hace falta root motion, sacarlo de la SECUENCIA, no del montage.",
-    "aura": "medido 2026-08-23 — BP_DA_AuraComponent en /Game/DarkAngels/Blueprints/Combat/. RadioAura 1200, Bonificacion +15, editables por instancia. Comprobado en juego con dos Vigilantes: 35 de dano a 506 uu del portador, 20 a 3000 uu, 20 con el portador muerto. Un +75% mientras viva."
+    "aura": "medido 2026-08-23 — BP_DA_AuraComponent en /Game/DarkAngels/Blueprints/Combat/. RadioAura 1200, Bonificacion +15, editables por instancia. Comprobado en juego con dos Vigilantes: 35 de dano a 506 uu del portador, 20 a 3000 uu, 20 con el portador muerto. Un +75% mientras viva.",
+    "malakh.ataquePesado.alcance": "medido 2026-08-24 — mismo metodo. HeavyAttack_01 167.1 y _02 181.5; media 174. OJO: los montages pesados arrancan la secuencia en anim_start_pos 0.100, asi que el tiempo del notify hay que desplazarlo 0,1 s antes de evaluar la pose."
   },
   "aura": {
     "arquetipo": "portador_del_estandarte",
