@@ -312,7 +312,11 @@ export function pintarCalibracion(nodo, cal) {
     ['malakh.ataquePesado.duracion', 'Ataque pesado', cal.malakh.ataquePesado.duracion + ' s'],
     ['malakh.ataqueLigero.alcance', 'Alcance espada', cal.malakh.ataqueLigero.alcance + ' cm'],
     ['malakh.esquiva', 'Esquiva (i-frames)', `${cal.malakh.esquiva.iframeInicio}–${cal.malakh.esquiva.iframeFin} s`],
-    ['malakh.bloqueo', 'Bloqueo', `−${(cal.malakh.bloqueo.reduccion * 100).toFixed(0)}%`],
+    ['malakh.esquiva', 'Esquiva (coste)', `${cal.malakh.esquiva.costeStamina} de ${cal.malakh.stamina} — ${Math.floor(cal.malakh.stamina / cal.malakh.esquiva.costeStamina)} seguidas`],
+    ['malakh.regenStamina', 'Regen stamina', `${cal.malakh.regenStamina}/s tras ${cal.malakh.retrasoRegenStamina ?? '?'} s`],
+    ['malakh.bloqueo', 'Bloqueo (espada sola)', `−${(cal.malakh.bloqueo.reduccion * 100).toFixed(0)}%`],
+    ['malakh.velocidadSprint', 'Sprint', `${cal.malakh.velocidadSprint} cm/s — los enemigos van a 600`],
+    ['malakh.pocion.duracion', 'Beber', `${cal.malakh.pocion.duracion} s clavado`],
     ['malakh.pocion.curacion', 'Pocion', `${cal.malakh.pocion.curacion} HP ×${cal.malakh.pocion.cantidad}`],
     ['malakh.reaccionGolpe', 'Reaccion a golpe', cal.malakh.reaccionGolpe + ' s']
   ];

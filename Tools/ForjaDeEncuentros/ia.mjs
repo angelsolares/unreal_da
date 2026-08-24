@@ -40,7 +40,14 @@ function fichasDeArquetipos() {
       );
     }
     const reglas = Object.values(j.reglasDeComposicion || {}).map(r => `- ${r}`).join('\n');
-    return `\n\n## QUE HACE CADA ENEMIGO\n\n${trozos.join('\n\n')}\n\n## AL COMPONER\n\n${reglas}`;
+    // La ficha del jugador va PRIMERO. Sin ella el modelo juzgaba composiciones
+    // contra un Malakh imaginario: no sabia ni lo que tarda en matar a uno.
+    const m = j.malakh
+      ? '\n\n## QUIEN LO JUEGA\n\n' + Object.entries(j.malakh)
+          .filter(([k]) => k !== 'nombre')
+          .map(([k, v]) => `${k}: ${v}`).join('\n')
+      : '';
+    return `${m}\n\n## QUE HACE CADA ENEMIGO\n\n${trozos.join('\n\n')}\n\n## AL COMPONER\n\n${reglas}`;
   } catch (err) {
     return `\n\n(No se pudo leer datos/arquetipos.json: ${err.message})`;
   }

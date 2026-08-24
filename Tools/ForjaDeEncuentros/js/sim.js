@@ -401,7 +401,7 @@ export class Simulacion {
       return;
     }
     if (E.recarga <= 0 && Math.abs(deltaAngulo(E.yaw, yawDe(resta(M.pos, E.pos)))) < 35) {
-      this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: p.dano });
+      this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: this._danoDe(E) });
     }
   }
 
@@ -428,7 +428,7 @@ export class Simulacion {
     }
     if (d > p.alcanceAtaque) { this._avanzarHacia(E, M, p.distanciaPreferida, dt); return; }
     if (E.recarga <= 0) {
-      this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: p.dano, proyectil: true, velocidad: p.velocidadProyectil });
+      this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: this._danoDe(E), proyectil: true, velocidad: p.velocidadProyectil });
     }
   }
 
@@ -521,6 +521,32 @@ export class Simulacion {
 
   _pasoZonas(dt) {
     this.zonas = this.zonas.filter(z => (z.ttl -= dt) > 0);
+  }
+
+  /**
+   * Daño de un enemigo, aura incluida.
+   *
+   * `BP_DA_AuraComponent` (contrato §1.2, en Unreal desde el 23/08/2026):
+   * mientras el portador viva, todo aliado dentro de `RadioAura` lleva un
+   * modificador de `Stat.Damage`. Al morir el portador, o al salirse del radio,
+   * se retira solo. Dos portadores apilan, porque son dos componentes.
+   *
+   * Se evalua al ARRANCAR el ataque. El motor lo reevalua en cada pasada, pero
+   * entre arrancar y golpear pasan ~0,6 s y nadie cruza 1200 cm en eso.
+   *
+   * El portador no se buffea a si mismo: el componente recorre aliados.
+   */
+  _danoDe(E) {
+    const aura = this.cal.aura;
+    if (!aura) return E.perfil.dano;
+    let extra = 0;
+    for (const P of this.enemigos) {
+      if (P === E || P.arquetipo !== aura.arquetipo) continue;
+      if (P.estado === ESTADOS.MUERTO) continue;
+      if (dist(P.pos, E.pos) > aura.radio) continue;
+      extra += aura.bonificacion;
+    }
+    return E.perfil.dano + extra;
   }
 
   _modificadorZona(agente, campo) {

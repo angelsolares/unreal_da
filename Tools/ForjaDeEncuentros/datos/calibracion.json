@@ -12,7 +12,7 @@
   "malakh": {
     "hp": 100,
     "stamina": 100,
-    "regenStamina": 25,
+    "regenStamina": 35,
     "velocidad": 400,
     "radio": 42,
     "alturaOjos": 160,
@@ -23,38 +23,38 @@
       "dano": 10
     },
     "ataqueLigero": {
-      "duracion": 1.5,
-      "impacto": 0.55,
-      "ventana": 0.15,
+      "duracion": 1,
+      "impacto": 0.398,
+      "ventana": 0.117,
       "alcance": 180,
       "arco": 100,
       "costeStamina": 10,
       "empuje": 20
     },
     "ataquePesado": {
-      "duracion": 2.3,
-      "impacto": 0.95,
-      "ventana": 0.2,
-      "alcance": 200,
+      "duracion": 1.212,
+      "impacto": 0.53,
+      "ventana": 0.121,
+      "alcance": 180,
       "arco": 110,
       "costeStamina": 25,
       "multiplicadorDano": 2,
       "empuje": 45
     },
     "esquiva": {
-      "duracion": 0.75,
-      "iframeInicio": 0.05,
-      "iframeFin": 0.4,
+      "duracion": 0.917,
+      "iframeInicio": 0.107,
+      "iframeFin": 0.459,
       "distancia": 400,
-      "costeStamina": 10
+      "costeStamina": 25
     },
-    "reaccionGolpe": 0.687,
+    "reaccionGolpe": 0.75,
     "parry": {
-      "duracion": 1.082,
+      "duracion": 0.7,
       "ventana": 0.25
     },
     "bloqueo": {
-      "reduccion": 0.7,
+      "reduccion": 0.55,
       "arco": 130,
       "costeStaminaPorGolpe": 22,
       "factorVelocidad": 0.45
@@ -62,9 +62,12 @@
     "pocion": {
       "curacion": 25,
       "cantidad": 4,
-      "duracion": 1.6,
-      "umbralUso": 0.45
-    }
+      "duracion": 1.893,
+      "umbralUso": 0.45,
+      "instanteCura": 1.173
+    },
+    "velocidadSprint": 550,
+    "retrasoRegenStamina": 1
   },
   "arquetipos": {
     "lancero_del_alba": {
@@ -179,26 +182,26 @@
     }
   },
   "procedencia": {
-    "malakh.hp": "medido — StatsManager BP_Malakh_DCS, Stat.Health.Max = 100",
+    "malakh.hp": "medido 2026-08-23 — StatsManager de BP_CombatCharacter, Stat.Health.Max = 100. Malakh no lo sobrescribe: BP_Malakh_DCS no tiene InheritableComponentHandler, asi que hereda TODO el bloque de stats del DCS.",
     "malakh.stamina": "medido — Stat.Stamina.Max = 100",
     "malakh.velocidad": "medido — CharMoveComp.MaxWalkSpeed = 400",
     "malakh.radio": "medido — CollisionCylinder.CapsuleRadius = 42",
     "malakh.velocidadGiro": "medido — RotationRate.Yaw = 540",
     "malakh.danoBase": "medido — Stat.Damage = 10",
     "malakh.armaBase.dano": "medido — DA_SteelSword, modificador de Stat.Damage = +10",
-    "malakh.ataqueLigero.duracion": "medido — M_1H_LightAttack_01, duracion 1.500 s",
-    "malakh.ataquePesado.duracion": "medido — M_1H_HeavyAttack_01, duracion 2.300 s",
-    "malakh.parry.duracion": "medido — Anim_1HS_Parry, 1.082 s",
-    "malakh.reaccionGolpe": "medido — Anim_1HS_GetHitFront_Add, 0.687 s",
-    "malakh.ataqueLigero.impacto": "ESTIMADO — los AnimNotify del montage son propiedad protegida por Python; medir en PIE",
-    "malakh.ataqueLigero.ventana": "ESTIMADO — idem, ventana del AnimNotifyState de colision",
-    "malakh.ataqueLigero.alcance": "ESTIMADO — depende del trace del CollisionHandler; medir con el debug de trazas",
-    "malakh.ataquePesado.impacto": "ESTIMADO — idem",
-    "malakh.esquiva": "ESTIMADO — el roll de DCS no se leyo; medir duracion, distancia e i-frames en PIE",
+    "malakh.ataqueLigero.duracion": "medido 2026-08-23 — M_1H_LightAttack_01 (1.500 s a rate 1.50) y _02 (1.000 s a rate 1.00): los DOS duran 1.000 s reales. Mi 1.5 anterior ignoraba el rate_scale del montage.",
+    "malakh.ataquePesado.duracion": "medido 2026-08-23 — M_1H_HeavyAttack_01 (2.300/1.90) y _02 (1.700/1.40): 1.211 y 1.214 s reales. El pesado no es el doble que el ligero, es un 21% mas.",
+    "malakh.parry.duracion": "medido 2026-08-23 — M_1H_Parry (sin escudo) 0.700 s. Con escudo seria M_1HS_Parry, 0.571 s.",
+    "malakh.reaccionGolpe": "medido 2026-08-23 — M_GetHitFront_Add, 0.750 s a rate 1.0. Antes puse 0.687 leyendo la secuencia, no el montage.",
+    "malakh.ataqueLigero.impacto": "medido 2026-08-23 — AnimNotifyState ANS_HitBox, ya en tiempo real: 0.494 s en el _01 y 0.302 s en el _02. El 0.398 es la media de los dos golpes del combo.",
+    "malakh.ataqueLigero.ventana": "medido 2026-08-23 — duracion del mismo ANS_HitBox: 0.099 s y 0.135 s. Media 0.117.",
+    "malakh.ataqueLigero.alcance": "PARCIAL — la hoja de SM_SteelSword mide 138.8 cm de bounds y sobresale 118 cm del punto de agarre (eso es medido). Lo que falta es cuanto adelanta la mano en el fotograma del impacto, y eso solo sale evaluando la pose, que hoy tira el editor. Los 180 cm son 118 de hoja mas ~60 de brazo estimados. El pesado usa la misma espada y la misma traza, asi que le pongo el mismo alcance: no habia razon para que fuese 200.",
+    "malakh.ataquePesado.impacto": "medido 2026-08-23 — ANS_HitBox a 0.448 s y 0.612 s reales. Media 0.53.",
+    "malakh.esquiva": "medido 2026-08-23 — M_Roll: 1.375 s a rate 1.50 = 0.917 s reales. Los i-frames son el ANS_Activity llamado \"IsImmortal\", de 0.107 a 0.459 s reales — 0.353 s de invulnerabilidad, no los 0.35 que estime por casualidad bien. El coste son 25 de stamina (Stat.Cost.Roll), no 10: con 100 de stamina caben CUATRO esquivas, no diez.",
     "malakh.pocion.curacion": "medido — DA_HealthPotion.value = 25",
     "malakh.pocion.cantidad": "DECISION DE DISEÑO — cuantos frascos entra el jugador a la arena. Es la palanca de balance mas barata que tienes.",
-    "malakh.pocion.duracion": "ESTIMADO — medir la animacion de beber en PIE. Si se puede interrumpir, el frasco se pierde igual.",
-    "malakh.bloqueo": "ESTIMADO — DCS tiene M_1HS_Block y Stat.Block=25, pero no su formula. Sin bloqueo el modelo exageraba la dificultad: un jugador real con espada bloquea, no solo esquiva.",
+    "malakh.pocion.duracion": "medido 2026-08-23 — M_DrinkPotion dura 1.893 s a rate 1.0, y el AN_UseItem que aplica la cura cae en el segundo 1.173. O sea: te curas a 1.17 s y sigues clavado 0.72 s mas.",
+    "malakh.bloqueo": "medido 2026-08-23 — DCS no usa Stat.Block (que ademas vale 50, no 25) para reducir el dano: usa el BlockValue del objeto con el que paras. DA_SteelSword tiene BlockValue 55 y DA_WoodenShield 100. Con la espada sola se absorbe el 55%; con escudo, el 100%. Mi 0.7 era intermedio y no correspondia a nada.",
     "arquetipos.*.velocidad": "medido 2026-08-23 — los CINCO Blueprints (Vigilante, Lancero, Arquero, Heraldo, Inspector) comparten chasis: MaxWalkSpeed 600, CapsuleRadius 50, RotationRate.Yaw 360. Mis estimaciones anteriores (350-420) eran invencion.",
     "arquetipos.*.hp": "medido — el StatsManager arranca todo en Stat.Health.Max = 100. Los 200 del Elite son DECISION DE DISEÑO, no medida.",
     "arquetipos.*.dano": "medido — Stat.Damage 10 del StatsManager mas el modificador del arma equipada: SteelSword +10 (Vigilante, Inspector), Lanza +20, ElvenBow +20, GreatAxe +20.",
@@ -206,7 +209,24 @@
     "arquetipos.lancero_del_alba.ataque.duracion": "derivado — M_AI_LightAttack_01 mide 2.000 s medidos, y DA_DA_Lanza trae Stat.AttackSpeed.Melee = -0.2. El 2.5 sale de aplicar ese -20%; la formula exacta de DCS no se ha leido.",
     "arquetipos.elite_pesado.ataque.duracion": "derivado igual: DA_GreatAxe tambien trae Stat.AttackSpeed.Melee = -0.2.",
     "arquetipos.arquero_del_firmamento.segundosDeRetirada": "DECISION DE DISEÑO, y ahora CRITICA. Antes puse el arquero a 350 para que Malakh (400) lo alcanzara; medido, el arquero corre a 600 y NUNCA se le alcanza. Este presupuesto de retirada es lo unico que hace que la arena se cierre. Si en el juego el arquero puede retroceder sin limite, ese encuentro no termina jamas.",
-    "arquetipos.portador_del_estandarte.buff": "NO MODELADO A PROPOSITO. El aura de buff/debuff no existe todavia en Unreal (contrato §1.2): hoy el Inspector pelea como un Vigilante. Simular un buff que el juego no hace seria medir humo. Vuelve cuando exista.",
-    "aviso.velocidad": "OJO: los cinco enemigos corren a 600 y Malakh a 400. No se puede huir de NINGUNO. Antes esto solo pasaba con el Lancero; medido, pasa con todos."
+    "arquetipos.portador_del_estandarte.buff": "YA SE MODELA. Hasta el 23/08 esto decia \"NO MODELADO A PROPOSITO\" porque el aura no existia en Unreal. Existe desde ese dia y el simulador la aplica: ver el bloque aura y _danoDe() en sim.js. Lo que sigue sin existir es el EFECTO VISUAL — el jugador sufre el buff sin ver de donde viene — y el estandarte como objeto: el portador lleva espada y escudo.",
+    "aviso.velocidad": "OJO: los cinco enemigos corren a 600 y Malakh a 400. No se puede huir de NINGUNO. Antes esto solo pasaba con el Lancero; medido, pasa con todos.",
+    "malakh.ataquePesado.ventana": "medido 2026-08-23 — ANS_HitBox de 0.123 s y 0.119 s. Media 0.121.",
+    "malakh.esquiva.distancia": "ESTIMADO — la distancia del roll es root motion y no se pudo evaluar: pedir la pose de un montage tira el interprete de Python del editor (assertion en AnimMontage.h:781). Se mide en PIE o desde la secuencia fuente, no desde el montage.",
+    "malakh.regenStamina": "medido 2026-08-23 — RegeneratedStats: 1.75 de stamina cada 0.05 s = 35/s, y se corta 1 s despues de gastar. Antes puse 25.",
+    "malakh.velocidadSprint": "medido 2026-08-23 — BP_MovementSpeedComponent: Walk 200 / Jog 400 / Sprint 550. El estado por defecto es Jog, y por eso la velocidad del simulador son 400. IMPORTANTE: ni esprintando (550) llega a los 600 de los enemigos.",
+    "malakh.ataqueLigero.costeStamina": "medido 2026-08-23 — Stat.Cost.MeleeAttack = 10. Ya estaba bien.",
+    "malakh.ataquePesado.multiplicadorDano": "ESTIMADO — el x2 no se ha leido de ningun sitio. El arma solo declara Stat.Damage +10 y no distingue ligero de pesado; el multiplicador vive en el grafo del CombatComponent, que no se lee por MCP.",
+    "malakh.ataqueLigero.arco": "ESTIMADO — el arco del mandoble no es un numero en ningun asset: es la forma de la traza a lo largo de la animacion.",
+    "malakh.ataquePesado.costeStamina": "ESTIMADO — Stat.Cost.MeleeAttack es 10 y es unico: si el pesado cuesta mas, el multiplicador esta en el grafo y no se ha leido.",
+    "aviso.medicionDeMalakh": "Los ataques de Malakh son MUCHO mas rapidos de lo que este simulador creyo hasta hoy (ligero 1.0 s en vez de 1.5; pesado 1.21 en vez de 2.3), y su esquiva cuesta 2.5 veces mas. Los veredictos de antes del 23/08 estaban calculados con un Malakh lento y con esquivas baratas: no se comparan con los de ahora.",
+    "aviso.pythonCaido": "Pedirle la pose a un AnimMontage (get_anim_pose_at_time) revienta el interprete de Python del editor con un assert y ya no vuelve: hay que reiniciar el editor. Los toolsets C++ siguen funcionando despues del golpe. Si hace falta root motion, sacarlo de la SECUENCIA, no del montage.",
+    "aura": "medido 2026-08-23 — BP_DA_AuraComponent en /Game/DarkAngels/Blueprints/Combat/. RadioAura 1200, Bonificacion +15, editables por instancia. Comprobado en juego con dos Vigilantes: 35 de dano a 506 uu del portador, 20 a 3000 uu, 20 con el portador muerto. Un +75% mientras viva."
+  },
+  "aura": {
+    "arquetipo": "portador_del_estandarte",
+    "radio": 1200,
+    "bonificacion": 15,
+    "nota": "BP_DA_AuraComponent. Mientras el portador viva, cada aliado dentro del radio suma esto a su dano. Dos portadores apilan."
   }
 }

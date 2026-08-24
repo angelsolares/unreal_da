@@ -120,11 +120,12 @@ export const ARQUETIPOS = {
     blueprint: 'BP_DA_Heraldo', sueltaPorDefecto: false, armaEsOffHand: false
   },
   portador_del_estandarte: {
-    // El Inspector se queda con espada + escudo. Su valor es el buff/debuff...
-    // que TODAVIA NO EXISTE. Hoy pelea como un Vigilante con otro nombre.
+    // El Inspector se queda con espada + escudo. Su valor es el aura, que desde
+    // el 23/08/2026 SI existe: BP_DA_AuraComponent, +15 de daño a cada aliado a
+    // menos de 1200 cm mientras el portador viva. El simulador ya la aplica.
     color: '#b58ad8', glifo: 'P', silueta: 'alta',
     blueprint: 'BP_DA_Inspector', sueltaPorDefecto: true, armaEsOffHand: false,
-    incompleto: 'Su aura de buff/debuff no existe todavia en Unreal: hoy pelea como un escudero.'
+    incompleto: 'El aura funciona pero NO SE VE: no tiene efecto visual, asi que el jugador sufre el buff sin saber de donde viene. Y el estandarte como objeto tampoco existe: lleva espada y escudo.'
   }
 };
 

@@ -41,18 +41,30 @@
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
       "papel": "Multiplicador; convierte el tiempo en presion",
-      "comoPelea": "OJO — HOY NO HACE LO QUE PROMETE. Su aura de buff/debuff no existe todavia en Unreal: el BP_DA_Inspector lleva espada y escudo y pelea igual que un Vigilante (20 de daño, guardia del 40%). El simulador NO modela ningun buff, a proposito, porque seria medir algo que el juego no hace.",
-      "comoSeContesta": "Yendo a por el pronto, que es exactamente la decision que su presencia quiere provocar.",
-      "queAporta": "Su Estandarte ritual es la unica arma que no mata: se clava y convierte un trozo de arena en territorio propio.",
-      "dondeColocarlo": "Protegido, y visible. Si el jugador no lo ve, el buff parece que sale de la nada y la leccion no se aprende.",
-      "cuidadoCon": "No montes un encuentro cuya leccion dependa de su buff: hoy estarias midiendo un Vigilante con otro nombre. Cuando el aura exista, esta ficha y la calibracion hay que rehacerlas."
+      "comoPelea": "Lleva espada y escudo y pelea como un Vigilante (20 de daño, guardia del 40%), pero eso no es lo que hace. Lo que hace es su AURA: mientras este vivo, todo aliado a menos de 1200 cm pega +15. Un Vigilante a su lado pasa de 20 a 35 — un +75%. Esta medido en juego, no supuesto, y el simulador ya lo aplica.",
+      "comoSeContesta": "Yendo a por el primero, aunque este detras y aunque cueste llegar. Cada segundo que vive, todos los demas pegan casi el doble. Es exactamente la decision que su presencia quiere provocar.",
+      "queAporta": "Su Estandarte ritual seria la unica arma que no mata: se clava y convierte un trozo de arena en territorio propio. Como objeto todavia no existe — hoy el portador lleva espada y escudo.",
+      "dondeColocarlo": "Protegido, y VISIBLE. El aura no tiene efecto visual todavia: si el jugador no ve al portador, el buff sale de la nada y la leccion no se aprende. Hasta que haya VFX, la colocacion es lo unico que lo señala.",
+      "cuidadoCon": "Su radio son 1200 cm, que es medio campo: colocado \"lejos y a salvo\" probablemente sigue buffeando a todo el mundo. Si lo quieres fuera del aura, mide. Y dos portadores APILAN: dos auras son +30, o sea 50 de daño por Vigilante. Eso mata a Malakh en dos golpes."
     }
   },
   "reglasDeComposicion": {
-    "techoDeLaEspada": "Medido en 1000 partidas: la espada base sola aguanta 2-3 enemigos SIMULTANEOS. No es cuantos pones, es cuantos llegan a la vez.",
-    "escalonar": "Separar con distancia, cortar la vision con coberturas y usar la cota es lo que convierte una composicion imposible en una legible.",
+    "techoDeLaEspada": "Medido el 23/08 con Malakh real: en campo abierto y con los enemigos separados 320 cm, la espada sola gana 3 de 3 el 98% de las veces. En la geometria de \"Romper la linea\" —dos escuderos a 560 cm flanqueando el camino— esos MISMOS tres enemigos se ganan el 5%. La composicion no decide: decide la colocacion.",
+    "escalonar": "Separar con distancia, cortar la vision con coberturas y usar la cota es lo que convierte una composicion imposible en una legible. Es la palanca mas fuerte que tienes, mas que quitar o poner enemigos.",
     "laLlaveSeVe": "El enemigo que suelta el arma clave tiene que leerse desde la entrada (§5.1). Si esta tapado, la ruta no se descubre: se tropieza.",
     "velocidad": "Los CINCO enemigos corren a 600 y Malakh a 400 (medido). No se puede huir de ninguno, y perseguir a un arquero no funciona. Toda retirada del jugador es una retirada peleando.",
-    "quienBloquea": "Solo el Vigilante y el Inspector tienen escudo. El Lancero y el Heraldo van a dos manos y NO bloquean; el Arquero tampoco. Si un encuentro quiere enseñar guard break, tiene que haber un Vigilante."
+    "quienBloquea": "Solo el Vigilante y el Inspector tienen escudo. El Lancero y el Heraldo van a dos manos y NO bloquean; el Arquero tampoco. Si un encuentro quiere enseñar guard break, tiene que haber un Vigilante.",
+    "ritmo": "Malakh mata a un enemigo de 100 en cinco golpes de 1,0 s, o sea unos 5 s si no le interrumpen. Un escudero le pega cada 2,2 s. La cuenta que decide un encuentro es esa: cuantos enemigos le estan pegando mientras el gasta esos 5 s.",
+    "stamina": "Cuatro esquivas y se queda sin stamina. Si la composicion obliga a esquivar mas de cuatro veces seguidas sin un respiro de 1 s, no es dificil: es imposible."
+  },
+  "malakh": {
+    "nombre": "Malakh (el jugador)",
+    "nota": "Medido del motor el 2026-08-23, no estimado. Sirve para razonar sobre lo que el jugador PUEDE hacer; los numeros exactos estan en calibracion.json.",
+    "loQuePuede": "Espada de acero: 20 de daño por golpe (10 de base + 10 del arma). El ataque ligero dura 1,0 s de principio a fin y el golpe cae a los 0,40 s con una ventana activa de 0,12 s. El pesado dura 1,21 s, o sea solo un 21% mas que el ligero: comprometerse a un pesado es mucho mas barato de lo que parece.",
+    "loQueLeCuesta": "Tiene 100 de vida y 100 de stamina, que regenera a 35/s pero solo tras 1 s sin gastarla. Atacar cuesta 10; rodar cuesta 25. Eso son CUATRO esquivas seguidas y se queda seco. La esquiva dura 0,92 s y solo es invulnerable de 0,11 a 0,46 s: menos de la mitad del rodillo.",
+    "bloquear": "Bloquear con la espada sola absorbe el 55% del golpe. Con el Escudo Celestial en la mano absorbe el 100%: por eso el escudo cambia la arena y no solo el daño.",
+    "beber": "El frasco cura 25 y la animacion dura 1,89 s, con la cura a los 1,17 s. Beber delante de dos enemigos es regalar un golpe de 20 o 30.",
+    "velocidad": "Corre a 400 (trote, su estado por defecto) y a 550 esprintando. Los cinco enemigos corren a 600. NO PUEDE HUIR DE NADIE, ni esprintando. Cualquier retirada es una retirada peleando.",
+    "loQueNoSabemos": "No estan medidos: cuanto se desplaza el rodillo, el multiplicador de daño del ataque pesado, y el alcance exacto de la espada (la hoja mide 118 cm desde el agarre; lo que falta es cuanto adelanta el brazo)."
   }
 }
