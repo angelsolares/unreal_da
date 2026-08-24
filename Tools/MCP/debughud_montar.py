@@ -192,33 +192,29 @@ def tab_pos(i):
 
 
 # ###########################################################################
-# ##  DEUDA ABIERTA — LEER ANTES DE LANZAR UNA PASADA (2026-08-23)         ##
+# ##  DEUDA SALDADA el 2026-08-24 — pero la regla sigue en pie             ##
 # ###########################################################################
 #
-# Este script ha quedado POR DETRAS del asset: hay tres mejoras que se
-# aplicaron por CIRUGIA sobre `BP_DA_DebugHUD` (create_node/connect_pins) y
-# que NUNCA se portaron aqui. Sus commits tocan solo el .uasset:
+# Durante un dia este script fue POR DETRAS del asset: tres mejoras se habian
+# hecho por CIRUGIA sobre `BP_DA_DebugHUD` (create_node/connect_pins) y nunca
+# se portaron aqui, asi que una pasada se las llevaba por delante. Paso de
+# verdad el 2026-08-23 a las 15:38 y hubo que recuperar el .uasset con
+# `git checkout`.
 #
-#   1f73493  sonidos de panel y click  -> DbgSonarPanel, DbgSonarClick
-#   (mismo lote) resalte de hover      -> DbgHoverBoton, DbgHoverTabs
-#   fed1528  spawn encarado al jugador -> los 5 nodos de FindLookAtRotation
-#            dentro de DbgSpawnUno
+# YA ESTAN LAS TRES AQUI: los sonidos (`dsl_sonar_panel`, `dsl_sonar_click`),
+# el resalte de hover (`dsl_hover_boton`, `dsl_hover_tabs`) y el spawn encarado
+# (el `FindLookAtRotation` dentro de `dsl_spawn_uno`). La pasada es segura.
 #
-# UNA PASADA DE ESTE SCRIPT LAS BORRA LAS TRES. Ya paso: el 2026-08-23 sobre
-# las 15:38 alguien regenero y el asset perdio las tres; se recuperaron con
-# `git checkout` del .uasset.
-#
-# ANTES de volver a lanzarlo hay que portarlas. Estan en el asset commiteado
-# en HEAD: se leen con `read_graph_dsl` y se pegan aqui como cualquier otra
-# `dsl_*`. Comprobacion de que ya estan:
+# La comprobacion, por si alguien vuelve a hacer cirugia y se olvida de portarla:
 #
 #   python -c "import debughud_montar as d; print(hasattr(d,'dsl_hover_boton'))"
 #
-# Si eso dice False, NO LANCES LA PASADA. (Se pregunta por la FUNCION, no por
-# el nombre en texto: este comentario ya los menciona y un grep se enganaria.)
+# Se pregunta por la FUNCION, no por el nombre en texto: este comentario ya los
+# menciona y un grep se enganaria.
 #
-# La leccion de fondo: sobre este Blueprint no se hace cirugia. Lo que no
-# entre por aqui, se pierde en la siguiente regeneracion.
+# LA REGLA DE FONDO NO CAMBIA: sobre este Blueprint no se hace cirugia. Lo que
+# no entre por aqui, se pierde en la siguiente regeneracion. Y la regeneracion
+# es TODO O NADA: un corte a mitad te deja sin panel.
 # ###########################################################################
 
 # ---------------------------------------------------------------- grafos
@@ -1910,11 +1906,15 @@ def filas_combat():
              "(CallFunction|DbgColisionesToggle)",
              "(Variables|Default|GetDbgColisiones)"),
         ]),
+        # Seis no caben a 114/110: el panel mide PW=580 y empieza en x0=8, o sea
+        # 564 utiles. A 94 de paso y 90 de ancho el ultimo acaba en 568.
+        # El ESCUDO se queda el ultimo a proposito: es off-hand, y el §10 del PDF
+        # lo pide en su propia linea junto al Force Shield Discard que aun no hay.
         ("TEMPORARY WEAPON", 408.0, 430.0, [
-            (x0 + i * 114.0, 110.0, e, "(CallFunction|DbgDarArma%s)" % c, "false")
+            (x0 + i * 94.0, 90.0, e, "(CallFunction|DbgDarArma%s)" % c, "false")
             for i, (c, e) in enumerate([("Lanza", "LANZA"), ("Trompeta", "TROMPETA"),
                                         ("Hacha", "HACHA"), ("Espadon", "ESPADON"),
-                                        ("Escudo", "ESCUDO")])
+                                        ("Arco", "ARCO"), ("Escudo", "ESCUDO")])
         ]),
         ("CORRUPTION STAGE", 468.0, 490.0, [
             (x0 + i * 142.0, 138.0, e, "(CallFunction|DbgCorrupcion%s)" % c, "false")
@@ -2913,6 +2913,7 @@ def run():
         ("DbgDarArmaTrompeta", lambda c='Trompeta', r='/Game/DarkAngels/Weapons/Items/DA_DA_Trompeta.DA_DA_Trompeta', e='Trompeta del Juicio': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaHacha", lambda c='Hacha', r='/Game/DarkAngels/Weapons/Items/DA_DA_HachaMano.DA_DA_HachaMano', e='Hacha': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaEspadon", lambda c='Espadon', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_GreatAxe.DA_GreatAxe', e='Espadon': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaArco", lambda c='Arco', r='/Game/DynamicCombatSystem/ArcheryModule/Blueprints/Items/ObjectItems/Instances/DA_ElvenBow.DA_ElvenBow', e='Arco del Firmamento': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaEscudo", lambda c='Escudo', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_WoodenShield.DA_WoodenShield', e='Escudo Celestial': dsl_dar_arma(c, r, e), []),
         ("DbgCorrupcionCel", lambda c='Cel', v='0.0', e='Celestial': dsl_corrupcion(c, v, e), []),
         ("DbgCorrupcionTai", lambda c='Tai', v='0.33', e='Tainted': dsl_corrupcion(c, v, e), []),
