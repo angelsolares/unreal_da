@@ -11307,3 +11307,48 @@ y ningun escudo.
 `destroy_actor`. Se me quedaron dos Heraldos en el Master, en (44000,−11000), con el equipo
 viejo. Se veian en PIE como enemigos legitimos y casi me hacen diagnosticar mal. Cuenta los
 actores de esa clase antes de guardar el nivel.
+
+### El aura del portador del estandarte (2026-08-23)
+
+Montada **sin comprar nada**. El DCS base ya traia todo lo necesario y no hacia falta el modulo
+de magia: `BP_AbilityComponent` en cada enemigo, `BP_Ability_AI` de la que heredar, items de
+hechizo, indicador de suelo, notifies, inputs, iconos de buff, y hasta un `SM_MagicWand`.
+
+Al final ni siquiera hizo falta una habilidad: **un buff en DCS es un modificador de stat**.
+
+`BP_DA_AuraComponent` (`/Game/DarkAngels/Blueprints/Combat/`), colgado del `BP_DA_Inspector`:
+
+- `BeginPlay` arranca un temporizador de 1 s.
+- `RevisarAura` quita el modificador a todos los de la lista, y si el portador sigue vivo se lo
+  vuelve a poner a cada `BP_BaseAI` vivo dentro de `RadioAura` que no sea el propio portador.
+- `EventEndPlay` para el temporizador y limpia, por si al actor lo destruyen sin morir.
+
+**Quitar-y-volver-a-poner en cada pasada** en vez de llevar la cuenta de altas y bajas: como
+cada `AddModifier` va siempre precedido de su `RemoveModifier`, el valor no puede derivar. Es
+mas simple y no se descuadra.
+
+La API es `Modifiers|AddModifier(self: StatsManager, StatTag: GameplayTag, Value: float)` y su
+`RemoveModifier` simetrico. El tag literal se escribe
+`(GameplayTags|MakeLiteralGameplayTag "Stat.Damage")`.
+
+**Medido en juego**, dos Vigilantes con daño base 10 y 20 con su espada:
+
+| situacion | daño del aliado |
+|---|---|
+| portador vivo, aliado a 506 uu | **35** |
+| portador vivo, aliado a 3000 uu | **20** |
+| portador muerto | **20** |
+
+**Lo que le falta:** no se ve. Ni efecto en el portador, ni en los afectados. El jugador recibe
+el +75% sin saber de donde viene, que es tan malo como los muros invisibles de la arena.
+
+## Y como NO sacar la firma de una funcion de DCS
+
+Llamar a `call_method` sin argumentos para que la excepcion te diga que falta **funciona con
+firmas simples y mata el editor con las que esperan un struct**. Probando
+`StatsManager.AddModifier` salio `Assertion failed: false [AnimMontage.h:781]` y a partir de ahi
+todo Python devolvia `0xC0000005`, con el autoguardado deshabilitado por *"dirty assets may be
+corrupt"*. Hubo que reiniciar el editor descartando lo no guardado.
+
+Lo que si es seguro: **`get_node_type_pins`**, que lee los pines del nodo sin ejecutarlo. Asi
+salio la firma de `AddModifier` y la de `Interface|GetStatValue` en dos llamadas y sin riesgo.

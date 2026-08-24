@@ -62,15 +62,32 @@ no de memoria.
 | `lancero_del_alba` | `BP_DA_Lancero` | `DA_DA_Lanza` a dos manos, **sin escudo** | alcance; su arma es la que arrojas |
 | `arquero_del_firmamento` | `BP_DA_Arquero` | `DA_ElvenBow` + flechas (hereda de `BP_ArcherAI`) | presión a distancia; obliga a moverse |
 | `elite_pesado` | `BP_DA_Heraldo` | `DA_GreatAxe` a dos manos, **sin escudo** | lento y sin guardia, pero pega fuerte |
-| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` | **buff/debuff**; su valor no es el arma |
+| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` + **`BP_DA_AuraComponent`** | **aura de daño a los aliados vivos**; su valor no es el arma |
 
 **`BP_DA_WarriorAI` no es un arquetipo.** No tiene equipo propio: es el genérico que invoca el
 `BP_DA_GiantBoss`. No lo metas en la tabla.
 
-**Lo que al `portador_del_estandarte` le falta:** el aura de buff/debuff **no existe todavía**,
-ni el estandarte como objeto. Hoy es, mecánicamente, un `escudero_celestial` con otro nombre.
-Se puede colocar en un encuentro y pelea, pero **no aporta lo que promete**, así que cuidado al
-sacar conclusiones de una simulación que dependa de él.
+**El aura del `portador_del_estandarte` YA FUNCIONA** (2026-08-23), y esto deroga lo que decía
+antes esta sección. `BP_DA_AuraComponent`, en `/Game/DarkAngels/Blueprints/Combat/`: mientras el
+portador esté vivo, **todo `BP_BaseAI` aliado dentro de su radio recibe un modificador de
+`Stat.Damage`**. Al morir el portador, o al salirse del radio, se retira solo.
+
+Dos parámetros editables por instancia: `RadioAura` (1200 por defecto) y `Bonificacion` (+15).
+
+Medido en juego con dos Vigilantes, cuyo daño base es 10 y con su espada 20:
+
+| situación | daño del aliado |
+|---|---|
+| portador vivo, aliado a 506 uu | **35** |
+| portador vivo, aliado a 3000 uu (fuera del radio) | **20** |
+| portador muerto | **20** |
+
+O sea **+75% de daño mientras viva**, que es una lectura táctica clarísima: o cae el portador
+primero, o el resto pega mucho más fuerte. Eso el emulador ya lo puede simular de verdad.
+
+**Lo que todavía NO tiene: efecto visual.** El aura no se ve, así que hoy el jugador sufre el
+buff sin saber de dónde viene. Y sigue sin existir el estandarte como objeto: el portador lleva
+espada y escudo. Las dos cosas son trabajo de arte, no de mecánica.
 
 **Regla:** un `arquetipo` que no esté en la tabla es un error de carga, no un enemigo
 silenciosamente ausente.
@@ -226,6 +243,36 @@ suplente sobra. La tabla completa está en el §1.2, con el equipo real de cada 
 `portador_del_estandarte` **no existe todavía**. Hoy pelea como un escudero. Un encuentro
 cuya lectura dependa de ese buff estará midiendo algo que el juego aún no hace.
 
+#### 6.1.b Lo que el emulador hizo con esta información (2026-08-23)
+
+Aplicado, y de paso **medidos los cinco Blueprints** en vez de seguir estimando. La
+recalibración es grande y el veredicto empeora mucho, así que conviene saber por qué.
+
+| lo que yo tenía | lo que mide el motor |
+|---|---|
+| velocidades 350–420 según el arquetipo | **los cinco a 600**, mismo chasis, mismo radio 50 |
+| escudero 12 de daño | **20** (`Stat.Damage` 10 + `DA_SteelSword` +10) |
+| arquero 16 | **30** (+ `DA_ElvenBow` +20) |
+| lancero 14 | **30** (+ `DA_DA_Lanza` +20) |
+| elite con guardia 0,7 | **guardia 0** — lleva hacha a dos manos, sin escudo |
+| portador sin guardia | **guardia 0,4** — lleva espada y escudo |
+
+Dos consecuencias que no son cosméticas:
+
+**Ya no se puede huir de nadie.** Antes solo el Lancero corría más que Malakh; medido,
+**los cinco** van a 600 contra sus 400. Y el `segundosDeRetirada` del arquero, que yo
+había puesto como decisión de diseño, pasa de ser un ajuste fino a ser **lo único que
+hace que la arena se cierre**: sin ese tope, un arquero a 600 no se alcanza nunca.
+
+**El techo de la espada baja de 3 enemigos a 2.** Con los números reales, «Romper la
+línea» se gana el **1%** con espada sola (antes 24%) y el **2%** con armas (antes 34%).
+No es que el encuentro haya empeorado: es que antes lo estaba midiendo con estadísticas
+inventadas más benévolas que el juego.
+
+**El buff del portador no se simula**, a propósito. El campo estaba declarado en la
+calibración y ahora está fuera, con su razón escrita: modelar un aura que Unreal no tiene
+sería medir humo, exactamente el mismo error que las probabilidades de drop del §6.2.
+
 ### 6.2 ⚠️ `drop` se resuelve como dos booleanos, y eso cuesta algo
 
 Adoptada la opción A del §2.2: `"drop": { "principal": bool, "secundaria": bool }`.
@@ -319,3 +366,65 @@ hace falta reiniciar nada.
 
 No está en el JSON del encuentro ni le hace falta a Unreal: es documentación de
 diseño con un consumidor que resulta ser una máquina.
+
+### 6.11 Malakh, medido del motor (2026-08-23)
+
+Los enemigos se midieron en §6.1.b. Faltaba la otra mitad: el jugador. Siete
+valores estaban estimados y **seis se han medido**. Los tres primeros cambian el
+combate entero.
+
+| valor | tenía | mide | de dónde |
+|---|---|---|---|
+| ataque ligero, duración | 1,50 s | **1,00 s** | `M_1H_LightAttack_01` (1,500 s a `rate_scale` 1,50) y `_02` (1,000 a 1,00) |
+| ataque ligero, impacto | 0,55 s | **0,40 s** | `ANS_HitBox` a 0,494 s y 0,302 s reales |
+| ataque ligero, ventana | 0,15 s | **0,117 s** | duración del mismo `ANS_HitBox` |
+| ataque pesado, duración | 2,30 s | **1,21 s** | `M_1H_HeavyAttack_01` (2,300/1,90) y `_02` (1,700/1,40) |
+| ataque pesado, impacto | 0,95 s | **0,53 s** | `ANS_HitBox` a 0,448 s y 0,612 s |
+| esquiva, duración | 0,75 s | **0,917 s** | `M_Roll`, 1,375 s a `rate_scale` 1,50 |
+| esquiva, i-frames | 0,05–0,40 | **0,107–0,459** | `ANS_Activity` llamado `IsImmortal` |
+| esquiva, coste | 10 | **25** | `Stat.Cost.Roll` |
+| bloqueo, reducción | 70% | **55%** | `DA_SteelSword.BlockValue = 55` |
+| poción, duración | 1,60 s | **1,893 s** | `M_DrinkPotion`; la cura cae en el 1,173 |
+| reacción a golpe | 0,687 s | **0,750 s** | `M_GetHitFront_Add` |
+| regen de stamina | 25/s | **35/s** | `RegeneratedStats`: 1,75 cada 0,05 s, con 1 s de corte |
+
+**El error de fondo era ignorar `rate_scale`.** Ningún montage de DCS se reproduce
+a velocidad 1: el ligero va a 1,50, el pesado a 1,90, el rodillo a 1,50. Leer
+`sequence_length` sin dividir por `rate_scale` alarga cada animación un 50-90%.
+Si la sesión de Unreal lee tiempos de animación para cualquier otra cosa, aquí
+está la trampa.
+
+**Lo que sigue sin medir**, dicho sin adornos:
+
+- **Alcance de la espada.** La hoja de `SM_SteelSword` mide 138,8 cm de bounds y
+  sobresale 118 cm del punto de agarre — eso es medido. Falta cuánto adelanta el
+  brazo en el fotograma del impacto, y eso solo sale evaluando la pose.
+- **Distancia del rodillo.** Es root motion.
+- **Multiplicador de daño del pesado.** El arma solo declara `Stat.Damage +10` y
+  no distingue ligero de pesado: el multiplicador vive en el grafo del
+  `BP_CombatComponent`, que no se lee por MCP.
+
+**Aviso operativo — esto tira el editor.** Pedirle la pose a un `AnimMontage`
+(`montage.get_anim_pose_at_time(...)`) revienta con un assert en
+`AnimMontage.h:781`, **y el intérprete de Python no vuelve**: toda llamada
+posterior muere con `0xC0000005` hasta reiniciar el editor. Los toolsets C++
+siguen respondiendo después del golpe, así que no todo está perdido. Para root
+motion, evaluar la **secuencia fuente**, nunca el montage.
+
+**Dos correcciones a §6.1.b y a lo que este documento daba por bueno:**
+
+1. `Stat.Block` vale **50**, no 25 — y da igual, porque DCS no lo usa para
+   reducir daño. La reducción es el `BlockValue` del objeto con el que paras:
+   espada 55, `DA_WoodenShield` 100. Por eso el Escudo Celestial cambia la arena
+   y no solo el daño: con escudo el bloqueo frontal es **total**.
+2. Malakh esprinta a **550** y los cinco enemigos corren a 600. El aviso de
+   §6.1.b («no se puede huir de nadie») era aún más cierto de lo que decía: no se
+   puede huir **ni esprintando**.
+
+**Lo que esto le hace a los veredictos.** Con el Malakh real, tres enemigos en
+campo abierto y separados 320 cm pasan del **12% al 98%** de victorias con la
+espada sola. Los mismos tres, colocados como están en «Romper la línea» —dos
+escuderos a 560 cm flanqueando el camino— se ganan el **5%**. La composición no
+decide: decide la colocación. El encuentro completo de cinco sigue en el 1% con
+espada sola, así que la ruta de armas sigue siendo obligatoria ahí, que es
+precisamente lo que el §5.2 del PDF prohíbe.
