@@ -11494,3 +11494,46 @@ escritor acepta:
   (`float`, no `double`).
 - `save_loaded_asset` devolvió `False` una vez tras recompilar; el reintento con
   `save_asset(..., only_if_is_dirty=False)` guardó de verdad. Verificar por mtime.
+
+## El descarte del estandarte: clavar la trompeta (2026-08-23)
+
+La fila que faltaba de la tabla del §3.2 del PDF — *"Clavarlo para crear una última zona de
+efecto"* — y con ella el §6.3 ya se puede montar. Todo medido en PIE con un Vigilante de
+testigo:
+
+| momento | daño del testigo |
+|---|---|
+| portador vivo (aura de siempre) | **35** |
+| portador muerto | 20 |
+| trompeta clavada, testigo a 193 uu | **5** |
+| la zona expira (15 s) | 20 |
+
+Las piezas:
+
+- **`BP_DA_AuraComponent` aprende `SiempreActiva`** (bool, default false): el aura corre
+  aunque el dueño no sea un personaje vivo. Un bool y un `or` en `RevisarAura` — el camino
+  del portador vivo queda intacto (verificado el 35 antes de tocar nada más).
+- **`BP_DA_EstandartePlantado`**: actor nuevo con el cuerno clavado (`SM_DA_Trompeta` a
+  1.15, ladeado 8°, hincado −8, sin colisión) y un aura `SiempreActiva` con
+  **`Bonificacion = −15`** y radio 800. `InitialLifeSpan = 15`: la zona es *"del efecto,
+  no del arma"*. Al morir el actor, el `EndPlay` del componente ya quitaba modificadores —
+  la limpieza salió gratis.
+- **`PlantarEstandarte`** en el jugador: spawnea el clavado a 130 uu al frente, a la cota
+  de los pies (z − 96), y llama a `PurgarTemporales` — la espada vuelve sola.
+- **`ArrojarLanza` ahora enruta por familia**: trompeta → clavar; el resto arroja **solo si
+  el arma es `ArmaArrojadiza`**. Eso arregla de paso un bug latente: con el hacha del
+  Heraldo, la tecla de descarte arrojaba una *lanza*.
+
+Trampas nuevas del DSL: el `==` genérico no acepta literales de objeto ni cables de string
+(resuelve a numérico antes de mirar tipos) — para strings hay que nombrar
+`Utilities|String|EqualExactly(String)`, y para "¿es este asset?" comparar
+`Utilities|GetObjectName` contra el literal.
+
+Y una del PIE: si teleportas el pawn a una cámara y el script revienta antes del
+`MOVE_FLYING`, **el pawn se cae al vacío en silencio** y todo lo que hagas después pasa a
+z = −250 000, con la pantalla de «caído al vacío» pegada. El estandarte de la foto se
+plantó dos veces en el abismo antes de salir.
+
+Pendiente de la familia: la zona plantada reusa el anillo naranja del aura de buff — un
+debuff pediría otro color (el material del anillo no tiene parámetro de color todavía). Y
+sin animación de clavado: el gesto es instantáneo.

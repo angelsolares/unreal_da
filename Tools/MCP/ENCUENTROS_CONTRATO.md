@@ -471,3 +471,17 @@ el emulador puede dar por hecho:
 5. **El watchdog del §7.3 existe.** `VigilarArena` (0,5 s): sellada + array de enemigos
    vacío + victoria falsa → línea `WATCHDOG BP_DA_Arena` en el log y apertura de emergencia.
    Verificado vaciando el array en caliente: `Estado 1 → 2` en el siguiente tick.
+
+### 6.13 El estandarte ya se clava (2026-08-23, del lado de Unreal)
+
+El ataque de descarte del `portador_del_estandarte` existe: con la trompeta en la mano, la
+tecla de arrojar la **clava** en vez de lanzarla. Nace `BP_DA_EstandartePlantado` — el
+cuerno hincado más un aura **invertida** (−15 de `Stat.Damage` a todo `BP_BaseAI` en un
+radio de 800) que **dura 15 s** y se limpia sola al expirar. Medido: testigo con 20 de
+daño pasa a **5** dentro de la zona y vuelve a 20 al expirar. La ruta del §6.3 («eliminar
+Portador → clavar su Estandarte para invertir la zona») ya es montable de punta a punta.
+
+Para el emulador: el descarte de la familia `estandarte` es
+`{ tipo: "zona", bonificacion: -15, radio: 800, duracion: 15 }`, y el arrojadizo de
+proyectil queda **solo** para la familia `lanza` — con el hacha o la trompeta la tecla ya
+no dispara lanzas fantasma.
