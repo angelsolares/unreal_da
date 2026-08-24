@@ -396,3 +396,73 @@ lejano de la traza. Ya no queda nada estimado en los alcances de Malakh.
 la calibración del emulador. Se anota aquí porque los alcances de los cinco enemigos
 (`alcanceAtaque`: 320 el Lancero, 280 el Heraldo, 200 el Vigilante…) **siguen siendo
 estimaciones mías**, y ahora hay método para medirlos de verdad.
+
+### 6.13 Los cinco enemigos, medidos — y tres cosas que este documento daba por buenas y son falsas
+
+Segunda pasada sobre los enemigos (24/08), con el método del §6.12. **Tres premisas
+del diseño no sobreviven a la medida.**
+
+#### 1. La lanza no da alcance
+
+| | alcance efectivo |
+|---|---|
+| Vigilante / Inspector (`DA_SteelSword`) | 241 cm |
+| Heraldo (`DA_GreatAxe`) | 239 cm |
+| Lancero (`DA_DA_Lanza`) | **245 cm** |
+| Malakh (`DA_SteelSword`) | 243 cm |
+
+Cuatro centímetros entre la lanza y la espada. `SM_DA_Lanza` mide 175 cm contra los
+138,8 de `SM_SteelSword`, pero **se agarra a un tercio del asta**: sobresale 116,7 cm
+por delante de la mano contra los 112,3 de la espada. Y encima **los cuatro de melé
+comparten animación** — solo existe un juego de montages (`M_AI_LightAttack`,
+`HeavyAttack`, `SpecialAttack`), no hay animación de lanza ni de hacha.
+
+Consecuencia de diseño: **no se puede montar un encuentro cuya lección sea «el
+Lancero te gana el alcance, quítale la lanza»**. Eso no pasa. O la Lanza del Alba se
+justifica por el arrojado —que sí existe— o hay que alargar el arma de verdad.
+
+#### 2. El Arquero no tiene límite de alcance
+
+`D_CanShootArrow` solo comprueba un cono de 25° y la visión: **no hay comprobación de
+distancia**. La flecha sale a 3500 cm/s, vive 4 s y su `projectile_gravity_scale` es
+**0** — no cae. Son **14 000 cm** en línea recta, tres veces la diagonal de una arena
+grande. Dispara desde donde sea con tal de verte.
+
+Cortarle la visión no es *una* respuesta: es **la** respuesta. Colocarlo «lejos, al
+fondo» no lo hace menos peligroso — lo que decide cuánto molesta es la cobertura.
+
+#### 3. Bloquean cuatro de los cinco, no uno
+
+En DCS **se bloquea con el arma**, no hace falta escudo — Malakh lo hace con la espada
+sola al 55%. El `BT_WarriorAI` tiene cuatro nodos `Set Activity: Block`, así que:
+
+| | absorbe |
+|---|---|
+| Vigilante / Inspector (`DA_WoodenShield`) | **100%** — el golpe parado no hace nada |
+| Lancero (`DA_DA_Lanza`) | 75% |
+| Heraldo (`DA_GreatAxe`) | 75% |
+| Arquero | no bloquea |
+
+Esto **deroga el «lento y sin guardia» del §1.2** para el Heraldo, y deroga la idea de
+que su hacha es el arma anti-guardia *porque solo el Vigilante bloquea*.
+
+#### Y lo que además apareció
+
+- **La estocada de cinco metros.** `M_AI_SpecialAttack_01` avanza 500 cm de root
+  motion: su alcance efectivo son **698 cm**. Los cuatro de melé la tienen. «Mantener
+  la distancia» no es una respuesta contra eso. El emulador **no la simula todavía** y
+  por tanto subestima a los enemigos.
+- **Detectan a 2000 cm**, cono de 75°, más un `AISenseConfig_Damage`: golpear a uno
+  despierta al resto aunque no te vean.
+- **Se plantan a 242 cm** (centro a centro) y **atacan por debajo de 250**. Los dos
+  números salen del BT, no del arma.
+- **Las duraciones también llevaban `rate_scale`** (1,3 y 1,4). Reales: ligero 1,56 s,
+  pesado 1,73, especial 2,29. Mi «2,000 s medidos» del Lancero era la longitud en crudo.
+
+#### La trampa de modelado, por si la repetís
+
+*Cuándo* decide atacar y *si* el golpe llega son **dos números distintos**. Medir solo
+el arma da enemigos que se plantan a 200 y nunca entran en su propio rango de golpe:
+se quedan congelados sin atacar jamás. El alcance que hay que usar es el **efectivo
+desde donde se comprometen** — arma **más** lo que el root motion los lleva hacia
+delante, que en estos ataques son entre 15 y 154 cm.

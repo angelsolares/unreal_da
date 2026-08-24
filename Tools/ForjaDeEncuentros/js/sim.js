@@ -392,11 +392,22 @@ export class Simulacion {
     }
   }
 
+  /**
+   * CUANDO decide atacar y SI el golpe llega son dos numeros distintos, y el
+   * motor los tiene separados de verdad: el Behaviour Tree lanza el ataque con
+   * un decorador de distancia (DistanceToTarget < 250, o sea 208 de centro a
+   * superficie), mientras que el golpe solo toca si el arma llega — 171 cm la
+   * espada, medido de la pose. El enemigo AMAGA a maxima distancia y falla.
+   *
+   * Meterlos en un solo numero deja al enemigo congelado: se para donde le dice
+   * su MoveTo (200) y nunca entra en el rango de golpe, asi que no ataca jamas.
+   */
   _pasoCuerpoACuerpo(E, dt) {
     const M = this.malakh;
     const p = E.perfil;
     const d = dist(E.pos, M.pos) - M.radio;
-    if (d > p.alcanceAtaque * 0.95) {
+    const decide = p.distanciaDecision ?? p.alcanceAtaque;
+    if (d > decide) {
       this._avanzarHacia(E, M, p.distanciaPreferida, dt);
       return;
     }
