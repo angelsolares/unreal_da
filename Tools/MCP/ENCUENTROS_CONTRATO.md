@@ -62,15 +62,41 @@ no de memoria.
 | `lancero_del_alba` | `BP_DA_Lancero` | `DA_DA_Lanza` a dos manos, **sin escudo** | alcance; su arma es la que arrojas |
 | `arquero_del_firmamento` | `BP_DA_Arquero` | `DA_ElvenBow` + flechas (hereda de `BP_ArcherAI`) | presión a distancia; obliga a moverse |
 | `elite_pesado` | `BP_DA_Heraldo` | `DA_GreatAxe` a dos manos, **sin escudo** | lento y sin guardia, pero pega fuerte |
-| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` | **buff/debuff**; su valor no es el arma |
+| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` + **`BP_DA_AuraComponent`** | **aura de daño a los aliados vivos**; su valor no es el arma |
 
 **`BP_DA_WarriorAI` no es un arquetipo.** No tiene equipo propio: es el genérico que invoca el
 `BP_DA_GiantBoss`. No lo metas en la tabla.
 
-**Lo que al `portador_del_estandarte` le falta:** el aura de buff/debuff **no existe todavía**,
-ni el estandarte como objeto. Hoy es, mecánicamente, un `escudero_celestial` con otro nombre.
-Se puede colocar en un encuentro y pelea, pero **no aporta lo que promete**, así que cuidado al
-sacar conclusiones de una simulación que dependa de él.
+**El aura del `portador_del_estandarte` YA FUNCIONA** (2026-08-23), y esto deroga lo que decía
+antes esta sección. `BP_DA_AuraComponent`, en `/Game/DarkAngels/Blueprints/Combat/`: mientras el
+portador esté vivo, **todo `BP_BaseAI` aliado dentro de su radio recibe un modificador de
+`Stat.Damage`**. Al morir el portador, o al salirse del radio, se retira solo.
+
+Dos parámetros editables por instancia: `RadioAura` (1200 por defecto) y `Bonificacion` (+15).
+
+Medido en PIE el 2026-08-23, con el portador entre los guardianes de El Claro:
+
+| quién | distancia | daño |
+|---|---|---|
+| Vigilante | 227 / 506 / 802 uu | **35** (base 20) |
+| Lancero | 1143 uu | **45** (base 30) |
+| Arquero | 1951 uu, fuera | **40** (base 40) |
+| Vigilante | 3042 uu, fuera | **20** |
+| el propio portador | 0 | **20** — se excluye a sí mismo |
+| cualquiera, portador muerto | — | su base |
+
+**Es +15 plano, no +75%.** El 75% era la lectura del Vigilante, que pega 20; al Lancero, que pega
+30, el mismo +15 le sale a +50%. **El emulador tiene que sumar 15, no multiplicar por 1,75**, o
+inflará justo a los que ya pegan fuerte. Y el portador no se buffa a sí mismo.
+
+La lectura táctica se mantiene y ahora está medida: o cae el portador primero, o el resto pega
+más fuerte.
+
+**El aura ya se ve** (2026-08-23): un anillo en el suelo cuyo borde marca el radio exacto del
+buff, más una luz cálida en el portador. Los dos los crea el componente al arrancar y se apagan
+en la misma pasada en que muere. Lo que sigue sin existir es **el estandarte como objeto**: el
+portador lleva espada y escudo, así que su papel se lee por el anillo del suelo y no por su
+silueta. Eso es trabajo de arte, no de mecánica.
 
 **Regla:** un `arquetipo` que no esté en la tabla es un error de carga, no un enemigo
 silenciosamente ausente.
@@ -350,7 +376,125 @@ hace falta reiniciar nada.
 No está en el JSON del encuentro ni le hace falta a Unreal: es documentación de
 diseño con un consumidor que resulta ser una máquina.
 
-### 6.12 El alcance de la espada, medido — y cómo medir el de cualquier arma
+### 6.11 Malakh, medido del motor (2026-08-23)
+
+Los enemigos se midieron en §6.1.b. Faltaba la otra mitad: el jugador. Siete
+valores estaban estimados y **seis se han medido**. Los tres primeros cambian el
+combate entero.
+
+| valor | tenía | mide | de dónde |
+|---|---|---|---|
+| ataque ligero, duración | 1,50 s | **1,00 s** | `M_1H_LightAttack_01` (1,500 s a `rate_scale` 1,50) y `_02` (1,000 a 1,00) |
+| ataque ligero, impacto | 0,55 s | **0,40 s** | `ANS_HitBox` a 0,494 s y 0,302 s reales |
+| ataque ligero, ventana | 0,15 s | **0,117 s** | duración del mismo `ANS_HitBox` |
+| ataque pesado, duración | 2,30 s | **1,21 s** | `M_1H_HeavyAttack_01` (2,300/1,90) y `_02` (1,700/1,40) |
+| ataque pesado, impacto | 0,95 s | **0,53 s** | `ANS_HitBox` a 0,448 s y 0,612 s |
+| esquiva, duración | 0,75 s | **0,917 s** | `M_Roll`, 1,375 s a `rate_scale` 1,50 |
+| esquiva, i-frames | 0,05–0,40 | **0,107–0,459** | `ANS_Activity` llamado `IsImmortal` |
+| esquiva, coste | 10 | **25** | `Stat.Cost.Roll` |
+| bloqueo, reducción | 70% | **55%** | `DA_SteelSword.BlockValue = 55` |
+| poción, duración | 1,60 s | **1,893 s** | `M_DrinkPotion`; la cura cae en el 1,173 |
+| reacción a golpe | 0,687 s | **0,750 s** | `M_GetHitFront_Add` |
+| regen de stamina | 25/s | **35/s** | `RegeneratedStats`: 1,75 cada 0,05 s, con 1 s de corte |
+
+**El error de fondo era ignorar `rate_scale`.** Ningún montage de DCS se reproduce
+a velocidad 1: el ligero va a 1,50, el pesado a 1,90, el rodillo a 1,50. Leer
+`sequence_length` sin dividir por `rate_scale` alarga cada animación un 50-90%.
+Si la sesión de Unreal lee tiempos de animación para cualquier otra cosa, aquí
+está la trampa.
+
+**Lo que sigue sin medir**, dicho sin adornos:
+
+- **Alcance de la espada.** La hoja de `SM_SteelSword` mide 138,8 cm de bounds y
+  sobresale 118 cm del punto de agarre — eso es medido. Falta cuánto adelanta el
+  brazo en el fotograma del impacto, y eso solo sale evaluando la pose.
+- **Distancia del rodillo.** Es root motion.
+- **Multiplicador de daño del pesado.** El arma solo declara `Stat.Damage +10` y
+  no distingue ligero de pesado: el multiplicador vive en el grafo del
+  `BP_CombatComponent`, que no se lee por MCP.
+
+**Aviso operativo — esto tira el editor.** Pedirle la pose a un `AnimMontage`
+(`montage.get_anim_pose_at_time(...)`) revienta con un assert en
+`AnimMontage.h:781`, **y el intérprete de Python no vuelve**: toda llamada
+posterior muere con `0xC0000005` hasta reiniciar el editor. Los toolsets C++
+siguen respondiendo después del golpe, así que no todo está perdido. Para root
+motion, evaluar la **secuencia fuente**, nunca el montage.
+
+**Dos correcciones a §6.1.b y a lo que este documento daba por bueno:**
+
+1. `Stat.Block` vale **50**, no 25 — y da igual, porque DCS no lo usa para
+   reducir daño. La reducción es el `BlockValue` del objeto con el que paras:
+   espada 55, `DA_WoodenShield` 100. Por eso el Escudo Celestial cambia la arena
+   y no solo el daño: con escudo el bloqueo frontal es **total**.
+2. Malakh esprinta a **550** y los cinco enemigos corren a 600. El aviso de
+   §6.1.b («no se puede huir de nadie») era aún más cierto de lo que decía: no se
+   puede huir **ni esprintando**.
+
+**Lo que esto le hace a los veredictos.** Con el Malakh real, tres enemigos en
+campo abierto y separados 320 cm pasan del **12% al 98%** de victorias con la
+espada sola. Los mismos tres, colocados como están en «Romper la línea» —dos
+escuderos a 560 cm flanqueando el camino— se ganan el **5%**. La composición no
+decide: decide la colocación. El encuentro completo de cinco sigue en el 1% con
+espada sola, así que la ruta de armas sigue siendo obligatoria ahí, que es
+precisamente lo que el §5.2 del PDF prohíbe.
+
+### 6.12 La arena del juego se puso al día (2026-08-23, del lado de Unreal)
+
+Cinco cierres en `BP_DA_Arena` y compañía, **todos medidos en PIE**, que cambian lo que
+el emulador puede dar por hecho:
+
+1. **La purga del sello YA EXISTE.** `Abrir` limpia las armas del suelo (dos barridos: uno
+   inmediato y otro a los 2 s, porque el drop del último muerto cae *después* del primero) y
+   llama a `PurgarTemporales` del jugador: fuera la temporal, espada base reequipada. El
+   `purgePolicy: "purgar-todo-al-romper-sello"` del §1.5 ya no es aspiracional. Medido:
+   victoria con la lanza en la mano → `ArmaTemporal = None`, `BP_DI_SteelSword` adjunto, 0
+   drops dentro del radio.
+
+2. **El checkpoint ya no puede caer dentro del trigger.** `TomarInstantanea` calcula
+   `PuntoEntrada` empujando desde el centro por el **eje dominante** (Chebyshev) hasta
+   `0.85·RadioArena + 150`: fuera de la caja `Entrada`, dentro de los muros. Ojo emulador:
+   `Arena_Claro` tiene `RadioArena = 2800`, no 3000. La instantánea guarda además
+   **vida, stamina y pociones** del jugador (leído: 63/100/10 con la vida bajada a propósito).
+
+3. **`ReintentarAlMorir = False` es el default.** Al morir: la arena se abre, **repone los
+   cuatro enemigos** en sus transforms iniciales (`ReponerEnemigos`), y vuelve a `Estado 0`
+   — el jugador reaparece en su respawn normal y decide si reentra (re-sella al cruzar,
+   verificado) o se va. Con `True`, `ReiniciarEncuentro` teleporta al punto de entrada y
+   **restaura vida/stamina/pociones** de la instantánea. Es el ciclo Failed → Armed del §11.2.
+
+4. **El Arquero suelta el arco.** `BP_DA_WeaponDropComponent` ahora lee el slot de arma a
+   distancia como fallback cuando la mano principal no tiene melé válida. Medido: muere el
+   Arquero → drop con `DA_ElvenBow`, recogible. Cosmética pendiente: el arco del DI es
+   esquelético y el drop enseña la malla estática que encuentra (`SM_ElvenArrow`).
+   Los dos booleanos del §2.2 siguen siendo dos booleanos: probabilidad sigue sin existir.
+
+5. **El watchdog del §7.3 existe.** `VigilarArena` (0,5 s): sellada + array de enemigos
+   vacío + victoria falsa → línea `WATCHDOG BP_DA_Arena` en el log y apertura de emergencia.
+   Verificado vaciando el array en caliente: `Estado 1 → 2` en el siguiente tick.
+
+### 6.13 El estandarte ya se clava (2026-08-23, del lado de Unreal)
+
+El ataque de descarte del `portador_del_estandarte` existe: con la trompeta en la mano, la
+tecla de arrojar la **clava** en vez de lanzarla. Nace `BP_DA_EstandartePlantado` — el
+cuerno hincado más un aura **invertida** (−15 de `Stat.Damage` a todo `BP_BaseAI` en un
+radio de 800) que **dura 15 s** y se limpia sola al expirar. Medido: testigo con 20 de
+daño pasa a **5** dentro de la zona y vuelve a 20 al expirar. La ruta del §6.3 («eliminar
+Portador → clavar su Estandarte para invertir la zona») ya es montable de punta a punta.
+
+Para el emulador: el descarte de la familia `estandarte` es
+`{ tipo: "zona", bonificacion: -15, radio: 800, duracion: 15 }`, y el arrojadizo de
+proyectil queda **solo** para la familia `lanza` — con el hacha o la trompeta la tecla ya
+no dispara lanzas fantasma.
+
+### 6.14 Colores de aura y el arco tirado (2026-08-23, del lado de Unreal)
+
+Dos remates del §6.13: el anillo de la zona clavada ya no se confunde con el del portador
+— **naranja = buff aliado, azul frío = debuff** (el color sale del signo de `Bonificacion`,
+así que cualquier aura futura hereda la regla sin tocar nada). Y el drop del Arquero ya
+enseña **el arco esquelético de verdad** en el suelo, no la flecha que hacía de malla.
+Nada de esto cambia números: es lectura, la del §5.1.
+
+### 6.15 El alcance de la espada, medido — y cómo medir el de cualquier arma
 
 **179 cm el ataque ligero, 174 el pesado**, del centro de la cápsula al extremo más
 lejano de la traza. Ya no queda nada estimado en los alcances de Malakh.
@@ -397,9 +541,9 @@ la calibración del emulador. Se anota aquí porque los alcances de los cinco en
 (`alcanceAtaque`: 320 el Lancero, 280 el Heraldo, 200 el Vigilante…) **siguen siendo
 estimaciones mías**, y ahora hay método para medirlos de verdad.
 
-### 6.13 Los cinco enemigos, medidos — y tres cosas que este documento daba por buenas y son falsas
+### 6.16 Los cinco enemigos, medidos — y tres cosas que este documento daba por buenas y son falsas
 
-Segunda pasada sobre los enemigos (24/08), con el método del §6.12. **Tres premisas
+Segunda pasada sobre los enemigos (24/08), con el método del §6.15. **Tres premisas
 del diseño no sobreviven a la medida.**
 
 #### 1. La lanza no da alcance

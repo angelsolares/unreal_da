@@ -57,6 +57,8 @@ TAB_W, TAB_H, TAB_SEP = 139.0, 28.0, 143.0
 TAB_Y0 = 46.0               # desplazamiento desde el borde superior del panel
 FILA = 26.0                 # alto de fila de la lista de destinos
 BOTON_H = 26.0
+# El cue de click. NO usar los UI_*_MS: los MetaSounds de UI matan el editor.
+CUE_CLICK = "/Game/CustomAssets/CommentaryBox/Audio/Text_Pop_Cue.Text_Pop_Cue"
 # La lista arranca en 238 y el titulo TELEPORT se dibuja 26 por encima (212).
 # El bloque de INFORMACION acaba en 190, asi que quedan 22 de separacion: lo
 # mismo que hay entre sus propias lineas. Con los valores anteriores (204 y 210)
@@ -82,6 +84,7 @@ VARIABLES = [
     ("DbgInicioRot", "Rotator", None), ("DbgTieneInicio", "bool", None),
     ("DbgMensaje", "string", None), ("DbgHabilitado", "bool", None),
     ("DbgEscala", "float", None),
+    ("DbgSobreBoton", "bool", None),
     # --- PLAYER ---
     ("DbgGod", "bool", None), ("DbgManaInf", "bool", None),
     ("DbgMovMult", "float", None),
@@ -117,6 +120,7 @@ RESPAWN = "/Game/DarkAngels/Blueprints/World/BP_RespawnVolume.BP_RespawnVolume_C
 DATOS_ENEM = CARPETA + "/DA_DA_DebugEnemigos.DA_DA_DebugEnemigos"
 FILA_AI = 24.0
 DCS_AI = "/Game/DynamicCombatSystem/DCS/Blueprints/AI/BP_BaseAI.BP_BaseAI_C"
+DA_ARENA = "/Game/DarkAngels/Blueprints/Combat/BP_DA_Arena.BP_DA_Arena_C"
 DCS_COLL = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/CollisionHandler/"
             "BP_CollisionHandlerComponent.BP_CollisionHandlerComponent_C")
 TAG_DMG = "Stat.Damage"
@@ -187,6 +191,36 @@ def tab_pos(i):
     return (6.0 + (i % 4) * TAB_SEP, TAB_Y0 + (i // 4) * 32.0)
 
 
+# ###########################################################################
+# ##  DEUDA ABIERTA — LEER ANTES DE LANZAR UNA PASADA (2026-08-23)         ##
+# ###########################################################################
+#
+# Este script ha quedado POR DETRAS del asset: hay tres mejoras que se
+# aplicaron por CIRUGIA sobre `BP_DA_DebugHUD` (create_node/connect_pins) y
+# que NUNCA se portaron aqui. Sus commits tocan solo el .uasset:
+#
+#   1f73493  sonidos de panel y click  -> DbgSonarPanel, DbgSonarClick
+#   (mismo lote) resalte de hover      -> DbgHoverBoton, DbgHoverTabs
+#   fed1528  spawn encarado al jugador -> los 5 nodos de FindLookAtRotation
+#            dentro de DbgSpawnUno
+#
+# UNA PASADA DE ESTE SCRIPT LAS BORRA LAS TRES. Ya paso: el 2026-08-23 sobre
+# las 15:38 alguien regenero y el asset perdio las tres; se recuperaron con
+# `git checkout` del .uasset.
+#
+# ANTES de volver a lanzarlo hay que portarlas. Estan en el asset commiteado
+# en HEAD: se leen con `read_graph_dsl` y se pegan aqui como cualquier otra
+# `dsl_*`. Comprobacion de que ya estan:
+#
+#   python -c "import debughud_montar as d; print(hasattr(d,'dsl_hover_boton'))"
+#
+# Si eso dice False, NO LANCES LA PASADA. (Se pregunta por la FUNCION, no por
+# el nombre en texto: este comentario ya los menciona y un grep se enganaria.)
+#
+# La leccion de fondo: sobre este Blueprint no se hace cirugia. Lo que no
+# entre por aqui, se pierde en la siguiente regeneracion.
+# ###########################################################################
+
 # ---------------------------------------------------------------- grafos
 
 def dsl_permitido():
@@ -207,6 +241,90 @@ def dsl_permitido():
     Este booleano es solo el interruptor manual, para apagarlo en el editor."""
     return ('(fn DbgPermitido ()\n'
             '  (return (Variables|Default|GetDbgHabilitado)))')
+
+
+# ------------------------------------------------------- hover y sonido de UI
+#
+# PORTADO DEL ASSET el 2026-08-23. Estas cuatro se habian hecho por cirugia
+# (`create_node`/`connect_pins`) sobre el .uasset y NO estaban aqui, asi que la
+# regeneracion del 15:38 se las llevo por delante. Se recuperaron con
+# `git checkout` del binario y se leyeron con `read_graph_dsl`.
+#
+# OJO al portar desde el lector: `read_graph_dsl` COLAPSA los nodos de varias
+# salidas. `Game|Player|GetMousePosition` devuelve (bool, X, Y) y el lector lo
+# imprime como si fuera un valor suelto repetido cuatro veces. Pegarlo tal cual
+# crea cuatro nodos y cablea el pin equivocado. Por eso aqui va con multi-bind.
+
+def dsl_hover_boton():
+    """Resalte del boton bajo el raton. La llama `DbgBoton` al final.
+
+    El alto que asume (26*esc) es el de un boton; las pestañas miden 28*esc y
+    reusan esta funcion — 2 px de diferencia, imperceptible."""
+    return ('(fn DbgHoverBoton (X Y W)\n'
+            '  (bind esc (Variables|Default|GetDbgEscala))\n'
+            '  (bind alto (* %.1f esc))\n'
+            '  (bind (hay mx my) (Game|Player|GetMousePosition'
+            ' (Game|GetPlayerController 0)))\n'
+            '  (if (and hay (and (and (>= mx X) (< mx (+ X W)))'
+            ' (and (>= my Y) (< my (+ Y alto)))))\n'
+            '    (Variables|Default|SetDbgSobreBoton true)\n'
+            '    (HUD|DrawRect self'
+            ' (Utilities|Struct|MakeLinearColor 1.0 1.0 1.0 0.13) X Y W alto)\n'
+            '    (HUD|DrawRect self'
+            ' (Utilities|Struct|MakeLinearColor 1.0 0.78 0.3 1.0)'
+            ' X Y (* 4.0 esc) alto)))' % BOTON_H)
+
+
+def dsl_hover_tabs():
+    """Lo que `DbgBoton` no cubre: las 7 pestañas y los dos botones TAM +/-,
+    que `DbgDibujar` pinta con DrawRect sueltos.
+
+    Recalcula sus 9 rects con la MISMA formula que `DbgClick`, para que no se
+    puedan descuadrar."""
+    lin = []
+    lin.append('(fn DbgHoverTabs ()\n')
+    lin.append('  (bind esc (Variables|Default|GetDbgEscala))\n')
+    lin.append('  (bind vp (Math|Conversions|ToVector(Vector2D)'
+               ' (Viewport|GetViewportSize)))\n')
+    lin.append('  (bind base (- (* (.x vp) 0.5) (* 290.0 esc)))\n')
+    lin.append('  (bind fila1 (+ 92.0 (* 46.0 esc)))\n')
+    lin.append('  (bind fila2 (+ 92.0 (* 78.0 esc)))\n')
+    lin.append('  (bind w (* 139.0 esc))\n')
+    for y in ("fila1", "fila2"):
+        for dx in (6.0, 149.0, 292.0, 435.0):
+            if y == "fila2" and dx == 435.0:
+                continue          # la fila 2 solo tiene 3 pestañas
+            lin.append('  (CallFunction|DbgHoverBoton :X (+ base (* %.1f esc))'
+                       ' :Y %s :W w)\n' % (dx, y))
+    for dx in (400.0, 440.0):
+        lin.append('  (CallFunction|DbgHoverBoton :X (+ base (* %.1f esc))'
+                   ' :Y (+ 92.0 (* 10.0 esc)) :W (* 30.0 esc))\n' % dx)
+    lin.append('  (return))')
+    return "".join(lin)
+
+
+def dsl_sonar_click():
+    """Suena solo si el clic cayo en un boton, no en hueco. Va empalmada en la
+    ENTRADA de `DbgClick`, que es cuando `DbgSobreBoton` aun vale del ultimo
+    dibujado."""
+    return ('(fn DbgSonarClick ()\n'
+            '  (if (Variables|Default|GetDbgSobreBoton)\n'
+            '    (Audio|PlaySound2D "%s" 0.7))\n'
+            '  (return))' % CUE_CLICK)
+
+
+def dsl_sonar_panel():
+    """El mismo cue al abrir y cerrar, distinguidos por TONO: 1.25 al abrir,
+    0.75 al cerrar.
+
+    Se llama DESPUES del `SetDbgVisible` para que lea el estado ya cambiado y
+    elija el tono sola."""
+    return ('(fn DbgSonarPanel ()\n'
+            '  (if (Variables|Default|GetDbgVisible)\n'
+            '    (Audio|PlaySound2D "%s" 0.8 1.25)\n'
+            '    (else\n'
+            '      (Audio|PlaySound2D "%s" 0.8 0.75)))\n'
+            '  (return))' % (CUE_CLICK, CUE_CLICK))
 
 
 def dsl_boton():
@@ -409,13 +527,16 @@ def dsl_dibujar():
          '  (if (not (CallFunction|DbgPermitido))',
          '    (return false))',
          '  (CallFunction|DbgCargar)',
+         # Reset por frame del flag de hover: lo pone a false ANTES de repintar,
+         # y cada DbgBoton que pase por debajo del raton lo vuelve a poner.
+         '  (Variables|Default|SetDbgSobreBoton false)',
          BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))',
          # WORLD crece con la lista de destinos; las demas tienen alto fijo, y
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
          ' (+ 444.0 (* n %.1f))'
-         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 660.0)))) esc))' % FILA,
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 (select (== (Variables|Default|GetDbgTab) 2) 720.0 660.0))))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -440,6 +561,9 @@ def dsl_dibujar():
         etiqueta = '"%s"' % nombre if i < 7 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
                        ORO if i < 7 else GRIS, 1.0))
+    # El hover de las 7 pestañas y los dos TAM: aqui, que es el unico punto por
+    # el que pasan todos los caminos y donde la tira ya esta pintada.
+    l.append('  (CallFunction|DbgHoverTabs)')
     l.append('  (if (== (Variables|Default|GetDbgTab) 0)')
     l.append('    (CallFunction|DbgTabWorld)')
     l.append('    (else')
@@ -963,9 +1087,20 @@ def dsl_spawn_uno():
             # spawn va DENTRO de su rama :then.
             '  (bind ac (Utilities|Casting|CastToActorClass :Class clase)\n'
             '    (:then\n'
+            # ENCARADO AL JUGADOR. Sin esto el MakeTransform nace con rotacion
+            # literal 0,0,0 y todo enemigo invocado mira a +X: como el cono de
+            # AIPerception de DCS es de 75 grados, uno que nazca de espaldas NO
+            # TE VE NUNCA si te quedas quieto. Medido: 0 flechas en 25 s con yaw
+            # 0 contra 9 girado. Solo el yaw, para que no salga inclinado si el
+            # suelo del spawn esta a otra altura.
+            '      (bind mirar (Math|Rotator|FindLookAtRotation'
+            ' :Start (select ok destino base)'
+            ' :Target (Transformation|GetActorLocation :self pawn)))' '\n'
             '      (bind nuevo (Game|SpawnActorfromClass :Class ac'
             ' :SpawnTransform (Math|Transform|MakeTransform'
-            ' :Location (select ok destino base))'
+            ' :Location (select ok destino base)'
+            ' :Rotation (Math|Rotator|MakeRotator :Roll 0.0 :Pitch 0.0'
+            ' :Yaw (.yaw mirar)))'
             ' :CollisionHandlingOverride "AdjustIfPossibleButAlwaysSpawn"))\n'
             '      (Utilities|Array|Add :TargetArray (Variables|Default|GetDbgSpawned)'
             ' :NewItem nuevo))\n'
@@ -1417,6 +1552,140 @@ def dsl_reset_combat():
             '  (Variables|Default|SetDbgMensaje "Reset del debug de combate"))')
 
 
+# ------------------------------------------------- COMBAT: el arma temporal
+#
+# Los cinco puntos del §10 del PDF que faltaban. Todo pasa por castear el Pawn
+# a `BP_DA_PlayerCharacter` -que SI se puede, porque es Blueprint nuestro; con
+# las clases de DCS no habria nodo de cast (ver dsl_matar)- y llamar a la API
+# que vive en el jugador. Ahi es donde tiene que estar la logica: el HUD solo
+# dispara, para que valga tambien desde consola o desde otra herramienta.
+
+def jugador_accion(nombre, cuerpo, mensaje):
+    """Molde: castea el Pawn a BP_DA_PlayerCharacter y ejecuta `cuerpo`.
+
+    El `IsValid` del cast TERMINA el flujo (nada puede ir detras), asi que el
+    mensaje va DENTRO de la rama valida y no despues."""
+    return ('(fn NOMBRE ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind j (Utilities|Casting|CastToBP_DA_PlayerCharacter (Game|GetPlayerPawn 0)))\n'
+            '  (Utilities|IsValid j\n'
+            '    (:"Is Valid"\n'
+            'CUERPO'
+            '      (Variables|Default|SetDbgMensaje "MENSAJE"))\n'
+            '    (:"Is Not Valid"\n'
+            '      (Variables|Default|SetDbgMensaje "No es el Malakh de DA"))))'
+            ).replace("NOMBRE", nombre).replace("CUERPO", cuerpo).replace("MENSAJE", mensaje)
+
+
+def dsl_dar_arma(clave, ruta, etiqueta):
+    """GIVE TEMPORARY WEAPON — §10, primera linea.
+
+    Da el arma, la EQUIPA y arranca la corrupcion: el mismo camino que recoger
+    una del suelo. Si solo la metiera en el inventario el boton mentiria —
+    parece que te la ha dado y no la llevas en la mano."""
+    return jugador_accion(
+        "DbgDarArma" + clave,
+        '      (Class|BPDAPlayerCharacter|DarArmaTemporal j "' + ruta + '")\n',
+        "Arma temporal: " + etiqueta)
+
+
+def dsl_corrupcion(clave, valor, etiqueta):
+    """SET VISUAL CORRUPTION STAGE — §10, tercera linea.
+
+    Los cuatro estados del §3.1 son COSMETICOS: mueven el parametro `Corrupcion`
+    de `M_DA_ArmaDivina` en el material dinamico del arma en mano y nada mas. No
+    tocan vida util, que es justo lo que el PDF prohibe."""
+    return jugador_accion(
+        "DbgCorrupcion" + clave,
+        '      (Class|BPDAPlayerCharacter|FijarCorrupcion j ' + valor + ')\n',
+        "Corrupcion: " + etiqueta)
+
+
+def dsl_forzar_descarte():
+    """FORCE DISCARD ATTACK — §10.
+
+    Llama al mismo `ArrojarLanza` que la tecla, asi que respeta el enrutado por
+    familia: la lanza se arroja, la trompeta se clava, y con cualquier otra no
+    pasa nada."""
+    return jugador_accion(
+        "DbgForzarDescarte",
+        '      (Class|BPDAPlayerCharacter|ArrojarLanza j)\n',
+        "Descarte forzado")
+
+
+def dsl_municion_toggle():
+    """INFINITE AMMO ON/OFF — §10.
+
+    Toggle con temporizador de 1 s, no un "dame 99 flechas": el PDF pide
+    municion infinita, y rellenar una sola vez se agota igual."""
+    return jugador_accion(
+        "DbgMunicionToggle",
+        '      (Class|BPDAPlayerCharacter|AlternarMunicionInfinita j)\n',
+        "Municion infinita alternada")
+
+
+# ---------------------------------------------------------- COMBAT: la arena
+#
+# No hay "arena seleccionada": el criterio es DONDE ESTAS. Los tres botones
+# actuan sobre la arena en cuya caja caiga el jugador, con el mismo test que
+# usa `BuscarEnemigos` del propio `BP_DA_Arena` — caja exacta por
+# `InverseTransformLocation`, no un radio, para que las esquinas cuenten.
+# Si no estas dentro de ninguna, el mensaje lo dice y no pasa nada.
+#
+# Los tres pasan por `DbgPermitido` como el resto de acciones destructivas.
+
+def arena_accion(nombre, guarda, cuerpo, mensaje):
+    """Fabrica una accion de arena. `guarda` es una condicion extra en DSL
+    (o "true"), `cuerpo` las sentencias a ejecutar sobre la arena `a`."""
+    return ('(fn %s ()\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind jug (Transformation|GetActorLocation'
+            ' (Game|GetPlayerCharacter 0)))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' "No estas dentro de ninguna arena")\n'
+            '  (for a (Actor|GetAllActorsOfClass "%s")\n'
+            '    (bind rel (Math|Transform|InverseTransformLocation'
+            ' (Transformation|GetActorTransform a) jug))\n'
+            '    (bind ab (Math|Vector|VectorGetAbs rel))\n'
+            '    (bind r (Class|BPDAArena|GetRadioArena a))\n'
+            '    (if (and (and (< (.x ab) r) (< (.y ab) r)) %s)\n'
+            '%s'
+            '      (Variables|Default|SetDbgMensaje "%s"))))'
+            % (nombre, DA_ARENA, guarda, cuerpo, mensaje))
+
+
+def dsl_arena_sellar():
+    # Sellar una arena ya sellada volveria a tomar la instantanea; se evita.
+    return arena_accion(
+        "DbgArenaSellar",
+        "(!= (Class|BPDAArena|GetEstado a) 1)",
+        "      (Class|BPDAArena|Sellar a)\n",
+        "Arena sellada")
+
+
+def dsl_arena_abrir():
+    # Abrir a mano tiene que devolver tambien el objetivo del HUD, o se queda
+    # con el texto de la arena y su indice +100 bloqueando a los ZoneTrigger.
+    return arena_accion(
+        "DbgArenaAbrir",
+        "(== (Class|BPDAArena|GetEstado a) 1)",
+        "      (Class|BPDAArena|RestaurarObjetivo a)\n"
+        "      (Class|BPDAArena|Abrir a)\n",
+        "Arena abierta")
+
+
+def dsl_arena_reiniciar():
+    # Solo con la arena sellada: si no lo esta, `PuntoEntrada` no vale nada y
+    # el reinicio teletransportaria al jugador al origen del mundo.
+    return arena_accion(
+        "DbgArenaReiniciar",
+        "(== (Class|BPDAArena|GetEstado a) 1)",
+        "      (Class|BPDAArena|ReiniciarEncuentro a)\n",
+        "Encuentro reiniciado")
+
+
 def dsl_log_linea():
     return ('(fn DbgLogLinea (Texto)\n'
             '  (Utilities|Array|Add :TargetArray (Variables|Default|GetDbgLog)'
@@ -1641,7 +1910,29 @@ def filas_combat():
              "(CallFunction|DbgColisionesToggle)",
              "(Variables|Default|GetDbgColisiones)"),
         ]),
-        ("", None, 408.0, [
+        ("TEMPORARY WEAPON", 408.0, 430.0, [
+            (x0 + i * 114.0, 110.0, e, "(CallFunction|DbgDarArma%s)" % c, "false")
+            for i, (c, e) in enumerate([("Lanza", "LANZA"), ("Trompeta", "TROMPETA"),
+                                        ("Hacha", "HACHA"), ("Espadon", "ESPADON"),
+                                        ("Escudo", "ESCUDO")])
+        ]),
+        ("CORRUPTION STAGE", 468.0, 490.0, [
+            (x0 + i * 142.0, 138.0, e, "(CallFunction|DbgCorrupcion%s)" % c, "false")
+            for i, (c, e) in enumerate([("Cel", "CELESTIAL"), ("Tai", "TAINTED"),
+                                        ("Cor", "CORRUPTA"), ("Fra", "FRACTURED")])
+        ]),
+        ("", None, 528.0, [
+            (x0, 278.0, "FORCE DISCARD", "(CallFunction|DbgForzarDescarte)", "false"),
+            (x0 + 286.0, 278.0, "INFINITE AMMO", "(CallFunction|DbgMunicionToggle)",
+             "(Class|BPDAPlayerCharacter|GetMunicionInfinita (Utilities|Casting|CastToBP_DA_PlayerCharacter (Game|GetPlayerPawn 0)))"),
+        ]),
+        ("ARENA YOU ARE IN", 588.0, 610.0, [
+            (x0, 182.0, "SEAL ARENA", "(CallFunction|DbgArenaSellar)", "false"),
+            (x0 + 190.0, 182.0, "OPEN ARENA", "(CallFunction|DbgArenaAbrir)", "false"),
+            (x0 + 380.0, 182.0, "RESTART FIGHT",
+             "(CallFunction|DbgArenaReiniciar)", "false"),
+        ]),
+        ("", None, 648.0, [
             (x0, 564.0, "RESET COMBAT DEBUG", "(CallFunction|DbgResetCombat)", "false"),
         ]),
     ]
@@ -1656,15 +1947,18 @@ def dsl_tab_combat():
             l.append('  (CallFunction|DbgBoton :X %s :Y %s :W %s'
                      ' :Etiqueta "%s" :Encendido %s)'
                      % (X(x), Y(y_bot), SC(w), etiqueta, encendido))
-    # El log, ultimas lineas.
-    l.append(texto(X(16.0), Y(452.0), '"COMBAT LOG"', ORO, 1.05))
+    # El log, ultimas lineas. Va a Y fija, NO detras de la ultima fila: si se
+    # anade un grupo a `filas_combat()` hay que bajar estas tres Y y subir el
+    # alto del panel para COMBAT en `dsl_dibujar()`, o el titulo del log se come
+    # los botones de la ultima fila. Paso el 2026-08-23 al meter la arena.
+    l.append(texto(X(16.0), Y(512.0), '"COMBAT LOG"', ORO, 1.05))
     l.append('  (bind lg (Variables|Default|GetDbgLog))')
     l.append('  (bind nl (Utilities|Array|Length lg))')
     l.append('  (for i (range nl)')
-    l.append('    ' + texto(X(16.0), "(+ %s (* i %s))" % (Y(474.0), SC(20.0)),
+    l.append('    ' + texto(X(16.0), "(+ %s (* i %s))" % (Y(534.0), SC(20.0)),
                             '(Utilities|Array|Get(acopy) lg i)', HUESO, 0.9).strip())
     l.append('    )')
-    l.append(texto(X(16.0), Y(636.0),
+    l.append(texto(X(16.0), Y(696.0),
                    '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
     l.append('  (return false))')
     return "\n".join(l)
@@ -2386,6 +2680,10 @@ def dsl_cfg_cargar():
 
 def dsl_click():
     l = ['(fn DbgClick (MX MY)',
+         # El sonido va en la ENTRADA, antes de resolver nada: asi lee el
+         # DbgSobreBoton del ultimo dibujado y solo suena si el clic cayo en un
+         # boton, no en hueco.
+         '  (CallFunction|DbgSonarClick)',
          BIND_GEO,
          '  (bind n (Utilities|Array|Length (Variables|Default|GetDbgLineas)))']
     # Los dos botones de tamano, en la cabecera.
@@ -2608,6 +2906,20 @@ def run():
         ("DbgLogTick", dsl_log_tick, []),
         ("DbgTrazasToggle", dsl_trazas, []),
         ("DbgColisionesToggle", dsl_colisiones, []),
+        ("DbgArenaSellar", dsl_arena_sellar, []),
+        ("DbgArenaAbrir", dsl_arena_abrir, []),
+        ("DbgArenaReiniciar", dsl_arena_reiniciar, []),
+        ("DbgDarArmaLanza", lambda c='Lanza', r='/Game/DarkAngels/Weapons/Items/DA_DA_Lanza.DA_DA_Lanza', e='Lanza del Alba': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaTrompeta", lambda c='Trompeta', r='/Game/DarkAngels/Weapons/Items/DA_DA_Trompeta.DA_DA_Trompeta', e='Trompeta del Juicio': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaHacha", lambda c='Hacha', r='/Game/DarkAngels/Weapons/Items/DA_DA_HachaMano.DA_DA_HachaMano', e='Hacha': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaEspadon", lambda c='Espadon', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_GreatAxe.DA_GreatAxe', e='Espadon': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaEscudo", lambda c='Escudo', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_WoodenShield.DA_WoodenShield', e='Escudo Celestial': dsl_dar_arma(c, r, e), []),
+        ("DbgCorrupcionCel", lambda c='Cel', v='0.0', e='Celestial': dsl_corrupcion(c, v, e), []),
+        ("DbgCorrupcionTai", lambda c='Tai', v='0.33', e='Tainted': dsl_corrupcion(c, v, e), []),
+        ("DbgCorrupcionCor", lambda c='Cor', v='0.66', e='Corrupta': dsl_corrupcion(c, v, e), []),
+        ("DbgCorrupcionFra", lambda c='Fra', v='1.0', e='Fractured': dsl_corrupcion(c, v, e), []),
+        ("DbgForzarDescarte", dsl_forzar_descarte, []),
+        ("DbgMunicionToggle", dsl_municion_toggle, []),
         ("DbgResetCombat", dsl_reset_combat, []),
         # --- BOSS ---
         ("DbgCampoBoss", dsl_campo_boss, [("Indice", "int", True), ("Campo", "int", True), ("Valor", "string", False)]),

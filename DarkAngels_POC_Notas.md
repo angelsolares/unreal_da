@@ -10883,3 +10883,705 @@ Nada quedo a medias. Lo natural ahora:
    construirlo entero.
 4. Opcional: el arma tirada copia el mesh pero **no los materiales**. Vale porque espada y
    escudo no los sobreescriben; si alguna futura si, saldria con los del mesh.
+
+---
+
+## Recrear M_DA_ArrojarLanza (2026-08-23)
+
+El montaje del lanzamiento **no viaja en git**: vive en `Content/DarkAngels/Animations/`, que
+esta ignorado porque son assets derivados de packs de pago. Quien clone el proyecto tiene que
+rehacerlo. Son cuatro pasos y hace falta el **Throwing Animation Pack** de Raise Creation
+instalado en `/Game/Throwing_Pack/`.
+
+1. **Marcar los esqueletos compatibles.** El pack trae su propio `SK_Mannequin` (161 huesos),
+   pero es un subconjunto exacto del de DCS (164): cero huesos ajenos, y los 3 de mas son
+   virtuales `VB IK_Hand_*`. No hace falta retargeting:
+   ```python
+   dcs  = unreal.load_asset('/Game/DynamicCombatSystem/Demo/Meshes/Mannequins/Meshes/SK_Mannequin')
+   pack = unreal.load_asset('/Game/Throwing_Pack/Demo/Characters/Mannequins/Meshes/SK_Mannequin')
+   dcs.modify(); dcs.add_compatible_skeleton(pack)
+   ```
+   (Es modificacion viva de DCS. Sin esto, `Montage_Play` devuelve 0.0 y no suena nada.)
+
+2. **Crear el montaje** desde `AS_T_BH_Overhead` (dos manos, 1,47 s):
+   ```python
+   unreal.AnimMontageService.create_montage_from_animation(
+       '/Game/Throwing_Pack/Animation/Both_Hand/AS_T_BH_Overhead',
+       '/Game/DarkAngels/Animations/Throw', 'M_DA_ArrojarLanza')
+   ```
+
+3. **Cambiar el slot a FullBody.** Nace en `DefaultSlot` y asi **suena pero no se ve**;
+   los ataques de DCS usan `FullBody`:
+   ```python
+   unreal.AnimMontageService.set_slot_name('<ruta>', 0, 'FullBody')
+   ```
+
+4. **Poner la marca del suelte** a 0,80 s (a ojo; se afina arrastrandola en el editor).
+   OJO: `AnimSequenceService.add_notify` devuelve **-1** sobre un montaje; hay que usar el
+   `add_notify` de **AnimMontageService**:
+   ```python
+   unreal.AnimMontageService.add_notify('<ruta>',
+       '/Game/DarkAngels/Blueprints/Combat/BP_DA_NotifyArrojar.BP_DA_NotifyArrojar_C',
+       0.80, 'Soltar')
+   ```
+
+**Ademas, al instalar el pack**: su `ABP_Manny_PostProcess` viene roto (referencia Pose Assets
+que no incluyo) y al arrancar PIE saca un **dialogo modal** que congela el editor y el MCP. Se
+cura poniendo `PostProcessAnimBlueprint = None` en sus `SKM_Manny` y `SKM_Quinn` y borrando los
+dos ABP. No los necesitamos: solo queremos las AnimSequences.
+
+## La arena que se cierra: `BP_DA_Arena` (2026-08-23)
+
+El punto 6/7 del brief de corrupcion: un encuentro del que no se puede huir. Es un actor
+suelto que colocas donde quieras; no toca ni a DCS ni al mapa.
+
+**Como se usa.** Arrastras `BP_DA_Arena` al centro de la zona, le pones `RadioArena`
+(mitad del lado del cuadrado), `AlturaMuro`, el `TextoObjetivo` y **metes los enemigos
+en el array `Enemigos`**. Nada mas. La primera instancia esta en El Claro:
+`Arena_Claro`, en (8000, 0, −40) del submapa, radio 2800, con los cuatro guardianes.
+
+**Como funciona.** Cinco `BoxComponent`: `Entrada` (el disparador, dentro) y cuatro
+muros en el perimetro. `ColocarMuros` los dimensiona desde `RadioArena`/`AlturaMuro`, y
+corre **tambien en el Construction Script**, asi que los ves a escala en el viewport sin
+darle a play. Tres estados en `Estado`: 0 abierta, 1 sellada, 2 resuelta.
+
+- `BeginPlay` → coloca, pone perfiles, abre y arranca un timer de 0,5 s.
+- Al pisar `Entrada` con `Estado == 0` → `Sellar`.
+- `VigilarArena` (el timer) → si el jugador muere, abre; si no queda ningun enemigo vivo,
+  abre. Nunca te quedas encerrado.
+
+**Perfiles de colision, que importan.** `Entrada` va a `OverlapOnlyPawn` y los muros a
+**`InvisibleWall`**: ese preset ignora el canal `Visibility`, que es justo lo que hace
+falta para que la barrera no envenene la punteria ni las trazas de golpe (la misma
+leccion que los `ZoneTrigger`). Sellar = `QueryOnly`; abrir = `NoCollision`.
+
+**El objetivo del HUD, sin romper los indices.** `SetObjective` del HUD solo acepta un
+texto si su indice **supera** al actual, y las zonas usan 1..5. La arena guarda el par
+(indice, texto) que hubiera puesto, escribe el suyo con indice +100, y al terminar
+`RestaurarObjetivo` devuelve los dos por escritura directa. Asi el `ZoneTrigger` de la
+siguiente zona sigue funcionando.
+
+**Dos trampas del DSL que costaron la tarde:**
+
+- `CanBeAttacked|IsAlive` tiene **cinco** candidatos con el mismo nombre. Los cuatro
+  normales exigen la clase concreta en el pin `self` y fallan al conectar un `Actor`
+  cualquiera. El bueno es `CanBeAttacked|IsAlive(Message)`.
+- **El DSL se traga lo que va despues de un `if`** y lo mete en el `else`. `Abrir` se
+  quedo sin bajar los muros justo en el caso de victoria. Se ve releyendo el grafo. La
+  cura: que el `if` sea la ultima sentencia de la funcion, o partirla en dos.
+
+**Probado en PIE** (dentro del propio `_Sub`, con el pawn por defecto y llamando a las
+funciones por `call_method`): sella, aguanta sellada con enemigos vivos, y abre tanto al
+morir los cuatro como al morir el jugador. Para matar un personaje de DCS desde Python no
+sirve `GameplayStatics.apply_damage` — hay que ir a su componente:
+
+```python
+sm = [c for c in actor.get_components_by_class(unreal.ActorComponent)
+      if c.get_class().get_name() == 'BP_StatsManagerComponent_C'][0]
+sm.call_method('TakeDamage', args=(9999.0, False))   # (dano, was_blocked)
+```
+
+**Lo que falta.** Los muros son invisibles: mecanicamente sellan, pero te chocas contra
+nada. Y falta el paso 2 del plan — el checkpoint antes del sello y el reinicio del
+encuentro al morir.
+
+### La barrera se ve (2026-08-23)
+
+Los muros eran `BoxComponent` invisibles: sellaban sin que se notara. Ahora la arena lleva
+cuatro `StaticMeshComponent` mas (`LuzNorte/Sur/Este/Oeste`), un cubo escalado a la medida
+del muro con **`MI_DA_MuroArena`**, instancia de `M_DA_HazLuz` — el mismo aditivo sin
+iluminar que usan los orbes de las sefirot, con sus tres parametros: `Color`, `Brillo`,
+`Opacidad`. El color es el de Malkuth (0.83, 0.69, 0.38), asi que la barrera se lee como
+la propia zona cerrandose. Valores actuales: **Brillo 1.2, Opacidad 0.18**. A 3.0/0.30 era
+un muro de leche que tapaba la puerta; a 0.6/0.12 no se distinguia de la niebla.
+
+`Sellar` los muestra y suena `CUE_GroundExplosion` a pitch 0,6; `Abrir` los esconde.
+`ColocarMuros` les pone malla, material, escala y `NoCollision`, asi que tambien se ven en
+el viewport sin darle a play.
+
+**Trampas nuevas:**
+
+- **Al anadir componentes a un Blueprint por MCP, los actores ya colocados no los heredan.**
+  `Arena_Claro` se quedaba con `StaticMesh = None` y `bHiddenInGame = False` por mucho que
+  se recompilara o se moviera para forzar el Construction Script. Se cura **borrando y
+  volviendo a colocar el actor**. Lo mismo pasaba con `Estado`.
+- **`unreal.Rotator(...)` en Python es `(roll, pitch, yaw)`**, no `(pitch, yaw, roll)`.
+  Dos capturas se fueron a mirar al cielo por esto.
+- `PlaySound2D` en el DSL **no lleva el pin de contexto**: el primer argumento es el sonido.
+
+**Lo que le falta a la barrera:** no tiene borde superior ni estructura, asi que se lee
+como bruma dorada y no como muro. Para que lea de verdad hace falta material propio con
+degradado en el canto y algun patron en movimiento.
+
+### Material propio de la barrera: `M_DA_MuroArena` (2026-08-23)
+
+`M_DA_HazLuz` servia de apano pero no tiene borde ni estructura: se leia como bruma. La
+barrera tiene ahora material propio, aditivo, sin iluminar y a dos caras, con **46 nodos** y
+216 instrucciones de pixel. Cuatro cosas encima del velo de color:
+
+1. **Canto superior encendido.** Un `SmoothStep` sobre la altura normalizada marca el 5%
+   de arriba (`GrosorBorde`). Ese canto ademas **arde mas blanco**: el emisivo se multiplica
+   por `1 + bordes*2`.
+2. **Halo al ras del suelo**, el mismo borde invertido, al 60%.
+3. **Bandas diagonales subiendo.** `fase = (x + y + dz) * Frecuencia - Tiempo * Velocidad`,
+   metida en un seno. Al ir por posicion de MUNDO, las bandas miden igual en cualquier muro
+   sin importar su escala.
+4. **Fresnel de canto** (`Canto`), que enciende la barrera cuando la miras de refilon.
+
+Parametros, agrupados: `Color`/`Brillo`/`Opacidad` (Aspecto), `Borde`/`GrosorBorde`/`Canto`
+(Borde), `Velocidad`/`Frecuencia` (Movimiento).
+
+**La altura normalizada NO puede salir de `ObjectBounds`.** Fue el primer intento y la
+barrera salio blanca del todo: los `SmoothStep` saturaban a 1 en toda la superficie porque el
+rango de `h` se iba fuera de 0..1. Lo que si funciona es **posicion local**: un
+`TransformPosition` de Mundo a Local sobre `WorldPosition`, mascara Z, `*0.01 + 0.5`. El cubo
+del motor va de −50 a +50 en Z **pase lo que pase con la escala**, asi que `h` sale exacto.
+
+**Montar un material por Python: dos reglas.**
+
+- **Todo el grafo en UNA sola llamada.** Cada `execute_python_code` es un interprete nuevo:
+  si lo partes en dos, pierdes las referencias a los nodos y no puedes seguir cableando.
+- **Nunca `delete_asset` para rehacerlo.** Unreal saca un modal *"Material ... is in use"*,
+  el borrado falla con un `Ensure`, y el `create_asset` siguiente saca otro modal
+  *"Overwrite Existing Object"* que **congela el editor y el MCP**. Lo correcto es cargar el
+  material y vaciarlo: `delete_material_expression` en bucle sobre
+  `get_material_expressions` — `delete_all_material_expressions` **deja nodos vivos**
+  (55 en vez de 0 en la prueba), asi que hay que comprobar que el contador llega a cero.
+
+Los const de los nodos (`const_a`, `const_b`, `const_min`, `const_max`) evitan tener que crear
+un `Constant` por cada numero. Y el pin unico sin nombre se cablea con `''`, aunque
+`get_material_expression_input_names` lo llame `"None"`.
+
+### Poner una arena nueva en cualquier zona (2026-08-23)
+
+La arena esta pensada para caer en sitios que todavia no existen. **Tres pasos y ya:**
+
+1. Arrastrar `BP_DA_Arena` al **centro** de la zona, a la cota del suelo.
+2. `RadioArena` = la mitad del lado del cuadrado. `AlturaMuro` = la mitad de lo alto que
+   quieras la barrera (400 da un muro de 800). Los muros y la caja de entrada se
+   redimensionan **en el viewport**, sin darle a play, porque `ColocarMuros` corre tambien
+   en el Construction Script.
+3. `TextoObjetivo` = lo que quieras que diga el HUD mientras dure el encuentro.
+
+**Los enemigos no hay que listarlos.** `AutoDetectarEnemigos` viene a `true`: al sellar,
+`BuscarEnemigos` recorre todos los `BP_BaseAI` del mundo y se queda con los que esten dentro
+del cuadrado, comprobandolo con `InverseTransformLocation` sobre el transform de la arena —
+un test exacto de caja, no un radio, asi que las esquinas cuentan. Sirve para Vigilante,
+Lancero, Arquero, Heraldo e Inspector.
+
+**Lo que hay que meter a mano en `Enemigos`**: cualquier cosa que **no** sea `BP_BaseAI`.
+Hoy eso es el `BP_DA_GiantBoss` — es un `Pawn` pero cuelga de otra rama. La deteccion
+automatica **anade** a lo que ya haya en la lista (`AddUnique`), asi que se pueden mezclar:
+el jefe a mano y su escolta automatica.
+
+**Para dispararla desde fuera** —un evento de guion, un dialogo, el Debug HUD— `Sellar` y
+`Abrir` son funciones publicas del actor: `Class|BPDAArena|Sellar` desde cualquier blueprint
+que tenga la referencia. No hace falta pisar la caja.
+
+**Probado en el Master, con Malakh y el HUD de verdad** (2026-08-23): entrar sella con el
+solape real, la deteccion encuentra los cuatro guardianes con la lista manual vacia, matarlos
+abre y el objetivo del HUD vuelve exactamente a *"Avanza por el Sendero de Setos hacia El
+Claro"* con su indice 1.
+
+**Cuidado con los actores temporales.** Spawnear un `BP_DA_Arena` a (0,0,100000) para
+inspeccionarle los componentes y llamar a `destroy_actor` **no siempre lo borra**: uno se
+quedo y se guardo dentro del `L_DA_Malkuth_Master`. Se veia en PIE como una segunda arena, y
+`get_all_actors_of_class(...)[0]` cogia esa en vez de la buena. Si spawneas para inspeccionar,
+**comprueba despues que no queda ninguno** antes de guardar el nivel.
+
+De paso, una cosa que no toque pero conviene mirar: `BP_DA_ZoneTrigger` castea a
+`BP_DA_PlayerCharacter_V2` en su solape, y **Malakh no hereda de V2** (hereda de
+`BP_DA_PlayerCharacter`). Ese cast falla siempre; lo que salva a los ZoneTrigger es su timer
+`CheckPlayerInside`.
+
+### Paso 2: morir en la arena reinicia el encuentro (2026-08-23)
+
+El agujero que tapa esto: **el juego ya te respawnea al morir, pero en el PlayerStart** — te
+mata un guardian de El Claro y reapareces en el Jardin, al principio del mapa. Comprobado en
+PIE: el pawn pasa de `BP_Malakh_DCS_C_0` a `..._C_1` en (-59565, -60088).
+
+**Que hace ahora la arena.** Al sellar, `TomarInstantanea` guarda tres cosas: el pawn del
+jugador (`JugadorAlSellar`), su transform (`PuntoEntrada`) y el transform de cada enemigo
+detectado (`TransformsEnemigos`, paralelo a `Enemigos`). Si el jugador muere,
+`ReiniciarEncuentro` lo devuelve a la entrada, borra las armas tiradas dentro del cuadrado y
+**cambia los cuatro enemigos por copias nuevas** en sus sitios originales. La arena sigue
+sellada; se reintenta hasta ganar. `ReintentarAlMorir` a `false` vuelve al comportamiento
+viejo (se abre y te vas).
+
+**La deteccion de muerte NO puede ser `IsAlive`.** El respawn del GameMode es mas rapido que
+el timer de 0,5 s, asi que un sondeo de `IsAlive` sobre `GetPlayerCharacter` casi siempre
+llega tarde y ve al jugador vivo otra vez. Lo que sí es fiable es **comparar el objeto**:
+si `GetPlayerCharacter(0)` ya no es el mismo actor que `JugadorAlSellar`, es que murio.
+
+**Los cadaveres no pueden desaparecer.** `ReiniciarEncuentro` saca las copias nuevas con
+`Utilities|GetClass` sobre el enemigo viejo — o sea que necesita la referencia viva. `BP_BaseAI`
+se pone `SetLifeSpan(5)` al morir, asi que a los 5 s el hueco quedaria a `null` y ese enemigo
+no volveria. `VigilarArena` lo evita llamando a `Actor|SetLifeSpan(0)` sobre cada uno en cada
+pasada mientras la arena este sellada.
+
+**Y el orden importa dentro del bucle**: primero `SpawnActorFromClass`, luego
+`DestroyActor`, luego `SetArrayElem`. En la primera version destruia antes de leer la clase.
+El DSL ademas **iza los `bind` de nodos puros fuera del bucle** al reescribirlo, asi que hay
+que releer el grafo y mirar el orden real de la cadena de ejecucion, no el que escribiste.
+
+**Verificado en el Master con Malakh y el HUD reales**: entrar sella y guarda la instantanea;
+morir con dos guardianes ya muertos devuelve al jugador a (44000,−12000) y repone **los cuatro**
+como actores nuevos (`Vigilante_C_2`, `_C_3`, `Lancero_C_1`, `Arquero_C_1`), **cada uno con su
+`BP_BaseAIController`**; ganar despues del reintento abre la arena y devuelve el objetivo del
+HUD a su indice 1.
+
+Lo unico que quedo escrito pero **sin ejercitar**: `LimpiarArmasTiradas`. En la prueba rapida
+no llego a caer ninguna arma (el drop de DCS va con la animacion de muerte, no es instantaneo),
+asi que compila y corre pero no vi su efecto.
+
+### Los controles de arena en el Debug HUD (2026-08-23)
+
+Tres botones nuevos en la pestana **COMBAT**, bajo el titulo `ARENA YOU ARE IN`:
+**SEAL ARENA**, **OPEN ARENA** y **RESTART FIGHT**.
+
+**No hay "arena seleccionada"**: el criterio es donde estas. Cada boton recorre los
+`BP_DA_Arena` del mundo y actua sobre aquel en cuya caja caiga el jugador, con el mismo test
+exacto que usa `BuscarEnemigos`. Si no estas dentro de ninguna, el mensaje del panel lo dice
+y no pasa nada.
+
+Las tres guardas importan:
+
+- **SEAL** solo si `Estado != 1`. Sellar lo ya sellado volveria a tomar la instantanea.
+- **OPEN** llama antes a `RestaurarObjetivo`: abrir a mano sin eso deja el HUD con el texto de
+  la arena y su indice +100, que bloquea a los `ZoneTrigger` siguientes.
+- **RESTART** solo con la arena sellada. Sin sellar, `PuntoEntrada` esta vacio y el reinicio
+  teletransportaria al jugador al origen del mundo.
+
+Escrito donde toca: `Tools/MCP/debughud_montar.py` (`arena_accion()` fabrica las tres, mas su
+registro en `grafos` antes de `DbgTabCombat`/`DbgClickCombat`, y el grupo de filas en
+`filas_combat()`). **El panel no existe hasta relanzar el generador**, que borra y recrea
+`BP_DA_DebugHUD` entero: `node ue.mjs script debughud_montar.py` desde `Tools/MCP`, unos 35
+minutos, con PIE parado y sin tocar el editor. Ver el aviso de "la regeneracion es todo o nada"
+en `Tools/MCP/DEBUG_HUD.md`.
+
+Comprobado antes de lanzar nada, que es gratis: `ast.parse` del script, `exec` del modulo, y
+que el DSL de las tres funciones **cuadra de parentesis** (balance 0). El dibujado y el clic
+salen los dos de `filas_combat()`, asi que no pueden descuadrarse entre si.
+
+**El log de COMBAT va a Y fija, y eso muerde.** La primera pasada dejo los tres botones
+funcionando pero con el titulo `COMBAT LOG` encima de ellos: `dsl_tab_combat()` dibuja el log
+en coordenadas **fijas** (titulo 452, lineas 474, mensaje 636), no detras de la ultima fila de
+`filas_combat()`. Meter un grupo nuevo de 60 unidades lo pisa.
+
+El arreglo son cuatro numeros: log a 512, lineas a 534, mensaje a 696, y **el alto del panel
+para COMBAT de 660 a 720** en el `select` por pestana de `dsl_dibujar()` — que hasta ahora solo
+tenia casos para AI (760), BOSS (700) y FINISHERS (682), y COMBAT caia en el 660 por defecto.
+Queda el mismo margen bajo el mensaje que tenia el diseno original (24 unidades).
+
+**Moraleja para la proxima fila que se anada a cualquier pestana**: comprobar si esa pestana
+dibuja algo a Y fija por debajo de `filas_*()`, y si el alto del panel le da.
+
+### NavMesh dinamico (2026-08-23)
+
+`RuntimeGeneration` pasa de **Static** a **Dynamic**, que era el bloqueo de fondo del emulador
+de encuentros: con Static el navmesh se hornea en el editor y en juego ya no se toca, asi que
+una cobertura colocada desde un JSON no existiria para la IA — el suelo le parece libre, se
+choca y se queda plantada. Es el mismo fallo que dejo al arquero de El Claro con **0 flechas
+en 25 segundos** cuando alli no habia navmesh.
+
+Tres sitios, porque uno solo no basta:
+
+1. `Config/DefaultEngine.ini`, seccion nueva `[/Script/NavigationSystem.RecastNavMesh]` con
+   `RuntimeGeneration=Dynamic`. Es el valor de clase, el que heredaran los navmesh de los
+   mapas que aun no existen — el del emulador, sin ir mas lejos.
+2. El **CDO** de `RecastNavMesh` en memoria, para que valga en esta sesion sin reiniciar el
+   editor (el `.ini` solo se lee al arrancar).
+3. Los dos actores del Master, `RecastNavMesh-Default` y `RecastNavMesh-Giant`, explicitamente
+   y guardados. Asi queda serializado y no depende de la serializacion delta contra el CDO.
+
+**Verificado midiendo, no suponiendo.** Con `find_path_to_location_synchronously` de
+(44000, −11000) a (44000, −8200), cruzando el muro norte de `Arena_Claro`:
+
+| | ruta |
+|---|---|
+| arena abierta | 2 puntos, **2800 uu** — recta, llega |
+| tras `Sellar` | 2 puntos, **1614 uu** — muere en y = −9386, contra la barrera |
+| tras `Abrir` | 2 puntos, **2800 uu** otra vez |
+
+O sea que el navmesh se rehace en juego en los dos sentidos.
+
+**Efecto secundario que sale gratis:** la barrera de `BP_DA_Arena` ahora existe para la IA.
+Con Static, los enemigos de una arena sellada creian que podian salir y empujaban contra un
+muro invisible; ahora la ruta no pasa por ahi.
+
+**El coste esta acotado por los volumenes**: solo se genera dentro de los
+`NavMeshBoundsVolume`, que en Malkuth son tres (Claro, GabrielC2, GabrielC3), no en todo el
+mapa. Y Dynamic **no tira lo horneado**: parte de ello y solo reconstruye las zonas sucias.
+
+### Las armas soltadas caen, y ya no se quedan volando (2026-08-23)
+
+**Lo que hacia antes:** `DropOne` tomaba la posicion del arma en la mano, tiraba una traza de
+**500 uu hacia abajo** buscando suelo, y soltaba el arma ahi. Si la traza no encontraba nada
+—enemigo muerto sobre un bloque, ragdoll con el brazo en alto, o simplemente mas de 5 metros de
+caida— el arma se quedaba **flotando donde estaba la mano**.
+
+**Lo que hace ahora:** se suelta en el sitio exacto del arma, **con fisica**, y cae. Mientras
+cae **no se puede recoger**: `Caer` apaga la colision de la `Zona` de interaccion. Un
+temporizador de 0,2 s mira la velocidad; cuando baja de 12 uu/s, `Posar` para la fisica, ancla
+el arma al suelo y vuelve a encender la `Zona`. Hay un temporizador de seguridad a 6 s por si
+no se posa nunca.
+
+Detalles que hicieron falta y no son obvios:
+
+- **CCD encendido** (`SetUseCCD`). Sin el, en una caida larga la lanza **atraviesa el suelo**:
+  llega a ~1280 uu/s y el casco convexo tunelea a traves de la malla de tierra.
+- **Ignorar `ECC_Pawn` y `ECC_PhysicsBody`**, o el arma se posa **encima del cadaver** que
+  acaba de soltarla, y cuando el cadaver desaparece vuelve a quedarse en el aire.
+- **La fisica va sobre el componente `Mesh`, que no es la raiz.** Eso lo mueve a el solo, y la
+  `Zona` de interaccion se quedaria en el sitio original — recogerias el arma donde *estaba*.
+  Por eso `Posar` mueve el ACTOR a donde acabo la malla y luego pone la malla a relativo cero.
+
+## Y el bug de verdad que aparecio por el camino
+
+**La caja `Entrada` de `BP_DA_Arena` estaba bloqueando el canal Visibility.** El preset
+`OverlapOnlyPawn` **no ignora Visibility**: parte de bloquear todo y solo cambia la respuesta
+de Pawn a Overlap. Medido: `get_collision_response_to_channel(ECC_VISIBILITY)` devolvia
+`ECR_BLOCK`.
+
+Consecuencias: la traza de suelo del arma tomaba el **techo de la caja de entrada** por suelo
+y anclaba ahi (z=758 con el suelo a −36, cayera desde 900 o desde 1200 — misma cota, que fue la
+pista). Y lo peor, que no se veia: **cualquier traza de puntería o de golpe dentro de la arena
+chocaba contra esa caja invisible**. Es exactamente el veneno que ya estaba anotado para los
+`ZoneTrigger`, repetido.
+
+Arreglado cambiando el perfil de `Entrada` a **`OverlapAllDynamic`**, que solapa con todo y no
+bloquea nada. Los cuatro muros ya estaban bien: usan `InvisibleWall`, que si ignora Visibility.
+
+**Medido antes y despues**, con el Lancero muerto a z=1200 sobre suelo a −36:
+
+| | donde acaba el arma |
+|---|---|
+| antes | z = **758** (encima de la caja de entrada) |
+| despues | z = **−37** (en el suelo) |
+
+Y con los enemigos en su sitio normal, las tres armas soltadas acaban en z = −37.
+
+### El Heraldo pasa a elite pesado (2026-08-23)
+
+Heraldo e Inspector eran **duplicados**: el Heraldo llevaba la misma lanza que el Lancero mas un
+escudo —en pantalla leia como "Lancero con escudo"— y el Inspector era un clon exacto del
+Vigilante. Ninguno aportaba una lectura distinta en combate. Se reconvierten, que sale casi
+gratis porque los chasis ya estaban:
+
+- **`BP_DA_Heraldo` → `elite_pesado`**: fuera la lanza y el escudo, entra `DA_GreatAxe` a dos
+  manos. Ese item ya venia con `TwoHanded = True`, asi que **no hizo falta animacion nueva**;
+  es el mismo truco que con la lanza.
+- **`BP_DA_Inspector` → `portador_del_estandarte`**: se queda con espada y escudo. Su papel es
+  el buff/debuff, que **todavia no existe**.
+
+**Como se edita el equipo de un enemigo sin darselo a todos.** El `Equipment` es un componente
+HEREDADO de `BP_BaseAI`, y `SubobjectDataSubsystem` devuelve para el la plantilla del **PADRE**
+(`BP_BaseAI_C:Equipment_GEN_VARIABLE`). Escribir ahi le habria puesto el hacha a Vigilante,
+Lancero, Arquero e Inspector de golpe. El override propio del hijo esta en:
+
+```
+/Game/DarkAngels/Blueprints/Enemies/BP_DA_Heraldo.BP_DA_Heraldo_C:Equipment_GEN_VARIABLE
+```
+
+**Mira siempre el `get_path_name()`**: si dice `BP_BaseAI_C`, no escribas.
+
+Y las ranuras (`MeleeWeaponSlots`, `ShieldSlots`) son structs anidados que no se pueden recorrer
+desde Python — `dir()` no lista campos. Lo que si funciona es **texto**:
+
+```python
+eq = unreal.load_object(None, '<ruta del _GEN_VARIABLE del hijo>')
+s = eq.get_editor_property('MeleeWeaponSlots')
+print(s.export_text())          # sale con los nombres de campo con GUID
+s.import_text(nuevo_texto)
+eq.set_editor_property('MeleeWeaponSlots', s)
+```
+
+Esto ademas **esquiva la trampa de los arrays de structs por MCP**, que pierden el ultimo
+elemento: aqui se escribe la estructura entera de una vez.
+
+**Verificado releyendo los cuatro**: Heraldo con `DA_GreatAxe` y sin escudo; Vigilante, Lancero
+e Inspector **sin tocar**. Y en juego, el Heraldo colocado sale con `BP_DI_GreatAxe_C` adjunto
+y ningun escudo.
+
+**Aviso:** los enemigos que spawneas para inspeccionar **no siempre se borran** con
+`destroy_actor`. Se me quedaron dos Heraldos en el Master, en (44000,−11000), con el equipo
+viejo. Se veian en PIE como enemigos legitimos y casi me hacen diagnosticar mal. Cuenta los
+actores de esa clase antes de guardar el nivel.
+
+### El aura del portador del estandarte (2026-08-23)
+
+Montada **sin comprar nada**. El DCS base ya traia todo lo necesario y no hacia falta el modulo
+de magia: `BP_AbilityComponent` en cada enemigo, `BP_Ability_AI` de la que heredar, items de
+hechizo, indicador de suelo, notifies, inputs, iconos de buff, y hasta un `SM_MagicWand`.
+
+Al final ni siquiera hizo falta una habilidad: **un buff en DCS es un modificador de stat**.
+
+`BP_DA_AuraComponent` (`/Game/DarkAngels/Blueprints/Combat/`), colgado del `BP_DA_Inspector`:
+
+- `BeginPlay` arranca un temporizador de 1 s.
+- `RevisarAura` quita el modificador a todos los de la lista, y si el portador sigue vivo se lo
+  vuelve a poner a cada `BP_BaseAI` vivo dentro de `RadioAura` que no sea el propio portador.
+- `EventEndPlay` para el temporizador y limpia, por si al actor lo destruyen sin morir.
+
+**Quitar-y-volver-a-poner en cada pasada** en vez de llevar la cuenta de altas y bajas: como
+cada `AddModifier` va siempre precedido de su `RemoveModifier`, el valor no puede derivar. Es
+mas simple y no se descuadra.
+
+La API es `Modifiers|AddModifier(self: StatsManager, StatTag: GameplayTag, Value: float)` y su
+`RemoveModifier` simetrico. El tag literal se escribe
+`(GameplayTags|MakeLiteralGameplayTag "Stat.Damage")`.
+
+**Medido en juego**, dos Vigilantes con daño base 10 y 20 con su espada:
+
+| situacion | daño del aliado |
+|---|---|
+| portador vivo, aliado a 506 uu | **35** |
+| portador vivo, aliado a 3000 uu | **20** |
+| portador muerto | **20** |
+
+### Y ahora se ve (2026-08-23)
+
+`MontarVisual` corre en el `BeginPlay` del componente y **crea las dos piezas en caliente**, con
+`AddComponentByClass` sobre el dueño — no hay nada que colocar a mano en cada enemigo:
+
+- **El anillo**: un `Plane` de `/Engine/BasicShapes` con `M_DA_Aura`, a z relativa −85 (a los
+  pies), sin colision, y escalado `RadioAura * 0.02`, que es exactamente el diametro del aura.
+  El borde que se ve en el suelo **es** el alcance real del buff, no una aproximacion.
+- **La luz**: un `PointLightComponent` a 40 de altura, color (1, 0.35, 0.12), 6000 de
+  intensidad, radio de atenuacion `RadioAura * 0.6`.
+
+`RevisarAura` da la visibilidad de los dos con **el mismo booleano** que decide el buff (el
+`IsAlive` del portador), asi que lo que se ve y lo que se aplica no pueden desincronizarse: son
+el mismo `if`.
+
+**Medido en PIE el 2026-08-23**, con el portador plantado en El Claro entre sus guardianes:
+
+| quien | distancia | daño |
+|---|---|---|
+| Vigilante de prueba | 506 | **35** |
+| Vigilante del Claro | 227 | **35** |
+| Vigilante del Claro | 802 | **35** |
+| Lancero del Claro | 1143 | **45** |
+| Arquero del Claro | 1951 (fuera) | **40** |
+| Vigilante de prueba | 3042 (fuera) | **20** |
+| el propio portador | 0 | **20** — se excluye a si mismo |
+
+**La bonificacion es +15 plano sobre el daño de cada uno, no un +75%.** El 75% era el numero del
+Vigilante, que pega 20; al Lancero, que pega 30, el mismo +15 le sale a +50%. Conviene decirlo
+asi en el contrato del emulador, o simulara de mas a los que pegan fuerte.
+
+Y al matarlo, en la siguiente pasada del temporizador: anillo y luz con `IsVisible == False`,
+`Afectados` vacio, y los seis de vuelta a su base (Vigilantes 20, Lancero 30, Arquero 40).
+Comprobado tambien en imagen: la misma toma antes y despues, con el anillo y sin el.
+
+**Lo que sigue faltando** no es la mecanica sino el objeto: el portador lleva espada y escudo,
+no estandarte. Su papel se lee por el anillo del suelo, no por su silueta.
+
+### Arrancar PIE por Python **guarda el nivel** antes
+
+`editor_request_begin_play()` dispara un `Saving Map` del nivel actual antes de crear el mundo de
+PIE. En el log salen seguidos:
+
+```
+LogFileHelpers: Saving Map: /Game/DarkAngels/Maps/L_DA_Malkuth_Master
+LogPlayLevel:   Creating play world package: /Game/.../UEDPIE_0_L_DA_Malkuth_Master
+```
+
+Consecuencia: **cualquier actor que hayas soltado para una prueba acaba en el `.umap` del
+disco**, aunque no le hayas dado a guardar nunca. Es el mecanismo detras del aviso de los dos
+Heraldos que se quedaron en el Master. Aqui se colaron tres actores `ZZ_TEST_*` en el mapa
+maestro sin tocar ningun boton de guardar; se vieron con `grep ZZ_TEST` sobre el `.umap` y se
+limpiaron borrandolos, volviendo a guardar y restaurando el fichero con `git checkout`.
+
+**Regla:** etiqueta lo de prueba con un prefijo que puedas buscar, y mira `git status` al
+terminar.
+
+Y un aviso de hardware, no de codigo: el primer PIE sobre el Master se llevo la GPU por delante
+(`DXGI_ERROR_DEVICE_HUNG`, volcado de Aftermath, editor reiniciado solo). El segundo intento, con
+`r.ScreenPercentage 50` puesto por `EngineSettingsService.set_console_variable`, aguanto la
+sesion entera. Merece la pena bajarlo antes de medir en un mapa pesado.
+
+
+## Y como NO sacar la firma de una funcion de DCS
+
+Llamar a `call_method` sin argumentos para que la excepcion te diga que falta **funciona con
+firmas simples y mata el editor con las que esperan un struct**. Probando
+`StatsManager.AddModifier` salio `Assertion failed: false [AnimMontage.h:781]` y a partir de ahi
+todo Python devolvia `0xC0000005`, con el autoguardado deshabilitado por *"dirty assets may be
+corrupt"*. Hubo que reiniciar el editor descartando lo no guardado.
+
+Lo que si es seguro: **`get_node_type_pins`**, que lee los pines del nodo sin ejecutarlo. Asi
+salio la firma de `AddModifier` y la de `Interface|GetStatValue` en dos llamadas y sin riesgo.
+
+## La Trompeta del Juicio: el Inspector ya tiene silueta (2026-08-23)
+
+El portador del estandarte dejó de ser un Vigilante clonado. Lleva la **Trompeta del
+Juicio**, un cuerno ceremonial de Tripo (`thrumpeth.zip` de `D:\Game Projects\Dark
+Angels\Weapons\`), a dos manos y sin escudo — el blanco blando que el §6.3 del PDF pide.
+
+La cadena, que es la misma receta de la lanza y sirve de molde para cualquier arma nueva:
+
+1. `SM_DA_Trompeta` (61k tris, pivote en la base, 98 uu) en `Weapons/Meshes/Trompeta/`.
+   Importado con el FBX **con su nombre original** — renombrarlo rompe el enlace al `.fbm`.
+2. `MI_DA_Trompeta`, instancia de `M_DA_ArmaDivina` con el basecolor de Tripo y
+   `Corrupcion = 0`. La textura acotada a 1024.
+3. `BP_DI_DA_Trompeta`, duplicado del DI de la lanza: escala **1.15** (113 cm — a 1.8
+   parecía una tuba), rotación (roll 180, pitch 22, yaw 90), offset z = 66.7·escala.
+4. `DA_DA_Trompeta`, duplicado del item de la lanza: "Trompeta del Juicio",
+   `Stat.Damage +10` (su valor no es el arma), icono renderizado del propio mesh.
+5. El override del Inspector (`BP_DA_Inspector_C:Equipment_GEN_VARIABLE`, por
+   `export_text`/`import_text`): trompeta en melé, escudo fuera. Drop: main=True, off=False.
+
+**Y la corrupción visual ya distingue bando.** `MI_DA_Lanza` llevaba `Corrupcion = 0.45`
+horneado en el material del MESH: todas las lanzas del juego nacían corruptas. Ahora el
+material base va limpio, y `CorromperArmaTemporal` (en `BP_DA_PlayerCharacter`) crea un
+**material dinámico** al recoger y le sube `Corrupcion` — disparado con un temporizador de
+0,6 s desde `CanjearTemporal`, porque DCS spawnea el displayed item *después* de equipar.
+Medido: la lanza del Lancero a 0.0, la misma en manos de Malakh a 0.45.
+
+## Las cinco deudas del PDF, cerradas en la arena (2026-08-23)
+
+Todas medidas en PIE sobre `Arena_Claro` (que tiene `RadioArena = 2800`, no el 3000 del CDO).
+
+1. **Purga al romper el sello** (§3.1, REGLA DE SEAL BREAK). `Abrir` limpia las armas del
+   suelo y llama a `PurgarTemporales` del jugador (quita la temporal del inventario,
+   reequipa `EspadaBase`, anula la variable). **Dos barridos de suelo**: el drop del último
+   enemigo cae *después* del primero — su temporizador de 0,5 s corre en paralelo al
+   vigilante de la arena — así que hay un segundo barrido a los 2 s.
+2. **Checkpoint fuera del volumen** (§7.2). `TomarInstantanea` empuja `PuntoEntrada` desde
+   el centro por el **eje dominante** hasta `0.85·R + 150`. Euclídea no vale: la caja es
+   cuadrada, y 2700 por la diagonal deja ambos ejes bajo 2550. También guarda **vida,
+   stamina y pociones** (StatsManager por `Stat.Health.Current` / `Stat.Stamina.Current`;
+   pociones por `FindItem` + `BreakFStoredItem.Amount`).
+3. **`ReintentarAlMorir = False` por defecto.** Al morir: abrir, `ReponerEnemigos`
+   (respawn en los transforms de la instantánea) y `Estado = 0` — la pelea NO se reanuda
+   sola y el cruce vuelve a sellar. Con `True`, `ReiniciarEncuentro` además restaura
+   vida/stamina/pociones. La instancia de El Claro hereda el default nuevo sin tocar el
+   `_Sub`: la propiedad nunca se serializó (verificado con grep sobre el binario).
+4. **El Arquero suelta el arco.** `CheckOwnerDeath` lee el slot de melé y, si su item no es
+   válido, cae al de **arma a distancia** (`NewEnumerator19`). Muere el Arquero → drop con
+   `DA_ElvenBow` recogible. Pendiente cosmético: el DI del arco es esquelético y el drop
+   enseña la malla estática que encuentra (`SM_ElvenArrow`).
+5. **Watchdog del §7.3.** En `VigilarArena`: sellada + array vacío + victoria falsa →
+   `PrintString` con prefijo `WATCHDOG` y apertura de emergencia. Verificado en caliente.
+
+La muerte de verdad probó el punto 3 sola: los Vigilantes mataron a Malakh (63 de vida)
+mientras yo tecleaba, y la arena abrió, repuso los cuatro y se rearmó sin replantarlo.
+
+### El escritor del DSL tiene gramática propia, y muerde distinto que el lector
+
+Todo esto salió de reescribir cinco grafos. Lo que el lector enseña NO es lo que el
+escritor acepta:
+
+- **`Utilities|IsValid` con ramas es TERMINAL**: nada puede seguirle en su secuencia. O da
+  *"Unreachable code after branch/return"*, o —peor— **convierte el siguiente `if` hermano
+  en un `elif`** sin avisar. Así se me colgó el drop del off-hand del `else` de la mano
+  principal. **Releer siempre el grafo tras escribir** y mirar la estructura, no solo que
+  no dé error.
+- Los nodos con **varias implementaciones** (`CanBeAttacked|IsAlive`,
+  `DisplayedItems|GetMainHandDisplayedItem`) fallan con *"pins may be incompatible"*
+  porque el escritor elige la de una clase concreta. La forma portátil es **`(Message)`**.
+- En `CallFunction|X` con argumentos, **el primer posicional es `self`**. El lector lo
+  omite cuando coincide, y copiarle la forma al lector conecta el primer argumento a self.
+- Nombres que difieren: el lector muestra `Game|SpawnActor` pero se escribe
+  **`Game|SpawnActorfromClass`** (y sin pin Instigator); `Math|Vector|vector-vector` es
+  solo del lector — se escriben los **operadores genéricos** `(+ - * / == != >)`, que
+  resuelven por tipo (y un `(+ escalar escalar)` puede resolver a `vector+vector` con
+  splat: mismo resultado, otro nodo).
+- `(bind (_a _b _c) (Utilities|Struct|BreakFStoredItem x))` funciona y el escritor asigna
+  los pines por orden — así se saca el campo `Item` (nombre con GUID) sin conocerlo.
+- `add_variable` del toolset: el parámetro es `name`, y los tipos son los básicos
+  (`float`, no `double`).
+- `save_loaded_asset` devolvió `False` una vez tras recompilar; el reintento con
+  `save_asset(..., only_if_is_dirty=False)` guardó de verdad. Verificar por mtime.
+
+## El descarte del estandarte: clavar la trompeta (2026-08-23)
+
+La fila que faltaba de la tabla del §3.2 del PDF — *"Clavarlo para crear una última zona de
+efecto"* — y con ella el §6.3 ya se puede montar. Todo medido en PIE con un Vigilante de
+testigo:
+
+| momento | daño del testigo |
+|---|---|
+| portador vivo (aura de siempre) | **35** |
+| portador muerto | 20 |
+| trompeta clavada, testigo a 193 uu | **5** |
+| la zona expira (15 s) | 20 |
+
+Las piezas:
+
+- **`BP_DA_AuraComponent` aprende `SiempreActiva`** (bool, default false): el aura corre
+  aunque el dueño no sea un personaje vivo. Un bool y un `or` en `RevisarAura` — el camino
+  del portador vivo queda intacto (verificado el 35 antes de tocar nada más).
+- **`BP_DA_EstandartePlantado`**: actor nuevo con el cuerno clavado (`SM_DA_Trompeta` a
+  1.15, ladeado 8°, hincado −8, sin colisión) y un aura `SiempreActiva` con
+  **`Bonificacion = −15`** y radio 800. `InitialLifeSpan = 15`: la zona es *"del efecto,
+  no del arma"*. Al morir el actor, el `EndPlay` del componente ya quitaba modificadores —
+  la limpieza salió gratis.
+- **`PlantarEstandarte`** en el jugador: spawnea el clavado a 130 uu al frente, a la cota
+  de los pies (z − 96), y llama a `PurgarTemporales` — la espada vuelve sola.
+- **`ArrojarLanza` ahora enruta por familia**: trompeta → clavar; el resto arroja **solo si
+  el arma es `ArmaArrojadiza`**. Eso arregla de paso un bug latente: con el hacha del
+  Heraldo, la tecla de descarte arrojaba una *lanza*.
+
+Trampas nuevas del DSL: el `==` genérico no acepta literales de objeto ni cables de string
+(resuelve a numérico antes de mirar tipos) — para strings hay que nombrar
+`Utilities|String|EqualExactly(String)`, y para "¿es este asset?" comparar
+`Utilities|GetObjectName` contra el literal.
+
+Y una del PIE: si teleportas el pawn a una cámara y el script revienta antes del
+`MOVE_FLYING`, **el pawn se cae al vacío en silencio** y todo lo que hagas después pasa a
+z = −250 000, con la pantalla de «caído al vacío» pegada. El estandarte de la foto se
+plantó dos veces en el abismo antes de salir.
+
+### Y ahora cada aura tiene su color, y el arco tirado es un arco (2026-08-23)
+
+**El color no pidió cirugía de material**: `M_DA_Aura` ya traía un parámetro `Color`
+(con Brillo, Intensidad, Grosor y Velocidad) cuyo default es el naranja. `MontarVisual`
+ahora crea un **material dinámico** para el anillo y elige color por el **signo de
+`Bonificacion`**: positivo → naranja (1, 0.35, 0.12); negativo → azul frío
+(0.22, 0.45, 1.0). La luz acompaña. Verificado por dato (luz de la zona clavada b=255,
+la del portador vivo r=255) y en imagen con las dos zonas en el mismo encuadre.
+
+**El arco tirado ya enseña el arco.** `DropOne` mira si el displayed item trae una malla
+esquelética con asset: si sí, la copia a la `Malla` del drop (heredada de
+`BP_DA_Interactuable`), la engancha al `Mesh` físico con `SnapToTarget` y esconde el
+proxy estático — que sigue haciendo la física, porque `bHidden` no quita colisión.
+Medido: el drop del Arquero sale con `Malla = SK_ElvenBow` y `Mesh = SM_ElvenArrow`
+oculto; el de la lanza, intacto (`SM_DA_Lanza` visible, sin esquelético).
+
+Trampa de PIE que costó cuatro fotos: la camara en tercera persona **siempre encuadra a
+Malakh**, y sus alas tapan la escena. Para fotos de entorno: `set_actor_hidden_in_game
+(True)` al pawn, disparar, y devolverlo. Y las zonas de 15 s **expiran mientras
+encuadras**: plantar y fotografiar en el MISMO script.
+
+Pendiente de la familia: sin animación de clavado — el gesto es instantáneo.
+
+## Recrear M_DA_ClavarEstandarte (2026-08-23)
+
+El clavado de la trompeta ya no es instantáneo: `ArrojarLanza` con la trompeta reproduce
+`M_DA_ClavarEstandarte` y el notify dispara `PlantarEstandarte` en el golpe. Como todo
+`Content/DarkAngels/Animations/`, el montage **no viaja en git** — receta para rehacerlo
+(pide el Throwing Animation Pack, y los esqueletos ya están marcados compatibles del
+montage de arrojar):
+
+1. **La fuente es `AS_T_BH_Overslam`** (1,467 s, rate 1.0): levanta a dos manos, sostiene,
+   y golpea hacia abajo. Leído como "clavar", es el gesto exacto.
+2. ```python
+   unreal.AnimMontageService.create_montage_from_animation(
+       '/Game/Throwing_Pack/Animation/Both_Hand/AS_T_BH_Overslam',
+       '/Game/DarkAngels/Animations/Estandarte', 'M_DA_ClavarEstandarte')
+   unreal.AnimMontageService.set_slot_name('<ruta>', 0, 'FullBody')
+   unreal.AnimMontageService.add_notify('<ruta>',
+       '/Game/DarkAngels/Blueprints/Combat/BP_DA_NotifyClavar.BP_DA_NotifyClavar_C',
+       0.85, 'Clavar')
+   ```
+3. **La marca de 0,85 s no es a ojo: está medida de la pose.** `get_pose_at_time` sobre la
+   SECUENCIA (nunca el montage — el assert de siempre) muestra `hand_r` subiendo a z=183
+   hasta t=0,73 y tocando fondo (z=64,6) en **t=0,856**. Ahí golpea. Afinable arrastrándola
+   en el editor.
+4. `BP_DA_NotifyClavar` **sí viaja en git**: duplicado de `BP_DA_NotifyArrojar` con
+   `Received_Notify` llamando a `PlantarEstandarte` en vez de `ArrojarArmaTemporal`.
+
+Verificado en PIE: la tecla con la trompeta suena `M_DA_ClavarEstandarte`, a los 0,85 s
+aparece la zona y la espada vuelve; con la lanza sigue sonando `M_DA_ArrojarLanza`.

@@ -8,6 +8,9 @@
 Content/DynamicCombatSystem/
 Content/GiantBossProject/
 Content/Sword_Takedown/
+Content/Throwing_Pack/
+Content/KnockdownGetUp/
+Content/Sword_Duel_Pack/
 
 # ---------------------------------------------------------------
 # Carpetas generadas por Unreal — se recrean solas
@@ -180,6 +183,10 @@ Content/DarkAngels/Characters/Colosos/SK_DA_Coloso_Angel_V2.uasset
 # El mapa de demostracion del Sword Takedown Pack (de pago) deja sus actores
 # externos fuera de Content/Sword_Takedown/, asi que hay que excluirlos aparte.
 Content/__ExternalActors__/Sword_Takedown/
+Content/__ExternalActors__/Throwing_Pack/
+Content/__ExternalActors__/KnockdownGetUp/
+Content/__ExternalActors__/Anime_Dual_Dagger/
+Content/__ExternalActors__/Sword_Duel_Pack/
 Content/__ExternalObjects__/
 
 # Cache de los scripts de Python del MCP.

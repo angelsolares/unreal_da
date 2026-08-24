@@ -57,6 +57,31 @@ Trampas del DSL que te ahorran una tarde: los argumentos de `CallFunction` van *
 línea), un parámetro no puede ser un array, y los nodos multi-exec como `IsValid` **terminan el
 flujo** (nada detrás).
 
+## 3.b ⚠️ Deuda: el script va por detrás del asset
+
+**No lances una pasada sin leer esto.** Tres mejoras se aplicaron por cirugía
+(`create_node`/`connect_pins`) sobre `BP_DA_DebugHUD` y nunca se portaron al
+generador — sus commits tocan sólo el `.uasset`:
+
+| commit | qué añadió | funciones |
+|---|---|---|
+| `1f73493` | sonido al abrir/cerrar y al clicar | `DbgSonarPanel`, `DbgSonarClick` |
+| (mismo lote) | resalte de hover | `DbgHoverBoton`, `DbgHoverTabs` |
+| `fed1528` | spawn encarado al jugador | los 5 nodos de `FindLookAtRotation` en `DbgSpawnUno` |
+
+**Una pasada las borra las tres**, y ya pasó: el 2026-08-23 sobre las 15:38 se
+regeneró y el asset las perdió. Se recuperaron con `git checkout` del `.uasset`.
+
+Antes de regenerar hay que portarlas. Viven en el asset commiteado: se leen con
+`read_graph_dsl` y se pegan como cualquier otra `dsl_*`. La guarda:
+
+```bash
+python -c "import debughud_montar as d; print(hasattr(d,'dsl_hover_boton'))"
+```
+
+`False` = no lanzar. **La regla de fondo: sobre este Blueprint no se hace
+cirugía** — lo que no entre por el generador se pierde en la siguiente pasada.
+
 ## 4. Añadir un Teleport
 
 Una línea en el array `Destinos` de `DA_DA_DebugDestinos`:
@@ -136,6 +161,7 @@ No se usó `GetBuildConfiguration` porque **no se puede cablear desde Blueprint*
 | PLAYER — abilities | Sólo *Infinite Resource*; DCS no tiene desbloqueo ni cooldowns |
 | COMBAT — multiplicadores, velocidad, trazas | Funcional |
 | COMBAT — log | Observa vida; no puede dar atacante, ataque, block, parry ni crítico |
+| COMBAT — arena | Funcional: actúa sobre la arena en cuya caja estés |
 | AI | Funcional |
 | BOSS — selección, vida, info | Funcional (si el boss lleva StatsManager) |
 | BOSS — fases, stagger, finisher, cinemáticas, QTE | **No existen**: preparados y apagados |
