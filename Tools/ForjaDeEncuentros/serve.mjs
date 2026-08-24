@@ -99,8 +99,42 @@ async function rutaUnreal(req, res, accion) {
   }
 }
 
+/** Leer y guardar las fichas de arquetipo que alimentan a la IA. */
+async function rutaArquetipos(req, res, accion) {
+  const enviar = (codigo, cuerpo) => {
+    res.writeHead(codigo, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(cuerpo));
+  };
+  let mod;
+  try {
+    mod = await import('./arquetipos.mjs');
+  } catch (err) {
+    return enviar(500, { error: 'No se pudo cargar arquetipos.mjs: ' + err.message });
+  }
+
+  if (accion === 'leer') return enviar(200, await mod.leer());
+  if (accion !== 'guardar') return enviar(404, { error: `Trabajo desconocido: ${accion}` });
+  if (req.method !== 'POST') return enviar(405, { error: 'Usa POST' });
+
+  const trozos = [];
+  for await (const t of req) trozos.push(t);
+  try {
+    enviar(200, await mod.guardar(JSON.parse(Buffer.concat(trozos).toString('utf8') || '{}')));
+  } catch (err) {
+    enviar(400, { error: err.message, codigo: err.codigo || 'error-guardando' });
+  }
+}
+
 http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
+
+  if (url.startsWith('/arquetipos/')) {
+    rutaArquetipos(req, res, url.slice(12)).catch(err => {
+      res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err.message || err) }));
+    });
+    return;
+  }
 
   if (url.startsWith('/unreal/')) {
     rutaUnreal(req, res, url.slice(8)).catch(err => {

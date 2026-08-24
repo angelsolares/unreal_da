@@ -203,16 +203,64 @@ el veredicto lo usa sin navegador y las pruebas de node lo cubren. La casilla
 | Malakh: velocidad | 400 cm/s | `CharMoveComp.MaxWalkSpeed` |
 | Malakh: cápsula / giro | r 42 / 540°/s | `CollisionCylinder`, `RotationRate` |
 | Malakh: daño por golpe | 20 | `Stat.Damage` 10 + `DA_SteelSword` +10 |
-| Ataque ligero / pesado | 1,500 s / 2,300 s | `M_1H_LightAttack_01`, `M_1H_HeavyAttack_01` |
-| Parry / reacción a golpe | 1,082 s / 0,687 s | `Anim_1HS_Parry`, `Anim_1HS_GetHitFront_Add` |
-| Poción | 25 HP | `DA_HealthPotion.value` |
+| Malakh: sprint | 550 cm/s | `BP_MovementSpeedComponent` — los enemigos van a 600 |
+| Ataque ligero: dura / golpea / ventana | 1,000 s / 0,40 s / 0,117 s | `M_1H_LightAttack_01` y `_02`, notify `ANS_HitBox` |
+| Ataque pesado: dura / golpea / ventana | 1,212 s / 0,53 s / 0,121 s | `M_1H_HeavyAttack_01` y `_02` |
+| Esquiva: dura / i-frames / cuesta | 0,917 s / 0,107–0,459 s / 25 | `M_Roll`, notify `IsImmortal`, `Stat.Cost.Roll` |
+| Bloqueo con espada sola | −55% | `DA_SteelSword.BlockValue` (el escudo vale 100) |
+| Parry / reacción a golpe | 0,700 s / 0,750 s | `M_1H_Parry`, `M_GetHitFront_Add` |
+| Poción: cura / te clava | 25 HP / 1,893 s | `DA_HealthPotion`, `M_DrinkPotion` |
+| Stamina: regen / retraso | 35/s / 1 s | `RegeneratedStats` |
 | Lancero: vida / velocidad | 100 / 600 cm/s | `BP_DA_Lancero` |
 | Lancero: ataque | 2,000 s | `M_AI_LightAttack_01` |
 
-**Sin medir todavía** (marcado en la interfaz): las ventanas activas dentro de cada
-montage —los AnimNotify son propiedad protegida desde Python, hay que leerlos en
-PIE—, el alcance real de las trazas de arma, y la esquiva entera (duración,
-distancia, i-frames).
+**La trampa que se llevó por delante la mitad de estos números: `rate_scale`.**
+Ningún montage de DCS se reproduce a velocidad 1. El ligero va a 1,50, el pesado a
+1,90, el rodillo a 1,50. Leer `sequence_length` sin dividir por `rate_scale` alarga
+cada animación entre un 50% y un 90%, y eso es exactamente lo que hacía la
+calibración anterior. Los tiempos de arriba ya están en segundos reales.
+
+**Y los AnimNotify sí se leen**: `unreal.AnimationLibrary.get_animation_notify_events`.
+Lo de que eran "propiedad protegida" era falso — estaba buscando la propiedad en el
+asset en vez de la librería.
+
+**Sin medir todavía** (marcado en la interfaz): el alcance de la espada —la hoja
+mide 118 cm desde el agarre, eso sí está medido; falta cuánto adelanta el brazo—,
+la distancia del rodillo (es root motion) y el multiplicador de daño del pesado.
+
+> **Ojo si vas a medir root motion.** Pedirle la pose a un `AnimMontage` revienta el
+> editor con un assert y el intérprete de Python **no vuelve** hasta reiniciar. Hay
+> que evaluar la secuencia fuente, nunca el montage.
+
+---
+
+## ⚠️ Las cifras de las tres secciones siguientes son de ANTES de medir
+
+El 2026-08-23 se midió el motor en dos tandas. Primero los cinco enemigos, y
+cambiaron **a peor**: corren todos a 600 (no 350–420), el arquero pega 30 (no 16),
+el lancero 30 (no 14), el escudero 20 (no 12), el Heraldo **no** tiene guardia y el
+Inspector **sí**. Después Malakh, y cambió **a mejor**: su ataque ligero dura 1,0 s
+y no 1,5, y el pesado 1,21 y no 2,3 — un 50% y un 90% más de daño por segundo del
+que este simulador le suponía. A cambio, rodar le cuesta 25 de stamina y no 10
+(cuatro esquivas y se queda seco), bloquear con la espada sola le quita el 55% y no
+el 70%, y beber le clava 1,9 s.
+
+**Dónde queda el techo con los dos lados medidos:**
+
+| | espada sola gana |
+|---|---|
+| 3 enemigos en campo abierto, separados 320 cm | **98%** |
+| esos MISMOS 3, colocados como en «Romper la línea» | **5%** |
+| «Romper la línea» entera, 5 enemigos | **1%** |
+
+Eso es el hallazgo, y es mejor que el anterior: **la composición no decide, decide
+la colocación.** Antes de medir a Malakh, esa misma composición de tres se ganaba
+el 12% en campo abierto, y parecía que el problema era «tres enemigos son
+demasiados». No lo son. Tres enemigos *encima a la vez* lo son.
+
+Lo de abajo sigue valiendo como razonamiento y como historia de qué se rompió y por
+qué, pero las cifras concretas hay que releerlas de `datos/calibracion.json` y de
+una simulación nueva. El detalle del cambio está en los §6.1.b y §6.11 del contrato.
 
 ---
 
@@ -380,9 +428,12 @@ ida y vuelta exacta.
 - **El offset del submapa no es opcional.** Dentro de un `_Sub` los actores van en
   coordenadas del submapa y la Level Instance les suma su transform. Exportar con
   offset 0 a un `_Sub` manda el encuentro a kilómetros de donde toca.
-- **Tres arquetipos no tienen Blueprint todavía** — escudero, elite y portador
-  salen con `BP_WarriorAI` como suplente, y el informe lo dice cada vez. Sirve para
-  pisar el trazado, no para juzgar el combate.
+- **Los cinco arquetipos ya tienen Blueprint propio** (`BP_DA_Vigilante`,
+  `BP_DA_Lancero`, `BP_DA_Arquero`, `BP_DA_Heraldo`, `BP_DA_Inspector`), cerrado en
+  el §1.2 del contrato. Ya no hay suplentes. **El aura del Inspector también existe
+  ya** (`BP_DA_AuraComponent`, +15 de daño a cada aliado a menos de 1200 cm mientras
+  viva) y el simulador la aplica. Lo que le falta es efecto visual: el jugador sufre
+  el buff sin ver de dónde viene.
 - **El nivel no se guarda.** Eso lo decides tú después de mirarlo.
 
 ---
@@ -394,6 +445,7 @@ ida y vuelta exacta.
   pero para juzgar *lectura* de silueta el modelo real diría más.
 
 
-Antes de la Fase B conviene **cerrar la calibración en PIE**: las ventanas activas,
-el alcance de las trazas y la esquiva. Son los tres números de los que más depende
-el veredicto y los tres que hoy están estimados.
+La calibración ya está cerrada por los dos lados —los cinco enemigos y Malakh, todo
+medido del motor el 23/08/2026— salvo tres cosas: el alcance de la espada (medio
+medido: 118 cm de hoja, falta el brazo), la distancia del rodillo y el multiplicador
+del ataque pesado. Las tres necesitan PIE o la secuencia fuente, no el montage.

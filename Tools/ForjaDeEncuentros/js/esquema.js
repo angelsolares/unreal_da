@@ -103,7 +103,14 @@ export function nuevoEnemigo(arquetipo, x, y) {
     cota: 0,
     yaw: 180,
     // Dos booleanos, que es lo unico que BP_DA_WeaponDropComponent sabe hacer.
-    drop: { principal: !!meta.sueltaPorDefecto, secundaria: false },
+    //
+    // La ranura la decide EL ARMA, no el enemigo. El escudo del escudero es
+    // off-hand: metiendo su valor por defecto en `principal` nacia mudo —dos
+    // casillas en blanco que parecian un borrado— y su escudo, que es la llave
+    // de media receta del §6, no lo soltaba nadie.
+    drop: meta.armaEsOffHand
+      ? { principal: false, secundaria: !!meta.sueltaPorDefecto }
+      : { principal: !!meta.sueltaPorDefecto, secundaria: false },
     etiqueta: ''
   };
 }

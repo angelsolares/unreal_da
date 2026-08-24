@@ -196,6 +196,12 @@ export function pintarPropiedades(nodo, enc, seleccion, cal, acciones) {
         Descarte: ${esc(fam.ataqueDescarte.nombre)}${fam.ataqueDescarte.implementado ? ' <span class="marca-fuente medido">ya existe</span>' : ' <span class="marca-fuente estimado">por hacer</span>'}</p>`);
     }
     partes.push(`<p class="nota">HP ${perfil.hp} · daño ${perfil.dano} · alcance ${perfil.alcanceAtaque} cm · aggro ${perfil.rangoAggro} cm</p>`);
+
+    // La ficha que lee la IA. Se edita aqui y no abriendo el JSON, porque el
+    // momento en que dan ganas de escribir "este bloquea mientras el otro
+    // castiga" es justo mirando la arena, no en un editor de texto.
+    partes.push(fichaIA(e.arquetipo));
+
     partes.push(`<button data-borrar="${esc(e.id)}" style="margin-top:8px">Borrar enemigo</button>`);
   } else if (seleccion?.tipo === 'cobertura' || seleccion?.tipo === 'plataforma') {
     const o = seleccion.ref;
@@ -240,6 +246,52 @@ function campoTexto(campo, etiqueta, valor) {
   return `<label>${esc(etiqueta)}</label><input type="text" data-campo="${esc(campo)}" value="${esc(valor)}" />`;
 }
 
+/**
+ * Las fichas de arquetipo se cargan una vez y se guardan aqui, para que abrir el
+ * desplegable sea instantaneo. `refrescarFichasIA` las repone tras guardar.
+ */
+let FICHAS = null;
+export function ponerFichasIA(f) { FICHAS = f; }
+
+/**
+ * El editor de la descripcion que usa la IA.
+ *
+ * Es por ARQUETIPO, no por enemigo suelto: describe la logica del Escudero, no
+ * la de "ese escudero de ahi". Lo que escribas aqui va entero al prompt cada vez
+ * que pides una critica o variantes, asi que es donde de verdad se le enseña al
+ * modelo como funciona tu combate.
+ */
+function fichaIA(arquetipo) {
+  if (!FICHAS) {
+    return `<h2>Descripcion para la IA</h2>
+      <p class="nota">Cargando las fichas…</p>`;
+  }
+  const a = FICHAS.arquetipos?.[arquetipo];
+  if (!a) {
+    return `<h2>Descripcion para la IA</h2>
+      <p class="nota">No hay ficha para <code>${esc(arquetipo)}</code> en
+      <code>datos/arquetipos.json</code>.</p>`;
+  }
+
+  const filas = (FICHAS.campos || []).map(c => `
+    <label title="${esc(c.ayuda)}">${esc(c.etiqueta)}</label>
+    <textarea data-ficha="${esc(c.id)}" rows="3"
+      placeholder="${esc(c.ayuda)}">${esc(a[c.id] || '')}</textarea>`).join('');
+
+  return `
+    <details class="ficha-ia" data-arquetipo="${esc(arquetipo)}">
+      <summary>Descripcion para la IA — ${esc(a.nombre || arquetipo)}</summary>
+      <p class="nota">Esto va <strong>entero al prompt</strong> cada vez que pides
+        una critica o variantes. Si aqui dice algo falso, el modelo razonara con
+        algo falso. Es por arquetipo, no por este enemigo en concreto.</p>
+      ${filas}
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px">
+        <button data-guardar-ficha class="principal">Guardar</button>
+        <span data-estado-ficha class="nota" style="margin:0"></span>
+      </div>
+    </details>`;
+}
+
 // --------------------------------------------------------------- calibracion
 
 export function pintarCalibracion(nodo, cal) {
@@ -260,7 +312,11 @@ export function pintarCalibracion(nodo, cal) {
     ['malakh.ataquePesado.duracion', 'Ataque pesado', cal.malakh.ataquePesado.duracion + ' s'],
     ['malakh.ataqueLigero.alcance', 'Alcance espada', cal.malakh.ataqueLigero.alcance + ' cm'],
     ['malakh.esquiva', 'Esquiva (i-frames)', `${cal.malakh.esquiva.iframeInicio}–${cal.malakh.esquiva.iframeFin} s`],
-    ['malakh.bloqueo', 'Bloqueo', `−${(cal.malakh.bloqueo.reduccion * 100).toFixed(0)}%`],
+    ['malakh.esquiva', 'Esquiva (coste)', `${cal.malakh.esquiva.costeStamina} de ${cal.malakh.stamina} — ${Math.floor(cal.malakh.stamina / cal.malakh.esquiva.costeStamina)} seguidas`],
+    ['malakh.regenStamina', 'Regen stamina', `${cal.malakh.regenStamina}/s tras ${cal.malakh.retrasoRegenStamina ?? '?'} s`],
+    ['malakh.bloqueo', 'Bloqueo (espada sola)', `−${(cal.malakh.bloqueo.reduccion * 100).toFixed(0)}%`],
+    ['malakh.velocidadSprint', 'Sprint', `${cal.malakh.velocidadSprint} cm/s — los enemigos van a 600`],
+    ['malakh.pocion.duracion', 'Beber', `${cal.malakh.pocion.duracion} s clavado`],
     ['malakh.pocion.curacion', 'Pocion', `${cal.malakh.pocion.curacion} HP ×${cal.malakh.pocion.cantidad}`],
     ['malakh.reaccionGolpe', 'Reaccion a golpe', cal.malakh.reaccionGolpe + ' s']
   ];

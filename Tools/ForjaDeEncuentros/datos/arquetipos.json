@@ -1,62 +1,70 @@
 {
   "version": 1,
   "nota": "QUE HACE CADA ENEMIGO, en palabras. Esto lo lees tu y lo lee la IA: va entero al prompt cuando pides una critica o variantes, asi que si aqui dice algo falso, el modelo razonara con algo falso. Editalo a mano cuando cambie el diseno; no hace falta tocar codigo. Los NUMEROS viven en calibracion.json — aqui va la intencion.",
-
   "arquetipos": {
     "lancero_del_alba": {
       "nombre": "Lancero del Alba",
       "papel": "Alcance y control del espacio",
-      "comoPelea": "Ataca desde 320 cm, mucho mas lejos de lo que llega la espada de Malakh (180). Es rapido: corre a 600 cm/s cuando Malakh corre a 400, asi que NO SE LE PUEDE HUIR. Su ataque es un pinchazo de arco estrecho: falla si te mueves de lado, castiga si retrocedes en linea recta.",
-      "comoSeContesta": "De lado, nunca hacia atras. Su arco estrecho perdona el movimiento lateral y su alcance castiga la retirada.",
+      "comoPelea": "Ataca desde 320 cm, mucho mas lejos que la espada de Malakh (180). Lleva DA_DA_Lanza a dos manos y SIN escudo: no bloquea nada. Su ataque es un pinchazo de arco estrecho y lento (2,5 s, porque la lanza trae -20% de velocidad de ataque): falla si te mueves de lado, castiga si retrocedes en linea recta. Pega 30.",
+      "comoSeContesta": "De lado, nunca hacia atras. Y castigando: no tiene guardia, asi que cada hueco entre sus ataques —que son largos— es daño gratis.",
       "queAporta": "Su Lanza del Alba es la unica arma que le gana el alcance a un Escudero sin entrar en su rango, y la unica que se puede arrojar a un balcon.",
       "dondeColocarlo": "Donde el jugador lo vea desde la puerta: su silueta es la mas legible de todas (el 72% del contorno es la lanza). Si quieres que la ruta se descubra mirando, este es el enemigo que la señala.",
       "cuidadoCon": "Ponerlo lejos y detras de otros: el jugador tiene que cruzar la arena para llegar a su arma, y por el camino lo muele todo lo demas."
     },
-
     "arquero_del_firmamento": {
       "nombre": "Arquero del Firmamento",
       "papel": "Presion a distancia; obliga a moverse",
-      "comoPelea": "Dispara hasta 2200 cm mientras tenga linea de vision. Si Malakh se le acerca a menos de 500 retrocede, pero solo unos segundos: agotado ese margen se planta y dispara a bocajarro. Es mas lento que Malakh (350 contra 400), a proposito: un arquero que corre mas que el jugador convierte el encuentro en tablas eternas.",
-      "comoSeContesta": "Cortandole la vision, no corriendo hacia el. La cobertura es la respuesta; el sprint es como te matan.",
+      "comoPelea": "Dispara hasta 2200 cm mientras tenga linea de vision, 30 por flecha. Lleva DA_ElvenBow. Corre a 600 igual que todos, o sea MAS QUE MALAKH (400): no se le alcanza corriendo. Si te acercas a menos de 500 retrocede, y solo un presupuesto de retirada limitado impide que la pelea sea eterna.",
+      "comoSeContesta": "Cortandole la vision, no persiguiendolo: correr detras de el no funciona porque es mas rapido. La cobertura es la respuesta.",
       "queAporta": "Su Arco del Firmamento invierte quien manda en la arena: deja de importar el traslado.",
       "dondeColocarlo": "En alto o al fondo, donde su fuego cruce el camino natural del jugador. En un balcon necesita rampa: sin ella es decorado inalcanzable y la arena no se cierra nunca.",
       "cuidadoCon": "Dos arqueros con lineas de tiro que se solapan cubriendo toda la arena: no queda sitio donde respirar y el encuentro deja de tener respuesta."
     },
-
     "escudero_celestial": {
       "nombre": "Escudero Celestial",
       "papel": "Muro; fija al jugador en el sitio",
-      "comoPelea": "Poco daño y poco alcance (200 cm), pero bloquea de frente el 40% de los golpes y absorbe el 60% del que para. Aguanta. Su trabajo no es matar: es que no puedas moverte mientras otro te mata.",
+      "comoPelea": "Lleva DA_SteelSword y DA_WoodenShield: 20 de daño, poco alcance (200 cm), y bloquea de frente el 40% de los golpes absorbiendo el 60% del que para. Su trabajo no es matar: es que no puedas moverte mientras otro te mata.",
       "comoSeContesta": "Rodeandolo, o con algo que ignore la guardia. De frente y a espadazos es la pelea mas larga del juego.",
       "queAporta": "Su Escudo Celestial no suma daño: cambia como se NAVEGA la arena. Con el se cruza un campo de tiro que sin el no se cruza.",
       "dondeColocarlo": "Entre la entrada y el objetivo, o cubriendo a un arquero. Es el enemigo que convierte la distancia en un problema.",
       "cuidadoCon": "Dos escuderos y algo mas a la vez: tres cuerpo a cuerpo encima no dejan hueco para comprometer una animacion, y ahi la espada sola deja de bastar. El techo medido son 2-3 enemigos simultaneos."
     },
-
     "elite_pesado": {
       "nombre": "Elite pesado",
       "papel": "Pared con dientes; el que decide si la pelea es larga",
-      "comoPelea": "El doble de vida que los demas, el triple de daño y una guardia del 70% que absorbe el 85%. Lento en todo: se mueve a 380 y sus ataques son compromisos larguisimos de 2,6 s. Golpea en arco ancho, asi que rodearlo no basta.",
-      "comoSeContesta": "Con paciencia y con las ventanas de su recuperacion, que son enormes. O con algo que rompa la guardia.",
+      "comoPelea": "CUIDADO, no es lo que parece: lleva DA_GreatAxe a DOS MANOS y NO tiene escudo, asi que NO BLOQUEA NADA. Su dureza son 200 de vida, el doble que los demas. Pega 30 en arco ancho y sus ataques son compromisos larguisimos de 3,1 s (el hacha trae -20% de velocidad de ataque).",
+      "comoSeContesta": "Con paciencia y con sus ventanas de recuperacion, que son enormes. No hace falta romperle la guardia porque no tiene: hace falta sobrevivir a golpes de 30 y aprovechar los huecos.",
       "queAporta": "Su Espadon/Alabarda ignora la guardia y pega a varios: es la respuesta a los escuderos.",
       "dondeColocarlo": "Al fondo, como remate. Nunca de apertura.",
-      "cuidadoCon": "El bucle circular: si el unico guard break sale del Elite, y para matar al Elite hace falta guard break, el arma no llega nunca. El PDF ya lo resuelve en §6.4 diciendo 'Elite SECUNDARIO': que el espadon lo suelte otro cuerpo."
+      "cuidadoCon": "Su Espadon/Alabarda sigue siendo el arma anti-guardia del arsenal, y el unico enemigo con guardia de verdad es el Vigilante. Si quieres que el jugador use el hacha contra escudos, el Heraldo tiene que morir ANTES que los Vigilantes, no despues."
     },
-
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
       "papel": "Multiplicador; convierte el tiempo en presion",
-      "comoPelea": "Casi no pelea. Se mantiene a distancia (600 cm) y a los pocos segundos empieza a potenciar a los suyos en un radio de 12 metros. Es fragil: menos vida que un escudero y sin guardia.",
-      "comoSeContesta": "Yendo a por el pronto, que es exactamente la decision que su presencia quiere provocar.",
-      "queAporta": "Su Estandarte ritual es la unica arma que no mata: se clava y convierte un trozo de arena en territorio propio.",
-      "dondeColocarlo": "Protegido, y visible. Si el jugador no lo ve, el buff parece que sale de la nada y la leccion no se aprende.",
-      "cuidadoCon": "Que su buff empiece antes de que al jugador le de tiempo a leer la arena: entonces no es una decision, es un impuesto."
+      "comoPelea": "Lleva espada y escudo y pelea como un Vigilante (20 de daño, guardia del 40%), pero eso no es lo que hace. Lo que hace es su AURA: mientras este vivo, todo aliado a menos de 1200 cm pega +15. Un Vigilante a su lado pasa de 20 a 35 — un +75%. Esta medido en juego, no supuesto, y el simulador ya lo aplica.",
+      "comoSeContesta": "Yendo a por el primero, aunque este detras y aunque cueste llegar. Cada segundo que vive, todos los demas pegan casi el doble. Es exactamente la decision que su presencia quiere provocar.",
+      "queAporta": "Su Estandarte ritual seria la unica arma que no mata: se clava y convierte un trozo de arena en territorio propio. Como objeto todavia no existe — hoy el portador lleva espada y escudo.",
+      "dondeColocarlo": "Protegido, y VISIBLE. El aura no tiene efecto visual todavia: si el jugador no ve al portador, el buff sale de la nada y la leccion no se aprende. Hasta que haya VFX, la colocacion es lo unico que lo señala.",
+      "cuidadoCon": "Su radio son 1200 cm, que es medio campo: colocado \"lejos y a salvo\" probablemente sigue buffeando a todo el mundo. Si lo quieres fuera del aura, mide. Y dos portadores APILAN: dos auras son +30, o sea 50 de daño por Vigilante. Eso mata a Malakh en dos golpes."
     }
   },
-
   "reglasDeComposicion": {
-    "techoDeLaEspada": "Medido en 1000 partidas: la espada base sola aguanta 2-3 enemigos SIMULTANEOS. No es cuantos pones, es cuantos llegan a la vez.",
-    "escalonar": "Separar con distancia, cortar la vision con coberturas y usar la cota es lo que convierte una composicion imposible en una legible.",
-    "laLlaveSeVe": "El enemigo que suelta el arma clave tiene que leerse desde la entrada (§5.1). Si esta tapado, la ruta no se descubre: se tropieza."
+    "techoDeLaEspada": "Medido el 23/08 con Malakh real: en campo abierto y con los enemigos separados 320 cm, la espada sola gana 3 de 3 el 98% de las veces. En la geometria de \"Romper la linea\" —dos escuderos a 560 cm flanqueando el camino— esos MISMOS tres enemigos se ganan el 5%. La composicion no decide: decide la colocacion.",
+    "escalonar": "Separar con distancia, cortar la vision con coberturas y usar la cota es lo que convierte una composicion imposible en una legible. Es la palanca mas fuerte que tienes, mas que quitar o poner enemigos.",
+    "laLlaveSeVe": "El enemigo que suelta el arma clave tiene que leerse desde la entrada (§5.1). Si esta tapado, la ruta no se descubre: se tropieza.",
+    "velocidad": "Los CINCO enemigos corren a 600 y Malakh a 400 (medido). No se puede huir de ninguno, y perseguir a un arquero no funciona. Toda retirada del jugador es una retirada peleando.",
+    "quienBloquea": "Solo el Vigilante y el Inspector tienen escudo. El Lancero y el Heraldo van a dos manos y NO bloquean; el Arquero tampoco. Si un encuentro quiere enseñar guard break, tiene que haber un Vigilante.",
+    "ritmo": "Malakh mata a un enemigo de 100 en cinco golpes de 1,0 s, o sea unos 5 s si no le interrumpen. Un escudero le pega cada 2,2 s. La cuenta que decide un encuentro es esa: cuantos enemigos le estan pegando mientras el gasta esos 5 s.",
+    "stamina": "Cuatro esquivas y se queda sin stamina. Si la composicion obliga a esquivar mas de cuatro veces seguidas sin un respiro de 1 s, no es dificil: es imposible."
+  },
+  "malakh": {
+    "nombre": "Malakh (el jugador)",
+    "nota": "Medido del motor el 2026-08-23, no estimado. Sirve para razonar sobre lo que el jugador PUEDE hacer; los numeros exactos estan en calibracion.json.",
+    "loQuePuede": "Espada de acero: 20 de daño por golpe (10 de base + 10 del arma). El ataque ligero dura 1,0 s de principio a fin y el golpe cae a los 0,40 s con una ventana activa de 0,12 s. El pesado dura 1,21 s, o sea solo un 21% mas que el ligero: comprometerse a un pesado es mucho mas barato de lo que parece.",
+    "loQueLeCuesta": "Tiene 100 de vida y 100 de stamina, que regenera a 35/s pero solo tras 1 s sin gastarla. Atacar cuesta 10; rodar cuesta 25. Eso son CUATRO esquivas seguidas y se queda seco. La esquiva dura 0,92 s y solo es invulnerable de 0,11 a 0,46 s: menos de la mitad del rodillo.",
+    "bloquear": "Bloquear con la espada sola absorbe el 55% del golpe. Con el Escudo Celestial en la mano absorbe el 100%: por eso el escudo cambia la arena y no solo el daño.",
+    "beber": "El frasco cura 25 y la animacion dura 1,89 s, con la cura a los 1,17 s. Beber delante de dos enemigos es regalar un golpe de 20 o 30.",
+    "velocidad": "Corre a 400 (trote, su estado por defecto) y a 550 esprintando. Los cinco enemigos corren a 600. NO PUEDE HUIR DE NADIE, ni esprintando. Cualquier retirada es una retirada peleando.",
+    "loQueNoSabemos": "No estan medidos: cuanto se desplaza el rodillo, el multiplicador de daño del ataque pesado, y el alcance exacto de la espada (la hoja mide 118 cm desde el agarre; lo que falta es cuanto adelanta el brazo)."
   }
 }

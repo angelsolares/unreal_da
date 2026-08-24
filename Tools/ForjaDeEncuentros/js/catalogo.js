@@ -109,19 +109,23 @@ export const ARQUETIPOS = {
   },
   escudero_celestial: {
     color: '#c8d4e8', glifo: 'E', silueta: 'ancha',
-    blueprint: 'BP_DA_Vigilante', sueltaPorDefecto: false, armaEsOffHand: true
+    blueprint: 'BP_DA_Vigilante', sueltaPorDefecto: true, armaEsOffHand: true
   },
   elite_pesado: {
-    // DECISION MIA, sin confirmar: el contrato dejaba sin nombre BP_DA_Heraldo y
-    // BP_DA_Inspector. "Heraldo" lee como quien porta un estandarte, asi que el
-    // Elite se queda con Inspector por descarte. Si en Unreal el Inspector no es
-    // un pesado con guardia, esta fila esta mal y hay que cambiarla.
+    // Cerrado en Unreal el 2026-08-23, y salio AL REVES de lo que supuse: el
+    // Heraldo es el pesado. Le quitaron la lanza y el escudo y lleva DA_GreatAxe
+    // a dos manos, asi que NO tiene guardia — justo lo contrario de lo que decia
+    // mi calibracion.
     color: '#d89a7a', glifo: 'X', silueta: 'masiva',
-    blueprint: 'BP_DA_Inspector', sueltaPorDefecto: false, armaEsOffHand: false
+    blueprint: 'BP_DA_Heraldo', sueltaPorDefecto: false, armaEsOffHand: false
   },
   portador_del_estandarte: {
+    // El Inspector se queda con espada + escudo. Su valor es el aura, que desde
+    // el 23/08/2026 SI existe: BP_DA_AuraComponent, +15 de daño a cada aliado a
+    // menos de 1200 cm mientras el portador viva. El simulador ya la aplica.
     color: '#b58ad8', glifo: 'P', silueta: 'alta',
-    blueprint: 'BP_DA_Heraldo', sueltaPorDefecto: true, armaEsOffHand: false
+    blueprint: 'BP_DA_Inspector', sueltaPorDefecto: true, armaEsOffHand: false,
+    incompleto: 'El aura funciona pero NO SE VE: no tiene efecto visual, asi que el jugador sufre el buff sin saber de donde viene. Y el estandarte como objeto tampoco existe: lleva espada y escudo.'
   }
 };
 

@@ -6,7 +6,7 @@
   "description": "Banco de pruebas de encuentros de Dark Angels. Herramienta externa: no forma parte del juego.",
   "scripts": {
     "start": "node serve.mjs",
-    "test": "node pruebas/humo.mjs && node pruebas/ejes3d.mjs && node pruebas/variantes.mjs && node pruebas/lectura.mjs",
+    "test": "node pruebas/humo.mjs && node pruebas/ejes3d.mjs && node pruebas/variantes.mjs && node pruebas/lectura.mjs && node pruebas/aura.mjs",
     "start:ia": "node --env-file=.env serve.mjs"
   },
   "optionalDependencies": {
