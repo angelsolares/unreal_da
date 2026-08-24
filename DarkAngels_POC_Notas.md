@@ -11339,8 +11339,68 @@ La API es `Modifiers|AddModifier(self: StatsManager, StatTag: GameplayTag, Value
 | portador vivo, aliado a 3000 uu | **20** |
 | portador muerto | **20** |
 
-**Lo que le falta:** no se ve. Ni efecto en el portador, ni en los afectados. El jugador recibe
-el +75% sin saber de donde viene, que es tan malo como los muros invisibles de la arena.
+### Y ahora se ve (2026-08-23)
+
+`MontarVisual` corre en el `BeginPlay` del componente y **crea las dos piezas en caliente**, con
+`AddComponentByClass` sobre el dueño — no hay nada que colocar a mano en cada enemigo:
+
+- **El anillo**: un `Plane` de `/Engine/BasicShapes` con `M_DA_Aura`, a z relativa −85 (a los
+  pies), sin colision, y escalado `RadioAura * 0.02`, que es exactamente el diametro del aura.
+  El borde que se ve en el suelo **es** el alcance real del buff, no una aproximacion.
+- **La luz**: un `PointLightComponent` a 40 de altura, color (1, 0.35, 0.12), 6000 de
+  intensidad, radio de atenuacion `RadioAura * 0.6`.
+
+`RevisarAura` da la visibilidad de los dos con **el mismo booleano** que decide el buff (el
+`IsAlive` del portador), asi que lo que se ve y lo que se aplica no pueden desincronizarse: son
+el mismo `if`.
+
+**Medido en PIE el 2026-08-23**, con el portador plantado en El Claro entre sus guardianes:
+
+| quien | distancia | daño |
+|---|---|---|
+| Vigilante de prueba | 506 | **35** |
+| Vigilante del Claro | 227 | **35** |
+| Vigilante del Claro | 802 | **35** |
+| Lancero del Claro | 1143 | **45** |
+| Arquero del Claro | 1951 (fuera) | **40** |
+| Vigilante de prueba | 3042 (fuera) | **20** |
+| el propio portador | 0 | **20** — se excluye a si mismo |
+
+**La bonificacion es +15 plano sobre el daño de cada uno, no un +75%.** El 75% era el numero del
+Vigilante, que pega 20; al Lancero, que pega 30, el mismo +15 le sale a +50%. Conviene decirlo
+asi en el contrato del emulador, o simulara de mas a los que pegan fuerte.
+
+Y al matarlo, en la siguiente pasada del temporizador: anillo y luz con `IsVisible == False`,
+`Afectados` vacio, y los seis de vuelta a su base (Vigilantes 20, Lancero 30, Arquero 40).
+Comprobado tambien en imagen: la misma toma antes y despues, con el anillo y sin el.
+
+**Lo que sigue faltando** no es la mecanica sino el objeto: el portador lleva espada y escudo,
+no estandarte. Su papel se lee por el anillo del suelo, no por su silueta.
+
+### Arrancar PIE por Python **guarda el nivel** antes
+
+`editor_request_begin_play()` dispara un `Saving Map` del nivel actual antes de crear el mundo de
+PIE. En el log salen seguidos:
+
+```
+LogFileHelpers: Saving Map: /Game/DarkAngels/Maps/L_DA_Malkuth_Master
+LogPlayLevel:   Creating play world package: /Game/.../UEDPIE_0_L_DA_Malkuth_Master
+```
+
+Consecuencia: **cualquier actor que hayas soltado para una prueba acaba en el `.umap` del
+disco**, aunque no le hayas dado a guardar nunca. Es el mecanismo detras del aviso de los dos
+Heraldos que se quedaron en el Master. Aqui se colaron tres actores `ZZ_TEST_*` en el mapa
+maestro sin tocar ningun boton de guardar; se vieron con `grep ZZ_TEST` sobre el `.umap` y se
+limpiaron borrandolos, volviendo a guardar y restaurando el fichero con `git checkout`.
+
+**Regla:** etiqueta lo de prueba con un prefijo que puedas buscar, y mira `git status` al
+terminar.
+
+Y un aviso de hardware, no de codigo: el primer PIE sobre el Master se llevo la GPU por delante
+(`DXGI_ERROR_DEVICE_HUNG`, volcado de Aftermath, editor reiniciado solo). El segundo intento, con
+`r.ScreenPercentage 50` puesto por `EngineSettingsService.set_console_variable`, aguanto la
+sesion entera. Merece la pena bajarlo antes de medir en un mapa pesado.
+
 
 ## Y como NO sacar la firma de una funcion de DCS
 

@@ -74,20 +74,29 @@ portador esté vivo, **todo `BP_BaseAI` aliado dentro de su radio recibe un modi
 
 Dos parámetros editables por instancia: `RadioAura` (1200 por defecto) y `Bonificacion` (+15).
 
-Medido en juego con dos Vigilantes, cuyo daño base es 10 y con su espada 20:
+Medido en PIE el 2026-08-23, con el portador entre los guardianes de El Claro:
 
-| situación | daño del aliado |
-|---|---|
-| portador vivo, aliado a 506 uu | **35** |
-| portador vivo, aliado a 3000 uu (fuera del radio) | **20** |
-| portador muerto | **20** |
+| quién | distancia | daño |
+|---|---|---|
+| Vigilante | 227 / 506 / 802 uu | **35** (base 20) |
+| Lancero | 1143 uu | **45** (base 30) |
+| Arquero | 1951 uu, fuera | **40** (base 40) |
+| Vigilante | 3042 uu, fuera | **20** |
+| el propio portador | 0 | **20** — se excluye a sí mismo |
+| cualquiera, portador muerto | — | su base |
 
-O sea **+75% de daño mientras viva**, que es una lectura táctica clarísima: o cae el portador
-primero, o el resto pega mucho más fuerte. Eso el emulador ya lo puede simular de verdad.
+**Es +15 plano, no +75%.** El 75% era la lectura del Vigilante, que pega 20; al Lancero, que pega
+30, el mismo +15 le sale a +50%. **El emulador tiene que sumar 15, no multiplicar por 1,75**, o
+inflará justo a los que ya pegan fuerte. Y el portador no se buffa a sí mismo.
 
-**Lo que todavía NO tiene: efecto visual.** El aura no se ve, así que hoy el jugador sufre el
-buff sin saber de dónde viene. Y sigue sin existir el estandarte como objeto: el portador lleva
-espada y escudo. Las dos cosas son trabajo de arte, no de mecánica.
+La lectura táctica se mantiene y ahora está medida: o cae el portador primero, o el resto pega
+más fuerte.
+
+**El aura ya se ve** (2026-08-23): un anillo en el suelo cuyo borde marca el radio exacto del
+buff, más una luz cálida en el portador. Los dos los crea el componente al arrancar y se apagan
+en la misma pasada en que muere. Lo que sigue sin existir es **el estandarte como objeto**: el
+portador lleva espada y escudo, así que su papel se lee por el anillo del suelo y no por su
+silueta. Eso es trabajo de arte, no de mecánica.
 
 **Regla:** un `arquetipo` que no esté en la tabla es un error de carga, no un enemigo
 silenciosamente ausente.
