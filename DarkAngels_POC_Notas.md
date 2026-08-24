@@ -11273,6 +11273,9 @@ gratis porque los chasis ya estaban:
   es el mismo truco que con la lanza.
 - **`BP_DA_Inspector` → `portador_del_estandarte`**: se queda con espada y escudo. Su papel es
   el buff/debuff, que **todavia no existe**.
+  > **Derogado el mismo 23/08**, mas abajo: el buff existe («El aura del portador del
+  > estandarte») y la espada y el escudo se fueron («La Trompeta del Juicio»). Hoy lleva
+  > `DA_DA_Trompeta` a dos manos y nada mas.
 
 **Como se edita el equipo de un enemigo sin darselo a todos.** El `Equipment` es un componente
 HEREDADO de `BP_BaseAI`, y `SubobjectDataSubsystem` devuelve para el la plantilla del **PADRE**
@@ -11376,6 +11379,12 @@ Comprobado tambien en imagen: la misma toma antes y despues, con el anillo y sin
 
 **Lo que sigue faltando** no es la mecanica sino el objeto: el portador lleva espada y escudo,
 no estandarte. Su papel se lee por el anillo del suelo, no por su silueta.
+
+> **Derogado horas despues**, en «La Trompeta del Juicio»: el objeto se hizo, y el portador
+> lleva el cuerno a dos manos sin escudo. Verificado otra vez en PIE el 24/08 leyendo al
+> Inspector vivo — lo unico enganchado es `BP_DI_DA_Trompeta_C` con `SM_DA_Trompeta`.
+> **Este parrafo se quedó sin puntero hacia delante y por eso volvio a colarse como
+> pendiente el 24/08.** Al derogar algo, marcarlo aqui tambien, no solo mas abajo.
 
 ### Arrancar PIE por Python **guarda el nivel** antes
 
@@ -11585,3 +11594,60 @@ montage de arrojar):
 
 Verificado en PIE: la tecla con la trompeta suena `M_DA_ClavarEstandarte`, a los 0,85 s
 aparece la zona y la espada vuelve; con la lanza sigue sonando `M_DA_ArrojarLanza`.
+
+## El estandarte ya existía, y el merge se llevó por delante su guardia (2026-08-24)
+
+Angel preguntó por el pendiente «el estandarte no existe como objeto» y tenía razón en
+dudarlo: **existía desde el 23/08 y en juego se ve**. El pendiente salió de dos párrafos
+de estas notas que quedaron sin puntero hacia delante y que ya están marcados como
+derogados donde estaban.
+
+Verificado sin creerle a nadie, sobre el Inspector vivo en PIE:
+
+```
+Inspectores vivos: 1
+BP_DA_Inspector_C_0   controller=BP_BaseAIController_C_0
+  enganchados (1):
+     BP_DI_DA_Trompeta_C_0    BP_DI_DA_Trompeta_C
+        SM  SM_DA_Trompeta
+```
+
+Uno solo, y es la trompeta. Ni espada ni escudo. En la foto se le ve el cuerno cruzado al
+pecho y el anillo naranja del aura a sus pies. En el binario del `.uasset` cuadra:
+`DA_DA_Trompeta` aparece dos veces y `DA_WoodenShield` y `DA_SteelSword` **cero**.
+
+### Lo que sí era un problema de verdad: el merge dejó una tabla en falso
+
+El §6.16 del contrato — *«Bloquean cuatro de los cinco»* — se midió el 24/08 **en la rama
+`main`**, donde el Inspector todavía era un Vigilante clonado. En la otra rama, el 23/08, se
+le había quitado el escudo. Al juntarlas quedó una tabla diciendo que el Inspector absorbe
+el **100%** con un `DA_WoodenShield` que ya no lleva.
+
+`BlockValue` leído de los items, que es de donde salían los números originales:
+
+| item | BlockValue |
+|---|---|
+| `DA_WoodenShield` | 100 |
+| `DA_GreatAxe` | 75 |
+| `DA_DA_Lanza` | 75 |
+| **`DA_DA_Trompeta`** | **75** |
+| `DA_SteelSword` | 55 |
+| `DA_ElvenBow` | no tiene |
+
+**El único con guardia perfecta es el Vigilante.** Corregido en el contrato.
+
+### La lección, que no es sobre el estandarte
+
+Un merge entre dos ramas largas no falla solo donde git avisa. Aquí el conflicto fue **un
+fichero** y se resolvió bien, pero el daño estaba en un sitio que git dio por auto-mezclado:
+una tabla de una rama describiendo un actor que la otra rama había cambiado. **Tras juntar
+dos ramas que tocaron el mismo sistema, hay que releer lo que cada una AFIRMA del otro
+lado**, no solo lo que git marcó en rojo.
+
+### Y una herramienta nueva: `node ue.mjs py`
+
+`ue.mjs script` iba al sandbox del `ProgrammaticToolset`, que solo deja importar
+`time, math, re, json, datetime, copy` — o sea, **no puede `import unreal`**, que es
+justo lo que hace falta para medir nada. El comando `py` manda el fichero a
+`execute_python_code`, la herramienta de nivel superior, con la API entera. El `script`
+viejo se queda con un aviso en el código de a dónde va.

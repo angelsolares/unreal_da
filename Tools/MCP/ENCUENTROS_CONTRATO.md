@@ -62,7 +62,7 @@ no de memoria.
 | `lancero_del_alba` | `BP_DA_Lancero` | `DA_DA_Lanza` a dos manos, **sin escudo** | alcance; su arma es la que arrojas |
 | `arquero_del_firmamento` | `BP_DA_Arquero` | `DA_ElvenBow` + flechas (hereda de `BP_ArcherAI`) | presión a distancia; obliga a moverse |
 | `elite_pesado` | `BP_DA_Heraldo` | `DA_GreatAxe` a dos manos, **sin escudo** | lento y sin guardia, pero pega fuerte |
-| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_SteelSword` + `DA_WoodenShield` + **`BP_DA_AuraComponent`** | **aura de daño a los aliados vivos**; su valor no es el arma |
+| `portador_del_estandarte` | `BP_DA_Inspector` | `DA_DA_Trompeta` a dos manos, **sin escudo**, + **`BP_DA_AuraComponent`** | **aura de daño a los aliados vivos**; su valor no es el arma |
 
 **`BP_DA_WarriorAI` no es un arquetipo.** No tiene equipo propio: es el genérico que invoca el
 `BP_DA_GiantBoss`. No lo metas en la tabla.
@@ -94,9 +94,12 @@ más fuerte.
 
 **El aura ya se ve** (2026-08-23): un anillo en el suelo cuyo borde marca el radio exacto del
 buff, más una luz cálida en el portador. Los dos los crea el componente al arrancar y se apagan
-en la misma pasada en que muere. Lo que sigue sin existir es **el estandarte como objeto**: el
-portador lleva espada y escudo, así que su papel se lee por el anillo del suelo y no por su
-silueta. Eso es trabajo de arte, no de mecánica.
+en la misma pasada en que muere.
+
+**Y el estandarte SÍ existe como objeto** — verificado en PIE el 24/08, que este documento lo
+negaba en dos sitios. El portador lleva la **Trompeta del Juicio** (`SM_DA_Trompeta`, un cuerno
+de Tripo) a dos manos, y no lleva ni espada ni escudo: leído del Inspector vivo, lo único
+enganchado es `BP_DI_DA_Trompeta_C`. Su papel se lee por la silueta **y** por el anillo.
 
 **Regla:** un `arquetipo` que no esté en la tabla es un error de carga, no un enemigo
 silenciosamente ausente.
@@ -580,15 +583,21 @@ fondo» no lo hace menos peligroso — lo que decide cuánto molesta es la cober
 En DCS **se bloquea con el arma**, no hace falta escudo — Malakh lo hace con la espada
 sola al 55%. El `BT_WarriorAI` tiene cuatro nodos `Set Activity: Block`, así que:
 
-| | absorbe |
-|---|---|
-| Vigilante / Inspector (`DA_WoodenShield`) | **100%** — el golpe parado no hace nada |
-| Lancero (`DA_DA_Lanza`) | 75% |
-| Heraldo (`DA_GreatAxe`) | 75% |
-| Arquero | no bloquea |
+| | `BlockValue` del item | absorbe |
+|---|---|---|
+| Vigilante (`DA_WoodenShield`) | 100 | **100%** — el golpe parado no hace nada |
+| Lancero (`DA_DA_Lanza`) | 75 | 75% |
+| Heraldo (`DA_GreatAxe`) | 75 | 75% |
+| **Inspector (`DA_DA_Trompeta`)** | **75** | **75%** |
+| Arquero | — | no bloquea |
+| *Malakh, para comparar* (`DA_SteelSword`) | 55 | 55% |
 
 Esto **deroga el «lento y sin guardia» del §1.2** para el Heraldo, y deroga la idea de
 que su hacha es el arma anti-guardia *porque solo el Vigilante bloquea*.
+
+**Corregido el 24/08:** la fila del Inspector decía 100% con `DA_WoodenShield`. Se midió en
+una rama donde el Inspector todavía era un Vigilante clonado; desde el 23/08 lleva la trompeta
+y no lleva escudo, así que absorbe 75. **El único con guardia perfecta es el Vigilante.**
 
 #### Y lo que además apareció
 

@@ -4,7 +4,8 @@
 // Uso:
 //   node ue.mjs shot <out.png> <x> <y> <z> <pitch> <yaw>
 //   node ue.mjs call <toolset|-> <tool> <argsJson>
-//   node ue.mjs script <fichero.py>
+//   node ue.mjs script <fichero.py>   -> sandbox (sin `import unreal`)
+//   node ue.mjs py <fichero.py>       -> API unreal completa
 
 import { writeFileSync, readFileSync } from 'node:fs';
 import http from 'node:http';
@@ -113,6 +114,8 @@ if (cmd === 'shot') {
   const [toolset, tool, argsJson] = rest;
   console.log(await callTool(toolset, tool, JSON.parse(argsJson || '{}')));
 } else if (cmd === 'script') {
+  // OJO: esto va al sandbox del ProgrammaticToolset, que solo deja importar
+  // time, math, re, json, datetime y copy. Para `import unreal`, usar `py`.
   const src = readFileSync(rest[0], 'utf8');
   console.log(
     await callTool(
@@ -121,6 +124,11 @@ if (cmd === 'shot') {
       { script: src },
     ),
   );
+} else if (cmd === 'py') {
+  // La via de escape: `execute_python_code` es una herramienta de nivel
+  // superior (sin toolset_name) y corre con la API `unreal` entera.
+  const src = readFileSync(rest[0], 'utf8');
+  console.log(await callTool('-', 'execute_python_code', { code: src }));
 } else {
   console.error('comando desconocido');
   process.exit(1);

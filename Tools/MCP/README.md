@@ -11,8 +11,13 @@ Cliente JSON-RPC del servidor MCP del editor (`http://127.0.0.1:8000/mcp`).
 node ue.mjs shot salida.png <x> <y> <z> <pitch> <yaw>
 node ue.mjs thumb salida.png /Game/Ruta/Al/Asset
 node ue.mjs call <toolset|-> <tool> '<argsJson>'
-node ue.mjs script fichero.py
+node ue.mjs script fichero.py   # sandbox: NO puede `import unreal`
+node ue.mjs py fichero.py       # la via de escape: API unreal entera
 ```
+
+`script` va al `ProgrammaticToolset`, cuyo sandbox solo permite `time, math, re, json,
+datetime, copy`. Para medir cualquier cosa del motor hace falta `py`, que llama a
+`execute_python_code`.
 
 Dos decisiones que no son arbitrarias:
 
