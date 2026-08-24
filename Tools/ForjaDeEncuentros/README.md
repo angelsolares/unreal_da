@@ -261,22 +261,32 @@ que este simulador le suponía. A cambio, rodar le cuesta 25 de stamina y no 10
 (cuatro esquivas y se queda seco), bloquear con la espada sola le quita el 55% y no
 el 70%, y beber le clava 1,9 s.
 
-**Dónde queda el techo con los dos lados medidos:**
+**Y una tercera pasada el 24/08: los enemigos otra vez, esta vez de la pose.** Tres
+premisas del diseño no sobrevivieron:
+
+- **La lanza no da alcance.** 245 cm contra los 241 de la espada. Cuatro centímetros.
+  Mide 175 de largo, pero se agarra a un tercio del asta. Y los cuatro de melé
+  **comparten animación**: no existe animación de lanza ni de hacha.
+- **El Arquero no tiene límite de alcance.** Gravedad 0, 4 s de vida, 3500 cm/s →
+  14 000 cm. Dispara desde donde sea con tal de verte.
+- **Bloquean cuatro de los cinco**, no uno. En DCS se bloquea con el arma: escudo 100%,
+  lanza y hacha 75%. Lo de «sin escudo no bloquea» era invención mía.
+
+**Dónde queda el techo con todo medido:**
 
 | | espada sola gana |
 |---|---|
-| 3 enemigos en campo abierto, separados 320 cm | **98%** |
-| esos MISMOS 3, colocados como en «Romper la línea» | **5%** |
-| «Romper la línea» entera, 5 enemigos | **1%** |
+| 2 enemigos | **95%** |
+| 3 enemigos en campo abierto | **0%** |
+| «Romper la línea» entera, 5 enemigos | **0%**, 200 muertes de 200 |
 
-Eso es el hallazgo, y es mejor que el anterior: **la composición no decide, decide
-la colocación.** Antes de medir a Malakh, esa misma composición de tres se ganaba
-el 12% en campo abierto, y parecía que el problema era «tres enemigos son
-demasiados». No lo son. Tres enemigos *encima a la vez* lo son.
+El techo son **dos enemigos**, y la caída del tercero es un acantilado, no una
+pendiente. Lo que la herramienta existía para responder ya está respondido, y la
+respuesta es que ese encuentro no cumple el §5.2.
 
 Lo de abajo sigue valiendo como razonamiento y como historia de qué se rompió y por
-qué, pero las cifras concretas hay que releerlas de `datos/calibracion.json` y de
-una simulación nueva. El detalle del cambio está en los §6.1.b y §6.11 del contrato.
+qué, pero las cifras concretas hay que releerlas de `datos/calibracion.json` y de una
+simulación nueva. El detalle está en los §6.1.b, §6.11, §6.12 y §6.13 del contrato.
 
 ---
 
