@@ -11651,3 +11651,98 @@ lado**, no solo lo que git marcó en rojo.
 justo lo que hace falta para medir nada. El comando `py` manda el fichero a
 `execute_python_code`, la herramienta de nivel superior, con la API entera. El `script`
 viejo se queda con un aviso en el código de a dónde va.
+
+## El golpe de suelo del espadón: el §3.2 pasa de dos familias a tres (2026-08-24)
+
+El botón FORCE DISCARD con el hacha en la mano **no hacía nada** — medido en la auditoría de
+esta mañana. Ya hace algo: una onda que daña, derriba y **tira** a todo enemigo alrededor.
+
+### Lo que se montó
+
+| pieza | qué es |
+|---|---|
+| `M_DA_GolpeDeSuelo` | el gesto de Malakh, del `AS_T_BH_Overslam` del Throwing Pack — el mismo Overslam a dos manos que ya usaba el clavado del estandarte |
+| `BP_DA_NotifyGolpeSuelo` | notify a **0,856 s**, la marca medida de esa animación, que llama a `GolpeDeSuelo` |
+| `GolpeDeSuelo` | en `BP_DA_PlayerCharacter`: barre, daña, y al final **purga la temporal** — el descarte consume el arma |
+| `DerribarEnemigo` | por víctima: para su montage, le pone el derribo, lo lanza y le aplica el estado |
+| `M_DA_DerriboOnda` | la caída, del **Knockdown & Get-Up Pack** de Raise Creation |
+| `BP_DA_StatusEffectLogic_Derribo` | el estado que lo tiene en el suelo |
+
+Cuatro ajustes en el jugador, editables por instancia: `RadioGolpeSuelo` 600,
+`DanoGolpeSuelo` 60, `ImpulsoGolpeSuelo` 500, `ImpulsoGolpeSueloZ` 350.
+
+### Por qué `AS_KG_Heavy` y no otra
+
+Medida la trayectoria de la pelvis de las nueve familias del pack. `Heavy` gana porque
+**sube antes de caer**: 98 → **168** → 11. Las demás solo se desploman. Leído como onda de
+choque, esa subida es justo lo que hace falta — el suelo te levanta y te estampa. Y en
+`In_Place` la deriva es **0,0 uu**, así que la malla no se despega de la cápsula.
+
+**El empujón lo ponemos nosotros, no la animación.** Las variantes `_RM` del pack llevan el
+desplazamiento en la pelvis, no en el `root`, y con dirección fija. Con `LaunchCharacter`
+radial cada enemigo sale en su propia dirección desde el centro, que es lo que una onda hace.
+
+### Dos decisiones que no son cosméticas
+
+- **Sin `HitData.CanBeBlocked`.** El §3.2 del PDF pide *guard break*; un guard break que se
+  puede bloquear no rompe ninguna guardia. Es el único ataque del juego sin ese tag.
+- **El estado NO da inmortalidad.** `BP_DA_StatusEffectLogic_Derribo` es copia del
+  `_Knockdown` del Giant **menos** `Activity.IsImmortal`. Ahí la víctima es el jugador y son
+  i-frames de suelo; aquí serían un regalo — el sentido del derribo es poder rematarlos.
+
+### Medido en PIE, cinco enemigos en corro
+
+Vida 100 → **40** en los cinco (60 de daño, el ligero de Malakh son ~20). Y la secuencia
+tick a tick del Heraldo:
+
+| t | qué pasa |
+|---|---|
+| 1,01 s | arranca `M_DA_DerriboOnda` (el notify va a 0,856 del montage) |
+| 1,34 s | d 555 → 855, z 116 → **212**: en el aire |
+| 1,67 s | d 1155, z 198 |
+| 2,00 s | d 1305, z 116: en el suelo |
+| 3,00 s | `M_AI_EquipSword` — de pie otra vez |
+
+Y el arma: `BP_DI_GreatAxe_C` fuera, `BP_DI_SteelSword_C` de vuelta sola.
+
+**Primer intento con impulso 900/450 los mandaba a 7,5 m** — derribados pero fuera de la
+pelea, y un guard break sin nadie a quien rematar no sirve. Con 500/350 vuelan ~3,5 m.
+
+### Trampas del escritor del DSL, dos nuevas
+
+- **Dentro de un `(for)` no se puede `(bind x <nodo puro>)`**: el escritor lo **saca fuera
+  del bucle** y lo evalúa una vez. La primera versión calculaba la distancia y la dirección
+  de UN enemigo y las usaba para los cinco — y compilaba sin una queja. Los nodos puros van
+  **inline**; los de ejecución (`TakeDamage`) sí se pueden bindear dentro. **Releer siempre.**
+- **`add_function_graph` sobre un nombre que aún existe devuelve `Nombre_0`**, y entonces el
+  DSL declarado como `(fn Nombre ...)` no cuadra y el escritor cree que es un evento:
+  *"AddEvent|Nombre does not exist"*. Hay que borrar en una llamada MCP y crear en la
+  siguiente, y aun así leer el nombre REAL del grafo que devuelve.
+- Del lector al escritor: se lee `Interface|ApplyStatusByParams` y se escribe
+  **`Interface|ApplyStatusbyParams`**, con `b` minúscula.
+
+### Recrear los dos montages (viven fuera de git)
+
+```python
+S = unreal.AnimMontageService
+p1 = S.create_montage_from_animation(
+    '/Game/Throwing_Pack/Animation/Both_Hand/AS_T_BH_Overslam',
+    '/Game/DarkAngels/Animations/Espadon', 'M_DA_GolpeDeSuelo')
+S.set_slot_name(p1, 0, 'FullBody')
+S.add_notify(p1, '/Game/DarkAngels/Blueprints/Combat/BP_DA_NotifyGolpeSuelo'
+                 '.BP_DA_NotifyGolpeSuelo_C', 0.856, 'GolpeSuelo')
+
+p2 = S.create_montage_from_animation(
+    '/Game/KnockdownGetUp/Animations/In_Place/AS_KG_Heavy',
+    '/Game/DarkAngels/Animations/Derribo', 'M_DA_DerriboOnda')
+S.set_slot_name(p2, 0, 'FullBody')
+```
+
+`FullBody` es el slot de los montages de IA de DCS y del jugador: sirve para los dos.
+
+### Y de paso, el descarte ya no tiene agujeros
+
+`ArrojarLanza` tenía como último caso un `elif` sobre el arma arrojadiza, así que **todo lo
+demás caía por un camino vacío**. Ahora ese último caso es un `else` y va al golpe de suelo:
+trompeta → clavar, arrojadiza → arrojar, **cualquier otra cosa → golpe de suelo**. No queda
+arma temporal sin remate, que es lo que el §3.2 pide de toda la familia.

@@ -19,7 +19,7 @@ de descarte**, **las cinco recetas de encuentro sin construir** y **el director 
 | § | Bloque | Estado |
 |---|---|---|
 | 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
-| 3.2 | Ataque de descarte por familia | 🟠 **2 de 5** |
+| 3.2 | Ataque de descarte por familia | 🟠 **3 de 5** (+ el resto ya no cae en vacío) |
 | 4 | Arsenal de oportunidad | 🟠 5 familias existen; **2 chocan con el equipo base** |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
 | 5 | Orden de bajas implícito | 🟠 falta la reacción enemiga |
@@ -44,14 +44,20 @@ La tabla del PDF pide uno por familia. Hay dos:
 |---|---|---|
 | Lanza | arrojarla para empalar | ✅ `M_DA_ArrojarLanza` + notify |
 | Estandarte | clavarlo para una última zona | ✅ `M_DA_ClavarEstandarte` + zona de 15 s |
-| **Espadón/Alabarda** | golpe de suelo de stagger/guard break | ❌ **no existe** |
-| **Escudo** | shield bash final o lanzamiento | ❌ **no existe** |
-| **Arco** | consumir las flechas en una descarga | ❌ **no existe** |
+| **Espadón/Alabarda** | golpe de suelo de stagger/guard break | ✅ **`M_DA_GolpeDeSuelo`** (24/08) |
+| **Escudo** | shield bash final o lanzamiento | ❌ sin gesto propio |
+| **Arco** | consumir las flechas en una descarga | ❌ sin gesto propio |
 
-✅ **VERIFICADO en PIE:** con el hacha en la mano, `ArrojarLanza` —que es lo que llama el
-botón FORCE DISCARD— **no hace absolutamente nada**. El enrutado por familia manda la trompeta
-a clavar y arroja el resto solo si el arma es `ArmaArrojadiza`; el hacha no lo es, así que cae
-por un camino vacío. El botón del HUD miente en tres de los cinco casos.
+**Hecho el 24/08.** El golpe de suelo daña, derriba y lanza a todo enemigo en 600 uu. Medido
+en PIE con cinco en corro: vida 100 → 40 en los cinco, todos por el aire (z 116 → 212) y en el
+suelo 1 s después, de pie a los 3 s. Sin `HitData.CanBeBlocked`, que un guard break bloqueable
+no rompe ninguna guardia. La caída sale del **Knockdown & Get-Up Pack** de Raise Creation
+(`AS_KG_Heavy`, la única que sube antes de caer).
+
+**Y el agujero de fondo, tapado:** el último caso de `ArrojarLanza` era un `elif` sobre el arma
+arrojadiza, así que **todo lo demás caía por un camino vacío** — con el hacha, FORCE DISCARD no
+hacía nada. Ahora es un `else` que va al golpe de suelo, así que **ninguna arma temporal se
+queda sin remate**. Al escudo y al arco les falta su gesto propio del §3.2, no un descarte.
 
 ### 2. Las cinco recetas de encuentro, sin construir (§6)
 
@@ -190,8 +196,7 @@ trabajo de construir las arenas, o sea el punto 2 de arriba.
 1. **Construir «Romper la línea» (§6.1) de verdad**, con su `BP_DA_Arena`. Desbloquea el
    criterio que falta del §12 y da banco de pruebas real a todo lo demás. La Forja ya tiene
    la composición simulada.
-2. **El golpe de suelo del Espadón/Alabarda.** El hacha ya está en el juego y el botón FORCE
-   DISCARD ya existe: hoy pulsarlo no hace nada.
+2. ~~El golpe de suelo del Espadón/Alabarda~~ — **hecho el 24/08.**
 3. **Decidir qué pasa con el arco y el escudo base.** Es una decisión de Angel, y hasta que se
    tome, dos familias del §4 no significan nada.
 4. **Show Weapon State en el HUD.** Es lo que hace depurable todo lo anterior: sin saber de
