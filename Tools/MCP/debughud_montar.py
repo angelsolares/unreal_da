@@ -247,7 +247,10 @@ def dsl_permitido():
 # `git checkout` del binario y se leyeron con `read_graph_dsl`.
 #
 # OJO al portar desde el lector: `read_graph_dsl` COLAPSA los nodos de varias
-# salidas. `Game|Player|GetMousePosition` devuelve (bool, X, Y) y el lector lo
+# salidas. `Game|Player|GetMousePosition` devuelve (LocationX, LocationY,
+# ReturnValue) EN ESE ORDEN -medido con get_node_type_pins el 24/08; el
+# comentario decia (bool, X, Y) y por eso el multi-bind cableaba al reves- y
+# el lector lo
 # imprime como si fuera un valor suelto repetido cuatro veces. Pegarlo tal cual
 # crea cuatro nodos y cablea el pin equivocado. Por eso aqui va con multi-bind.
 
@@ -259,7 +262,7 @@ def dsl_hover_boton():
     return ('(fn DbgHoverBoton (X Y W)\n'
             '  (bind esc (Variables|Default|GetDbgEscala))\n'
             '  (bind alto (* %.1f esc))\n'
-            '  (bind (hay mx my) (Game|Player|GetMousePosition'
+            '  (bind (mx my hay) (Game|Player|GetMousePosition'
             ' (Game|GetPlayerController 0)))\n'
             '  (if (and hay (and (and (>= mx X) (< mx (+ X W)))'
             ' (and (>= my Y) (< my (+ Y alto)))))\n'
@@ -332,6 +335,8 @@ def dsl_boton():
             '    (else\n'
             + rect("X", "Y", "W", SC(BOTON_H), BOTON) + '))\n'
             + texto("(+ X %s)" % SC(10.0), "(+ Y %s)" % SC(4.0), "Etiqueta") + '\n'
+            # El resalte va al FINAL, encima de lo ya pintado.
+            '  (CallFunction|DbgHoverBoton :X X :Y Y :W W)\n'
             '  (return))')
 
 
@@ -451,6 +456,9 @@ def dsl_toggle():
             '    (return))\n'
             '  (Variables|Default|SetDbgVisible'
             ' (not (Variables|Default|GetDbgVisible)))\n'
+            # DESPUES del Set, para que lea el estado ya cambiado
+            # y elija el tono solo.
+            '  (CallFunction|DbgSonarPanel)\n'
             '  (CallFunction|DbgOcultarJuego'
             ' :Ocultar (Variables|Default|GetDbgVisible))\n'
             '  (bind pc (Game|GetPlayerController 0))\n'
@@ -2805,61 +2813,21 @@ def run():
     # Se puede borrar sin miedo porque **nadie lo referencia de forma dura**: el
     # actor del nivel lo pide por ruta blanda. Eso si, este blueprint es
     # generado: lo que se toque a mano dentro se pierde en la siguiente pasada.
-    hijo = {"refPath": HIJO}
-    out["regenerado"] = False
-    if ast("exists", {"path": HIJO.split(".")[0]}):
-        ast("delete", {"path": HIJO.split(".")[0]})
-        out["regenerado"] = True
-    bp("create", {"folder_path": CARPETA, "asset_name": HIJO.split("/")[-1].split(".")[0],
-                  "asset_type": {"refPath": PADRE + "_C"}})
-
-    for nombre, tipo, cont in VARIABLES:
-        args = {"blueprint": hijo, "name": nombre, "type_name": tipo}
-        if cont:
-            args["container_type"] = cont
-        bp("add_variable", args)
-    # La referencia al Data Asset de destinos, con su valor por defecto puesto:
-    # asi el HUD no tiene ninguna ruta escrita dentro del grafo.
-    bp("add_object_variable", {"blueprint": hijo, "name": "DbgDatos",
-                               "object_class": {"refPath": CARPETA +
-                                                "/BP_DA_DebugDestinos."
-                                                "BP_DA_DebugDestinos_C"}})
-    # Los widgets del juego que se escondieron al abrir el panel, para poder
-    # devolverlos exactamente como estaban.
-    bp("add_object_variable", {"blueprint": hijo, "name": "DbgOcultadas",
-                               "object_class": {"refPath": "/Script/UMG.UserWidget"},
-                               "container_type": "ARRAY"})
-    # El registro de enemigos generados por la herramienta. CLEAR borra ESTO y
-    # nada mas: por construccion no puede tocar un enemigo del nivel.
-    bp("add_object_variable", {"blueprint": hijo, "name": "DbgSpawned",
-                               "object_class": {"refPath": "/Script/Engine.Actor"},
-                               "container_type": "ARRAY"})
-    bp("add_object_variable", {"blueprint": hijo, "name": "DbgDatosEnem",
-                               "object_class": {"refPath": CARPETA +
-                                                "/BP_DA_DebugEnemigos."
-                                                "BP_DA_DebugEnemigos_C"}})
-    bp("compile_blueprint", {"blueprint": hijo})
-    cdo = bp("get_default_object", {"blueprint": hijo})
-    obj("set_properties", {"instance": cdo,
-                           "values": json.dumps({"DbgDatos": DATOS,
-                                                 "DbgHabilitado": True,
-                                                 "DbgEscala": ESCALA_DEF,
-                                                 "DbgMovMult": 1.0,
-                                                 "DbgDmgMult": 1.0,
-                                                 "DbgEnemyMult": 1.0,
-                                                 "DbgDatosEnem": DATOS_ENEM,
-                                                 "DbgCantSel": 1,
-                                                 "DbgDistSel": 500.0})})
-    out["datos_enlazados"] = json.loads(obj("get_properties",
-                                            {"instance": cdo,
-                                             "properties": ["DbgDatos"]}))
-    out["variables"] = bp("list_variables", {"blueprint": hijo})
-
-    # --- 3. Los grafos, en orden de dependencia: una funcion no se puede
-    # --- escribir antes que las que llama.
     grafos = [
         ("DbgPermitido", dsl_permitido, [("Permitido", "bool", False)]),
         ("DbgEscalar", dsl_escalar, [("Delta", "float", True)]),
+        # Las cuatro del resalte y el sonido van AQUI, ANTES de sus
+        # llamadores: DbgBoton llama a DbgHoverBoton, DbgDibujar a
+        # DbgHoverTabs, DbgClick a DbgSonarClick y DbgToggle a
+        # DbgSonarPanel. Estaban escritas mas arriba pero NUNCA
+        # registradas, asi que la pasada moria en DbgClick con
+        # "CallFunction|DbgSonarClick does not exist".
+        ("DbgHoverBoton", dsl_hover_boton, [("X", "float", True),
+                                            ("Y", "float", True),
+                                            ("W", "float", True)]),
+        ("DbgHoverTabs", dsl_hover_tabs, []),
+        ("DbgSonarClick", dsl_sonar_click, []),
+        ("DbgSonarPanel", dsl_sonar_panel, []),
         ("DbgBoton", dsl_boton, [("X", "float", True), ("Y", "float", True),
                                  ("W", "float", True), ("Etiqueta", "string", True),
                                  ("Encendido", "bool", True)]),
@@ -2974,6 +2942,81 @@ def run():
         ("DbgTick", dsl_tick, []),
         ("DbgDibujar", dsl_dibujar, []),
     ]
+
+    # ------------------------------------------------------------------
+    # PREVUELO: ninguna funcion puede llamar a otra que no este en la
+    # lista. Se comprueba ANTES de borrar nada, porque la regeneracion es
+    # todo o nada: si revienta a mitad te quedas sin panel y hay que sacarlo
+    # de git. Paso de verdad el 2026-08-24: las cuatro funciones del resalte
+    # y el sonido estaban escritas pero sin registrar, y la pasada murio en
+    # DbgClick con 'CallFunction|DbgSonarClick does not exist'.
+    registradas = {n for n, _, _ in grafos}
+    faltan = {}
+    for nombre, hacer, _p in grafos:
+        for trozo in hacer().split('CallFunction|')[1:]:
+            llamada = ''
+            for ch in trozo:
+                if not (ch.isalnum() or ch == '_'):
+                    break
+                llamada += ch
+            if llamada and llamada not in registradas:
+                faltan.setdefault(llamada, []).append(nombre)
+    if faltan:
+        return {'ABORTADO': 'hay llamadas a funciones sin registrar',
+                'faltan': {k: sorted(set(v)) for k, v in faltan.items()}}
+
+    hijo = {"refPath": HIJO}
+    out["regenerado"] = False
+    if ast("exists", {"path": HIJO.split(".")[0]}):
+        ast("delete", {"path": HIJO.split(".")[0]})
+        out["regenerado"] = True
+    bp("create", {"folder_path": CARPETA, "asset_name": HIJO.split("/")[-1].split(".")[0],
+                  "asset_type": {"refPath": PADRE + "_C"}})
+
+    for nombre, tipo, cont in VARIABLES:
+        args = {"blueprint": hijo, "name": nombre, "type_name": tipo}
+        if cont:
+            args["container_type"] = cont
+        bp("add_variable", args)
+    # La referencia al Data Asset de destinos, con su valor por defecto puesto:
+    # asi el HUD no tiene ninguna ruta escrita dentro del grafo.
+    bp("add_object_variable", {"blueprint": hijo, "name": "DbgDatos",
+                               "object_class": {"refPath": CARPETA +
+                                                "/BP_DA_DebugDestinos."
+                                                "BP_DA_DebugDestinos_C"}})
+    # Los widgets del juego que se escondieron al abrir el panel, para poder
+    # devolverlos exactamente como estaban.
+    bp("add_object_variable", {"blueprint": hijo, "name": "DbgOcultadas",
+                               "object_class": {"refPath": "/Script/UMG.UserWidget"},
+                               "container_type": "ARRAY"})
+    # El registro de enemigos generados por la herramienta. CLEAR borra ESTO y
+    # nada mas: por construccion no puede tocar un enemigo del nivel.
+    bp("add_object_variable", {"blueprint": hijo, "name": "DbgSpawned",
+                               "object_class": {"refPath": "/Script/Engine.Actor"},
+                               "container_type": "ARRAY"})
+    bp("add_object_variable", {"blueprint": hijo, "name": "DbgDatosEnem",
+                               "object_class": {"refPath": CARPETA +
+                                                "/BP_DA_DebugEnemigos."
+                                                "BP_DA_DebugEnemigos_C"}})
+    bp("compile_blueprint", {"blueprint": hijo})
+    cdo = bp("get_default_object", {"blueprint": hijo})
+    obj("set_properties", {"instance": cdo,
+                           "values": json.dumps({"DbgDatos": DATOS,
+                                                 "DbgHabilitado": True,
+                                                 "DbgEscala": ESCALA_DEF,
+                                                 "DbgMovMult": 1.0,
+                                                 "DbgDmgMult": 1.0,
+                                                 "DbgEnemyMult": 1.0,
+                                                 "DbgDatosEnem": DATOS_ENEM,
+                                                 "DbgCantSel": 1,
+                                                 "DbgDistSel": 500.0})})
+    out["datos_enlazados"] = json.loads(obj("get_properties",
+                                            {"instance": cdo,
+                                             "properties": ["DbgDatos"]}))
+    out["variables"] = bp("list_variables", {"blueprint": hijo})
+
+    # --- 3. Los grafos, en orden de dependencia: una funcion no se puede
+    # --- escribir antes que las que llama.
     # El blueprint acaba de nacer, asi que todas las funciones son nuevas.
     for nombre, hacer, params in grafos:
         # Un grafo recien creado NO responde a la ruta construida a mano dentro
