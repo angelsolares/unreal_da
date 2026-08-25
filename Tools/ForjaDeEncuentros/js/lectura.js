@@ -13,7 +13,7 @@
 // navegador y las pruebas de node lo cubren.
 
 import { dist, hayVision } from './geometria.js';
-import { obstaculosDe, sueltaArma } from './esquema.js';
+import { obstaculosDe, sueltaArma, enemigosPresentesAlEntrar } from './esquema.js';
 import { FAMILIAS } from './catalogo.js';
 
 /**
@@ -36,11 +36,17 @@ export function tamanoAngular(tamano, distancia) {
 export function lecturaDesdeLaEntrada(encuentro, calibracion) {
   const ojos = encuentro.jugador.pos;
   const alturaOjos = calibracion.malakh.alturaOjos;
+  // Con oleadas (§6), lo que todavia no esta en la arena no se puede leer. Una
+  // oleada `en-escena` si cuenta: esta plantada y quieta, que es justo lo que el
+  // §5.1 quiere. Una `entra` es una emboscada, y aqui se dice.
+  const presentes = new Set(enemigosPresentesAlEntrar(encuentro).map(e => e.id));
 
   return encuentro.enemigos.map(e => {
     const perfil = calibracion.arquetipos[e.arquetipo] || {};
     const d = dist(ojos, e.pos);
-    const visible = hayVision(ojos, 0, e.pos, e.cota || 0, obstaculosDe(encuentro), alturaOjos);
+    const presenteAlEntrar = presentes.has(e.id);
+    const visible = presenteAlEntrar &&
+      hayVision(ojos, 0, e.pos, e.cota || 0, obstaculosDe(encuentro), alturaOjos);
 
     // La silueta es el cuerpo mas lo que lleva. Eso es justo lo que el §5.1
     // quiere que se lea: no "hay un enemigo" sino "ese lleva una lanza".
@@ -52,12 +58,14 @@ export function lecturaDesdeLaEntrada(encuentro, calibracion) {
     const gradosCuerpo = tamanoAngular(anchoCuerpo, d);
 
     let estado;
-    if (!visible) estado = 'tapado';
+    if (!presenteAlEntrar) estado = 'ausente';
+    else if (!visible) estado = 'tapado';
     else if (d > LIMITE_LECTURA) estado = 'lejos';
     else estado = 'legible';
 
     return {
       id: e.id,
+      presenteAlEntrar,
       etiqueta: e.etiqueta || e.id,
       arquetipo: e.arquetipo,
       arma: perfil.arma || null,

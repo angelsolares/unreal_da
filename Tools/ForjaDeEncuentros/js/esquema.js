@@ -33,6 +33,30 @@ export const ARQUETIPOS_VALIDOS = ORDEN_ARQUETIPOS;
  */
 export const LOADOUT_VALIDO = ['espada', 'lanza', 'arco', 'escudo', 'espadon', 'estandarte'];
 
+/**
+ * Como se activa una oleada (§6: las recetas escalonan la entrada al combate).
+ *
+ *   inicio        al romper el sello. Al menos una oleada TIENE que ser de estas.
+ *   tiempo        `segundos` despues del sello.
+ *   bajas         cuando han caido `cuantas` enemigos en total.
+ *   oleadaLimpia  cuando la oleada `oleada` no tiene a nadie vivo.
+ *
+ * Vocabulario CERRADO, como los arquetipos: lo que no esta aqui, Unreal no
+ * sabria cablearlo en `BP_DA_Arena`, y un encuentro que solo existe en el
+ * simulador no vale para nada.
+ */
+export const ACTIVACION_VALIDA = ['inicio', 'tiempo', 'bajas', 'oleadaLimpia'];
+
+/**
+ * Donde esta un enemigo antes de que su oleada se active.
+ *
+ *   en-escena  ya esta plantado en la arena, quieto, y SE VE desde la puerta.
+ *              Es el unico modo que respeta el §5.1: la silueta comunica.
+ *   entra      no esta hasta que le toca. Es una emboscada, y por eso la puerta
+ *              de lectura del veredicto lo cuenta como ilegible.
+ */
+export const PRESENCIA_VALIDA = ['en-escena', 'entra'];
+
 export const VICTORIA_VALIDA = ['eliminar-todos'];
 export const PURGE_VALIDA = ['purgar-todo-al-romper-sello'];
 export const CHECKPOINT_VALIDA = ['antes-del-trigger'];
@@ -79,6 +103,10 @@ export function encuentroVacio(id = 'nuevo-encuentro') {
     },
     coberturas: [],
     plataformas: [],
+    // Sin oleadas declaradas, todo el mundo entra al romper el sello: es como
+    // se comportaban todos los encuentros antes de que esto existiera, y ese
+    // comportamiento no cambia.
+    oleadas: [],
     enemigos: [],
     victoria: { tipo: 'eliminar-todos' },
     purgePolicy: 'purgar-todo-al-romper-sello',
@@ -111,6 +139,9 @@ export function nuevoEnemigo(arquetipo, x, y) {
     drop: meta.armaEsOffHand
       ? { principal: false, secundaria: !!meta.sueltaPorDefecto }
       : { principal: !!meta.sueltaPorDefecto, secundaria: false },
+    // null = la primera oleada declarada. Un enemigo sin oleada no se queda
+    // fuera del encuentro por descuido.
+    oleada: null,
     etiqueta: ''
   };
 }
@@ -193,6 +224,142 @@ export function etiquetaDe(e) {
 export function sueltaArma(enemigo, esOffHand) {
   const d = enemigo.drop || {};
   return esOffHand ? !!d.secundaria : !!d.principal;
+}
+
+// -------------------------------------------------------------------- oleadas
+
+/** Una oleada nueva, ya con su activacion. */
+export function nuevaOleada(id, activacion = { tipo: 'inicio' }) {
+  return { id, nombre: '', activacion, retardo: 0, presencia: 'en-escena' };
+}
+
+export const OLEADA_UNICA = '__unica';
+
+/**
+ * Las oleadas del encuentro, normalizadas y con su lista de enemigos.
+ *
+ * Un encuentro SIN oleadas declaradas devuelve una sola, implicita, con todo el
+ * mundo dentro y activacion `inicio`: exactamente el comportamiento de siempre.
+ * Todo lo que consume oleadas pasa por aqui, para que el simulador, la lectura
+ * del §5.1 y el exportador no puedan discrepar sobre quien entra cuando.
+ */
+export function oleadasDe(enc) {
+  const decl = enc.oleadas || [];
+  const enemigos = enc.enemigos || [];
+  if (!decl.length) {
+    return [{
+      id: OLEADA_UNICA, nombre: 'Todos', implicita: true,
+      activacion: { tipo: 'inicio' }, retardo: 0, presencia: 'en-escena',
+      enemigos: enemigos.map(e => e.id)
+    }];
+  }
+  const primera = decl[0].id;
+  const conocidas = new Set(decl.map(o => o.id));
+  return decl.map(o => ({
+    id: o.id,
+    nombre: o.nombre || o.id,
+    implicita: false,
+    activacion: o.activacion || { tipo: 'inicio' },
+    retardo: o.retardo || 0,
+    presencia: o.presencia || 'en-escena',
+    // Un enemigo con una oleada que no existe cae en la primera. Es un ERROR de
+    // validacion, pero mientras tanto pelea: un enemigo desaparecido en silencio
+    // es peor que un aviso en rojo.
+    enemigos: enemigos
+      .filter(e => (e.oleada && conocidas.has(e.oleada) ? e.oleada : primera) === o.id)
+      .map(e => e.id)
+  }));
+}
+
+/** La oleada a la que pertenece un enemigo, ya normalizada. */
+export function oleadaDeEnemigo(enc, id) {
+  return oleadasDe(enc).find(o => o.enemigos.includes(id)) || null;
+}
+
+/**
+ * Quien esta plantado en la arena cuando el jugador cruza el umbral.
+ *
+ * Es la lista que mira el §5.1: lo que no esta, no se lee. Una oleada
+ * `en-escena` cuenta aunque todavia no se haya activado — esta ahi, quieta.
+ */
+export function enemigosPresentesAlEntrar(enc) {
+  const enEscena = new Set();
+  for (const o of oleadasDe(enc)) {
+    if (o.presencia !== 'entra' || o.activacion.tipo === 'inicio') {
+      for (const id of o.enemigos) enEscena.add(id);
+    }
+  }
+  return (enc.enemigos || []).filter(e => enEscena.has(e.id));
+}
+
+/**
+ * Que oleadas pueden llegar a activarse alguna vez.
+ *
+ * Una oleada que nunca se activa deja a sus enemigos vivos para siempre: la
+ * victoria es "eliminar-todos", asi que el encuentro se queda colgado hasta que
+ * salte el watchdog. Es un SOFT-LOCK de manual, y por eso se comprueba en seco
+ * en vez de gastar 200 partidas en descubrirlo.
+ */
+export function oleadasActivables(enc) {
+  const olas = oleadasDe(enc);
+  const total = (enc.enemigos || []).length;
+  const vivas = new Set();
+  const alcanzables = [];
+  let disponibles = 0;   // enemigos que ya podrian estar muertos a esas alturas
+
+  let cambio = true;
+  while (cambio) {
+    cambio = false;
+    for (const o of olas) {
+      if (vivas.has(o.id)) continue;
+      const a = o.activacion || {};
+      let puede = false;
+      if (a.tipo === 'inicio') puede = true;
+      else if (a.tipo === 'tiempo') puede = (a.segundos ?? 0) >= 0;
+      // Con `cuantas` >= total, el ultimo en morir cierra el encuentro antes de
+      // que la oleada llegue a existir.
+      else if (a.tipo === 'bajas') puede = (a.cuantas ?? 0) <= disponibles && (a.cuantas ?? 0) < total;
+      else if (a.tipo === 'oleadaLimpia') puede = vivas.has(a.oleada);
+      if (!puede) continue;
+      vivas.add(o.id);
+      alcanzables.push(o);
+      disponibles += o.enemigos.length;
+      cambio = true;
+    }
+  }
+  return { alcanzables, colgadas: olas.filter(o => !vivas.has(o.id)) };
+}
+
+/**
+ * Quita las oleadas que se han quedado sin nadie y vuelve a encadenar las que
+ * sobreviven, EN SU ORDEN.
+ *
+ * Hace falta en cuanto algo recorta la lista de enemigos —el techo de la espada
+ * de `js/diagnostico.js`, una variante de la IA— porque una oleada vacia se da
+ * por limpia al instante y la cadena entera se desploma: los que quedan entran
+ * todos de golpe y lo que se mide ya no es el encuentro.
+ */
+export function podarOleadas(enc) {
+  if (!(enc.oleadas || []).length) return enc;
+  const vivos = new Set((enc.enemigos || []).map(e => e.id));
+  const conGente = oleadasDe(enc).filter(o => o.enemigos.some(id => vivos.has(id)));
+
+  enc.oleadas = conGente.map((o, i) => ({
+    id: o.id,
+    nombre: o.nombre,
+    activacion: i === 0
+      ? { tipo: 'inicio' }
+      : (o.activacion.tipo === 'oleadaLimpia'
+          ? { tipo: 'oleadaLimpia', oleada: conGente[i - 1].id }
+          : o.activacion),
+    retardo: o.retardo,
+    presencia: o.presencia
+  }));
+  const validas = new Set(enc.oleadas.map(o => o.id));
+  for (const e of enc.enemigos || []) {
+    if (e.oleada && !validas.has(e.oleada)) e.oleada = enc.oleadas[0]?.id || null;
+  }
+  return enc;
 }
 
 // ------------------------------------------------------------------ validacion
@@ -314,6 +481,64 @@ export function validar(enc) {
     } else if (!plat.accesos?.length) {
       aviso('error', 'inalcanzable',
         `${etiquetaDe(e)} esta sobre "${plat.etiqueta || plat.id}", que no tiene ninguna rampa. Inalcanzable a pie: SOFT-LOCK.`, [e.id, plat.id]);
+    }
+  }
+
+  // --- oleadas (§6: activacion escalonada) ---
+  if ((enc.oleadas || []).length) {
+    const vistas = new Set();
+    for (const o of enc.oleadas) {
+      if (!o.id) {
+        aviso('error', 'oleada-sin-id', 'Hay una oleada sin `id`. Los enemigos se asignan por id.');
+        continue;
+      }
+      if (vistas.has(o.id)) {
+        aviso('error', 'oleada-repetida', `La oleada "${o.id}" esta dos veces.`);
+      }
+      vistas.add(o.id);
+
+      const a = o.activacion || {};
+      if (!ACTIVACION_VALIDA.includes(a.tipo)) {
+        aviso('error', 'enum-invalido',
+          `La oleada "${o.id}" se activa por "${a.tipo}". Validos: ${ACTIVACION_VALIDA.join(', ')}.`);
+      }
+      if (a.tipo === 'oleadaLimpia' && !enc.oleadas.some(x => x.id === a.oleada)) {
+        aviso('error', 'oleada-referencia',
+          `La oleada "${o.id}" espera a que se limpie "${a.oleada}", que no existe.`);
+      }
+      if (a.tipo === 'oleadaLimpia' && a.oleada === o.id) {
+        aviso('error', 'oleada-referencia', `La oleada "${o.id}" se espera a si misma: no se activaria nunca.`);
+      }
+      if (o.presencia && !PRESENCIA_VALIDA.includes(o.presencia)) {
+        aviso('error', 'enum-invalido',
+          `La oleada "${o.id}" tiene presencia "${o.presencia}". Validas: ${PRESENCIA_VALIDA.join(', ')}.`);
+      }
+    }
+
+    for (const e of enc.enemigos || []) {
+      if (e.oleada && !vistas.has(e.oleada)) {
+        aviso('error', 'oleada-referencia',
+          `${etiquetaDe(e)} dice ser de la oleada "${e.oleada}", que no existe. Se le mete en la primera para que no desaparezca.`, [e.id]);
+      }
+    }
+
+    if (!enc.oleadas.some(o => (o.activacion || {}).tipo === 'inicio')) {
+      aviso('error', 'oleada-inalcanzable',
+        'Ninguna oleada se activa al romper el sello: la arena se cierra y no pasa nada. Al menos una tiene que ser `inicio`.');
+    }
+
+    // El soft-lock caro: una oleada que no se activa nunca deja a los suyos
+    // vivos, y "eliminar-todos" no se cumple jamas.
+    const { colgadas } = oleadasActivables(enc);
+    for (const o of colgadas) {
+      aviso('error', 'oleada-inalcanzable',
+        `La oleada "${o.nombre}" (${o.enemigos.length} enemigos) no se puede activar nunca con esas condiciones: sus enemigos se quedan vivos y el encuentro no se cierra. SOFT-LOCK.`);
+    }
+
+    for (const o of oleadasDe(enc)) {
+      if (!o.enemigos.length) {
+        aviso('aviso', 'oleada-vacia', `La oleada "${o.nombre}" no tiene enemigos: no hace nada.`);
+      }
     }
   }
 
@@ -445,8 +670,11 @@ export function desdeJSON(texto) {
     jugador: { ...base.jugador, ...(bruto.jugador || {}) },
     coberturas: bruto.coberturas || [],
     plataformas: (bruto.plataformas || []).map(p => ({ accesos: [], ...p })),
+    oleadas: (bruto.oleadas || []).map(o => ({
+      nombre: '', retardo: 0, presencia: 'en-escena', activacion: { tipo: 'inicio' }, ...o
+    })),
     enemigos: (bruto.enemigos || []).map(e => ({
-      cota: 0, yaw: 180, drop: { principal: false, secundaria: false }, etiqueta: '', ...e
+      cota: 0, yaw: 180, drop: { principal: false, secundaria: false }, oleada: null, etiqueta: '', ...e
     })),
     ordenPrevisto: bruto.ordenPrevisto || []
   };

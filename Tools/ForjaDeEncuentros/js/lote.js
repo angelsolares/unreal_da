@@ -18,7 +18,15 @@ import { validar } from './esquema.js';
 import { resumenDeLectura } from './lectura.js';
 import { mediana, percentil, media } from './rng.js';
 
-export const PARTIDAS_POR_DEFECTO = 200;
+/**
+ * 200 se quedaban cortas y el veredicto lo pagaba.
+ *
+ * Con 200 partidas, una composicion daba las nueve puertas en verde y la MISMA
+ * composicion con 2000 dejaba dos en ambar. No era el encuentro: era la muestra.
+ * Junto con el error tipico que ahora acompaña a cada diferencia, 400 deja los
+ * margenes en el orden del 3% y ya se puede creer lo que dice el panel.
+ */
+export const PARTIDAS_POR_DEFECTO = 400;
 
 export function correrLote(encuentro, calibracion, armas, opciones = {}) {
   const n = opciones.partidas || PARTIDAS_POR_DEFECTO;
@@ -80,14 +88,44 @@ function resumir(resultados) {
     tiempoMedioTodas: +media(resultados.map(r => r.tiempo)).toFixed(1),
     danoMediana: danos.length ? +mediana(danos).toFixed(1) : null,
     hpFinalMediana: gan.length ? +mediana(gan.map(r => r.hpFinal)).toFixed(1) : null,
+    // LAS MEDIAS SON LAS QUE DECIDEN, y la mediana solo se enseña.
+    //
+    // El daño de este juego llega en escalones de 20 y de 30, asi que la
+    // mediana de las partidas ganadas SALTA entre 70 y 100 segun la muestra: un
+    // 30% de diferencia que no es del encuentro, es del muestreo. Con 200
+    // partidas una composicion daba las nueve puertas en verde y con 500 las
+    // mismas dos se caian a ambar. Un veredicto que depende de cuantas partidas
+    // corriste no es un veredicto.
+    tiempoMedio: tiempos.length ? +media(tiempos).toFixed(1) : null,
+    danoMedio: danos.length ? +media(danos).toFixed(1) : null,
+    hpFinalMedia: gan.length ? +media(gan.map(r => r.hpFinal)).toFixed(1) : null,
+    // Y su error tipico, que es lo que separa "mejor" de "parece mejor".
+    tiempoError: errorTipico(tiempos),
+    danoError: errorTipico(danos),
     pocionesMediana: gan.length ? +mediana(gan.map(r => r.pocionesBebidas)).toFixed(1) : null,
     armasPorPartida: +media(resultados.map(r => (r.armasRecogidas || []).length)).toFixed(2),
     descartesPorPartida: +media(resultados.map(r => r.descartesUsados || 0)).toFixed(2),
     maxDropsSimultaneos: Math.max(0, ...resultados.map(r => r.maxDropsSimultaneos || 0)),
+    // Cuantos enemigos le llegaron a la vez, en el peor caso y en la mediana.
+    // Con activacion escalonada (§6) es la cifra que explica el resultado: el
+    // techo de la espada sola son dos, y el tercero es un acantilado.
+    maxEnemigosALaVez: Math.max(0, ...resultados.map(r => r.maxEnemigosALaVez || 0)),
+    enemigosALaVezMediana: +mediana(resultados.map(r => r.maxEnemigosALaVez || 0)).toFixed(1),
     recogidas,
     danoPorFuente: agregar(resultados, 'danoPorFuente'),
     danoPorArma: agregar(resultados, 'danoPorArma')
   };
+}
+
+/**
+ * Error tipico de la media. Sin esto, una diferencia del 16% con 200 partidas y
+ * una del 16% con 2000 valen lo mismo en el panel, y no valen lo mismo.
+ */
+function errorTipico(xs) {
+  if (!xs || xs.length < 2) return 0;
+  const m = media(xs);
+  const v = xs.reduce((a, x) => a + (x - m) ** 2, 0) / (xs.length - 1);
+  return Math.sqrt(v / xs.length);
 }
 
 function agregar(resultados, campo) {
@@ -111,15 +149,20 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
   const problemas = validar(encuentro);
 
   // --- 1. Alcanzabilidad (estatica) ---
-  const inalcanzables = problemas.filter(p => p.codigo === 'inalcanzable');
+  //
+  // Dos formas de dejar a un enemigo fuera del alcance, y las dos son el mismo
+  // soft-lock: por geometria (flota en un balcon sin rampa) o por tiempo (su
+  // oleada no se activa nunca). La segunda no la ve nadie mirando el mapa.
+  const inalcanzables = problemas.filter(
+    p => p.codigo === 'inalcanzable' || p.codigo === 'oleada-inalcanzable');
   puertas.push({
     id: 'alcanzable',
-    titulo: 'Todo enemigo alcanzable a pie',
+    titulo: 'Todo enemigo alcanzable, y toda oleada activable',
     referencia: '§7.3 Evitar soft-locks',
     estado: inalcanzables.length ? 'fallo' : 'ok',
     texto: inalcanzables.length
       ? inalcanzables.map(p => p.texto).join(' ')
-      : 'Ningun enemigo queda fuera del alcance de la espada por geometria.'
+      : 'Ningun enemigo queda fuera del alcance de la espada, ni esperando una oleada que no llega.'
   });
 
   // --- 2. Ganable solo con espada ---
@@ -137,11 +180,13 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
 
   // --- 3. LA PREGUNTA DE LA FASE B: ¿la ventaja existe? ---
   if (vent && base) {
-    const dT = delta(vent.resumen.tiempoMediana, base.resumen.tiempoMediana);
-    const dD = delta(vent.resumen.danoMediana, base.resumen.danoMediana);
+    const dT = delta(vent.resumen.tiempoMedio, base.resumen.tiempoMedio,
+                     vent.resumen.tiempoError, base.resumen.tiempoError);
+    const dD = delta(vent.resumen.danoMedio, base.resumen.danoMedio,
+                     vent.resumen.danoError, base.resumen.danoError);
     const dV = (vent.resumen.tasaVictoria - base.resumen.tasaVictoria);
-    const mejora = (dT != null && dT <= -0.10) || (dD != null && dD <= -0.15) || dV >= 0.15;
-    const empeora = (dT != null && dT >= 0.10) || (dD != null && dD >= 0.20) || dV <= -0.15;
+    const mejora = mejorQue(dT, -0.10) || mejorQue(dD, -0.15) || dV >= 0.15;
+    const empeora = peorQue(dT, 0.10) || peorQue(dD, 0.20) || dV <= -0.15;
     puertas.push({
       id: 'ventaja-existe',
       titulo: 'Las armas temporales pagan',
@@ -159,8 +204,8 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
   }
 
   // --- 4. El encuentro enseña algo ---
-  const ref = vent?.resumen.hpFinalMediana != null ? vent : base;
-  const resto = ref?.resumen.hpFinalMediana == null ? null : ref.resumen.hpFinalMediana / calibracion.malakh.hp;
+  const ref = vent?.resumen.hpFinalMedia != null ? vent : base;
+  const resto = ref?.resumen.hpFinalMedia == null ? null : ref.resumen.hpFinalMedia / calibracion.malakh.hp;
   puertas.push({
     id: 'no-trivial',
     titulo: 'El encuentro cuesta algo',
@@ -172,16 +217,18 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
         ? `Termina con el ${(resto * 100).toFixed(0)}% de vida casi sin despeinarse. La arena no enseña nada.`
         : resto < 0.12
           ? `Termina con el ${(resto * 100).toFixed(0)}% de vida: gana por los pelos en la mediana. Con un error de mas, muere.`
-          : `Termina con el ${(resto * 100).toFixed(0)}% de vida y ${ref.resumen.pocionesMediana} pociones bebidas. Cuesta sin ahogar.`,
+          : `Termina con el ${(resto * 100).toFixed(0)}% de vida de media (mediana ${ref.resumen.hpFinalMediana}) y ${ref.resumen.pocionesMediana} pociones bebidas. Cuesta sin ahogar.`,
     dato: resto
   });
 
   // --- 5. ¿Importa el orden, aun sin armas? ---
-  if (guion && base && guion.resumen.tiempoMediana != null && base.resumen.tiempoMediana != null) {
-    const dT = delta(guion.resumen.tiempoMediana, base.resumen.tiempoMediana);
-    const dD = delta(guion.resumen.danoMediana, base.resumen.danoMediana);
-    const mejora = dT <= -0.08 || dD <= -0.15;
-    const igual = Math.abs(dT) < 0.08 && Math.abs(dD) < 0.15;
+  if (guion && base && guion.resumen.tiempoMedio != null && base.resumen.tiempoMedio != null) {
+    const dT = delta(guion.resumen.tiempoMedio, base.resumen.tiempoMedio,
+                     guion.resumen.tiempoError, base.resumen.tiempoError);
+    const dD = delta(guion.resumen.danoMedio, base.resumen.danoMedio,
+                     guion.resumen.danoError, base.resumen.danoError);
+    const mejora = mejorQue(dT, -0.08) || mejorQue(dD, -0.15);
+    const igual = indistinguible(dT, 0.08) && indistinguible(dD, 0.15);
     puertas.push({
       id: 'orden-importa',
       titulo: 'El orden de bajas ya cambia algo por si solo',
@@ -229,7 +276,12 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
       texto: !lect.llaves.length
         ? 'No hay ningun drop garantizado que leer.'
         : malas.length
-          ? malas.map(f => `"${f.etiqueta}" lleva ${f.nombreArma || 'su arma'} y desde la puerta esta ${f.estado === 'tapado' ? 'TAPADO' : `a ${f.distancia} cm, demasiado lejos para leerse`}.`).join(' ')
+          ? malas.map(f => `"${f.etiqueta}" lleva ${f.nombreArma || 'su arma'} y desde la puerta ${
+              f.estado === 'ausente'
+                ? 'NO ESTA: su oleada entra despues, asi que el jugador no puede contar con esa arma al planear'
+                : f.estado === 'tapado'
+                  ? 'esta TAPADO'
+                  : `esta a ${f.distancia} cm, demasiado lejos para leerse`}.`).join(' ')
             + ' El §5.1 pide que la silueta comunique la estrategia; si no se ve, la ruta no se descubre, se tropieza.'
           : `Las ${lect.llaves.length} llaves tacticas se ven al entrar (la mas pequeña ocupa ${Math.min(...lect.llaves.map(f => f.grados)).toFixed(1)}° de silueta).`,
       dato: lect
@@ -276,12 +328,31 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
   };
 }
 
-function delta(a, b) {
+/**
+ * Diferencia relativa CON su margen. Devuelve `{valor, error}`.
+ *
+ * El margen se propaga a lo bruto desde los errores tipicos de las dos medias.
+ * No es una prueba de hipotesis: es lo justo para que una puerta no se ponga
+ * verde por un 16% que en realidad es un 13% con la muestra de al lado.
+ */
+function delta(a, b, ea = 0, eb = 0) {
   if (a == null || b == null || !b) return null;
-  return (a - b) / b;
+  return {
+    valor: (a - b) / b,
+    error: Math.sqrt(ea * ea + eb * eb) / Math.abs(b)
+  };
 }
 
+/** ¿La diferencia cruza el umbral CON su margen a favor? */
+const mejorQue = (d, umbral) => d != null && d.valor + d.error <= umbral;
+const peorQue = (d, umbral) => d != null && d.valor - d.error >= umbral;
+const indistinguible = (d, umbral) => d != null && Math.abs(d.valor) - d.error < umbral;
+
 function pct(x, esPuntos = false) {
+  if (x && typeof x === 'object') {
+    const s = pct(x.valor, esPuntos);
+    return `${s} ±${(x.error * 100).toFixed(0)}`;
+  }
   if (x == null) return '—';
   if (esPuntos) {
     const s = (x * 100).toFixed(0);

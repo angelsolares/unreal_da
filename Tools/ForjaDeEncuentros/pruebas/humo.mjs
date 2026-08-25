@@ -6,11 +6,28 @@
 import { Simulacion } from '../js/sim.js';
 import { crearPolitica } from '../js/politicas.js';
 import { correrLote } from '../js/lote.js';
-import { validar } from '../js/esquema.js';
+import { validar, oleadasDe } from '../js/esquema.js';
 import { cal, armas, encuentro } from './cargar.mjs';
 
 const enc = encuentro(process.argv[2]);
 console.log(`Encuentro: ${enc.nombre} — ${enc.enemigos.length} enemigos\n`);
+
+// Las oleadas del §6, si las hay. Sin esto el lote dice "5 enemigos" y no se ve
+// que nunca hay mas de dos a la vez, que es justo lo que hace ganable la receta.
+const olas = oleadasDe(enc).filter(o => !o.implicita);
+if (olas.length) {
+  console.log('--- oleadas ---');
+  for (const o of olas) {
+    const a = o.activacion;
+    const cuando = a.tipo === 'inicio' ? 'al romper el sello'
+      : a.tipo === 'tiempo' ? `a los ${a.segundos} s`
+      : a.tipo === 'bajas' ? `con ${a.cuantas} bajas`
+      : `cuando caiga "${a.oleada}"`;
+    console.log(`   ${String(o.nombre).padEnd(28)} ${String(o.enemigos.length).padStart(2)} enemigos · ${cuando}`
+      + (o.retardo ? ` +${o.retardo}s` : '') + (o.presencia === 'entra' ? ' · ENTRA (no se ve al entrar)' : ''));
+  }
+  console.log('');
+}
 
 // 1. validacion estatica
 const problemas = validar(enc);
@@ -28,7 +45,7 @@ if (!mismo) process.exitCode = 1;
 
 // 3. lote completo
 const t0 = Date.now();
-const lote = correrLote(enc, cal, armas, { partidas: 200 });
+const lote = correrLote(enc, cal, armas, { partidas: Number(process.env.PARTIDAS || 1000) });
 console.log(`\n--- lote: 5 politicas x ${lote.partidas} partidas en ${Date.now() - t0} ms ---`);
 console.log('   ' + 'politica'.padEnd(24) + 'gana  tiempo   daño  armas  descartes  muertes  atascos');
 for (const p of Object.values(lote.porPolitica)) {
@@ -41,6 +58,10 @@ for (const p of Object.values(lote.porPolitica)) {
     `${String(r.descartesPorPartida).padStart(11)}` +
     `${String(r.porMuerte).padStart(9)}` +
     `${String(r.porTiempo).padStart(9)}`);
+}
+if (olas.length) {
+  const ven = lote.porPolitica['ventaja'].resumen;
+  console.log(`\n   como mucho ${ven.maxEnemigosALaVez} enemigos encima a la vez (mediana ${ven.enemigosALaVezMediana}).`);
 }
 
 console.log(`\n--- veredicto: ${lote.veredicto.titular} ---`);

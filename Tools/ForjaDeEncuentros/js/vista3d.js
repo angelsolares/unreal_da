@@ -500,6 +500,8 @@ export class Vista3D {
     for (const a of fotograma.agentes) {
       const g = this.grupos.get(a.id);
       if (!g) continue;
+      // Una oleada que ENTRA no esta en la arena hasta que le toca (§6).
+      if (a.presente === false) { g.visible = false; continue; }
       g.position.copy(aTres({ x: a.x, y: a.y }, a.cota));
       g.rotation.y = -a.yaw * Math.PI / 180;
       const muerto = a.estado === 'muerto';
@@ -508,12 +510,15 @@ export class Vista3D {
       g.rotation.x = muerto ? -Math.PI / 2.2 : 0;
 
       const chapa = g.getObjectByName('chapa');
+      // Quien espera su oleada se ve, pero a media tinta: esta plantado ahi y
+      // el §5.1 quiere que se lea, pero no esta peleando.
+      const tinta = muerto ? 0.35 : (a.dormido ? 0.5 : 1);
       for (const o of g.children) {
         if (o === chapa) continue;
         o.traverse(h => {
           if (!h.material) return;
-          h.material.transparent = muerto;
-          h.material.opacity = muerto ? 0.35 : 1;
+          h.material.transparent = tinta < 1;
+          h.material.opacity = tinta;
         });
       }
 

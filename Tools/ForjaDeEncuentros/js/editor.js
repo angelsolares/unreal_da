@@ -450,6 +450,8 @@ export class Editor {
     }
 
     for (const a of f.agentes) {
+      // Los de una oleada que ENTRA todavia no estan en la arena (§6).
+      if (a.presente === false) continue;
       const meta = a.id === 'malakh'
         ? { color: COLOR_MALAKH, glifo: 'M' }
         : (ARQUETIPOS[enc.enemigos.find(e => e.id === a.id)?.arquetipo] || {});
@@ -457,7 +459,9 @@ export class Editor {
       const muerto = a.estado === ESTADOS.MUERTO;
       const r = Math.max(5, 48 * this.cam.z);
 
-      ctx.globalAlpha = muerto ? 0.22 : 1;
+      // Quien espera su oleada se pinta a media tinta: sin esto la reproduccion
+      // enseña cinco peleando cuando pelean dos.
+      ctx.globalAlpha = muerto ? 0.22 : (a.dormido ? 0.45 : 1);
 
       // Destello de impacto, igual que en la 3D: rojo si entro, azul si lo paro
       // la guardia. Un golpe que no aturde no deja estado, y sin esto no se ve.

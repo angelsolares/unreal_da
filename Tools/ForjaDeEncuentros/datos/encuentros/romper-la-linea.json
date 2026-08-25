@@ -40,12 +40,12 @@
     {
       "id": "cob_muro_n",
       "min": {
-        "x": -400,
-        "y": -1300
+        "x": -900,
+        "y": -1200
       },
       "max": {
-        "x": 200,
-        "y": -1100
+        "x": -400,
+        "y": -1000
       },
       "cota": 0,
       "altura": 250,
@@ -56,12 +56,12 @@
     {
       "id": "cob_muro_s",
       "min": {
-        "x": -400,
-        "y": 1100
+        "x": -900,
+        "y": 1000
       },
       "max": {
-        "x": 200,
-        "y": 1300
+        "x": -400,
+        "y": 1200
       },
       "cota": 0,
       "altura": 250,
@@ -72,12 +72,12 @@
     {
       "id": "cob_pilar",
       "min": {
-        "x": 350,
-        "y": -180
+        "x": 300,
+        "y": -150
       },
       "max": {
-        "x": 650,
-        "y": 180
+        "x": 600,
+        "y": 150
       },
       "cota": 0,
       "altura": 400,
@@ -88,69 +88,65 @@
   ],
   "plataformas": [
     {
-      "id": "plat_balcon",
+      "id": "plat_balcon_n",
       "min": {
         "x": 1100,
-        "y": -1400
+        "y": -1225
       },
       "max": {
-        "x": 2000,
-        "y": 1400
+        "x": 1450,
+        "y": -775
       },
       "cota": 350,
       "accesos": [
         {
           "desde": {
-            "x": 1050,
-            "y": 0
+            "x": 700,
+            "y": -1000
           },
           "hasta": {
-            "x": 1575,
-            "y": 0
+            "x": 1280,
+            "y": -1000
           },
           "ancho": 300
         }
       ],
       "etiqueta": "balcon del firmamento"
+    },
+    {
+      "id": "plat_balcon_s",
+      "min": {
+        "x": 1100,
+        "y": 500
+      },
+      "max": {
+        "x": 1800,
+        "y": 1500
+      },
+      "cota": 350,
+      "accesos": [
+        {
+          "desde": {
+            "x": 700,
+            "y": 1000
+          },
+          "hasta": {
+            "x": 1280,
+            "y": 1000
+          },
+          "ancho": 300
+        }
+      ],
+      "etiqueta": "balcon del claro"
     }
   ],
   "enemigos": [
     {
-      "id": "en_escudero_a",
-      "arquetipo": "escudero_celestial",
-      "pos": {
-        "x": -700,
-        "y": -280
-      },
-      "cota": 0,
-      "yaw": 180,
-      "drop": {
-        "principal": false,
-        "secundaria": false
-      },
-      "etiqueta": "frontal norte"
-    },
-    {
-      "id": "en_escudero_b",
-      "arquetipo": "escudero_celestial",
-      "pos": {
-        "x": -700,
-        "y": 280
-      },
-      "cota": 0,
-      "yaw": 180,
-      "drop": {
-        "principal": false,
-        "secundaria": true
-      },
-      "etiqueta": "frontal sur"
-    },
-    {
       "id": "en_lancero",
       "arquetipo": "lancero_del_alba",
       "pos": {
-        "x": 100,
-        "y": -850
+        "x": -250,
+        "y": -450
       },
       "cota": 0,
       "yaw": 180,
@@ -158,14 +154,31 @@
         "principal": true,
         "secundaria": false
       },
-      "etiqueta": "lateral"
+      "oleada": "ola_1",
+      "etiqueta": "lancero de la linea"
+    },
+    {
+      "id": "en_escudero_a",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": -700,
+        "y": 0
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_1",
+      "etiqueta": "escudo de la linea"
     },
     {
       "id": "en_arquero_a",
       "arquetipo": "arquero_del_firmamento",
       "pos": {
-        "x": 1600,
-        "y": -700
+        "x": 1300,
+        "y": -1112
       },
       "cota": 350,
       "yaw": 180,
@@ -173,14 +186,31 @@
         "principal": true,
         "secundaria": false
       },
-      "etiqueta": "balcon norte"
+      "oleada": "ola_2",
+      "etiqueta": "balcon del firmamento"
+    },
+    {
+      "id": "en_escudero_b",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": 900,
+        "y": 150
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_3",
+      "etiqueta": "vigilante del claro"
     },
     {
       "id": "en_arquero_b",
       "arquetipo": "arquero_del_firmamento",
       "pos": {
         "x": 1600,
-        "y": 700
+        "y": 1250
       },
       "cota": 350,
       "yaw": 180,
@@ -188,20 +218,62 @@
         "principal": false,
         "secundaria": false
       },
-      "etiqueta": "balcon sur"
+      "oleada": "ola_4",
+      "etiqueta": "balcon del claro"
     }
+  ],
+  "oleadas": [
+    {
+      "id": "ola_1",
+      "nombre": "La linea",
+      "activacion": {
+        "tipo": "inicio"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_2",
+      "nombre": "El balcon del firmamento",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_1"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_3",
+      "nombre": "El vigilante",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_2"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_4",
+      "nombre": "El balcon del claro",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_3"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    }
+  ],
+  "ordenPrevisto": [
+    "en_lancero",
+    "en_escudero_a",
+    "en_arquero_a",
+    "en_escudero_b",
+    "en_arquero_b"
   ],
   "victoria": {
     "tipo": "eliminar-todos"
   },
   "purgePolicy": "purgar-todo-al-romper-sello",
   "checkpointPolicy": "antes-del-trigger",
-  "ordenPrevisto": [
-    "en_lancero",
-    "en_arquero_a",
-    "en_arquero_b",
-    "en_escudero_a",
-    "en_escudero_b"
-  ],
-  "notasDiseno": "Receta 6.1 del PDF. La ruta de ventaja que propone el documento es: bajar al Lancero, tomar la Lanza, castigar a los arqueros y romper la formacion, luego tomar el Escudo de un Escudero para cerrar distancia seguro. OJO: el orden previsto de aqui es esa ruta, pero la Fase A la simula SOLO CON ESPADA, sin las armas. Si con espada sola ese orden sale peor que atacar al mas cercano, no significa que el diseño este mal: significa que la ventaja depende enteramente de las armas temporales, y eso hay que confirmarlo en la Fase B.\n\nMIGRADO DE v1: las rampas se han inventado a partir de los puntos de acceso viejos (direccion hacia el centro de la plataforma, ancho 300). Reviselas."
+  "notasDiseno": "Receta 6.1 del PDF, reconstruida el 2026-08-25 despues de medir que la version anterior se perdia el 100% de las veces con espada sola.\n\nLA IDEA: cinco enemigos, nunca mas de dos a la vez. El techo de la espada sola son DOS enemigos y el tercero es un acantilado, no una pendiente (medido: 2 enemigos 95%, 3 en campo abierto 0%). La activacion escalonada del §6 es lo que hace que cinco quepan dentro de ese techo sin bajarle la vida a nadie.\n\nLAS CUATRO OLEADAS:\n  1. La linea        — Lancero + Escudero. Los dos estan a la vista al cruzar el umbral.\n  2. El nido         — el Arquero del balcon norte, solo. Suelta el Arco.\n  3. El vigilante    — el segundo Escudero, de respiro.\n  4. El balcon       — el Arquero del balcon sur, el mas caro de tomar a pie.\nCada una entra cuando la anterior esta limpia, con 3 s de margen: el hueco es donde el jugador bebe y recoge.\n\nLA RUTA DE VENTAJA es la cadena del §6.5: el Lancero suelta la Lanza -> se arroja al Arquero del nido (que esta a cota, o sea inalcanzable de otra forma) -> el nido suelta el Arco -> el Arco resuelve el balcon sur sin cruzar la arena bajo la lluvia. Medido: 20% menos de daño que hacerlo todo a espada.\n\nPOR QUE LOS DOS BALCONES SON DE TAMAÑOS DISTINTOS: el coste de un arquero no lo fija la distancia, lo fija cuanto sitio tiene para retroceder mientras te acercas. El del norte, en 350x450, cuesta ~10 de vida y es donde se aprende el gesto. El del sur, en 650x1000, cuesta ~45 y es donde el Arco paga.\n\nLOS ESCUDEROS NO SUELTAN EL ESCUDO a proposito: con la Lanza o el Arco en la mano —los dos son a dos manos— el §4.1 obliga a soltarlo, asi que un Escudo garantizado que nadie puede recoger seria un drop mentiroso. El Escudo Celestial tiene su receta en otro sitio.\n\nVEREDICTO (2000 partidas por politica, varias semillas): ocho de las nueve puertas en verde y ninguna en rojo. La que queda en ambar es 'el orden de bajas ya cambia algo por si solo', y es estructural: los enemigos corren a 600 y Malakh a 400, asi que elijas a quien elijas los tienes a los dos encima en tres segundos. En este juego el orden que importa es el de las ARMAS, no el de los cuerpos."
 }

@@ -7,7 +7,7 @@
 //  - Todo numero de balance viene de calibracion.json o armas.json, nunca a pelo.
 
 import { Azar } from './rng.js';
-import { obstaculosDe, dentroDeRect, centroDeRect, poliDeRect } from './esquema.js';
+import { obstaculosDe, dentroDeRect, centroDeRect, poliDeRect, oleadasDe } from './esquema.js';
 import {
   dist, resta, suma, escala, normaliza, largo, yawDe, giraHacia, deltaAngulo,
   dentroDePoligono, hayVision, empujaFuera, segmentoCortaPoligono, centroide
@@ -57,6 +57,9 @@ export class Simulacion {
     this.razonFin = null;
     this._contadorDrops = 0;
     this.maxDropsSimultaneos = 0;
+    // Cuantos le llegaron a la vez. Es LA cifra de la activacion escalonada: el
+    // techo de la espada sola son dos, y el tercero es un acantilado.
+    this.maxEnemigosALaVez = 0;
 
     this._montar();
     if (this.politica.iniciar) this.politica.iniciar(this);
@@ -134,6 +137,85 @@ export class Simulacion {
     // Muros Y plataformas: desde abajo una plataforma es un bloque, no aire.
     this.coberturas = obstaculosDe(this.enc);
     this.plataformas = this.enc.plataformas || [];
+    this._montarOleadas();
+  }
+
+  /**
+   * Activacion escalonada (§6). El techo de la espada sola son DOS enemigos y el
+   * tercero es un acantilado, no una pendiente: la palanca mas barata de todas
+   * las que quedaban era escalonar la entrada, no bajarle la vida a nadie.
+   *
+   * Un encuentro sin `oleadas` declaradas monta UNA sola, implicita, con todo el
+   * mundo dentro y activacion `inicio`. Ahi no cambia nada de lo que ya habia:
+   * cada enemigo sigue despertando por su propio `rangoAggro`.
+   */
+  _montarOleadas() {
+    this.oleadas = oleadasDe(this.enc).map(o => ({ ...o, activada: false, tDisparo: null, tActiva: null }));
+    const porEnemigo = new Map();
+    for (const o of this.oleadas) for (const id of o.enemigos) porEnemigo.set(id, o);
+
+    for (const E of this.enemigos) {
+      const o = porEnemigo.get(E.id) || this.oleadas[0];
+      E.oleadaId = o.id;
+      E.presencia = o.presencia;
+      E.activo = false;
+      // `entra` significa que todavia no esta en la arena: no ocupa sitio, no
+      // recibe golpes y no se lee desde la puerta.
+      E.presente = o.presencia !== 'entra';
+    }
+
+    for (const o of this.oleadas) {
+      // La primera oleada NO se da por alertada: sus enemigos ven venir a Malakh
+      // como siempre. Las siguientes entran ya lanzadas, que es lo que significa
+      // que una oleada se "active".
+      if (o.activacion.tipo === 'inicio') this._activarOleada(o, false);
+    }
+  }
+
+  _activarOleada(o, alertar = true) {
+    if (o.activada) return;
+    o.activada = true;
+    o.tActiva = this.t;
+    for (const id of o.enemigos) {
+      const E = this.enemigos.find(e => e.id === id);
+      if (!E || E.estado === ESTADOS.MUERTO) continue;
+      E.activo = true;
+      E.presente = true;
+      if (alertar) E.alertado = true;
+    }
+    if (!o.implicita) {
+      this._evento('oleada', { oleada: o.id, nombre: o.nombre, enemigos: o.enemigos.length, t: +this.t.toFixed(2) });
+    }
+  }
+
+  /** ¿Se cumple ya la condicion de esta oleada? */
+  _condicionCumplida(o) {
+    const a = o.activacion || {};
+    switch (a.tipo) {
+      case 'inicio': return true;
+      case 'tiempo': return this.t >= (a.segundos ?? 0);
+      case 'bajas': return this.enemigos.filter(e => e.estado === ESTADOS.MUERTO).length >= (a.cuantas ?? 0);
+      case 'oleadaLimpia': {
+        const previa = this.oleadas.find(x => x.id === a.oleada);
+        if (!previa || !previa.activada) return false;
+        return previa.enemigos.every(id => {
+          const E = this.enemigos.find(e => e.id === id);
+          return !E || E.estado === ESTADOS.MUERTO;
+        });
+      }
+      default: return false;
+    }
+  }
+
+  _pasoOleadas() {
+    for (const o of this.oleadas) {
+      if (o.activada) continue;
+      if (o.tDisparo == null) {
+        if (!this._condicionCumplida(o)) continue;
+        o.tDisparo = this.t + (o.retardo || 0);
+      }
+      if (this.t >= o.tDisparo) this._activarOleada(o, true);
+    }
   }
 
   // -------------------------------------------------------------------- bucle
@@ -147,6 +229,7 @@ export class Simulacion {
     if (this.terminada) return;
     const dt = this.dt;
 
+    this._pasoOleadas();
     this._pasoProyectiles(dt);
     this._pasoDrops(dt);
     this._pasoZonas(dt);
@@ -166,6 +249,9 @@ export class Simulacion {
     this.t += dt;
     this.tick += 1;
     this.maxDropsSimultaneos = Math.max(this.maxDropsSimultaneos, this.drops.length);
+    this.maxEnemigosALaVez = Math.max(
+      this.maxEnemigosALaVez,
+      this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO && e.activo && e.alertado).length);
     if (this.grabar && this.tick % this.cadaCuantosFotogramas === 0) this._grabarFotograma();
     this._comprobarFin();
   }
@@ -282,12 +368,21 @@ export class Simulacion {
 
     if (intencion.accion === 'bloquear') {
       M.bloqueando = true;
+      const f = perfilBloqueo(M, this.cal, this.armas).factorVelocidad;
+      // `avanzarA` cruza la arena tras el escudo. Tiene que ir por el mismo
+      // camino que todo lo demas —rampas y rodeos incluidos—, o Malakh se queda
+      // empujando la pared de la torre con el escudo en alto para siempre.
+      const destino = intencion.avanzarA ? this.agente(intencion.avanzarA) : null;
+      if (destino && destino.estado !== ESTADOS.MUERTO) {
+        const alcance = perfilAtaque(M, this.cal, this.armas, false).alcance;
+        this._avanzarHacia(M, destino, alcance * 0.7, dt * f);
+      } else if (intencion.direccion) {
+        this._mover(M, escala(normaliza(intencion.direccion), M.perfil.velocidad * f * dt));
+      }
+      // El giro va DESPUES de moverse: el escudo mira a quien dispara, no a
+      // donde se anda. Andar de lado tras la guardia es justo el gesto.
       if (intencion.mirarA) {
         M.yaw = giraHacia(M.yaw, yawDe(resta(intencion.mirarA, M.pos)), M.perfil.velocidadGiro * dt);
-      }
-      if (intencion.direccion) {
-        const f = perfilBloqueo(M, this.cal, this.armas).factorVelocidad;
-        this._mover(M, escala(normaliza(intencion.direccion), M.perfil.velocidad * f * dt));
       }
       return;
     }
@@ -310,7 +405,15 @@ export class Simulacion {
 
     if (obj && obj.estado !== ESTADOS.MUERTO) {
       const perfil = perfilAtaque(M, this.cal, this.armas, false);
-      this._avanzarHacia(M, obj, perfil.alcance * 0.7, dt);
+      // Un arma de rango no sirve de nada contra lo que no se ve, y la distancia
+      // de parada no puede seguir siendo la del arma. Con el Arco en la mano y
+      // un balcon tapando al objetivo, Malakh se plantaba a 17 m —"ya estoy en
+      // alcance"— sin linea de tiro y sin acercarse, hasta que saltaba el
+      // watchdog. Medido: 180 s parado a 5 m de un escudero con 16 de vida.
+      const ciego = perfil.necesitaVision &&
+        !hayVision(M.pos, M.cota, obj.pos, obj.cota, this.coberturas, this.cal.malakh.alturaOjos);
+      const parada = (ciego ? this.cal.malakh.ataqueLigero.alcance : perfil.alcance) * 0.7;
+      this._avanzarHacia(M, obj, parada, dt);
     }
   }
 
@@ -356,6 +459,10 @@ export class Simulacion {
 
   _pasoEnemigo(E, dt) {
     if (E.estado === ESTADOS.MUERTO) return;
+    // Su oleada no ha entrado todavia: esta plantado y quieto, o ni siquiera
+    // esta. Sigue contando como vivo para la victoria, que es lo que hace que
+    // escalonar no sea lo mismo que quitar enemigos.
+    if (!E.activo) return;
     const M = this.malakh;
     E.tEstado += dt;
     E.recarga = Math.max(0, E.recarga - dt);
@@ -388,6 +495,9 @@ export class Simulacion {
     this._evento('alerta', { agente: E.id });
     for (const otro of this.enemigos) {
       if (otro.alertado || otro.estado === ESTADOS.MUERTO) continue;
+      // El grito no cruza oleadas: si despertase a la siguiente, escalonar la
+      // entrada no serviria de nada.
+      if (!otro.activo) continue;
       if (dist(otro.pos, E.pos) <= RADIO_ALERTA_ALIADOS) otro.alertado = true;
     }
   }
@@ -488,7 +598,7 @@ export class Simulacion {
 
   _resolverGolpeCuerpoACuerpo(A, a) {
     const candidatos = A.bando === 'malakh'
-      ? this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO)
+      ? this.enemigosEnEscena()
       : [this.malakh];
 
     let alcanzado = false;
@@ -507,7 +617,7 @@ export class Simulacion {
 
   _golpeEnArea(A, a) {
     const candidatos = A.bando === 'malakh'
-      ? this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO)
+      ? this.enemigosEnEscena()
       : [this.malakh];
     let alcanzado = false;
     for (const O of candidatos) {
@@ -553,7 +663,7 @@ export class Simulacion {
     let extra = 0;
     for (const P of this.enemigos) {
       if (P === E || P.arquetipo !== aura.arquetipo) continue;
-      if (P.estado === ESTADOS.MUERTO) continue;
+      if (P.estado === ESTADOS.MUERTO || !P.presente) continue;
       if (dist(P.pos, E.pos) > aura.radio) continue;
       extra += aura.bonificacion;
     }
@@ -609,7 +719,7 @@ export class Simulacion {
       if (parado) { this._evento('proyectilParado', { origen: p.origenId }); continue; }
 
       const objetivos = p.bando === 'malakh'
-        ? this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO)
+        ? this.enemigosEnEscena()
         : [this.malakh];
       let impacto = false;
       for (const O of objetivos) {
@@ -629,6 +739,15 @@ export class Simulacion {
   _aplicarDano(O, cantidad, origen, a = {}) {
     if (O.estado === ESTADOS.MUERTO) return;
 
+    // Al que le pegas, despierta — el, no su oleada. Asi el jugador puede ir a
+    // buscar de uno en uno a los que esperan, que es una tactica legitima y no
+    // un agujero: le cuesta el desplazamiento y le junta a los suyos igual.
+    if (O.bando === 'enemigo' && !O.activo) {
+      O.activo = true;
+      this._evento('despierta', { agente: O.id, oleada: O.oleadaId });
+      this._alertar(O);
+    }
+
     // i-frames de la esquiva
     if (O.bando === 'malakh' && O.estado === ESTADOS.ESQUIVA) {
       const e = this.cal.malakh.esquiva;
@@ -641,6 +760,55 @@ export class Simulacion {
 
     let dano = cantidad;
     let bloqueado = false;
+
+    // EL ESCUDO ENCAJA (§4, «Escudo Celestial»): cubre cuando TU no puedes.
+    //
+    // Esto salio de una medida que desmintio dos diseños seguidos. Contra un
+    // arquero, «avanzar bloqueando» daba +35% de daño (atacaba el sintoma
+    // equivocado: las flechas del trayecto ya se esquivan). Y la segunda
+    // hipotesis —que te matan las de bocajarro mientras estas clavado
+    // atacando— tambien era falsa. Instrumentado el receptor, el reparto real
+    // de las flechas que ENTRAN es este:
+    //
+    //     estado de Malakh al recibir flecha: { esquiva: 2 }
+    //
+    // El 100%. Rueda a tiempo, pero los i-frames cubren de 0,107 a 0,459 de un
+    // rodillo que dura 0,917: el 60% del rodillo es vulnerable, y ahi es donde
+    // aterrizan. No es que no se defienda — es que se defiende y aun asi le
+    // rozan.
+    //
+    // Entonces el Escudo Celestial no hace invulnerable: HACE BARATOS LOS
+    // ERRORES. Mitiga siempre que Malakh esta en un estado en el que no puede
+    // levantar la guardia —rodando, atacando, bebiendo, recogiendo— porque el
+    // escudo lo lleva en el brazo igual. Pasivo, sin pedirle nada al jugador.
+    if (O.bando === 'malakh' && a.proyectil && O.estado !== ESTADOS.LIBRE) {
+      const b = perfilBloqueo(O, this.cal, this.armas);
+      if (b.mitigacionPasiva) {
+        dano *= 1 - b.mitigacionPasiva;
+        this._evento('encaja', { agente: O.id, de: origen?.id, estado: O.estado });
+      }
+    }
+
+    // ARMADURA DE COMPROMISO — lo que hace viable un arma pesada.
+    //
+    // Medido: el Espadon hace exactamente lo que promete —cero golpes
+    // bloqueados y un 45% mas de dps contra guardia— y AUN ASI recibe el doble
+    // de castigo (4,0 golpes contra 2,0), porque cada animacion mas larga es una
+    // ventana mas ancha para que te peguen. En este motor un arma lenta sin nada
+    // que la compense es estrictamente peor, por buena que sea su propiedad.
+    //
+    // Es el mismo problema que resuelve el hyperarmor de cualquier action RPG:
+    // plantas los pies, encajas el golpe y sigues. Sin esto, «pesado» no es una
+    // fantasia jugable, es una trampa.
+    // Solo contra el melé, y no es un parche: plantar los pies te deja encajar
+    // un espadazo y seguir, no te salva de una flecha en la cara. Sin esa
+    // condicion el Espadon salia el mejor de CUATRO de los cinco casos —incluido
+    // el arquero— y entonces deja de ser un counter para ser un arma mejor.
+    if (O.bando === 'malakh' && !a.proyectil && O.accion?.armaduraDeCompromiso &&
+        (O.estado === ESTADOS.ANTICIPACION || O.estado === ESTADOS.ACTIVO ||
+         O.estado === ESTADOS.RECUPERACION)) {
+      dano *= 1 - O.accion.armaduraDeCompromiso;
+    }
 
     // Guardia de Malakh. El Escudo Celestial la mejora mucho y ademas para flechas.
     if (O.bando === 'malakh' && O.bloqueando && origen) {
@@ -674,6 +842,18 @@ export class Simulacion {
     const factor = this.cal.reglas.factorArmadura || 0;
     if (factor > 0) dano = Math.max(1, dano - factor);
 
+    // EMPUJE. Estaba MEDIDO en la calibracion desde el 23/08 (20 cm el ligero,
+    // 45 el pesado) y el simulador no lo miraba. Importa mas de lo que parece:
+    // en un juego donde los enemigos corren a 600 y Malakh a 400, apartar es la
+    // UNICA forma de fabricar espacio. Retroceder no existe.
+    //
+    // Y a diferencia de aturdir, no invita a la codicia: al que empujas no se
+    // queda ahi ofreciendote la nuca, se levanta lejos y tiene que volver.
+    if (a.empuje && !bloqueado && O.estado !== ESTADOS.MUERTO && origen && O !== origen) {
+      const fuera = normaliza(resta(O.pos, origen.pos));
+      if (largo(fuera) > 0) this._mover(O, escala(fuera, a.empuje));
+    }
+
     O.hp -= dano;
     // Cuando le entro el ultimo golpe. Un golpe que no aturde no deja estado, y
     // sin esto ni la planta ni la 3D pueden enseñar que a alguien le estan dando.
@@ -688,9 +868,29 @@ export class Simulacion {
       hpRestante: Math.max(0, +O.hp.toFixed(1))
     });
 
+    // LA LANZA PARA (§4, «Lanza del Alba»).
+    //
+    // Su premisa de diseño era el alcance, y el alcance NO EXISTE: 245 cm
+    // contra los 241 de la espada, porque los cuatro de melé comparten
+    // animacion. Y tampoco se puede espaciar a nadie, que corren a 600 y
+    // Malakh a 400. Lo que si puede hacer un asta es NEGAR EL TURNO: clavarla
+    // en quien viene lanzado o en quien esta levantando el arma.
+    //
+    // Es condicional a proposito. Aturdir siempre seria un arma mejor; aturdir
+    // solo a quien cierra o amaga es una HERRAMIENTA, y hay que saber cuando
+    // usarla.
+    let interrumpe = false;
+    if (a.interrumpe && O.bando === 'enemigo' && origen) {
+      const amagando = O.estado === ESTADOS.ANTICIPACION;
+      const cerrando = O.estado === ESTADOS.LIBRE &&
+        dist(O.pos, origen.pos) - (origen.radio || 0) > (O.perfil?.alcanceAtaque ?? 0);
+      interrumpe = amagando || cerrando;
+      if (interrumpe) this._evento('interrumpido', { agente: O.id, de: origen.id });
+    }
+
     if (!bloqueado) {
-      O.aguante -= dano * (a.esPesado || a.aturde ? 2 : 1);
-      if (a.aturde) O.aguante = Math.min(O.aguante, 0);
+      O.aguante -= dano * (a.esPesado || a.aturde || interrumpe ? 2 : 1);
+      if (a.aturde || interrumpe) O.aguante = Math.min(O.aguante, 0);
       if (O.aguante <= 0 && O.estado !== ESTADOS.MUERTO) {
         O.aguante = O.aguanteMax;
         O.estado = ESTADOS.ATURDIDO;
@@ -764,13 +964,32 @@ export class Simulacion {
     this._mover(A, escala(dir, this._velocidadDe(A) * dt));
   }
 
+  /**
+   * A donde hay que ir de verdad para llegar al objetivo.
+   *
+   * OTRO QUE ESTABA ROTO. La version anterior decidia por DIFERENCIA DE COTA: si
+   * los dos estaban a la misma altura, camino recto. Con dos torres gemelas eso
+   * es falso —para ir de una a otra hay que bajar y volver a subir— y el
+   * resultado era que Malakh se quedaba varado en la torre que acababa de
+   * limpiar, apretandose contra la barandilla mientras el arquero de la torre de
+   * enfrente le mataba a placer. Medido: 130 s de partida y muerte con los cinco
+   * enemigos a la vista.
+   *
+   * Ahora la pregunta es EN QUE PLATAFORMA esta cada uno. Distinta plataforma =
+   * hay que bajar de la mia (o subir a la suya), aunque midan lo mismo.
+   */
   _rutaHacia(A, objetivo) {
-    const dCota = (objetivo.cota || 0) - (A.cota || 0);
-    if (Math.abs(dCota) <= 50) return { punto: objetivo.pos, intermedio: false };
+    const plataformaDe = (pos, cota) => ((cota || 0) <= 50 ? null
+      : this.plataformas.find(p => dentroDeRect(pos, p) &&
+          Math.abs((p.cota || 0) - (cota || 0)) <= 50) || null);
 
-    const plat = dCota > 0
-      ? this.plataformas.find(p => dentroDeRect(objetivo.pos, p))
-      : this.plataformas.find(p => dentroDeRect(A.pos, p));
+    const miPlat = plataformaDe(A.pos, A.cota);
+    const suPlat = plataformaDe(objetivo.pos, objetivo.cota);
+    if (miPlat === suPlat) return { punto: objetivo.pos, intermedio: false };
+
+    // Primero se baja de la propia; solo si no estoy en ninguna, se sube a la suya.
+    const plat = miPlat || suPlat;
+    const subiendo = !miPlat;
     if (!plat || !plat.accesos || !plat.accesos.length) {
       return { punto: objetivo.pos, intermedio: false };
     }
@@ -778,7 +997,6 @@ export class Simulacion {
     // Una rampa tiene dos extremos: `desde` al pie y `hasta` arriba. Para subir
     // se va al pie; para bajar, al remate de arriba. Antes era un punto suelto y
     // no se sabia por donde se entraba.
-    const subiendo = dCota > 0;
     let mejor = null, mejorD = Infinity;
     for (const r of plat.accesos) {
       const boca = subiendo ? r.desde : r.hasta;
@@ -807,14 +1025,46 @@ export class Simulacion {
     return null;
   }
 
+  /**
+   * Por que esquina rodear un muro.
+   *
+   * ESTO ESTABA ROTO Y NADIE LO SABIA. La version anterior cogia la esquina de
+   * menor coste total sin mirar si ya estabas en ella: al llegar al vertice, esa
+   * misma esquina seguia siendo la mas barata (coste de ida ~0), asi que la
+   * direccion era un vector de ocho centimetros y Malakh se quedaba temblando en
+   * la punta del muro hasta que saltaba el watchdog. Medido: con UN muro en el
+   * camino, 180 s de partida y cero daño, porque no llegaba nunca.
+   *
+   * Es la razon por la que "poner cobertura" nunca habia funcionado como palanca
+   * de diseño, y el §6.16 —cortarle la vision al Arquero ES la respuesta— no se
+   * podia ni probar.
+   *
+   * Ahora: se descarta la esquina en la que ya estas, y se prefiere una a la que
+   * se pueda ir en linea recta. Sigue siendo un rodeo avaricioso, no una malla de
+   * navegacion: con un laberinto no basta.
+   */
   _verticeDeRodeo(desde, hasta, cobertura) {
+    // Radio de "ya estoy en esa esquina". Estuvo en 120 y era demasiado: al
+    // acercarse a la esquina buena se descartaba antes de haberla doblado, y la
+    // unica que quedaba era la del otro extremo del muro. Malakh se pasaba la
+    // partida yendo y viniendo entre las dos puntas del balcon. Con un radio del
+    // orden de su capsula, la esquina deja de contar solo cuando de verdad esta
+    // encima y ya la ha rebasado.
+    const YA_ESTOY = 45;
     let mejor = null, mejorCoste = Infinity;
+    let respaldo = null, respaldoCoste = Infinity;
     for (const p of cobertura.poli) {
       const fuera = empujaFuera(p, cobertura.poli, 90);
-      const coste = dist(desde, fuera) + dist(fuera, hasta);
-      if (coste < mejorCoste) { mejorCoste = coste; mejor = fuera; }
+      const salida = dist(desde, fuera);
+      if (salida < YA_ESTOY) continue;
+      const coste = salida + dist(fuera, hasta);
+      if (!segmentoCortaPoligono(desde, fuera, cobertura.poli)) {
+        if (coste < mejorCoste) { mejorCoste = coste; mejor = fuera; }
+      } else if (coste < respaldoCoste) {
+        respaldoCoste = coste; respaldo = fuera;
+      }
     }
-    return mejor;
+    return mejor || respaldo;
   }
 
   _mover(A, delta) {
@@ -848,7 +1098,7 @@ export class Simulacion {
   }
 
   _separarAgentes() {
-    const vivos = this.agentes.filter(a => a.estado !== ESTADOS.MUERTO);
+    const vivos = this.agentes.filter(a => a.estado !== ESTADOS.MUERTO && a.presente !== false);
     for (let i = 0; i < vivos.length; i++) {
       for (let j = i + 1; j < vivos.length; j++) {
         const a = vivos[i], b = vivos[j];
@@ -882,7 +1132,17 @@ export class Simulacion {
 
   agente(id) { return this.agentes.find(a => a.id === id) || null; }
 
+  /** Vivos, TODOS: incluye a los que esperan su oleada. Es lo que cierra la arena. */
   enemigosVivos() { return this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO); }
+
+  /** Los que estan plantados en la arena, activos o esperando. Reciben golpes. */
+  enemigosEnEscena() { return this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO && e.presente); }
+
+  /** Los que estan peleando ahora mismo. Es contra quien decide una politica. */
+  enemigosActivos() { return this.enemigos.filter(e => e.estado !== ESTADOS.MUERTO && e.activo); }
+
+  /** Oleadas que todavia no han entrado. */
+  oleadasPendientes() { return (this.oleadas || []).filter(o => !o.activada); }
 
   _enAlcance(A, O, alcance) {
     if (Math.abs((O.cota || 0) - (A.cota || 0)) > 120) return false;
@@ -923,6 +1183,11 @@ export class Simulacion {
         cota: a.cota, yaw: Math.round(a.yaw), hp: Math.round(a.hp),
         hpMax: a.hpMax,
         estado: a.bloqueando ? 'bloqueando' : a.estado,
+        // Un enemigo de una oleada que no ha entrado: o no esta (`presente`), o
+        // esta plantado sin hacer nada (`dormido`). Sin esto la reproduccion
+        // enseña cinco peleando cuando pelean dos.
+        presente: a.presente !== false,
+        dormido: a.bando === 'enemigo' && !a.activo && a.estado !== ESTADOS.MUERTO,
         // Destello de impacto: dura un cuarto de segundo, lo justo para verse.
         golpeado: (this.t - (a.tUltimoGolpe ?? -99)) < 0.25,
         golpeBloqueado: !!a.ultimoGolpeBloqueado
@@ -965,6 +1230,11 @@ export class Simulacion {
       armasRecogidas: M.armasRecogidas,
       descartesUsados: M.descartesUsados,
       maxDropsSimultaneos: this.maxDropsSimultaneos,
+      maxEnemigosALaVez: this.maxEnemigosALaVez,
+      oleadas: (this.oleadas || []).filter(o => !o.implicita).map(o => ({
+        id: o.id, nombre: o.nombre, enemigos: o.enemigos.length,
+        activada: o.activada, t: o.tActiva == null ? null : +o.tActiva.toFixed(2)
+      })),
       danoPorFuente,
       danoPorArma,
       eventos: this.eventos,

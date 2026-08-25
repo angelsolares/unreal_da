@@ -19,6 +19,7 @@
 // dentro de un _Sub manda al actor a 66 km. Por eso `offset` es explicito.
 
 import { python } from './puente.mjs';
+import { oleadasDe } from './js/esquema.js';
 
 /**
  * Donde BUSCAR el Blueprint de cada arquetipo.
@@ -56,6 +57,15 @@ export function planificar(enc, opciones = {}) {
     z: Math.round((cota || 0) + (off.z || 0))
   });
 
+  // Las oleadas del §6, numeradas. El indice es lo que se le escribe a cada
+  // enemigo en Unreal: 1 entra al romper el sello, 2 cuando la 1 este limpia, y
+  // asi. Es la unica forma que cabe hoy en `BP_DA_WeaponDropComponent`-style,
+  // o sea un entero por instancia, sin arrays de structs — que por MCP se
+  // comen el ultimo elemento.
+  const olas = oleadasDe(enc).filter(o => !o.implicita);
+  const indiceDeOleada = new Map();
+  olas.forEach((o, i) => { for (const id of o.enemigos) indiceDeOleada.set(id, i + 1); });
+
   const enemigos = enc.enemigos.map(e => {
     const bp = BLUEPRINTS[e.arquetipo];
     return {
@@ -68,7 +78,8 @@ export function planificar(enc, opciones = {}) {
       etiqueta: `Forja_${e.arquetipo}_${e.etiqueta || String(e.id).slice(-4)}`.replace(/\s+/g, '_'),
       pos: alMundo(e.pos, e.cota),
       yaw: e.yaw ?? 180,
-      drop: e.drop
+      drop: e.drop,
+      oleada: indiceDeOleada.get(e.id) || 0     // 0 = sin oleadas, entra al principio
     };
   });
 
@@ -183,7 +194,14 @@ export function planificar(enc, opciones = {}) {
     luz: { clase: 'luz', etiqueta: 'Forja_Luz', pos: alMundo(centro, 1200), yaw: 0 }
   };
 
-  return { offset: off, enemigos, arena, solidos, marcas, escena };
+  return {
+    offset: off, enemigos, arena, solidos, marcas, escena,
+    oleadas: olas.map((o, i) => ({
+      indice: i + 1, id: o.id, nombre: o.nombre,
+      activacion: o.activacion, retardo: o.retardo, presencia: o.presencia,
+      enemigos: o.enemigos.length
+    }))
+  };
 }
 
 // ------------------------------------------------------------------- exportar
@@ -216,6 +234,7 @@ export async function exportar(cuerpo) {
     protegidos: NIVELES_PROTEGIDOS.map(r => r.source),
     confirmado: !!confirmarNivel,
     enemigos: plan.enemigos,
+    oleadas: plan.oleadas,
     arena: plan.arena,
     solidos: plan.solidos,
     marcas: plan.marcas,
@@ -229,7 +248,7 @@ D = json.loads(r'''${datos}''')
 subsys = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 ues = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
 
-informe = {"nivel": None, "borrados": 0, "colocados": [], "avisos": []}
+informe = {"nivel": None, "borrados": 0, "colocados": [], "avisos": [], "sinOleadas": []}
 
 mundo = ues.get_editor_world()
 if mundo is None:
@@ -302,6 +321,22 @@ for e in D["enemigos"]:
     a = subsys.spawn_actor_from_class(cls,
         unreal.Vector(e["pos"]["x"], e["pos"]["y"], e["pos"]["z"]),
         unreal.Rotator(0, 0, e["yaw"]))
+    # LA OLEADA (§6). Sin esto los cinco entran a la vez, y eso es un encuentro
+    # DISTINTO del que se simulo: medido, con los cinco de golpe la espada sola
+    # pierde el 100% de las veces, y escalonados gana el 94%.
+    if a is not None and e.get("oleada", 0):
+        puesta = False
+        for nombre in ("OleadaIndice", "Oleada", "IndiceOleada"):
+            try:
+                a.set_editor_property(nombre, int(e["oleada"]))
+                leido = a.get_editor_property(nombre)
+                puesta = int(leido) == int(e["oleada"])
+                break
+            except Exception:
+                continue
+        if not puesta:
+            informe["sinOleadas"].append(e["etiqueta"])
+
     coloca(a, e)
     if a and e["arquetipo"] == "portador_del_estandarte":
         informe["avisos"].append(
@@ -346,6 +381,17 @@ else:
     if a is not None:
         a.set_editor_property("RadioArena", float(A["radio"]))
         a.set_editor_property("ReintentarAlMorir", bool(A["reintentar"]))
+        # El margen entre oleadas. Es el hueco donde el jugador bebe y recoge lo
+        # que solto el que acaba de caer; sin el, escalonar no descansa a nadie.
+        if D.get("oleadas"):
+            retardos = [o["retardo"] for o in D["oleadas"] if o["retardo"]]
+            if retardos:
+                for nombre in ("RetardoEntreOleadas", "MargenEntreOleadas"):
+                    try:
+                        a.set_editor_property(nombre, float(max(retardos)))
+                        break
+                    except Exception:
+                        continue
         # AutoDetectarEnemigos ya viene a True: recoge solo a los BP_BaseAI que
         # caigan dentro del cuadrado, asi que no hay que enumerarlos.
     coloca(a, A)
@@ -446,6 +492,26 @@ print(json.dumps(informe))
     pedidos: plan.enemigos.length,
     desviados: informe.desviados.length
   };
+  // LAS OLEADAS SON PARTE DEL ENCUENTRO, NO UN ADORNO.
+  //
+  // `BP_DA_Arena` de hoy sabe sellar, vencer, purgar, reponer y vigilar, pero
+  // NO sabe escalonar: sus propiedades son RadioArena, ReintentarAlMorir,
+  // AutoDetectarEnemigos y Enemigos, y ninguna dice cuando entra cada uno
+  // (leido del CDO el 2026-08-25). Mientras no exista, exportar una receta con
+  // oleadas coloca a los cinco de golpe — que es un encuentro DISTINTO y, para
+  // "Romper la linea", medido: 0% con espada sola contra el 94% escalonado.
+  //
+  // Se dice fuerte y se pone al principio del informe, porque el fallo de ayer
+  // fue justo ese: exportar un diorama creyendo que era un encuentro.
+  informe.oleadas = plan.oleadas;
+  if (plan.oleadas.length && informe.sinOleadas?.length) {
+    informe.avisos.unshift(
+      `EL ESCALONADO NO HA VIAJADO: ${informe.sinOleadas.length} de ${plan.enemigos.length} enemigos se han `
+      + `colocado sin numero de oleada porque su Blueprint no tiene la propiedad. `
+      + `Tal como queda, los ${plan.enemigos.length} entran a la vez, que NO es el encuentro simulado. `
+      + `Hace falta un entero "OleadaIndice" en el AI y que BP_DA_Arena active la oleada N+1 cuando la N `
+      + `este limpia, esperando "RetardoEntreOleadas" segundos.`);
+  }
   informe.offset = plan.offset;
   informe.guardado = false;
   informe.nota = 'El nivel NO se ha guardado. Revisalo en el editor y guarda tu.';

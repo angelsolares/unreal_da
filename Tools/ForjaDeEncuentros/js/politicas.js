@@ -52,20 +52,63 @@ class PoliticaBase {
     return encima || preferido;
   }
 
+  /**
+   * El mas cercano de los que estan PELEANDO.
+   *
+   * Con oleadas (§6) quien no ha entrado todavia NO es un objetivo, y esto
+   * importa mas de lo que parece: la primera version se caia a la lista entera
+   * cuando no habia nadie activo, y en el hueco entre dos oleadas Malakh cruzaba
+   * la arena a despertar al arquero de la torre de enfrente. Medido: moria el
+   * 100% de las veces peleando contra los dos arqueros a la vez, que es
+   * exactamente lo que escalonar existia para evitar.
+   *
+   * Un jugador en ese hueco bebe y espera. La red de seguridad —caer a la lista
+   * entera— solo se tiende cuando ya han entrado TODAS las oleadas, que es el
+   * unico caso en que esperar seria esperar para siempre.
+   */
   _masCercano(sim, M, filtro = null) {
-    let mejor = null, mejorD = Infinity;
-    for (const e of sim.enemigosVivos()) {
-      if (filtro && !filtro(e)) continue;
-      const d = dist(e.pos, M.pos);
-      if (d < mejorD) { mejorD = d; mejor = e; }
+    const buscar = (lista) => {
+      let mejor = null, mejorD = Infinity;
+      for (const e of lista) {
+        if (filtro && !filtro(e)) continue;
+        const d = dist(e.pos, M.pos);
+        if (d < mejorD) { mejorD = d; mejor = e; }
+      }
+      return mejor;
+    };
+    const activo = buscar(sim.enemigosActivos());
+    if (activo) return activo;
+    return sim.oleadasPendientes().length ? null : buscar(sim.enemigosVivos());
+  }
+
+  /** El primero del orden previsto que este peleando. */
+  _delOrdenPrevisto(sim) {
+    for (const id of sim.enc.ordenPrevisto || []) {
+      const e = sim.agente(id);
+      if (e && e.estado !== ESTADOS.MUERTO && e.activo) return e;
     }
-    return mejor;
+    return null;
   }
 
   // ------------------------------------------------------------------ decidir
 
+  /** El bloqueo que tengo ahora mismo: el del escudo si lo llevo, o el de la espada. */
+  _bloqueoActual(sim, M) {
+    return M.offHand
+      ? sim.armas.familias[M.offHand.familia]?.bloqueo || sim.cal.malakh.bloqueo
+      : sim.cal.malakh.bloqueo;
+  }
+
   decidir(sim, M) {
     // 1. ¿Me viene un golpe encima? Esto va antes que nada.
+    // A UNA FLECHA SE LE RUEDA, LLEVES ESCUDO O NO.
+    //
+    // Hubo una version que dejaba de rodar cuando llevabas escudo, y salia
+    // mucho peor: los i-frames duran 0,35 s y cubren el trayecto entero, asi
+    // que cambiar la esquiva por la guardia era regalar el 63% mas de daño. El
+    // Escudo Celestial no sustituye a rodar — cubre lo que rodar no puede, que
+    // son las flechas que entran mientras estas clavado en tu propia animacion,
+    // y eso lo hace solo (`mitigacionEnCompromiso`), sin cambiar como se juega.
     const amenaza = sim.amenazaInminente(0.45);
     if (amenaza && M.stamina >= sim.cal.malakh.esquiva.costeStamina * 1.5) {
       const origen = amenaza.proyectil ? amenaza.proyectil : amenaza.de;
@@ -83,9 +126,12 @@ class PoliticaBase {
     }
 
     let obj = sim.agente(M.objetivoId);
-    if (!obj || obj.estado === ESTADOS.MUERTO) obj = this.elegirObjetivo(sim, M);
+    if (!obj || obj.estado === ESTADOS.MUERTO || !obj.activo) obj = this.elegirObjetivo(sim, M);
     obj = this._objetivoEfectivo(sim, M, obj);
-    if (!obj) return { accion: 'esperar' };
+    // OJO al orden: sin objetivo se sigue pudiendo beber y recoger. El hueco
+    // entre oleadas es JUSTO el momento de hacer las dos cosas, y si aqui se
+    // saliera con `esperar` el jugador se quedaria mirando la pared con la
+    // pocion en la mano y el escudo del vigilante en el suelo.
 
     // 2. ¿Toca beber? Con hueco, en cuanto baja del umbral. Sin hueco, solo
     //    cuando ya da igual: morir con cuatro frascos encima no lo hace nadie.
@@ -95,7 +141,16 @@ class PoliticaBase {
       const conHueco = M.hp < M.hpMax * pocion.umbralUso
         && this._huecoSeguro(sim, M, margen) && !sim.amenazaInminente(margen);
       const aLaDesesperada = M.hp < M.hpMax * 0.25 && !sim.amenazaInminente(0.35);
-      if (conHueco || aLaDesesperada) return { accion: 'beber', objetivo: obj.id };
+      // Con la arena en calma —lo que la activacion escalonada del §6 crea entre
+      // oleada y oleada— se bebe aunque no estes en las ultimas. Sin esto Malakh
+      // se moria con frascos encima: en mitad de la pelea nunca se abre un hueco
+      // de 2,2 s, asi que gastaba 2 de 4.
+      const enCalma = !sim.enemigos.some(E =>
+        E.estado !== ESTADOS.MUERTO && E.activo && E.alertado);
+      const respiro = enCalma
+        && M.hp < M.hpMax * (pocion.umbralRespiro ?? pocion.umbralUso)
+        && !sim.amenazaInminente(margen);
+      if (conHueco || respiro || aLaDesesperada) return { accion: 'beber', objetivo: obj?.id };
     }
 
     // 3. Armas temporales: recoger o sacrificar.
@@ -103,6 +158,9 @@ class PoliticaBase {
       const plan = this._planDeArma(sim, M, obj);
       if (plan) return plan;
     }
+
+    // Sin nadie a quien pegar: la oleada siguiente todavia no ha entrado.
+    if (!obj) return { accion: 'esperar' };
 
     const perfil = perfilAtaque(M, sim.cal, sim.armas, false);
     const pesado = perfilAtaque(M, sim.cal, sim.armas, true);
@@ -140,6 +198,12 @@ class PoliticaBase {
       }
     }
 
+    // AQUI HUBO UN "AVANZAR TRAS EL ESCUDO" Y SE QUITO, porque la medida lo
+    // tumbo: cruzar bloqueando al 60% de velocidad daba +35% de daño y bajaba
+    // la victoria del 80% al 13%. Atacaba el sintoma equivocado — las flechas
+    // del trayecto ya se esquivan. Lo que el escudo cubre es otra cosa y lo
+    // hace solo, sin pedirle al jugador que camine raro.
+
     // 5. Sin hueco. Con dos o tres encima no da tiempo a rodar de todos: guardia.
     const presion = this._focoDePresion(sim, M);
     const inminente = this._amenazaCuerpoACuerpo(sim, M, 0.8);
@@ -176,7 +240,7 @@ class PoliticaBase {
 
   _planDeArma(sim, M, obj) {
     // 3a. ¿Merece la pena sacrificar lo que llevo? (§3.2)
-    const d = descarteDe(M, sim.armas);
+    const d = obj ? descarteDe(M, sim.armas) : null;
     if (d && this._mereceDescarte(sim, M, obj, d)) {
       return { accion: 'descartar', objetivo: obj.id };
     }
@@ -190,7 +254,7 @@ class PoliticaBase {
     const margen = sim.armas.reglas.duracionRecogida * 1.2;
     if (cerca && !this._huecoSeguro(sim, M, margen)) return null;
 
-    return { accion: 'recoger', dropId: drop.id, objetivo: obj.id };
+    return { accion: 'recoger', dropId: drop.id, objetivo: obj?.id };
   }
 
   _mejorDrop(sim, M) {
@@ -204,12 +268,23 @@ class PoliticaBase {
 
       let ganancia;
       if (fam.esOffHand) {
-        // El escudo solo estorba si llevo algo a dos manos que valga mas que el.
         if (M.offHand) continue;
-        if (M.temporal && sim.armas.familias[M.temporal.familia]?.dosManos) continue;
-        ganancia = 1.5;
+        ganancia = this._valorDeArma(sim, M, drop.familia);
+        // Coger el escudo con algo a dos manos en la mano PURGA la principal
+        // (§4.1, y lo hace `equipar`). Compensa solo si el escudo vale mas: es
+        // la misma cuenta que al reves, y antes no se hacia — el escudo se
+        // descartaba de plano y luego no habia forma de volver a el.
+        if (M.temporal && sim.armas.familias[M.temporal.familia]?.dosManos) {
+          ganancia -= this._valorDeArma(sim, M, M.temporal.familia);
+        }
       } else {
         ganancia = this._valorDeArma(sim, M, drop.familia) - actual;
+        // La regla del §4.1: un arma a dos manos OBLIGA a soltar el escudo. Eso
+        // tiene precio, y no tenerlo en cuenta era el motivo de que Malakh
+        // cambiara el Escudo Celestial por la lanza con dos arqueros en pie.
+        if (sim.armas.familias[drop.familia]?.dosManos && M.offHand) {
+          ganancia -= this._valorDeArma(sim, M, M.offHand.familia);
+        }
         if (this.codicioso) ganancia = Math.max(ganancia, 0.1);   // el codicioso coge todo
       }
 
@@ -237,6 +312,10 @@ class PoliticaBase {
       case 'arco_del_firmamento': return 1.2 + lejanos * 1.6;
       case 'espadon_alabarda': return 2.0 + conGuardia * 1.0;
       case 'estandarte_ritual': return 1.4 + (vivos.length >= 3 ? 1.2 : 0);
+      // El Escudo Celestial para flechas, asi que su valor lo fijan los arqueros
+      // que sigan en pie. Antes caia en el `default` y valia 1.0 pasara lo que
+      // pasara, con lo que cambiarlo por cualquier cosa a dos manos salia gratis.
+      case 'escudo_celestial': return 1.5 + lejanos * 0.9;
       default: return 1.0;
     }
   }
@@ -342,11 +421,7 @@ class Guionizada extends PoliticaBase {
       'Espada sola siguiendo tu orden de bajas. Aisla cuanto aporta el ORDEN, sin contar las armas.');
   }
   elegirObjetivo(sim, M) {
-    for (const id of sim.enc.ordenPrevisto || []) {
-      const e = sim.agente(id);
-      if (e && e.estado !== ESTADOS.MUERTO) return e;
-    }
-    return this._masCercano(sim, M);
+    return this._delOrdenPrevisto(sim) || this._masCercano(sim, M);
   }
 }
 
@@ -357,11 +432,7 @@ class Ventaja extends PoliticaBase {
       { usaArmas: true });
   }
   elegirObjetivo(sim, M) {
-    for (const id of sim.enc.ordenPrevisto || []) {
-      const e = sim.agente(id);
-      if (e && e.estado !== ESTADOS.MUERTO) return e;
-    }
-    return this._masCercano(sim, M);
+    return this._delOrdenPrevisto(sim) || this._masCercano(sim, M);
   }
 }
 
@@ -385,7 +456,7 @@ class Aleatoria extends PoliticaBase {
   elegirObjetivo(sim, M) {
     for (const id of this.cola) {
       const e = sim.agente(id);
-      if (e && e.estado !== ESTADOS.MUERTO) return e;
+      if (e && e.estado !== ESTADOS.MUERTO && e.activo) return e;
     }
     return this._masCercano(sim, M);
   }

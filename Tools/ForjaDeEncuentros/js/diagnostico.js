@@ -6,10 +6,16 @@
 // bruta es mas barato que discutirla.
 
 import { correrLote } from './lote.js';
-import { encuentroVacio, nuevoEnemigo } from './esquema.js';
+import { encuentroVacio, nuevoEnemigo, podarOleadas } from './esquema.js';
 import { POLITICA_BASE } from './politicas.js';
 
-const PARTIDAS_SONDA = 40;
+/**
+ * 40 sondas eran pocas para un umbral del 90%: un encuentro que se gana el 94%
+ * de verdad se cae por debajo del 90 en una muestra de 40 mas veces de las que
+ * parece, y entonces la biseccion se pone a buscar el daño que haria falta para
+ * arreglar algo que no esta roto. Es la misma leccion que la del veredicto.
+ */
+const PARTIDAS_SONDA = 150;
 const UMBRAL = 0.90;
 
 function clonar(o) { return JSON.parse(JSON.stringify(o)); }
@@ -32,6 +38,9 @@ export function techoDeLaEspada(encuentro, calibracion, armas) {
     const enc = clonar(encuentro);
     enc.enemigos = orden.slice(0, n).map(id => clonar(encuentro.enemigos.find(e => e.id === id)));
     enc.ordenPrevisto = (encuentro.ordenPrevisto || []).filter(id => enc.enemigos.some(e => e.id === id));
+    // Sin esto, las oleadas que se quedan vacias se dan por limpias al instante
+    // y los que quedan entran todos de golpe: se mediria otro encuentro.
+    podarOleadas(enc);
     const t = tasa(enc, calibracion, armas);
     escalones.push({ n, tasa: t, ids: enc.enemigos.map(e => e.id) });
     if (t >= UMBRAL) techo = n;

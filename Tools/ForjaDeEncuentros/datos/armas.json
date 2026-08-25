@@ -1,7 +1,21 @@
 {
-  "version": 1,
-  "nota": "Armas temporales del §4. Esto es DISEÑO, no medida: ninguna existe todavia en el proyecto salvo el arrojado de lanza. Por eso vive aparte de calibracion.json, que solo guarda lo que se ha leido del editor. Cada arma tiene que sentirse distinta en ALCANCE y RITMO, no en numeros de daño.",
-
+  "version": 2,
+  "nota": "Armas temporales del §4. Esto es DISEÑO, no medida, y por eso vive aparte de calibracion.json. La v2 (25/08/2026) reescribe las cinco familias sobre una idea —cada arma resuelve un COMPORTAMIENTO enemigo con un VERBO, no con un multiplicador— y sobre cuatro cosas que el motor IMPUSO, no que se eligieran. Ver \"filosofia\" y \"limitesDelMotor\". La matriz que lo mide es pruebas/matriz.mjs.",
+  "filosofia": {
+    "titular": "Combat Chain Ecology: el enemigo es a la vez la amenaza y la herramienta que resuelve otra amenaza de la misma arena.",
+    "regla1": "UN VERBO POR ARMA. El counter no es +X% contra un nombre, es una propiedad mecanica que anula un COMPORTAMIENTO. El dia que exista un enemigo nuevo con guardia, el Espadon ya lo cubre sin tocar una tabla.",
+    "regla2": "EL ARMA EQUIVOCADA CUESTA TEMPO, NUNCA DAÑO. Ninguna familia lleva penalizacion contra ningun arquetipo. Si no aplica su verbo, simplemente tardas mas. El jugador nunca ve numeros pequeños, ve que va lento.",
+    "regla3": "EL COUNTER CORRECTO SE SIENTE 30-55% MAS COMODO, NO 300% MAS FUERTE. Lo que baja es el RIESGO, no el reloj. Un arma que resuelve el encuentro en un tercio del tiempo no es un counter, es un arma mejor, y convierte la eleccion en un tramite.",
+    "regla4": "DEBIL NUNCA ES INUTIL. Con el arma equivocada el encuentro sigue siendo ganable — mas incomodo, no imposible. Y la espada base nunca es la peor opcion contra nada.",
+    "losCuatroComportamientos": {
+      "guardia": "El 40% de tus golpes se evaporan (Escudero e Inspector tienen reduccionGuardia = 1: el golpe bloqueado hace CERO). Lo rompe el ESPADON. MEDIDO: -50% de daño recibido.",
+      "mole": "200 de vida y golpes de 2,2 s: no se puede esquivar todo, hay que comerse alguno. Lo aguanta el ESPADON con su armadura de compromiso. MEDIDO: -50%.",
+      "compromiso": "Te pegan mientras estas clavado en tu propia animacion, o rodando fuera de los i-frames. Es lo que hace caro al Arquero. Lo ENCAJA el escudo (-40%) y lo evita del todo el ARCO (-73%), que ni se acerca.",
+      "inalcanzable": "Cota, cobertura, el otro lado de la arena. Llega el ARCO.",
+      "cierre": "Corren a 600 y Malakh a 400: de un Lancero no se huye. La LANZA aparta con su empuje... pero MEDIDO, el caso NO DA DE SI: con la espada sola ya se pasa comiendo 2 golpes, y lo mejor que consigue cualquier arma es -18%. Ver limitesDelMotor.",
+      "formacion": "El aura del Inspector. NINGUNA arma la contesta: lo unico que la apaga es matarlo antes, y eso es ORDEN, no arsenal."
+    }
+  },
   "reglas": {
     "ttlEnSuelo": 25,
     "radioRecogida": 140,
@@ -12,119 +26,195 @@
       "vidaPorDebajoDe": 0.5
     }
   },
-
   "familias": {
     "lanza_del_alba": {
       "nombre": "Lanza del Alba",
+      "verbo": "APARTAR",
       "dosManos": true,
-      "recurso": { "tipo": "persistencia" },
+      "recurso": {
+        "tipo": "persistencia"
+      },
       "ataqueLigero": {
-        "duracion": 1.7, "impacto": 0.6, "ventana": 0.15,
-        "alcance": 340, "arco": 45, "costeStamina": 12, "dano": 24
+        "duracion": 1,
+        "impacto": 0.398,
+        "ventana": 0.117,
+        "alcance": 245,
+        "arco": 100,
+        "costeStamina": 12,
+        "dano": 17,
+        "empuje": 150
       },
       "ataquePesado": {
-        "duracion": 2.4, "impacto": 1.0, "ventana": 0.2,
-        "alcance": 380, "arco": 55, "costeStamina": 26, "dano": 42
+        "duracion": 1.5,
+        "impacto": 0.6,
+        "ventana": 0.16,
+        "alcance": 245,
+        "arco": 110,
+        "costeStamina": 26,
+        "dano": 30,
+        "empuje": 260
       },
       "descarte": {
         "nombre": "Arrojar la lanza",
         "tipo": "proyectil",
-        "duracion": 1.1, "impacto": 0.5,
-        "dano": 65, "velocidad": 4000, "alcance": 2600,
+        "duracion": 1.1,
+        "impacto": 0.5,
+        "dano": 65,
+        "velocidad": 4000,
+        "alcance": 2600,
         "aturde": true
       },
-      "porQue": "Su valor es el ALCANCE, no el daño: 340 cm contra los 180 de la espada. Golpea al escudero sin entrar en su alcance, y llega al arquero antes de que el arquero llegue a ti."
+      "porQue": "Cambio de verbo por medida, dos veces. Su premisa era el ALCANCE, y el alcance no existe: 245 cm contra los 241 de la espada, porque los cuatro de melé comparten animacion. La segunda premisa fue INTERRUMPIR, y salio peor que no hacer nada —la lanza con el perfil exacto de la espada mas la interrupcion recibia 86 de daño contra los 60 de la espada sola—, porque en este juego abrir un hueco solo sirve si puedes usarlo, y con dos encima lo gastas comprometiendote mientras el otro te cobra. Lo que queda en pie es APARTAR: el campo \"empuje\" estaba MEDIDO en la calibracion desde agosto y el simulador ni lo miraba. Al que empujas se levanta lejos y tiene que volver, y eso es lo unico que fabrica espacio en un juego donde retroceder no existe. Rinde -18% contra dos Lanceros, por debajo de la banda, y eso NO se arregla con numeros: ese caso no da de si."
     },
-
     "arco_del_firmamento": {
       "nombre": "Arco del Firmamento",
+      "verbo": "LLEGAR",
       "dosManos": true,
-      "recurso": { "tipo": "municion", "cantidad": 12 },
+      "recurso": {
+        "tipo": "municion",
+        "cantidad": 12
+      },
       "ataqueLigero": {
-        "duracion": 1.6, "impacto": 1.1, "ventana": 0.05,
-        "alcance": 2400, "arco": 6, "costeStamina": 8, "dano": 28,
-        "proyectil": true, "velocidad": 3800, "gastaMunicion": 1,
+        "duracion": 1.6,
+        "impacto": 1.1,
+        "ventana": 0.05,
+        "alcance": 2400,
+        "arco": 6,
+        "costeStamina": 8,
+        "dano": 28,
+        "proyectil": true,
+        "velocidad": 3800,
+        "gastaMunicion": 1,
         "necesitaVision": true
       },
       "descarte": {
         "nombre": "Descarga final",
         "tipo": "proyectil",
-        "duracion": 1.8, "impacto": 0.9,
-        "dano": 22, "velocidad": 4200, "alcance": 2600,
+        "duracion": 1.8,
+        "impacto": 0.9,
+        "dano": 22,
+        "velocidad": 4200,
+        "alcance": 2600,
         "danoPorFlechaRestante": 8,
         "aturde": false
       },
-      "porQue": "Invierte la relacion de fuerzas con el balcon: el problema de los arqueros deja de ser el traslado. Se acaba solo, por las flechas, no por desgaste."
+      "porQue": "El unico que ya funcionaba antes de esta revision, y por eso no se le toca un numero. Contra el Arquero del balcon da -73%, el mejor de toda la matriz, simplemente porque no hace falta cruzar. Su verbo no es matar mejor, es LLEGAR. OJO: en melé es un muro (42% de victoria contra dos Escuderos), y eso NO se arregla con numeros — se arregla dejando que Malakh vuelva a la espada cuando quiera, que es lo que el §5.2 promete y hoy solo pasa al cambiar, sacrificar o purgar."
     },
-
     "escudo_celestial": {
       "nombre": "Escudo Celestial",
+      "verbo": "ENCAJAR",
       "dosManos": false,
       "esOffHand": true,
-      "recurso": { "tipo": "persistencia" },
+      "recurso": {
+        "tipo": "persistencia"
+      },
       "bloqueo": {
         "reduccion": 0.88,
         "arco": 150,
         "costeStaminaPorGolpe": 12,
         "factorVelocidad": 0.6,
-        "paraProyectiles": true
+        "paraProyectiles": true,
+        "mitigacionPasiva": 0.4
       },
       "descarte": {
         "nombre": "Shield bash de sacrificio",
         "tipo": "impacto",
-        "duracion": 1.2, "impacto": 0.45,
-        "dano": 30, "alcance": 240, "arco": 90,
-        "aturde": true, "rompeGuardia": true
+        "duracion": 1.2,
+        "impacto": 0.45,
+        "dano": 30,
+        "alcance": 240,
+        "arco": 90,
+        "aturde": true,
+        "rompeGuardia": true
       },
-      "porQue": "No suma daño: cambia como se NAVEGA la arena. Con el escudo se cruza el campo de tiro de los arqueros, que es justo lo que la receta 6.2 quiere enseñar."
+      "porQue": "La \"mitigacionPasiva\" sale de instrumentar al receptor y llevarse un chasco. La hipotesis era que te matan las flechas de bocajarro mientras atacas; el reparto real de las que ENTRAN fue { esquiva: 2 }, el 100%. Rueda a tiempo, pero los i-frames cubren de 0,107 a 0,459 de un rodillo de 0,917 s: el 60% del rodillo es vulnerable. Asi que el Escudo Celestial no hace invulnerable — HACE BARATOS LOS ERRORES. Mitiga siempre que Malakh no puede levantar la guardia: rodando, atacando, bebiendo, recogiendo. Pasivo, sin pedirle nada al jugador y sin cambiar como se juega. A 0,4 da -40% contra el arquero del balcon, el centro de la banda. Antes se probo AVANZAR BLOQUEANDO y fue mucho peor (+35% de daño, victoria del 80% al 13%): atacaba el sintoma equivocado."
     },
-
     "espadon_alabarda": {
       "nombre": "Espadon / Alabarda",
+      "verbo": "ROMPER",
       "dosManos": true,
-      "recurso": { "tipo": "persistencia" },
+      "recurso": {
+        "tipo": "persistencia"
+      },
       "ataqueLigero": {
-        "duracion": 2.1, "impacto": 0.8, "ventana": 0.22,
-        "alcance": 260, "arco": 150, "costeStamina": 18, "dano": 34,
-        "multiObjetivo": true, "rompeGuardia": true
+        "duracion": 1.25,
+        "impacto": 0.55,
+        "ventana": 0.16,
+        "alcance": 245,
+        "arco": 120,
+        "costeStamina": 14,
+        "dano": 22,
+        "rompeGuardia": true,
+        "armaduraDeCompromiso": 0.5
       },
       "ataquePesado": {
-        "duracion": 3.0, "impacto": 1.3, "ventana": 0.28,
-        "alcance": 280, "arco": 180, "costeStamina": 34, "dano": 55,
-        "multiObjetivo": true, "rompeGuardia": true
+        "duracion": 1.9,
+        "impacto": 0.9,
+        "ventana": 0.22,
+        "alcance": 245,
+        "arco": 170,
+        "costeStamina": 30,
+        "dano": 38,
+        "multiObjetivo": true,
+        "rompeGuardia": true,
+        "armaduraDeCompromiso": 0.5
       },
       "descarte": {
         "nombre": "Golpe de suelo",
         "tipo": "aoe",
-        "duracion": 2.2, "impacto": 1.2,
-        "dano": 60, "radio": 420,
-        "aturde": true, "rompeGuardia": true
+        "duracion": 2.2,
+        "impacto": 1.2,
+        "dano": 60,
+        "radio": 420,
+        "aturde": true,
+        "rompeGuardia": true
       },
-      "porQue": "Lento y ancho: ignora la guardia y pega a varios. Es la respuesta a los escuderos, y el precio es que cada golpe es un compromiso largo."
+      "porQue": "PEGA MENOS QUE LA ESPADA A PROPOSITO (17,6 de dps contra 20) y su valor esta en dos cosas: ignora la guardia y te deja plantar los pies. Medido: -50% de daño recibido contra dos Escuderos, -50% contra el Heraldo, y practicamente nada contra un Lancero. La \"armaduraDeCompromiso\" no es un adorno — sin ella el arma era inviable: hacia su trabajo (cero golpes bloqueados, +45% de dps) y aun asi recibia el doble de castigo, porque cada animacion larga es una ventana de castigo. Y va condicionada al melé: plantar los pies te deja encajar un espadazo, no una flecha en la cara. Sin esa condicion salia el mejor de cuatro de los cinco casos, y entonces deja de ser un counter para ser un arma mejor."
     },
-
     "estandarte_ritual": {
       "nombre": "Estandarte ritual",
+      "verbo": "CORROMPER",
       "dosManos": true,
-      "recurso": { "tipo": "persistencia" },
+      "recurso": {
+        "tipo": "persistencia"
+      },
       "ataqueLigero": {
-        "duracion": 2.0, "impacto": 0.7, "ventana": 0.18,
-        "alcance": 300, "arco": 120, "costeStamina": 14, "dano": 18,
+        "duracion": 1.2,
+        "impacto": 0.5,
+        "ventana": 0.15,
+        "alcance": 245,
+        "arco": 120,
+        "costeStamina": 12,
+        "dano": 16,
         "multiObjetivo": true
       },
       "descarte": {
         "nombre": "Clavar el estandarte",
         "tipo": "zona",
-        "duracion": 2.0, "impacto": 1.4,
-        "radio": 900, "duracionZona": 20,
-        "factorDanoEnemigo": 0.6, "factorVelocidadEnemigo": 0.7
+        "duracion": 2,
+        "impacto": 1.4,
+        "radio": 900,
+        "duracionZona": 20,
+        "factorDanoEnemigo": 0.6,
+        "factorVelocidadEnemigo": 0.7
       },
-      "porQue": "La unica que no mata: controla. Su descarte convierte un objetivo prioritario en territorio, que es el aprendizaje de la receta 6.3."
+      "porQue": "La unica que no mata: controla, y su valor entero esta en el descarte. Como arma de mano es la peor de las cinco en toda la matriz, y eso esta bien mientras el jugador pueda volver a la espada. Es ademas la mas barata de construir, porque la pieza YA EXISTE en el juego: BP_DA_AuraComponent con bonificacion negativa, medido — el Muro del Escudero baja el daño del Vigilante de 20 a 10 dentro de su radio."
     }
   },
-
   "procedencia": {
-    "todo": "DISEÑO — ningun numero de aqui esta medido. Son la primera propuesta para que las cinco familias se diferencien por alcance y ritmo. El arrojado de lanza es lo unico que ya existe en el proyecto.",
-    "lanza_del_alba.descarte": "El ataque de descarte de la lanza ya esta montado en el juego; sus numeros reales deberian sustituir a estos."
+    "todo": "DISEÑO — ningun numero de aqui esta medido en el motor. Son la propuesta v2, construida sobre lo que SI esta medido: las cifras de calibracion.json y los hallazgos de la sesion del 25/08/2026 (alcance real de la lanza, coste real del arquero, que el bloqueo no funciona mientras atacas).",
+    "lanza_del_alba.descarte": "El ataque de descarte de la lanza ya esta montado en el juego; sus numeros reales deberian sustituir a estos.",
+    "lanza_del_alba.ataqueLigero.alcance": "245 SI esta medido — evaluando la pose a lo largo del ANS_HitBox. Es el alcance de la animacion compartida de melé, no el de un asta de 3,2 m.",
+    "espadon_alabarda.*.rompeGuardia": "En Unreal es `HitData.CanBeBlocked = false`. La bandera existe y esta identificada; el Golpe de Suelo del §3.2 se monto SIN ella, y por eso un guard break bloqueable no rompia ninguna guardia.",
+    "espadon_alabarda.ataqueLigero.armaduraDeCompromiso": "DISEÑO NUEVO. En Unreal es suprimir la reaccion a golpe durante la ventana del ataque (hyperarmor). DCS ya controla las hit reactions, asi que la pieza existe.",
+    "lanza_del_alba.ataqueLigero.empuje": "El campo estaba MEDIDO en calibracion.json desde el 23/08 (20 cm el ligero de la espada, 45 el pesado) y el simulador no lo usaba. Ahora si. Los 150 de la lanza son diseño.",
+    "escudo_celestial.bloqueo.mitigacionPasiva": "DISEÑO NUEVO. En Unreal haria falta que el componente de daño mire el estado de animacion del receptor antes de aplicar el golpe de un proyectil."
+  },
+  "limitesDelMotor": {
+    "nota": "Cuatro cosas que la matriz descubrio y que no son opinion. Cualquier arma futura tiene que respetarlas o sale trampa.",
+    "tiempoDeCompromiso": "MANDA POR ENCIMA DE TODO. Un ataque ligero por encima de ~1,25 s ya no cabe en el hueco entre ataques enemigos, asi que comes un golpe garantizado en cada intento. Medido: el Espadon a 1,15 s hacia su trabajo —cero golpes bloqueados, +45% de dps— y AUN ASI recibia el doble de castigo (4,0 golpes contra 2,0).",
+    "armaLentaSinArmadura": "Es estrictamente peor, por buena que sea su propiedad. Un arma pesada NECESITA armadura de compromiso, el hyperarmor de cualquier action RPG. Sin eso, \"pesado\" no es una fantasia jugable: es una trampa.",
+    "elControlDeMasasEsNegativo": "Aturdir a uno de dos sale PEOR que no hacerlo. Medido: la lanza con el perfil EXACTO de la espada mas interrumpir recibia 86 de daño contra los 60 de la espada sola. El motivo es que no puedes desengancharte —corren mas que tu—, asi que el hueco que abres lo gastas en un ataque comprometido y el otro te castiga. Por eso la Lanza acabo APARTANDO en vez de aturdiendo: al que empujas no se queda ofreciendote la nuca.",
+    "elAlcanceEsUnaAnimacion": "No es un numero que se pueda poner aqui. Los cuatro de melé comparten animacion y llegan a 245 cm, medido de la pose. Y es la palanca mas potente que existe: al Espadon se le pusieron 260 por descuido y el duelo contra el Arquero paso de 25 s a 16 s, porque el arquero se planta a 300 cm — justo al filo de los 243 de la espada. Diecisiete centimetros. Si algun dia se anima un asta de verdad, pruebas/matriz.mjs ya mide lo que compraria."
   }
 }
