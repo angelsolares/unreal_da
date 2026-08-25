@@ -74,7 +74,7 @@
     "lancero_del_alba": {
       "nombre": "Lancero del Alba",
       "hp": 100,
-      "velocidad": 600,
+      "velocidad": 185,
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 30,
@@ -97,7 +97,7 @@
     "arquero_del_firmamento": {
       "nombre": "Arquero del Firmamento",
       "hp": 100,
-      "velocidad": 600,
+      "velocidad": 185,
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 30,
@@ -121,7 +121,7 @@
     "escudero_celestial": {
       "nombre": "Escudero Celestial",
       "hp": 100,
-      "velocidad": 600,
+      "velocidad": 185,
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 20,
@@ -144,7 +144,7 @@
     "elite_pesado": {
       "nombre": "Elite pesado",
       "hp": 200,
-      "velocidad": 600,
+      "velocidad": 185,
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 30,
@@ -167,7 +167,7 @@
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
       "hp": 100,
-      "velocidad": 600,
+      "velocidad": 185,
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 20,
@@ -210,7 +210,7 @@
     "malakh.pocion.umbralRespiro": "DECISION DE DISEÑO — con la arena en calma (nadie activo encima, o sea entre oleadas del §6) el jugador bebe por debajo de esta fraccion de vida, no solo por debajo de umbralUso. Antes de existir esto, Malakh se moria con dos frascos en el bolsillo porque nunca se abria un hueco de 2,2 s en mitad de la pelea: medido, 2.17 de 4 bebidas por partida. No es hacer trampa, es lo que hace cualquiera entre dos oleadas.",
     "malakh.pocion.duracion": "medido 2026-08-23 — M_DrinkPotion dura 1.893 s a rate 1.0, y el AN_UseItem que aplica la cura cae en el segundo 1.173. O sea: te curas a 1.17 s y sigues clavado 0.72 s mas.",
     "malakh.bloqueo": "medido 2026-08-23 — DCS no usa Stat.Block (que ademas vale 50, no 25) para reducir el dano: usa el BlockValue del objeto con el que paras. DA_SteelSword tiene BlockValue 55 y DA_WoodenShield 100. Con la espada sola se absorbe el 55%; con escudo, el 100%. Mi 0.7 era intermedio y no correspondia a nada.",
-    "arquetipos.*.velocidad": "medido 2026-08-23 — los CINCO Blueprints (Vigilante, Lancero, Arquero, Heraldo, Inspector) comparten chasis: MaxWalkSpeed 600, CapsuleRadius 50, RotationRate.Yaw 360. Mis estimaciones anteriores (350-420) eran invencion.",
+    "arquetipos.*.velocidad": "MEDIDO EN PIE 2026-08-25, y deroga el 600 anterior — que era el MaxWalkSpeed del CHASIS, un techo que la IA no usa jamas: el arbol tiene nodos Walk y Jog que reescriben MaxWalkSpeed en caliente. Leido del actor VIVO: 185 sostenidos persiguiendo (|v|=185.0 clavados en tres muestras en carrera, con MaxWalk=185) y 185 tambien el Arquero huyendo. El Jog (375) solo aparece en rafagas de combate por debajo de ~500. El desplazamiento EFECTIVO con el tartamudeo del arbol (replanes, esperas, estrafes) baja a 60-116 cm/s en carreras completas; se calibra la sostenida (185) porque el simulador ya pone su propio tartamudeo con sus decisiones. Consecuencia mayor: el enemigo es MAS LENTO que Malakh andando (400), no mas rapido — el error era de la misma familia que el del alcance: leer el numero del asset sin verlo correr. Y de regalo: a 2596 cm sueltan el objetivo (LoseSightRadius 2500) y se paran en seco.",
     "arquetipos.*.hp": "medido — el StatsManager arranca todo en Stat.Health.Max = 100. Los 200 del Elite son DECISION DE DISEÑO, no medida.",
     "arquetipos.*.dano": "medido — Stat.Damage 10 del StatsManager mas el modificador del arma equipada: SteelSword +10 (Vigilante, Inspector), Lanza +20, ElvenBow +20, GreatAxe +20.",
     "arquetipos.*.guardia": "derivado del EQUIPO REAL, no estimado. Llevan DA_WoodenShield el Vigilante y el Inspector, y por eso bloquean. El Heraldo lleva hacha a dos manos SIN escudo: guardia 0. El contrato lo dice en su §1.2 — \"lento y sin guardia, pero pega fuerte\".",

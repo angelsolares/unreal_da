@@ -13311,3 +13311,56 @@ jugador en movimiento continuo, que desde fuera por MCP no sale fina. Bajar `vel
 de 600 a ~375 movería otra vez toda la matriz, así que es decisión aparte.
 
 El nivel del editor queda intacto: 21 actores, los cinco enemigos con sus oleadas 1-5.
+
+## La velocidad sostenida, aislada — y el rebaseo que cambia el mapa (2026-08-25)
+
+### La medida
+
+El método del cebo teleportado ensuciaba la lectura (la percepción pierde al jugador y
+el árbol se para), así que la sostenida salió de **muestras instantáneas en plena
+carrera**: `|v| = 185,0 clavados` en tres muestras distintas, con `MaxWalkSpeed = 185`
+(Walk). El Jog (375) sólo aparece en ráfagas de combate por debajo de ~500. Y el
+Arquero **huye también a 185** — medido despertándolo por proximidad en su balcón.
+
+El desplazamiento *efectivo* con el tartamudeo del árbol (replanes, esperas, estrafes)
+baja a 60–116 cm/s en carreras completas. Se calibra la sostenida (185) porque el
+simulador ya pone su propio tartamudeo con sus decisiones.
+
+`velocidad: 600 → 185` en los cinco arquetipos. El 600 era el chasis: un techo que la
+IA no usa jamás. Dos regalos de la sesión: el Arquero huyó **fuera del balcón** (la
+plataforma del motor no tiene barandilla, la del simulador sí), y quedó reconfirmado
+que a 2596 cm sueltan el objetivo y se paran.
+
+### Lo que el rebaseo hace con la receta: mejor que nunca
+
+`VV~V~VVVV` — **99% a espada sola, hp 83, cero atascos**. De uno en uno, un enemigo
+más lento que tú andando es un encuentro limpio.
+
+### Lo que hace con la matriz: rompe el mapa de counters, y no es un bug
+
+```
+   problema      espada     Lanza    Espadon    Escudo      Arco   Estandarte
+   Guardia       71 dmg      -41%    [-89%]      -85%        -4%       -46%
+   Cierre       114 dmg      [+3%]    -73%        +0%       -17%       -60%
+   Compromiso     8 dmg      -15%     +46%     [-40%]       +18%      +333%
+   Mole          88 dmg       +0%    [-80%]       +0%       -48%       -92%
+   Formacion     66 dmg       +9%     -95%       -30%       +19%        -2%
+
+   muros: Espada 17%, Lanza 8%, Escudo 18% y Arco 66% contra Cierre
+   3 criterios ROTOS
+```
+
+El diagnóstico del Cierre (una partida trazada): 16 s, 120 de daño, **stamina llena al
+morir** y 3 esquivas contra 15 ataques. No es patología del simulador — a 600 los
+Lanceros bailaban y regalaban ventanas; a 185 **llegan, se plantan a 240 con 448 de
+alcance y alternan picas de 30** mientras Malakh se compromete 1 s por golpe. Es la
+pared de «dos a la vez» de siempre, ahora visible dentro de la matriz.
+
+Y contra un duelo plantado sobreviven exactamente las armas de intercambio: el
+**Espadón** (armadura de compromiso, −73% y gana) y el **Estandarte** (multiobjetivo,
+−60%). La Lanza —el counter que el §4 del PDF asigna al Cierre— gana el **8%**.
+
+**Esto ya no es calibración: el mapa de counters del PDF dejó de ser verdad.** Con las
+velocidades reales, el que rompe parejas es el Espadón, no la Lanza. Reasignar counters
+es tocar el diseño del §4, así que se queda medido y SIN tocar: los perfiles de armas no
+se han movido en esta pasada.
