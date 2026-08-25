@@ -117,11 +117,11 @@
       "id": "plat_balcon_s",
       "min": {
         "x": 1100,
-        "y": 500
+        "y": 725
       },
       "max": {
-        "x": 1800,
-        "y": 1500
+        "x": 1500,
+        "y": 1275
       },
       "cota": 350,
       "accesos": [
@@ -170,7 +170,7 @@
         "principal": false,
         "secundaria": false
       },
-      "oleada": "ola_1",
+      "oleada": "ola_2",
       "etiqueta": "escudo de la linea"
     },
     {
@@ -186,7 +186,7 @@
         "principal": true,
         "secundaria": false
       },
-      "oleada": "ola_2",
+      "oleada": "ola_3",
       "etiqueta": "balcon del firmamento"
     },
     {
@@ -202,15 +202,15 @@
         "principal": false,
         "secundaria": false
       },
-      "oleada": "ola_3",
+      "oleada": "ola_4",
       "etiqueta": "vigilante del claro"
     },
     {
       "id": "en_arquero_b",
       "arquetipo": "arquero_del_firmamento",
       "pos": {
-        "x": 1600,
-        "y": 1250
+        "x": 1300,
+        "y": 1113
       },
       "cota": 350,
       "yaw": 180,
@@ -218,14 +218,14 @@
         "principal": false,
         "secundaria": false
       },
-      "oleada": "ola_4",
+      "oleada": "ola_5",
       "etiqueta": "balcon del claro"
     }
   ],
   "oleadas": [
     {
       "id": "ola_1",
-      "nombre": "La linea",
+      "nombre": "El lancero de la linea",
       "activacion": {
         "tipo": "inicio"
       },
@@ -234,7 +234,7 @@
     },
     {
       "id": "ola_2",
-      "nombre": "El balcon del firmamento",
+      "nombre": "El escudo de la linea",
       "activacion": {
         "tipo": "oleadaLimpia",
         "oleada": "ola_1"
@@ -244,7 +244,7 @@
     },
     {
       "id": "ola_3",
-      "nombre": "El vigilante",
+      "nombre": "El balcon del firmamento",
       "activacion": {
         "tipo": "oleadaLimpia",
         "oleada": "ola_2"
@@ -254,10 +254,20 @@
     },
     {
       "id": "ola_4",
-      "nombre": "El balcon del claro",
+      "nombre": "El vigilante del claro",
       "activacion": {
         "tipo": "oleadaLimpia",
         "oleada": "ola_3"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_5",
+      "nombre": "El balcon del claro",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_4"
       },
       "retardo": 3,
       "presencia": "en-escena"
@@ -275,5 +285,5 @@
   },
   "purgePolicy": "purgar-todo-al-romper-sello",
   "checkpointPolicy": "antes-del-trigger",
-  "notasDiseno": "Receta 6.1 del PDF, reconstruida el 2026-08-25 despues de medir que la version anterior se perdia el 100% de las veces con espada sola.\n\nLA IDEA: cinco enemigos, nunca mas de dos a la vez. El techo de la espada sola son DOS enemigos y el tercero es un acantilado, no una pendiente (medido: 2 enemigos 95%, 3 en campo abierto 0%). La activacion escalonada del §6 es lo que hace que cinco quepan dentro de ese techo sin bajarle la vida a nadie.\n\nLAS CUATRO OLEADAS:\n  1. La linea        — Lancero + Escudero. Los dos estan a la vista al cruzar el umbral.\n  2. El nido         — el Arquero del balcon norte, solo. Suelta el Arco.\n  3. El vigilante    — el segundo Escudero, de respiro.\n  4. El balcon       — el Arquero del balcon sur, el mas caro de tomar a pie.\nCada una entra cuando la anterior esta limpia, con 3 s de margen: el hueco es donde el jugador bebe y recoge.\n\nLA RUTA DE VENTAJA es la cadena del §6.5: el Lancero suelta la Lanza -> se arroja al Arquero del nido (que esta a cota, o sea inalcanzable de otra forma) -> el nido suelta el Arco -> el Arco resuelve el balcon sur sin cruzar la arena bajo la lluvia. Medido: 20% menos de daño que hacerlo todo a espada.\n\nPOR QUE LOS DOS BALCONES SON DE TAMAÑOS DISTINTOS: el coste de un arquero no lo fija la distancia, lo fija cuanto sitio tiene para retroceder mientras te acercas. El del norte, en 350x450, cuesta ~10 de vida y es donde se aprende el gesto. El del sur, en 650x1000, cuesta ~45 y es donde el Arco paga.\n\nLOS ESCUDEROS NO SUELTAN EL ESCUDO a proposito: con la Lanza o el Arco en la mano —los dos son a dos manos— el §4.1 obliga a soltarlo, asi que un Escudo garantizado que nadie puede recoger seria un drop mentiroso. El Escudo Celestial tiene su receta en otro sitio.\n\nVEREDICTO (2000 partidas por politica, varias semillas): ocho de las nueve puertas en verde y ninguna en rojo. La que queda en ambar es 'el orden de bajas ya cambia algo por si solo', y es estructural: los enemigos corren a 600 y Malakh a 400, asi que elijas a quien elijas los tienes a los dos encima en tres segundos. En este juego el orden que importa es el de las ARMAS, no el de los cuerpos."
+  "notasDiseno": "Receta 6.1 del PDF, reconstruida el 2026-08-25 despues de medir que la version anterior se perdia el 100% de las veces con espada sola.\n\nLA IDEA: cinco enemigos, nunca mas de dos a la vez. El techo de la espada sola son DOS enemigos y el tercero es un acantilado, no una pendiente (medido: 2 enemigos 95%, 3 en campo abierto 0%). La activacion escalonada del §6 es lo que hace que cinco quepan dentro de ese techo sin bajarle la vida a nadie.\n\nLAS CUATRO OLEADAS:\n  1. La linea        — Lancero + Escudero. Los dos estan a la vista al cruzar el umbral.\n  2. El nido         — el Arquero del balcon norte, solo. Suelta el Arco.\n  3. El vigilante    — el segundo Escudero, de respiro.\n  4. El balcon       — el Arquero del balcon sur, el mas caro de tomar a pie.\nCada una entra cuando la anterior esta limpia, con 3 s de margen: el hueco es donde el jugador bebe y recoge.\n\nLA RUTA DE VENTAJA es la cadena del §6.5: el Lancero suelta la Lanza -> se arroja al Arquero del nido (que esta a cota, o sea inalcanzable de otra forma) -> el nido suelta el Arco -> el Arco resuelve el balcon sur sin cruzar la arena bajo la lluvia. Medido: 20% menos de daño que hacerlo todo a espada.\n\nPOR QUE LOS DOS BALCONES SON DE TAMAÑOS DISTINTOS: el coste de un arquero no lo fija la distancia, lo fija cuanto sitio tiene para retroceder mientras te acercas. El del norte, en 350x450, cuesta ~10 de vida y es donde se aprende el gesto. El del sur, en 650x1000, cuesta ~45 y es donde el Arco paga.\n\nLOS ESCUDEROS NO SUELTAN EL ESCUDO a proposito: con la Lanza o el Arco en la mano —los dos son a dos manos— el §4.1 obliga a soltarlo, asi que un Escudo garantizado que nadie puede recoger seria un drop mentiroso. El Escudo Celestial tiene su receta en otro sitio.\n\nVEREDICTO (2000 partidas por politica, varias semillas): ocho de las nueve puertas en verde y ninguna en rojo. La que queda en ambar es 'el orden de bajas ya cambia algo por si solo', y es estructural: los enemigos corren a 600 y Malakh a 400, asi que elijas a quien elijas los tienes a los dos encima en tres segundos. En este juego el orden que importa es el de las ARMAS, no el de los cuerpos. RECOMPUESTA EL 25/08 tras medir la esquiva en 532 cm y no en 400. Con la esquiva real, CUALQUIER oleada que traiga dos cuerpos a la vez se cae: la pareja al final 53%, con el balcon sur chico 56%, la pareja de mele en medio 41% y con 25 partidas atascadas, y arquero emparejado con mele 39%. La version anterior —dos en la primera oleada— bajo del 93% al 80% y dejo 7 atascadas. Asi que van de uno en uno, y el balcon del claro se achica de 700x1000 a 400x550 porque un arquero con sitio para huir es lo que produce las partidas atascadas: con el chico sube al 98%. Quedan tres avisos y son ESTRUCTURALES, no de composicion: sin dos cuerpos a la vez el encuentro es lo bastante holgado como para que el arsenal no tenga donde lucirse (ventaja y orden), y queda 1 partida atascada de 1200. Las dos puertas se contradicen por construccion: \"ganable con espada sola >=90%\" y \"las armas aportan >=15%\" no caben juntas cuando el techo lo pone un enemigo cada vez."
 }

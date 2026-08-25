@@ -115,6 +115,168 @@ variante('sin el arco',
   'idem, por el otro lado',
   (e) => drop(e, 'en_arquero_a', false, false));
 
+// ---- candidatas del 25/08 por la tarde, tras medir la esquiva en 532 y no en 400.
+// La tension que hay que romper: escalonar del todo GANA (93%) pero deja el arsenal
+// decorativo —con un enemigo delante no hace falta agacharse a coger nada—, y juntar
+// dos hace que el arsenal pague pero ahora dos de mele a la vez cuestan 84 de daño en
+// vez de 60. La salida tiene que ser CUANDO se juntan, no CUANTOS.
+
+variante("la pareja al final",
+  "escalonado al entrar y duro al salir: cuando se juntan dos, ya vas armado",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Escudero", ids: ["en_escudero_a"] },
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "El cierre", ids: ["en_escudero_b", "en_arquero_b"] }]));
+
+variante("la pareja al final, retardo 2",
+  "lo mismo, pero sin dejarte respirar entre oleadas",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Escudero", ids: ["en_escudero_a"] },
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "El cierre", ids: ["en_escudero_b", "en_arquero_b"] }], 2));
+
+variante("de uno en uno, retardo 2",
+  "¿basta con apretar el reloj para que el arsenal vuelva a pagar?",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Escudero", ids: ["en_escudero_a"] },
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "Vigilante", ids: ["en_escudero_b"] },
+    { nombre: "Balcon sur", ids: ["en_arquero_b"] }], 2));
+
+variante("el lancero abre, luego parejas",
+  "un solo cuerpo para armarte, y a partir de ahi de dos en dos",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Escudero y balcon", ids: ["en_escudero_a", "en_arquero_a"] },
+    { nombre: "El cierre", ids: ["en_escudero_b", "en_arquero_b"] }]));
+
+variante("la pareja al final, balcon sur chico",
+  "y si los atascos son el arquero del sur huyendo por un balcon enorme",
+  (e) => {
+    balcon(e, "plat_balcon_s", { ancho: 400, largo: 550, centroY: 1000 });
+    mover(e, "en_arquero_b", 1300, 1113, 350);
+    encadenar(e, [
+      { nombre: "Lancero", ids: ["en_lancero"] },
+      { nombre: "Escudero", ids: ["en_escudero_a"] },
+      { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+      { nombre: "El cierre", ids: ["en_escudero_b", "en_arquero_b"] }]);
+  });
+
+variante("la receta actual con el sur chico",
+  "el arreglo minimo: dejar la receta y solo achicar el balcon del sur",
+  (e) => {
+    balcon(e, "plat_balcon_s", { ancho: 400, largo: 550, centroY: 1000 });
+    mover(e, "en_arquero_b", 1300, 1113, 350);
+  });
+
+// ---- segunda tanda. Las de arriba dejan claro que juntar cuerpos y ganar a espada
+// sola tiran en direcciones opuestas: "de uno en uno" saca 93% pero el arsenal es
+// decorativo, y "la pareja al final" hace que el arsenal pague un -24% a cambio de
+// bajar al 53%. Asi que hay un TERCER eje que no habiamos tocado: en vez de juntar
+// enemigos, hacer CARO a cada uno por separado. Un arquero solo en un balcon grande
+// es barato con arco y carisimo con espada, y eso es exactamente lo que la puerta
+// de la ventaja quiere medir.
+
+const unoEnUno = (e, retardo = 3) => encadenar(e, [
+  { nombre: "Lancero", ids: ["en_lancero"] },
+  { nombre: "Escudero", ids: ["en_escudero_a"] },
+  { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+  { nombre: "Vigilante", ids: ["en_escudero_b"] },
+  { nombre: "Balcon sur", ids: ["en_arquero_b"] }], retardo);
+
+variante("de uno en uno, el sur grande",
+  "uno cada vez, pero el ultimo caro: un arquero solo en un balcon que no se cruza",
+  (e) => {
+    balcon(e, "plat_balcon_s", { ancho: 700, largo: 1400, centroY: 1000 });
+    mover(e, "en_arquero_b", 1700, 1500, 350);
+    unoEnUno(e);
+  });
+
+variante("de uno en uno, los dos balcones grandes",
+  "y si los dos arqueros son caros por separado",
+  (e) => {
+    balcon(e, "plat_balcon_n", { ancho: 650, largo: 1000, centroY: -1000 });
+    mover(e, "en_arquero_a", 1600, -1250, 350);
+    balcon(e, "plat_balcon_s", { ancho: 700, largo: 1400, centroY: 1000 });
+    mover(e, "en_arquero_b", 1700, 1500, 350);
+    unoEnUno(e);
+  });
+
+variante("de uno en uno, con el escudo",
+  "el arsenal mas rico: si tambien cae un escudo, ¿paga ya?",
+  (e) => { drop(e, "en_escudero_a", false, true); unoEnUno(e); });
+
+variante("los arqueros primero",
+  "darte el arco pronto y guardarte la pareja de mele para el final",
+  (e) => encadenar(e, [
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Balcon sur", ids: ["en_arquero_b"] },
+    { nombre: "Los dos vigilantes", ids: ["en_escudero_a", "en_escudero_b"] }]));
+
+variante("la pareja al final, retardo 6",
+  "la misma pareja dura, pero con tiempo de sobra para llegar entero y armado",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Escudero", ids: ["en_escudero_a"] },
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "El cierre", ids: ["en_escudero_b", "en_arquero_b"] }], 6));
+
+// ---- tercera tanda, y ya con un patron: CUALQUIER oleada que junte arquero y mele
+// es roja. "la pareja al final" (53%), "con balcon sur chico" (56%), "arquero
+// emparejado con mele" (39%). El Escudero te sujeta mientras el otro dispara y no hay
+// hueco para comprometer una animacion.
+//
+// Pero esa misma "pareja al final, sur chico" saca SIETE VERDES y solo falla ganable:
+// el arsenal paga un -19% y no deja ni una partida atascada. O sea que la forma es la
+// buena y lo que esta mal es QUIENES son la pareja. Si son dos de MELE, y llegan
+// cuando ya tienes la lanza —que es su counter medido, -31% contra dos Lanceros—,
+// deberia entrar por los dos lados.
+
+variante("la pareja de mele en medio",
+  "el Lancero suelta la lanza, y con ella en la mano te caen los dos vigilantes",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Los dos vigilantes", ids: ["en_escudero_a", "en_escudero_b"] },
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "Balcon sur", ids: ["en_arquero_b"] }]));
+
+variante("la pareja de mele, con el arco antes",
+  "lo mismo pero cobrando el arco primero: ¿estorba tenerlo cuando llega el mele?",
+  (e) => encadenar(e, [
+    { nombre: "Lancero", ids: ["en_lancero"] },
+    { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+    { nombre: "Los dos vigilantes", ids: ["en_escudero_a", "en_escudero_b"] },
+    { nombre: "Balcon sur", ids: ["en_arquero_b"] }]));
+
+variante("la pareja de mele en medio, sur grande",
+  "y encareciendo ademas al ultimo, que es el que hace pagar al arsenal",
+  (e) => {
+    balcon(e, "plat_balcon_s", { ancho: 700, largo: 1400, centroY: 1000 });
+    mover(e, "en_arquero_b", 1700, 1500, 350);
+    encadenar(e, [
+      { nombre: "Lancero", ids: ["en_lancero"] },
+      { nombre: "Los dos vigilantes", ids: ["en_escudero_a", "en_escudero_b"] },
+      { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+      { nombre: "Balcon sur", ids: ["en_arquero_b"] }]);
+  });
+
+variante("de uno en uno, el escudo en vez de la lanza",
+  "el escudo es de mano izquierda y la lanza es a dos manos: o uno o el otro",
+  (e) => {
+    drop(e, "en_lancero", false, false);
+    drop(e, "en_escudero_a", false, true);
+    encadenar(e, [
+      { nombre: "Lancero", ids: ["en_lancero"] },
+      { nombre: "Escudero", ids: ["en_escudero_a"] },
+      { nombre: "Balcon norte", ids: ["en_arquero_a"] },
+      { nombre: "Vigilante", ids: ["en_escudero_b"] },
+      { nombre: "Balcon sur", ids: ["en_arquero_b"] }]);
+  });
+
 // ------------------------------------------------------------------- informe
 
 const MARCA = { ok: 'V', aviso: '~', fallo: 'X', na: '-' };

@@ -12691,3 +12691,76 @@ lejos y tienes que volver andando (60 → 84).
 
 Volver a elegir la composición **no se ha hecho**: cambia el §6 ya cerrado y obliga a
 reexportar. Es decisión de diseño.
+
+## «Romper la línea», recompuesta y reexportada (2026-08-25)
+
+Con la esquiva en sus 532 cm reales, la receta anterior se caía. Se buscó otra en el
+banco de composiciones: **20 variantes medidas**, 400 partidas por política cada una.
+
+### El patrón que apareció, y es sobre el juego, no sobre la receta
+
+**Cualquier oleada que traiga dos cuerpos a la vez se cae.** No es una composición
+concreta: son todas las que se probaron.
+
+| variante | espada sola | atascos |
+|---|---|---|
+| la pareja al final | 53% | 1 |
+| la pareja al final, balcón sur chico | 56% | 0 |
+| la pareja al final, retardo 6 | 52% | 9 |
+| la pareja de melé en medio | 41% | 25 |
+| la pareja de melé, con el arco antes | 22% | 22 |
+| arquero emparejado con melé | 39% | 6 |
+| el lancero abre, luego parejas | 22% | 5 |
+| **la versión anterior** (dos en la primera) | **80%** | 7 |
+
+Y da igual quiénes sean los dos: arquero + melé (39-56%), melé + melé (41-46%). La
+esquiva larga te saca del tiro pero te pasa de largo en cuerpo a cuerpo, y con dos
+encima no hay hueco para comprometer una animación ni para volver.
+
+### La receta nueva
+
+Cinco oleadas de uno, encadenadas por «la anterior limpia» con 3 s de retardo:
+
+    Lancero → Escudo de la línea → Balcón del firmamento → Vigilante del claro → Balcón del claro
+
+Y **el balcón del claro se achica de 700×1000 a 400×550**, con el arquero recolocado en
+(1300, 1113). Eso no es estética: un arquero con sitio para huir es lo que produce las
+partidas atascadas, y achicarlo sube del 93% al **98%**.
+
+```
+   variante                  puertas     esp%  vent%   hp  a la vez  armas  orden  atasc
+   la receta actual          VV~V~VVV~     98%  94%    72         1   -4%    0%      1
+   los dos balcones grandes  V~~V~VVVV     85%  81%  54.5         1    3%    0%      0
+   la versión anterior       V~~V~VVV~     80%  70%  61.5         2   -0%   -4%      7
+```
+
+Seis verdes, **ningún rojo**, tres avisos.
+
+### Los tres avisos son estructurales, y conviene no fingir que no
+
+Dos de ellos —«las armas pagan» y «el orden importa»— **no se pueden cerrar con
+composición**, porque las dos puertas se contradicen por construcción: «ganable con
+espada sola ≥90%» y «las armas aportan ≥15%» no caben juntas cuando el techo lo pone
+un enemigo cada vez. Sin dos cuerpos encima, el encuentro es lo bastante holgado como
+para que el arsenal no tenga dónde lucirse. Se probaron los tres caminos: encarecer al
+enemigo suelto (balcones grandes: el arsenal sale un +11% PEOR), enriquecer el arsenal
+con un escudo garantizado (−17%, pero el escudo no se recoge y tumba la puerta del
+drop) y apretar el reloj (retardo 2: +6%). Ninguno.
+
+El tercero es 1 partida atascada de 1200.
+
+### Reexportada y verificada contra el editor
+
+`node exportar.mjs romper-la-linea` — el runner de línea de órdenes es nuevo; hasta hoy
+al exportador solo se le llamaba desde el navegador.
+
+Verificado **leyendo el editor**, no el informe del exportador: 5 enemigos, tags
+`Oleada2..Oleada5` correctos, las cinco posiciones exactas al centímetro, el balcón sur
+midiendo ya 400×550 y `RetardoEntreOleadas = 3`. Guardado y comprobado en el binario
+del `.umap`, donde `Oleada5` —que antes no existía— ya aparece.
+
+**Lo que hay que mirar al jugarlo:** con un enemigo por oleada, cuatro de los cinco
+están dormidos casi todo el encuentro. Y aquí sigue en pie la diferencia conocida con
+el simulador: **al dormido que le pegas no despierta** hasta que entre su oleada. Antes
+molestaba poco porque los dormidos estaban en balcones; ahora hay un Vigilante quieto
+en mitad del claro durante media pelea.
