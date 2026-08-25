@@ -12468,3 +12468,96 @@ Aquí no — con el árbol parado, un enemigo dormido al que ataques no responde
 entre su oleada. En «Romper la línea» los dormidos están en balcones o al fondo, así
 que no debería notarse; si al jugarlo molesta, la solución es despertar por proximidad
 en `VigilarArena`.
+
+## El Spear Animation Pack: se compró alcance y venía desplazamiento (2026-08-25)
+
+Se instaló el pack esperando lo que la matriz pedía —un asta que llegue más lejos que
+la espada— y **el alcance no está**. Medido sobre las poses, sin PIE:
+
+| | cm |
+|---|---|
+| del `root` a la punta del asta, máximo de todo el pack | **224** |
+| cota superior teórica (mano + medio asta, ninguna pose la alcanza) | 246 |
+| la espada de Malakh, medida en su día | **243** |
+| el umbral que la matriz pedía para comprar algo | 306 |
+
+El asta **llega menos que la espada**. La cota superior se calculó a propósito para no
+depender de suponer qué eje local del hueso `weapon_r` es el asta: la punta no puede
+estar más lejos que la mano más medio mesh, y ni así se llega.
+
+### Higiene primero: el pack traía la misma bomba que el de Throwing
+
+`ABP_Manny_PostProcess` y `ABP_Quinn_PostProcess` venían en `BS_ERROR` y referenciados
+desde `SKM_Manny`/`SKM_Quinn` — exactamente lo que congeló el editor con el pack
+anterior. Se desenganchó el `post_process_anim_blueprint` de los dos meshes, se guardó,
+se reescaneó el registro y se borraron los dos ABP, comprobando que ya no están en
+disco.
+
+Los huesos salieron limpios: el `SKM_Manny` del pack tiene 161 y el de DCS 164, y
+**ninguno de los del pack falta en DCS** (los 3 extra son virtuales, `VB IK_Hand_*`).
+Así que basta `add_compatible_skeleton` y no hace falta retargeting. Es una
+modificación viva sobre un asset de pago: queda anotada.
+
+### Lo que sí trae, y no estaba en ningún presupuesto: EMBESTIDA
+
+El `root` de cada ataque **avanza de verdad**, y avanza todo en los primeros 0,4 s con
+parada en seco. El control descarta que sea ruido: el idle da 0,0 cm en 10 s.
+
+| ataque | alcance | avance | punta |
+|---|---|---|---|
+| Combo 1 · golpe 1 | 224 | **112** | 1463 cm/s |
+| Combo 1 · golpe 2 | 221 | **296** | 1463 cm/s |
+| Combo 2 · golpe 1 | 224 | 204 | — |
+| Run Attack 1 | 191 | **621** | — |
+
+O sea que el pack no es una lanza de *mantener a raya*: es una lanza de **entrar**.
+
+### Qué compra eso, medido
+
+Se le añadió `embestida` al simulador (inerte mientras ningún arma la declare) y se
+midió el pack contra las cinco casillas de la matriz. Salen dos lecturas, y la
+diferencia entre ellas es **si el arma deja atacar desde más lejos**:
+
+```
+variante                     Guardia   Cierre  Compromiso   Mole  Formacion
+espada base (243)             40 dmg   60 dmg    65 dmg    30 dmg   87 dmg
+Lanza hoy (compartida)           -7%     -17%       -7%      +12%     -20%
+Lanza pack MEDIDO                +1%     +24%      -33%      -27%     -33%
+Lanza pack sin avance            -4%     +23%       -8%       +9%     -20%
+Lanza pack + abrir              -19%      -6%      +84%      -56%     -31%
+Lanza 320 (la hipotesis)         +2%     -55%      -14%      -56%     -21%
+```
+
+**Ninguna de las dos gana su propio caso.** El de la Lanza es *Cierre* (dos Lanceros),
+y el pack lo empeora o lo empata. Lo que gana son casillas ajenas: la Mole y el
+Compromiso.
+
+### El escalón de los 241 cm, que es lo que de verdad manda
+
+Perder 21 cm (245 → 224) voltea *Cierre* de −17% a +23%, y eso era demasiado para 21
+centímetros. Barriendo el alcance contra dos Lanceros aparece un escalón afiladísimo:
+
+```
+alcance   210    224    235    241    245    250    260
+daño       71     74     73     50     50     50     55
+```
+
+Entre **235 y 241 el daño cae de 73 a 50**. No es casualidad: el Lancero llega a 245.
+Por encima del escalón Malakh le empata el alcance; por debajo pelea dentro del suyo.
+Y como los cuatro de melé de DCS comparten animación, **ese 245 es el alcance de todos
+ellos**. El pack cae del lado malo por 21 cm.
+
+### Y una trampa de diseño que salió de rebote
+
+La fila «+ abrir» pierde un 84% contra el Arquero del balcón, y **no es un artefacto**:
+si el arma te invita a quedarte a distancia de asta, el arquero deja de retroceder y
+dispara tranquilo. Ya se había medido lo mismo por el otro lado al subirle la
+`distanciaMinima` a 450. Contra un arquero hay que **entrar**, y un arma que premia
+esperar te mata.
+
+Se intentaron dos modelos más antes de aceptarlo, y los dos eran bugs míos:
+la puerta de ataque extendida sin extender la parada (no hacía nada, porque cuando
+atacaba ya estaba pegado), y un booleano de «se aleja» por tick, que hacía saltar la
+distancia de parada entre 157 y 235 en ticks alternos — Malakh se pasaba el combate
+avanzando y retrocediendo en el sitio, 1,8 ataques por combate. Se arregló con una
+media móvil de la velocidad radial.

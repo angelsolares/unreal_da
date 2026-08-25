@@ -262,31 +262,52 @@ for (const c of CASOS) {
 //   ~306 cm — 245 x 1.25, el punto en el que Malakh puede quedarse FUERA del
 //             alcance enemigo y pinchar. Es donde el espaciado empieza a
 //             funcionar, y con el cambia como se pelea, no solo cuanto llegas.
+// EL PACK, MEDIDO (25-08-2026). Se compro el Spear Animation Pack esperando
+// ALCANCE, y el alcance no esta: del hueso root a la punta del asta son 224 cm
+// como maximo —y 246 es la cota superior teorica, mano mas medio asta, que
+// ninguna pose alcanza—. La espada mide 243. O sea que el asta llega MENOS.
+//
+// Lo que si trae, y no estaba en ningun presupuesto, es EMBESTIDA: el root de
+// cada ataque avanza de verdad (el idle de control da 0.0 cm en 10 s, asi que
+// la traslacion no es ruido), y avanza TODO en los primeros 0.4 s, con parada
+// en seco. Ligero 112 cm, pesado 296 cm.
+//
+// Asi que la pregunta ya no es "cuanto compra alargar el asta" sino: ¿compra el
+// DESPLAZAMIENTO lo que el alcance no compro? Las cuatro filas la contestan.
 const ANIMAR = [
-  { fam: 'lanza_del_alba', etq: 'Lanza', corto: 245, largo: 320 },
-  { fam: 'espadon_alabarda', etq: 'Espadon', corto: 245, largo: 320 }
+  { etq: 'Lanza hoy (compartida)', fam: 'lanza_del_alba', mod: f => {} },
+  { etq: 'Lanza pack MEDIDO', fam: 'lanza_del_alba', mod: f => {
+      f.ataqueLigero.alcance = 224; f.ataqueLigero.embestida = 112;
+      f.ataquePesado.alcance = 221; f.ataquePesado.embestida = 296; } },
+  { etq: 'Lanza pack sin avance', fam: 'lanza_del_alba', mod: f => {
+      f.ataqueLigero.alcance = 224; f.ataquePesado.alcance = 221; } },
+  { etq: 'Lanza pack + abrir', fam: 'lanza_del_alba', mod: f => {
+      f.ataqueLigero.alcance = 224; f.ataqueLigero.embestida = 112;
+      f.ataqueLigero.embestidaAbreAtaque = true;
+      f.ataquePesado.alcance = 221; f.ataquePesado.embestida = 296;
+      f.ataquePesado.embestidaAbreAtaque = true; } },
+  { etq: 'Lanza 320 (hipotesis)', fam: 'lanza_del_alba', mod: f => {
+      f.ataqueLigero.alcance = 320; f.ataquePesado.alcance = 320; } },
+  { etq: 'Espadon 320 (hipotesis)', fam: 'espadon_alabarda', mod: f => {
+      f.ataqueLigero.alcance = 320; f.ataquePesado.alcance = 320; } }
 ];
-console.log('\n=== QUE COMPRARIA ANIMAR CADA ARMA ===\n');
-console.log('   ' + 'arma'.padEnd(20) + CASOS.map(c => c.etiqueta.padStart(13)).join(''));
-console.log('   ' + 'espada (243)'.padEnd(20)
+console.log('');
+console.log('=== QUE COMPRA EL PACK DE LA LANZA ===');
+console.log('');
+console.log('   ' + 'variante'.padEnd(26) + CASOS.map(c => c.etiqueta.padStart(13)).join(''));
+console.log('   ' + 'espada base (243)'.padEnd(26)
   + CASOS.map(c => `${base[c.clave].dano.toFixed(0)} dmg`.padStart(13)).join(''));
 for (const v of ANIMAR) {
-  for (const alcance of [v.corto, v.largo]) {
-    const A = JSON.parse(JSON.stringify(armas));
-    A.familias[v.fam].ataqueLigero.alcance = alcance;
-    A.familias[v.fam].ataquePesado.alcance = alcance;
-    const fila = CASOS.map(c => {
-      const r = medir(c, v.fam, A);
-      return pctd(delta(r, base[c.clave])).padStart(13);
-    });
-    console.log('   ' + `${v.etq} alcance ${alcance}`.padEnd(20) + fila.join(''));
-  }
+  const A = JSON.parse(JSON.stringify(armas));
+  v.mod(A.familias[v.fam]);
+  const fila = CASOS.map(c => {
+    const r = medir(c, v.fam, A);
+    return `${pctd(delta(r, base[c.clave]))}`.padStart(13);
+  });
+  console.log('   ' + v.etq.padEnd(26) + fila.join(''));
 }
-console.log('\n   La Lanza gana dos casillas (Cierre y Mole) y no pierde ninguna: SI compensa.');
-console.log('   El Espadon CAMBIA de identidad — deja de romper guardias (-50% -> +24%) y');
-console.log('   empieza a espaciar. Su verbo vive a distancia de intercambio, asi que lo suyo');
-console.log('   es animarlo ANCHO, no LARGO: mecanicamente ya funciona con la animacion');
-console.log('   compartida y no necesita comprar alcance para nada.');
 
-console.log(`\n${rotos ? `${rotos} criterios ROTOS — hay que recalibrar` : 'los tres criterios se cumplen'}\n`);
+console.log(`
+${rotos ? `${rotos} criterios ROTOS — hay que recalibrar` : 'los tres criterios se cumplen'}
+`);
 process.exitCode = rotos ? 1 : 0;

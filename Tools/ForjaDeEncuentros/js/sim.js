@@ -280,6 +280,10 @@ export class Simulacion {
     const M = this.malakh;
     if (M.estado === ESTADOS.MUERTO) return;
 
+    // Se muestrea en TODOS los ticks. Si solo se midiera al atacar, el "anterior"
+    // seria de hace medio segundo y la lectura no valdria nada.
+    M.alejandose = this._seAleja(M, this.agente(M.objetivoId), dt);
+
     M.bloqueando = false;
     M.tEstado += dt;
 
@@ -394,7 +398,15 @@ export class Simulacion {
 
     if (intencion.accion === 'atacar' || intencion.accion === 'atacarPesado') {
       const perfil = perfilAtaque(M, this.cal, this.armas, intencion.accion === 'atacarPesado');
-      if (obj && this._enAlcance(M, obj, perfil.alcance) && M.stamina >= (perfil.costeStamina || 0)) {
+      // La embestida deja LANZAR el ataque desde mas lejos, contando con que el cuerpo
+      // cubre el resto — PERO SOLO CONTRA QUIEN SE ACERCA. Medido: abrirla siempre da
+      // -19% contra dos Lanceros y +84% contra el Arquero del balcon, porque te
+      // comprometes desde 336, embistes 112, el arquero ya no esta y la recuperacion se
+      // la come (1% de victorias, 1.8 ataques por combate). Un jugador no hace eso: no
+      // carga contra quien huye. La condicion es esa, y no un porcentaje inventado.
+      const abre = perfil.embestidaAbreAtaque && (perfil.embestida || 0) > 0 && !M.alejandose;
+      const alcanceIniciando = perfil.alcance + (abre ? perfil.embestida : 0);
+      if (obj && this._enAlcance(M, obj, alcanceIniciando) && M.stamina >= (perfil.costeStamina || 0)) {
         if (!perfil.necesitaVision ||
             hayVision(M.pos, M.cota, obj.pos, obj.cota, this.coberturas, this.cal.malakh.alturaOjos)) {
           this._iniciarAtaque(M, perfil);
@@ -412,7 +424,12 @@ export class Simulacion {
       // watchdog. Medido: 180 s parado a 5 m de un escudero con 16 de vida.
       const ciego = perfil.necesitaVision &&
         !hayVision(M.pos, M.cota, obj.pos, obj.cota, this.coberturas, this.cal.malakh.alturaOjos);
-      const parada = (ciego ? this.cal.malakh.ataqueLigero.alcance : perfil.alcance) * 0.7;
+      // Quien embiste NO se planta en la cara: se queda fuera y entra de golpe. Si la
+      // parada no se extiende tambien, la puerta de ataque abierta no sirve de nada
+      // —cuando ataca ya esta pegado— y el arma pierde su gesto entero.
+      const fuera = perfil.embestidaAbreAtaque && !M.alejandose ? (perfil.embestida || 0) : 0;
+      const parada = (ciego ? this.cal.malakh.ataqueLigero.alcance
+                            : perfil.alcance + fuera) * 0.7;
       this._avanzarHacia(M, obj, parada, dt);
     }
   }
@@ -559,6 +576,19 @@ export class Simulacion {
     A.estado = ESTADOS.ANTICIPACION;
     A.tEstado = 0;
     A.accion = { ...perfil, yaGolpeo: false };
+    // Embestida. El pack de la Lanza no alarga el brazo: ADELANTA EL CUERPO. Medido
+    // sobre el root de las secuencias, el avance esta entero en los primeros 0.4 s
+    // del golpe y para en seco. Se recorta para no atravesar al objetivo.
+    if (perfil.embestida) {
+      const blanco = A.bando === 'malakh' ? this.agente(A.objetivoId) : this.malakh;
+      if (blanco && blanco.estado !== ESTADOS.MUERTO) {
+        const hueco = dist(A.pos, blanco.pos) - (blanco.radio || 0) - perfil.alcance * 0.6;
+        A.accion.embestidaRestante = Math.max(0, Math.min(perfil.embestida, hueco));
+        A.accion.embestidaDir = normaliza(resta(blanco.pos, A.pos));
+      } else {
+        A.accion.embestidaRestante = 0;
+      }
+    }
     if (A.bando === 'malakh') A.stamina -= perfil.costeStamina || 0;
     this._evento('ataque', {
       agente: A.id,
@@ -576,6 +606,14 @@ export class Simulacion {
     if (t < ini) A.estado = ESTADOS.ANTICIPACION;
     else if (t <= fin) A.estado = ESTADOS.ACTIVO;
     else A.estado = ESTADOS.RECUPERACION;
+
+    // El avance se gasta durante la anticipacion, y va por _mover: muros, barandillas
+    // y limites de arena valen igual que andando.
+    if (a.embestidaRestante > 0 && t < ini && ini > 0) {
+      const paso = Math.min(a.embestidaRestante, (a.embestida / ini) * dt);
+      this._mover(A, escala(a.embestidaDir, paso));
+      a.embestidaRestante -= paso;
+    }
 
     if (A.estado === ESTADOS.ACTIVO && !a.yaGolpeo) {
       a.yaGolpeo = true;
@@ -1143,6 +1181,31 @@ export class Simulacion {
 
   /** Oleadas que todavia no han entrado. */
   oleadasPendientes() { return (this.oleadas || []).filter(o => !o.activada); }
+
+  /**
+   * ¿Se esta ALEJANDO el objetivo? Se mide sobre la distancia, no sobre el arquetipo:
+   * un Lancero que rodea tambien se aleja, y un Arquero acorralado contra la
+   * barandilla ya no.
+   *
+   * VA SUAVIZADO, Y ESTO NO ES COSMETICA. Con un booleano por tick, la distancia de
+   * parada saltaba entre 157 y 235 en ticks alternos y Malakh se pasaba el combate
+   * retrocediendo y avanzando en el sitio: 1.8 ataques por combate y 1% de victorias
+   * contra el Arquero. Una media movil de la velocidad radial lo deja quieto.
+   */
+  _seAleja(A, O, dt) {
+    if (!O) { A._velRadial = 0; return false; }
+    const d = dist(A.pos, O.pos);
+    const mismo = A._idObjetivo === O.id;
+    if (mismo && A._distObjetivo != null && dt > 0) {
+      const v = (d - A._distObjetivo) / dt;
+      A._velRadial = 0.85 * (A._velRadial || 0) + 0.15 * v;
+    } else {
+      A._velRadial = 0;
+    }
+    A._distObjetivo = d;
+    A._idObjetivo = O.id;
+    return (A._velRadial || 0) > 40;   // cm/s: por debajo es baile, no retirada
+  }
 
   _enAlcance(A, O, alcance) {
     if (Math.abs((O.cota || 0) - (A.cota || 0)) > 120) return false;
