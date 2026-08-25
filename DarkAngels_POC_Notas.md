@@ -12830,3 +12830,46 @@ sigue siendo idempotente aunque los nodos se renumeren.
 —`ContainsItem` sobre `EnemigosActivos`— impida que se reinicie el árbol cada 0,5 s. Si
 ese guardia fallara, el enemigo no llegaría a rematar un solo golpe y se notaría al
 instante.
+
+### Probado en PIE (2026-08-25)
+
+Las tres cosas que sólo se podían ver jugando, y las tres salen bien.
+
+**1. El `Oleada5` funciona en el motor.** Al sellar en juego: `MaxOleada = 5`,
+`OleadasEnemigos = [1,2,3,4,5]` y **un solo enemigo con el árbol corriendo** — los otros
+cuatro en `False`. El quinto ya no arranca despierto.
+
+**2. Despierta al acercarse.** Con el jugador a 100 cm del Vigilante de la oleada 4:
+
+```
+                                      antes            despues
+Lancero          (oleada 1)     arbol=True        arbol=True
+Escudo linea     (oleada 2)     arbol=False       arbol=False
+Balcon firmam.   (oleada 3)     arbol=False       arbol=False
+Vigilante claro  (oleada 4)     arbol=False   ->  arbol=True     <-
+Balcon claro     (oleada 5)     arbol=False       arbol=False
+```
+
+Y `OleadaActual` **sigue en 1**: despierta al enemigo suelto, no adelanta su oleada.
+Los otros tres siguen dormidos, así que el radio no se está desbordando.
+
+**3. El guardia aguanta, que era el riesgo real.** Si `ContainsItem` fallara,
+`RestartLogic` correría cada 0,5 s y el enemigo no remataría un solo golpe. Dos pruebas:
+
+- `EnemigosActivos` se quedó en **2 durante 60 s de juego** (t=185 → t=246), o sea unas
+  120 pasadas del watchdog. Si el guardia no filtrara, el array habría crecido en uno
+  por pasada.
+- Y el despertado **pelea de verdad**: fijó al jugador en su blackboard (`Target =
+  BP_Malakh_DCS_C_0`), recorrió de (900, 150) a (514, 317) y cerró a 125 cm. Un árbol
+  que se reinicia cada medio segundo no llega a hacer eso.
+
+Notas de método, por si sirven la próxima vez:
+
+- **`editor_play_simulate()` NO es jugar.** Arranca *Simulate*, que no spawnea pawn de
+  jugador, y sin jugador el watchdog ni entra en su rama. Lo que hace falta es
+  `editor_request_begin_play()`.
+- **El sello no salta teleportando** al `BoxComponent` de `Entrada`. Para probar se le
+  llama a `Sellar` con `call_method`.
+- **Al terminar se limpió `Enemigos` en la instancia**, que se había quedado relleno de
+  una prueba de editor. `OleadasEnemigos` es privada y no se puede tocar en la
+  instancia, pero da igual: `LeerOleadas` la vacía y la reconstruye al sellar.
