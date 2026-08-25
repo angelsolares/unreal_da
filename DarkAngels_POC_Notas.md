@@ -13212,3 +13212,60 @@ jugador, lo persigue por media arena y lo mata — el combate completo funciona 
 copia. La distancia de parada exacta no se pudo cronometrar desde fuera (el muestreo por
 MCP es lento para ese baile); la garantía del número es el asset releído más el barrido
 del simulador, que modela exactamente esa geometría.
+
+## Las armas, recalibradas contra la matriz alineada (2026-08-25)
+
+Con los alcances escalados y la IA en 250/240, la matriz quedaba con un criterio roto y
+dos casos marcados «no da de sí». Ahora **pasa entera**:
+
+```
+   problema      espada     Lanza    Espadon    Escudo      Arco   Estandarte
+   Guardia       49 dmg       +2%    [-37%]       +2%      +74%       +102%
+   Cierre        10 dmg    [-45%]     +248%       -1%    +1002%      +1059%
+   Compromiso    11 dmg      -23%      -14%    [-40%]      -18%       +326%
+   Mole         101 dmg       +0%    [-47%]       +0%      -84%        -58%
+   Formacion    102 dmg       +8%      -63%       +2%      +12%         +1%
+
+   [OK] Guardia    <- Espadon  -37%      [OK] Compromiso <- Escudo   -40%
+   [OK] Cierre     <- Lanza    -45%      [OK] Mole       <- Espadon  -47%
+   los tres criterios se cumplen
+```
+
+Los cuatro counters en banda (−30..−55%), la espada nunca es la peor opción, y **ya
+ningún caso se marca «no da de sí»**: todos tienen margen real.
+
+### Los tres cambios, y por qué
+
+**Lanza: fuera el empuje del ligero, y deja de pagar impuesto de daño** (17 → 20).
+El empuje en el golpe rápido era **veneno medido**: contra dos Lanceros daba **+389%**
+de daño recibido aun subiéndole el daño a 20, porque cada golpe les regalaba una
+aproximación nueva. Quitándolo: **−45%**, en banda. APARTAR sobrevive donde es una
+*decisión* —el pesado (empuje 260) y el descarte—, no como impuesto sobre cada golpe.
+
+**Espadón: 22 → 28 de daño, 1,25 → 1,5 s, armadura 0,5 → 0,4.** Aquí el mando estaba
+cambiado: la armadura **no** gobierna la Mole (bajarla 0,5 → 0,3 sólo movía −85% → −79%)
+pero destroza la Guardia (+1% → +42%). Quien gobierna la Guardia es el **daño**. La
+única combinación que clava las dos casillas a la vez es 28 / 1,5 s / 0,4: Guardia
+−37%, Mole −47%. ROMPER es eso: menos golpes, más pesados, que la guardia no para.
+
+**Arco: 28 → 24 de daño y 12 → 8 flechas.** El carcaj era un borrador de Moles: 12 × 28
+= 336 de daño gratis desde lejos, −99% contra un Heraldo de 200 hp. Con 8 × 24 = **192 <
+200** ya no puede matarlo solo — obliga a rematar en corto. Compromiso no se mueve.
+
+### Y una sección de la matriz que había quedado mintiendo
+
+«Qué compraría alargar el asta» seguía comparando 245 / 265 / 320, que son **unidades de
+animación**: tras el rebaseo esa tabla decía que la Lanza a 245 recibía un +551% contra
+dos Lanceros, que es sencillamente lo que pasa si le recortas el alcance a la mitad.
+Ahora va en centímetros de mundo (448 / ~484 / ~585) y dice algo útil: **el montage de la
+Lanza (~484) compra Guardia (−38%) y Mole (−28%) sin perder su propio caso.**
+
+### Lo que queda abierto
+
+- **La receta sigue con la ventaja en aviso** (`VV~V~VVVV`, 94% a espada, 0 atascos), y
+  el arsenal ha ido de +30% → +21% → **+15%**. Pero eso ya no es calibración de armas:
+  «Romper la línea» no tiene ninguna casilla donde un arma luzca —ni pareja de guardias,
+  ni Mole—, así que recoger sigue siendo un desvío. Es composición, no perfiles.
+- **El Arco contra la Mole sigue en −84%** aun con el carcaj corto: kitear a un enemigo
+  único y lento sale casi gratis *en el simulador*. La matriz lo trata como margen del
+  caso, no como counter. En el juego el Heraldo probablemente alcanza; queda por ver.

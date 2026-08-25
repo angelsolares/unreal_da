@@ -41,8 +41,7 @@
         "alcance": 448,
         "arco": 100,
         "costeStamina": 12,
-        "dano": 17,
-        "empuje": 150
+        "dano": 20
       },
       "ataquePesado": {
         "duracion": 1.5,
@@ -64,7 +63,7 @@
         "alcance": 2600,
         "aturde": true
       },
-      "porQue": "Cambio de verbo por medida, dos veces. Su premisa era el ALCANCE, y el alcance no existe: 245 cm contra los 241 de la espada, porque los cuatro de melé comparten animacion. La segunda premisa fue INTERRUMPIR, y salio peor que no hacer nada —la lanza con el perfil exacto de la espada mas la interrupcion recibia 86 de daño contra los 60 de la espada sola—, porque en este juego abrir un hueco solo sirve si puedes usarlo, y con dos encima lo gastas comprometiendote mientras el otro te cobra. Lo que queda en pie es APARTAR: el campo \"empuje\" estaba MEDIDO en la calibracion desde agosto y el simulador ni lo miraba. Al que empujas se levanta lejos y tiene que volver, y eso es lo unico que fabrica espacio en un juego donde retroceder no existe. Rinde -18% contra dos Lanceros, por debajo de la banda, y eso NO se arregla con numeros: ese caso no da de si.",
+      "porQue": "Recalibrada el 25/08 contra la matriz alineada (alcances escalados, IA a 250/240). El empuje EN EL LIGERO era veneno medido: +389% de daño contra dos Lanceros aun pagando dano 20, porque cada golpe les regalaba una aproximacion nueva; sin el, -45% y en banda. APARTAR sobrevive donde es una decision: el pesado (empuje 260) y el descarte. El ligero deja de pagar impuesto de daño (17 -> 20, el de la espada): su identidad no era ser peor espada. En el motor: Stat.Damage +10 y el empuje del pesado como notify propio.",
       "pendiente": "MEDIDO PERO NO APLICADO, 2026-08-25. El alcance sigue en 245 porque en el juego la Lanza TODAVIA usa la animacion compartida de DCS: el montage propio (M_DA_Lanza_AtaqueLigero_01) existe pero la fila 1 de DT_Player_1H_Montages sigue apuntando a los montages de la espada, asi que nadie lo dispara. Cuando se enganche, este numero pasa a ~265: midiendo con UN MISMO metodo el combo ligero de la espada (264,2 de media) y el de la lanza (288,6), la lanza llega un 9,2% mas, y ese 9,2% sobre los 243 registrados dan 265. Se da como RATIO y no como valor absoluto porque mi metodo (maximo entre los seis ejes del hueso) sale un 9% alto frente al que produjo los 221,3 y 264,1 originales, y una calibracion no se reescribe con un metodo distinto del que la creo."
     },
     "arco_del_firmamento": {
@@ -73,7 +72,7 @@
       "dosManos": true,
       "recurso": {
         "tipo": "municion",
-        "cantidad": 12
+        "cantidad": 8
       },
       "ataqueLigero": {
         "duracion": 1.6,
@@ -82,7 +81,7 @@
         "alcance": 2400,
         "arco": 6,
         "costeStamina": 8,
-        "dano": 28,
+        "dano": 24,
         "proyectil": true,
         "velocidad": 3800,
         "gastaMunicion": 1,
@@ -99,7 +98,7 @@
         "danoPorFlechaRestante": 8,
         "aturde": false
       },
-      "porQue": "El unico que ya funcionaba antes de esta revision, y por eso no se le toca un numero. Contra el Arquero del balcon da -73%, el mejor de toda la matriz, simplemente porque no hace falta cruzar. Su verbo no es matar mejor, es LLEGAR. OJO: en melé es un muro (42% de victoria contra dos Escuderos), y eso NO se arregla con numeros — se arregla dejando que Malakh vuelva a la espada cuando quiera, que es lo que el §5.2 promete y hoy solo pasa al cambiar, sacrificar o purgar."
+      "porQue": "Recalibrado el 25/08: el carcaj era un borrador de Moles — 12 flechas x 28 = 336 de daño gratis desde lejos, -99% contra el Heraldo. Con 8 x 24 = 192 < 200 hp ya no puede matarlo solo: obliga a rematar en corto. Compromiso no se mueve (-18%). QUEDA ABIERTO: incluso corto, kitear a un enemigo unico lento sale casi gratis en el simulador (-84%); la matriz lo trata como margen, no como counter, y en el juego el Heraldo probablemente alcanza. LLEGAR sigue siendo su verbo."
     },
     "escudo_celestial": {
       "nombre": "Escudo Celestial",
@@ -138,15 +137,15 @@
         "tipo": "persistencia"
       },
       "ataqueLigero": {
-        "duracion": 1.25,
+        "duracion": 1.5,
         "impacto": 0.55,
         "ventana": 0.16,
         "alcance": 448,
         "arco": 120,
         "costeStamina": 14,
-        "dano": 22,
+        "dano": 28,
         "rompeGuardia": true,
-        "armaduraDeCompromiso": 0.5
+        "armaduraDeCompromiso": 0.4
       },
       "ataquePesado": {
         "duracion": 1.9,
@@ -158,7 +157,7 @@
         "dano": 38,
         "multiObjetivo": true,
         "rompeGuardia": true,
-        "armaduraDeCompromiso": 0.5
+        "armaduraDeCompromiso": 0.4
       },
       "descarte": {
         "nombre": "Golpe de suelo",
@@ -170,7 +169,7 @@
         "aturde": true,
         "rompeGuardia": true
       },
-      "porQue": "PEGA MENOS QUE LA ESPADA A PROPOSITO (17,6 de dps contra 20) y su valor esta en dos cosas: ignora la guardia y te deja plantar los pies. Medido: -50% de daño recibido contra dos Escuderos, -50% contra el Heraldo, y practicamente nada contra un Lancero. La \"armaduraDeCompromiso\" no es un adorno — sin ella el arma era inviable: hacia su trabajo (cero golpes bloqueados, +45% de dps) y aun asi recibia el doble de castigo, porque cada animacion larga es una ventana de castigo. Y va condicionada al melé: plantar los pies te deja encajar un espadazo, no una flecha en la cara. Sin esa condicion salia el mejor de cuatro de los cinco casos, y entonces deja de ser un counter para ser un arma mejor."
+      "porQue": "Recalibrado el 25/08 contra la matriz alineada. El mando estaba cambiado: la armadura no gobierna la Mole (0.5 -> 0.3 solo movia -85% -> -79%) pero destroza la Guardia (+1% -> +42%); el daño gobierna la Guardia. La combinacion que clava LAS DOS casillas en banda es 28 de daño / 1,5 s / armadura 0,4: Guardia -37%, Mole -47%. ROMPER es eso: menos golpes, mas pesados, que la guardia no para y que no se interrumpen. En el motor: Stat.Damage +18 y Stat.AttackSpeed.Melee negativo."
     },
     "estandarte_ritual": {
       "nombre": "Estandarte ritual",

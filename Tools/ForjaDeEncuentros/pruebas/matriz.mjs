@@ -262,33 +262,30 @@ for (const c of CASOS) {
 //   ~306 cm — 245 x 1.25, el punto en el que Malakh puede quedarse FUERA del
 //             alcance enemigo y pinchar. Es donde el espaciado empieza a
 //             funcionar, y con el cambia como se pelea, no solo cuanto llegas.
-// EL PACK DE LA LANZA, MEDIDO — y por que aqui NO aparece ninguna "embestida".
+// EL PACK DE LA LANZA, MEDIDO — y todo en CENTIMETROS DE MUNDO.
 //
-// Se compro el Spear Animation Pack esperando ALCANCE. Con el criterio VIEJO —del
-// root del INSTANTE a la punta— sale 224 cm y parece que llega menos que la espada.
-// Con el criterio QUE USA ESTA CALIBRACION —desde donde el atacante SE COMPROMETE,
-// root motion incluido— llega mas: midiendo espada y lanza con el mismo metodo, el
-// combo ligero de la espada da 264,2 de media y el de la lanza 288,6, un 9,2% mas.
-// Sobre los 243 registrados, eso son ~265.
+// OJO: hasta el 25/08 esta seccion comparaba 245 / 265 / 320, que son UNIDADES DE
+// ANIMACION. Tras descubrir que el mesh va a escala 1,8273 esos numeros dejaron de
+// significar nada aqui —la tabla decia que la Lanza a 245 recibia un +551% contra dos
+// Lanceros, que es simplemente lo que pasa si le recortas el alcance a la mitad—.
+// Ahora se comparan los valores de mundo, que es lo que el simulador usa.
 //
-// Hubo un rodeo por creer que el avance era una mecanica APARTE que habia que sumarle
-// al arma. No lo es: ya esta DENTRO de `alcance`, en los dos bandos, y sumarlo otra
-// vez lo cuenta dos veces. Esa exploracion vive en pruebas/embestida.mjs y ahi se queda.
-//
-// Y el alcance de la Lanza sigue en 245 A PROPOSITO: el montage propio existe, pero la
-// fila 1 de DT_Player_1H_Montages sigue apuntando a la espada, asi que en el juego la
-// Lanza todavia no lo usa. Los 265 entran el dia que se enganche.
+// La escala no cambia la conclusion sobre el pack, solo la unidad: con el criterio de
+// la casa el combo ligero de la espada da 264,2 y el de la lanza 288,6, un 9,2% mas.
+// Sobre los 444 de mundo eso son ~484.
+const ESCALA = 1.8273;
+const cm = (u) => Math.round(u * ESCALA);
 const ANIMAR = [
-  { etq: "Lanza hoy (245)",                 fam: "lanza_del_alba",   alcance: 245 },
-  { etq: "Lanza con su montage (265)",      fam: "lanza_del_alba",   alcance: 265 },
-  { etq: "Lanza 320 (donde esta el techo)", fam: "lanza_del_alba",   alcance: 320 },
-  { etq: "Espadon 320 (hipotesis)",         fam: "espadon_alabarda", alcance: 320 }
+  { etq: "Lanza hoy (448)",                 fam: "lanza_del_alba",   alcance: 448 },
+  { etq: "Lanza con su montage (~484)",     fam: "lanza_del_alba",   alcance: cm(265) },
+  { etq: "Lanza al techo del pack (~585)",  fam: "lanza_del_alba",   alcance: cm(320) },
+  { etq: "Espadon a ~585 (hipotesis)",      fam: "espadon_alabarda", alcance: cm(320) }
 ];
 console.log("");
-console.log("=== QUE COMPRARIA ALARGAR EL ASTA ===");
+console.log("=== QUE COMPRARIA ALARGAR EL ASTA (cm de mundo) ===");
 console.log("");
 console.log("   " + "variante".padEnd(34) + CASOS.map(c => c.etiqueta.padStart(13)).join(""));
-console.log("   " + "espada base (243)".padEnd(34)
+console.log("   " + "espada base (444)".padEnd(34)
   + CASOS.map(c => (base[c.clave].dano.toFixed(0) + " dmg").padStart(13)).join(""));
 for (const v of ANIMAR) {
   const A = JSON.parse(JSON.stringify(armas));
