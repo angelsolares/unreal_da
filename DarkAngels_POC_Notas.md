@@ -13156,3 +13156,59 @@ que siguen dimensionadas para un alcance de 243. Un criterio de la matriz queda 
 
 **No se ha tocado nada de eso**: cambiar `distanciaPreferida` es tocar el árbol de DCS, y
 redimensionar arenas es rehacer el §6 entero. Es la siguiente decisión, no un descuido.
+
+## Las distancias de la IA, alineadas con el alcance nuevo (2026-08-25)
+
+Con la espada en 444, el compromiso de la IA seguía en los números viejos: el MoveTo de
+melé paraba a 150 de superficie (242 de centro) y el enemigo cruzaba ~250 cm de arco de
+espada **recibiendo golpes gratis** — dos Lanceros costaban 7 de daño donde antes 84.
+
+### El número no es una proporción: es un barrido
+
+Escalar el compromiso en proporción al alcance (preferida 366) **mata el encuentro**:
+0% de victorias, porque la defensa del jugador (esquiva, pociones, i-frames) no escaló
+con las distancias. El barrido en la Forja:
+
+```
+   dec/pref        Cierre        Guardia        Mole        receta
+   208/200 (hoy)   7 (100%)     19 (100%)    89 (100%)     VVXV~VVVV  94%  armas +30%
+   250/240          ~25          43 (100%)      ~95        VV~V~VVVV  94%  armas +21%   <-
+   260/240         44 (96%)      45           97 (72%)     V~~V~VVVV  86%  armas  +9%
+   280/260         44 (96%)      47           83 (87%)     V~~V~VVV~  83%
+   300/280         67 (82%)      45           97 (72%)     V~XV~VVVV  80%
+   340/320        112 (20%)       —             —          el acantilado
+   380/366        120 (0%)        —             —          proporcion pura: muerto
+```
+
+**250/240 es el único sin ningún rojo**: ganable en verde (94%), la ventaja sube de
+rojo a aviso (+30% → +21%), hp 74, cero atascos. Y mapea limpio al motor: parada 240 =
+**AcceptableRadius 190** + 50 de cápsula, decisión 250 justo encima de la parada — el
+mismo patrón que tenían los valores medidos (208 sobre 200).
+
+**El Arquero no se toca.** Se barrió subirle la `distanciaMinima` (450/550/650) y sale
+al revés otra vez: retrocediendo no dispara, el caso se abarata (11 → 7 de daño).
+
+### En el motor: árbol propio, DCS intacto
+
+La pasada es [`Tools/MCP/bt_guerrero_da.py`](Tools/MCP/bt_guerrero_da.py). No modifica
+`BT_WarriorAI`: **duplica** el árbol a `Content/DarkAngels/AI/BT_DA_Guerrero`, le sube
+el `AcceptableRadius` del MoveTo de melé a 190, y apunta el `BehaviorTreeAsset`
+—variable heredada de `BP_BaseAI`— de los cuatro BP de melé a la copia. Releído todo:
+la copia en 190, los cuatro BP apuntando, y `BT_WarriorAI` de DCS con sus 150/50 de
+siempre. El resto de umbrales del árbol se quedan (el `Distance Check > 250` del ataque
+especial ahora dispara desde la posición de reposo, que es la dirección buena).
+
+**La copia es contenido de pago duplicado y va en `.gitignore`**: lo que viaja en git es
+la pasada que la regenera.
+
+Dos trampas nuevas del `BehaviorTreeService`, pagadas con una pasada cada una:
+- `SetNodePropertyValue` quiere la ruta **con índices** (`Sequence[2]`) y no acepta el
+  guid; el JSON de `GetTree` la trae hecha en el campo `path`.
+- Devuelve un **struct** (`BTPropertySetResult`), no un bool: el fallo es "truthy" y un
+  `if not resultado` no salta jamás. Hay que mirar `.success`.
+
+Verificado en PIE: el Lancero corre `BT_DA_Guerrero` (leído del actor vivo), fija al
+jugador, lo persigue por media arena y lo mata — el combate completo funciona sobre la
+copia. La distancia de parada exacta no se pudo cronometrar desde fuera (el muestreo por
+MCP es lento para ese baile); la garantía del número es el asset releído más el barrido
+del simulador, que modela exactamente esa geometría.

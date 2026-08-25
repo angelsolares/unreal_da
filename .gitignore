@@ -224,3 +224,7 @@ Content/HangingPlantsVol03/
 Tools/ForjaDeEncuentros/node_modules/
 Tools/ForjaDeEncuentros/package-lock.json
 Tools/ForjaDeEncuentros/.env
+
+# BT_DA_Guerrero es una COPIA de BT_WarriorAI (DCS, de pago) con un valor cambiado.
+# No se redistribuye: lo regenera Tools/MCP/bt_guerrero_da.py.
+Content/DarkAngels/AI/BT_DA_Guerrero.uasset
