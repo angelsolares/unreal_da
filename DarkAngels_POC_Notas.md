@@ -13364,3 +13364,50 @@ Y contra un duelo plantado sobreviven exactamente las armas de intercambio: el
 velocidades reales, el que rompe parejas es el Espadón, no la Lanza. Reasignar counters
 es tocar el diseño del §4, así que se queda medido y SIN tocar: los perfiles de armas no
 se han movido en esta pasada.
+
+## Cómo pelea una pareja de verdad — y el simulador no lo estaba modelando (2026-08-25)
+
+Medido en PIE con el árbol nuevo. **El duelo plantado del simulador no existe en el
+motor.**
+
+### 1. No se plantan a 240. Se te meten en la cara
+
+```
+   Lancero, muestras en combate (centro a centro):  162 · 124 · 108 · 145 · 146 · 125
+```
+
+Orbitan entre **~110 y 165**, nunca cerca de los 282 que implica el `AcceptableRadius`
+190 que puse esta misma tarde. El motivo estaba a la vista en el árbol y lo dejé pasar:
+hay **un segundo MoveTo, el agresivo de radio 50** (50 + 50 de cápsula enemiga + 42 de
+Malakh ≈ **142**), que documenté como «sabor (presión), no compromiso». Pues es el que
+manda cuando ya están peleando. El que yo cambié gobierna la aproximación, no el duelo.
+
+O sea que **mi alineación de 250/240 apuntó al sitio equivocado**: se calibró contra el
+modelo del simulador (barrido de puertas), no contra lo que hace el motor, que dice ~140
+— más cerca incluso que los 200 originales.
+
+### 2. Y pegan mucho menos de lo que el simulador cree
+
+Con el jugador quieto y sin defenderse —un suelo, no un combate justo—, la pareja le
+quitó **45 de vida en 16 s (~2,8 dmg/s)**. El caso *Cierre* del simulador da 114 de daño
+en 16 s contra un Malakh que **sí** esquiva y ataca.
+
+### Lo que esto significa
+
+Los 3 criterios rotos de la matriz tras bajar la velocidad a 185 **son un artefacto de
+un modelo que el motor no reproduce**, no un fallo de diseño. El simulador tiene a los
+enemigos plantados a distancia de arma alternando picas; el motor los tiene encima,
+entrando y saliendo, y pegando menos.
+
+**No se ha rebaseado nada más.** Dos cosas quedan sobre la mesa, y son distintas:
+
+- **La distancia de compromiso**: el motor dice ~140 centro a centro. Corregirlo obliga a
+  revisar si el `AcceptableRadius` 190 de `BT_DA_Guerrero` sirve para algo, o si lo que
+  hay que tocar es el MoveTo agresivo de radio 50.
+- **El modelo de duelo del simulador**: mientras `_pasoEnemigo` mantenga al enemigo a
+  `distanciaPreferida` picando, la matriz seguirá midiendo una pelea que no ocurre.
+
+Detalle de método: durante la prueba el jugador murió y la arena hizo lo suyo —
+`ReintentarAlMorir` está en `False`, así que abrió y repobló. Los enemigos respawneados
+salen **sin tags y con etiqueta por defecto** (`BP_DA_Lancero0`), que es la conducta ya
+documentada. El nivel del editor queda intacto: 21 actores, los cinco con sus oleadas.
