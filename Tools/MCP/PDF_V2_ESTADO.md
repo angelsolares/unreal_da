@@ -92,12 +92,17 @@ puerta sí está verde.
 
 **Lo que falta para que exista en el juego, y es lo siguiente:**
 
-- **`BP_DA_Arena` no sabe escalonar.** ✅ Leído del CDO: sus propiedades son `RadioArena`,
-  `ReintentarAlMorir`, `AutoDetectarEnemigos` y `Enemigos`. Ninguna dice cuándo entra cada uno.
-  Sin eso, exportar la receta coloca a los cinco de golpe — el encuentro que se pierde siempre.
-  Hace falta un entero `OleadaIndice` en el AI y que la arena active la oleada N+1 cuando la N
-  esté limpia, tras `RetardoEntreOleadas` segundos. **El exportador ya manda el número por
-  enemigo y avisa en cabecera si no ha viajado.**
+- ~~`BP_DA_Arena` no sabe escalonar~~ — **hecho el 25/08.** La arena tiene ya
+  `RetardoEntreOleadas` (público, categoría *Oleadas*) y cuatro funciones nuevas: `LeerOleadas`,
+  `AplicarOleadas`, `PedirSiguienteOleada` y `EntrarOleada`. Limpiar la oleada actual ya no abre
+  el sello: pide la siguiente. ✅ **VERIFICADO sobre los actores del nivel** (sin PIE): 5
+  enemigos detectados, `OleadasEnemigos = [1,1,2,3,4]`, `MaxOleada = 4`, y cada `EntrarOleada`
+  incorpora exactamente a quien toca.
+  **El número de oleada viaja en un Tag del actor** (`Oleada2`, `Oleada3`, `Oleada4`; sin tag =
+  primera), no en una variable del AI: los cinco enemigos heredan de `BP_BaseAI`, que es de DCS,
+  y meterle una variable sería una modificación viva de un asset de pago. El exportador lo
+  escribe y lo relee. **Queda por ver en PIE** que `StopLogic`/`RestartLogic` congelen y
+  despierten como se espera.
 - `L_Forja_romper-la-linea.umap` sigue **a medias**: ✅ verificado sobre el binario, tiene 3
   referencias a `BP_DA_Lancero` y **cero** a Vigilante, Arquero, `BP_DA_Arena` y `PlayerStart`.
 - La arena de El Claro funciona, pero **no es ninguna de las cinco**.
@@ -248,11 +253,10 @@ trabajo de construir las arenas, o sea el punto 2 de arriba.
 
 ## Orden sugerido para cerrar
 
-1. **Oleadas en `BP_DA_Arena`** — un `OleadaIndice` por enemigo y la arena activando la
-   siguiente cuando la anterior esté limpia. Son los dos únicos datos que le faltan al motor
-   para que «Romper la línea» exista, y sin ellos exportarla da el encuentro que se pierde
-   siempre. Luego **construirla**, que desbloquea el criterio que falta del §12 y da banco de
-   pruebas real a todo lo demás. La composición ya está medida y validada.
+1. ~~Oleadas en `BP_DA_Arena`~~ — **hecho el 25/08**, y la receta ya está exportada a
+   `L_Forja_romper-la-linea`. Lo siguiente es **jugarla en PIE**: confirmar que los dormidos no
+   se mueven, que la oleada entra a los 3 s de limpiar la anterior, y que el sello se abre al
+   caer el último. Eso cierra el criterio que falta del §12.
 2. ~~El golpe de suelo del Espadón/Alabarda~~ — **hecho el 24/08.**
 3. **Decidir qué pasa con el arco y el escudo base.** Es una decisión de Angel, y hasta que se
    tome, dos familias del §4 no significan nada.

@@ -679,14 +679,12 @@ artista es **la punta por encima de 3 metros desde el root**.
 
 ## Lo que falta
 
-- **`BP_DA_Arena` no sabe escalonar.** Leído del CDO el 25/08/2026, sus
-  propiedades son `RadioArena`, `ReintentarAlMorir`, `AutoDetectarEnemigos` y
-  `Enemigos`: ninguna dice cuándo entra cada uno. El exportador ya manda el
-  número de oleada por enemigo y **avisa en cabecera si no ha viajado**, porque
-  sin eso lo exportado son los cinco de golpe — que es el encuentro que se
-  pierde el 100% de las veces. Hace falta un entero `OleadaIndice` en el AI y
-  que la arena active la oleada N+1 cuando la N esté limpia, esperando
-  `RetardoEntreOleadas`.
+- ~~`BP_DA_Arena` no sabe escalonar~~ — **resuelto el 25/08/2026.** La arena ya
+  lee la oleada de cada enemigo, duerme a los que no toca y pide la siguiente
+  cuando la actual queda limpia. El número viaja en un **Tag del actor**
+  (`Oleada2`, `Oleada3`…), que el exportador escribe y relee; no en una variable
+  del AI, porque los cinco enemigos heredan de `BP_BaseAI`, que es de DCS. El
+  script de la pasada es `Tools/MCP/oleadas_arena.py`.
 - **Siluetas reales en la 3D.** `ThreeJSPOC/` ya tiene los GLB de Malakh, el
   Arcángel y las armas. Los primitivos bastan para juzgar posición y oclusión,
   pero para juzgar *lectura* de silueta el modelo real diría más.

@@ -12355,3 +12355,91 @@ Los perfiles nuevos bajaron la ventaja del arsenal del 24% al 16% y la puerta
 balcón sur de 650 a 700: vuelve a **−21% con la espada sola ganando el 93-96%**,
 ocho puertas en verde y el ámbar estructural del orden. La receta no dependía de
 los números viejos.
+
+## `BP_DA_Arena` aprende a escalonar (2026-08-25)
+
+La Forja llevaba dos pasadas diciendo que «Romper la línea» se gana el 94% con espada
+sola **si los cinco no entran a la vez**. El motor no sabía hacer eso. Ahora sí.
+
+### Lo que tiene la arena ahora
+
+Una variable pública, `RetardoEntreOleadas` (3 s, categoría *Oleadas*), y cuatro
+funciones: `LeerOleadas`, `AplicarOleadas`, `PedirSiguienteOleada` y `EntrarOleada`.
+El cambio que lo hace funcionar está en el watchdog: **limpiar la oleada actual ya no
+abre el sello, pide la siguiente**; sólo se abre cuando no queda nadie en ninguna.
+
+✅ **VERIFICADO sobre los actores del nivel, sin PIE**: 5 enemigos detectados,
+`OleadasEnemigos = [1,1,2,3,4]`, `MaxOleada = 4`, wave 1 = Lancero + Escudero, y cada
+`EntrarOleada` incorpora exactamente a quien toca.
+
+### El número de oleada viaja en un TAG, no en una variable del AI
+
+Los cinco enemigos heredan de `BP_BaseAI`, **que es de DCS**: meterle una variable
+sería una modificación viva de un asset de pago, de las que DCS revierte sin avisar.
+Y ponerla en los cinco Blueprints propios serían cinco variables que mantener.
+
+Un Tag lo tiene todo actor, se edita en *Details > Actor > Tags*, lo escribe el
+exportador sin tocar ningún asset, y funciona sobre enemigos ya colocados.
+`Oleada2`, `Oleada3`, `Oleada4`; sin tag = primera.
+
+**Pero los tags se leen UNA sola vez.** `ReiniciarEncuentro` —el reintento al morir—
+destruye y vuelve a spawnear a cada enemigo desde su clase, y **el actor nuevo no
+conserva los tags de la instancia**. Por eso al sellar se vuelca el número a
+`OleadasEnemigos`, un array paralelo a `Enemigos` que el reintento mantiene índice a
+índice, igual que ya hacía con `TransformsEnemigos`. A partir de ahí nadie vuelve a
+mirar un tag, y `AlMorirElJugador` llama a `AplicarOleadas` para volver a dormir a
+quien toque.
+
+Dormir es `StopLogic` / despertar es `RestartLogic` sobre el Behavior Tree: lo mismo
+que ya hace el botón FREEZE IA del Debug HUD, que está probado en juego.
+
+### Lo que costó: el escritor del DSL tiene menos vocabulario que su lector
+
+Y esto conviene tenerlo escrito, porque **releer un grafo y volver a escribirlo NO es
+una operación segura**. `read_graph_dsl` devuelve `Math|Vector|Vector_GetAbs` y
+`Utilities|NotEqual(Object)`, y `write_graph_dsl` no sabe crear ninguno de los dos.
+Como `vaciar()` corre ANTES de escribir, el primer intento **dejó `BuscarEnemigos` en
+blanco**.
+
+De ahí las dos reglas que ahora lleva `Tools/MCP/oleadas_arena.py`:
+
+1. **Prevuelo.** Cada función se escribe primero en un grafo de usar y tirar. Si falla,
+   no se toca la de verdad. Con eso, la segunda pasada entró entera a la primera.
+2. **`VigilarArena` no se reescribe: se opera.** Usa un nodo de mensaje de interfaz
+   (`CanBeAttacked|IsAlive`) que el escritor no sabe cablear desde un pin de Actor, y
+   un `NotEqual (Object)` que directamente no existe en su catálogo. Ese grafo se tocó
+   nodo a nodo con `VibeUE.BlueprintService`.
+
+Otras dos que salieron por el camino:
+
+- **`BuscarEnemigos` se pudo restaurar sin el nodo prohibido.** El test era
+  `|x| < R AND |y| < R`; escrito como `x < R AND x > -R` es exactamente la misma
+  condición con nodos que el escritor sí conoce.
+- **El render del DSL engaña cuando el flujo converge.** Tras la cirugía, el watchdog
+  se leía como si la rama `else` se hubiera quedado sin salida. No era verdad: las
+  conexiones reales estaban bien. **Verificar sobre `GetConnections`, no sobre el
+  texto.**
+
+### Una variable nueva no se puede tocar hasta hacerla Instance Editable
+
+`AddMemberVariable` la crea privada, y entonces `set_editor_property` sobre la
+instancia falla con *«cannot be edited on instances»* — que es además lo que la hace
+visible en el panel Details. Se arregla con
+`BlueprintEditorLibrary.set_blueprint_variable_instance_editable`. Las de trabajo
+(`OleadaActual`, `MaxOleada`, `EnemigosActivos`, `OleadasEnemigos`) se quedan privadas
+a propósito: enseñarlas sólo ensucia el panel.
+
+Queda una `HayVivosFuturos` sin uso, de un diseño anterior que se resolvió mejor con
+`MaxOleada`. El API de Python no sabe borrar variables; es un clic en el editor.
+
+### Lo que queda por ver, y es en PIE
+
+Que `StopLogic` congele de verdad y `RestartLogic` despierte, que la oleada entre a
+los 3 s de limpiar la anterior, y que el sello se abra al caer el último. La receta ya
+está exportada a `L_Forja_romper-la-linea` con sus tags puestos.
+
+Y una diferencia conocida con el simulador: en la Forja, **al que le pegas despierta**.
+Aquí no — con el árbol parado, un enemigo dormido al que ataques no responde hasta que
+entre su oleada. En «Romper la línea» los dormidos están en balcones o al fondo, así
+que no debería notarse; si al jugarlo molesta, la solución es despertar por proximidad
+en `VigilarArena`.

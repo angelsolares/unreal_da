@@ -283,7 +283,17 @@ def marcar(actor, spec):
     if actor is None:
         return None
     actor.set_actor_label(spec["etiqueta"])
-    actor.tags = [unreal.Name("Forja"), unreal.Name(D["marca"]), unreal.Name(spec["clase"])]
+    tags = [unreal.Name("Forja"), unreal.Name(D["marca"]), unreal.Name(spec["clase"])]
+    # LA OLEADA VIAJA EN UN TAG, y se pone AQUI a proposito: esta funcion
+    # REESCRIBE la lista entera de tags, asi que ponerlo despues lo borraria.
+    #
+    # El numero no vive en una variable del AI porque los cinco enemigos heredan
+    # de BP_BaseAI, que es de DCS: seria una modificacion viva de un asset de
+    # pago. Un tag lo tiene todo actor, se edita en Details > Actor > Tags y no
+    # obliga a tocar ningun Blueprint. BP_DA_Arena lo lee al sellar.
+    if int(spec.get("oleada", 0) or 0) > 1:
+        tags.append(unreal.Name("Oleada" + str(int(spec["oleada"]))))
+    actor.tags = tags
     return actor
 
 def coloca(actor, spec):
@@ -321,23 +331,14 @@ for e in D["enemigos"]:
     a = subsys.spawn_actor_from_class(cls,
         unreal.Vector(e["pos"]["x"], e["pos"]["y"], e["pos"]["z"]),
         unreal.Rotator(0, 0, e["yaw"]))
-    # LA OLEADA (§6). Sin esto los cinco entran a la vez, y eso es un encuentro
-    # DISTINTO del que se simulo: medido, con los cinco de golpe la espada sola
-    # pierde el 100% de las veces, y escalonados gana el 94%.
-    if a is not None and e.get("oleada", 0):
-        puesta = False
-        for nombre in ("OleadaIndice", "Oleada", "IndiceOleada"):
-            try:
-                a.set_editor_property(nombre, int(e["oleada"]))
-                leido = a.get_editor_property(nombre)
-                puesta = int(leido) == int(e["oleada"])
-                break
-            except Exception:
-                continue
-        if not puesta:
-            informe["sinOleadas"].append(e["etiqueta"])
-
     coloca(a, e)
+    # Releer el tag del actor vivo, que es lo unico que prueba que la oleada
+    # viajo. marcar() lo pone, pero aqui se comprueba: el editor devuelve exito
+    # en llamadas que no han hecho nada.
+    if a is not None and int(e.get("oleada", 0) or 0) > 1:
+        esperado = "Oleada" + str(int(e["oleada"]))
+        if esperado not in [str(t) for t in a.tags]:
+            informe["sinOleadas"].append(e["etiqueta"])
     if a and e["arquetipo"] == "portador_del_estandarte":
         informe["avisos"].append(
             "OJO con " + e["etiqueta"] + ": el aura de buff/debuff del Inspector no existe todavia. "
@@ -386,12 +387,17 @@ else:
         if D.get("oleadas"):
             retardos = [o["retardo"] for o in D["oleadas"] if o["retardo"]]
             if retardos:
-                for nombre in ("RetardoEntreOleadas", "MargenEntreOleadas"):
-                    try:
-                        a.set_editor_property(nombre, float(max(retardos)))
-                        break
-                    except Exception:
-                        continue
+                try:
+                    a.set_editor_property("RetardoEntreOleadas", float(max(retardos)))
+                    leido = float(a.get_editor_property("RetardoEntreOleadas"))
+                    if abs(leido - float(max(retardos))) > 0.01:
+                        informe["avisos"].append(
+                            "RetardoEntreOleadas pedido %s y el editor dice %s"
+                            % (max(retardos), leido))
+                except Exception:
+                    informe["avisos"].append(
+                        "BP_DA_Arena no tiene RetardoEntreOleadas: el margen entre"
+                        " oleadas se queda en el que traiga por defecto.")
         # AutoDetectarEnemigos ya viene a True: recoge solo a los BP_BaseAI que
         # caigan dentro del cuadrado, asi que no hay que enumerarlos.
     coloca(a, A)
