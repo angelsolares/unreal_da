@@ -13269,3 +13269,45 @@ Lanza (~484) compra Guardia (−38%) y Mole (−28%) sin perder su propio caso.*
 - **El Arco contra la Mole sigue en −84%** aun con el carcaj corto: kitear a un enemigo
   único y lento sale casi gratis *en el simulador*. La matriz lo trata como margen del
   caso, no como counter. En el juego el Heraldo probablemente alcanza; queda por ver.
+
+## ¿Alcanza el Heraldo al que kitea? No — y por un motivo que no era el que buscaba (2026-08-25)
+
+La duda venía de la matriz: el Arco deja la Mole en −84% incluso con el carcaj corto, y
+la sospecha era que el simulador se equivocaba porque **en el juego el Heraldo corre a
+600 y Malakh a 400**, así que te alcanzaría.
+
+Los CDO lo confirman: los cinco enemigos comparten chasis con `MaxWalkSpeed 600`,
+aceleración 1024 y giro 360; Malakh, 400 / 2048 / 540.
+
+**Pero ese 600 no es la velocidad a la que la IA se mueve.** El árbol de comportamiento
+tiene nodos `Walk` y `Jog` que **reescriben `MaxWalkSpeed` en caliente**. Leído del actor
+vivo en PIE, nunca vale 600:
+
+```
+   MaxWalkSpeed del Lancero, en juego:   185  (Walk)      375  (Jog)
+   MaxWalkSpeed de Malakh, en juego:     400              550 sprint (calibrado)
+```
+
+Y la persecución, medida de punta a punta: soltado a **1200 cm** por delante y dentro de
+su cono, el Lancero recorrió **1047 cm en 9,0 s → 116 cm/s de media**, cerrando hasta 153.
+
+O sea que **el enemigo es más lento que el jugador andando**, no más rápido. Kitear no
+sólo funciona: funciona mejor de lo que decía el simulador. La sospecha era al revés.
+
+Y hay un segundo tope que ayuda todavía más: **a 2596 cm el Lancero soltó el objetivo**
+(`Target: None`) y se paró en seco — el `LoseSightRadius` es 2500 y el arco llega a 2400.
+
+### Lo que esto significa para la calibración
+
+`arquetipos.*.velocidad = 600` está mal, y su procedencia lo delata: *«medido —
+MaxWalkSpeed 600»*. Eso es **el techo del chasis, no la velocidad que usa la IA**. Es
+exactamente el mismo error de familia que el del alcance: leer un número del asset y
+darlo por bueno sin verlo correr.
+
+**No se ha tocado**, y a propósito: los 116 cm/s de media incluyen la adquisición y el
+giro inicial, y el techo observado de `Jog` es 375. La velocidad de persecución sostenida
+está entre esos dos y **no la he aislado limpiamente** — hace falta una medida con el
+jugador en movimiento continuo, que desde fuera por MCP no sale fina. Bajar `velocidad`
+de 600 a ~375 movería otra vez toda la matriz, así que es decisión aparte.
+
+El nivel del editor queda intacto: 21 actores, los cinco enemigos con sus oleadas 1-5.
