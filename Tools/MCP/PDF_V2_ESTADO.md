@@ -101,8 +101,9 @@ puerta sí está verde.
   **El número de oleada viaja en un Tag del actor** (`Oleada2`, `Oleada3`, `Oleada4`; sin tag =
   primera), no en una variable del AI: los cinco enemigos heredan de `BP_BaseAI`, que es de DCS,
   y meterle una variable sería una modificación viva de un asset de pago. El exportador lo
-  escribe y lo relee. **Queda por ver en PIE** que `StopLogic`/`RestartLogic` congelen y
-  despierten como se espera.
+  escribe y lo relee. ✅ **PROBADO EN PIE el 25/08**: al sellar sólo corre el árbol de la
+  oleada 1; cada oleada limpia despierta a la siguiente sin abrir el sello; y al caer el
+  quinto, `Estado = 2` y los cuatro muros a `NO_COLLISION`.
 - `L_Forja_romper-la-linea.umap` sigue **a medias**: ✅ verificado sobre el binario, tiene 3
   referencias a `BP_DA_Lancero` y **cero** a Vigilante, Arquero, `BP_DA_Arena` y `PlayerStart`.
 - La arena de El Claro funciona, pero **no es ninguna de las cinco**.

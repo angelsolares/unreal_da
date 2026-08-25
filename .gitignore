@@ -11,6 +11,7 @@ Content/Sword_Takedown/
 Content/Throwing_Pack/
 Content/KnockdownGetUp/
 Content/Sword_Duel_Pack/
+Content/Spear/
 
 # ---------------------------------------------------------------
 # Carpetas generadas por Unreal — se recrean solas
@@ -187,6 +188,7 @@ Content/__ExternalActors__/Throwing_Pack/
 Content/__ExternalActors__/KnockdownGetUp/
 Content/__ExternalActors__/Anime_Dual_Dagger/
 Content/__ExternalActors__/Sword_Duel_Pack/
+Content/__ExternalActors__/Spear/
 Content/__ExternalObjects__/
 
 # Cache de los scripts de Python del MCP.

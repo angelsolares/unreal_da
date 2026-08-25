@@ -12432,11 +12432,36 @@ a propósito: enseñarlas sólo ensucia el panel.
 Queda una `HayVivosFuturos` sin uso, de un diseño anterior que se resolvió mejor con
 `MaxOleada`. El API de Python no sabe borrar variables; es un clic en el editor.
 
-### Lo que queda por ver, y es en PIE
+### Probado en PIE, el ciclo entero (2026-08-25)
 
-Que `StopLogic` congele de verdad y `RestartLogic` despierte, que la oleada entre a
-los 3 s de limpiar la anterior, y que el sello se abra al caer el último. La receta ya
-está exportada a `L_Forja_romper-la-linea` con sus tags puestos.
+✅ **Funciona de punta a punta.** Lanzado con `EditorAppToolset.StartPIE` sobre
+`L_Forja_romper-la-linea`, sellando la arena por código y matando cada oleada con
+`StatsManager.SetStat(Stat.Health.Current, 0)`:
+
+| momento | lo que se midió |
+|---|---|
+| al sellar | `OleadasEnemigos = [1,1,2,3,4]`, `MaxOleada = 4`, `EnemigosActivos` = Lancero + Vigilante |
+| al sellar | **árbol corriendo sólo en la oleada 1**; las oleadas 2, 3 y 4 con `is_running = False` |
+| oleada 1 limpia | `OleadaActual` pasa a 2, el arquero del balcón norte arranca su árbol, el resto sigue parado |
+| oleada 2 limpia | `OleadaActual` 3, despierta el vigilante del claro |
+| oleada 3 limpia | `OleadaActual` 4, despierta el arquero del balcón sur |
+| último muerto | **`Estado = 2`** y los cuatro muros a `NO_COLLISION`: el sello se abre |
+
+Y el sello **no se abrió antes de tiempo** en ninguna de las tres transiciones, que
+era justo el riesgo: el watchdog corre cada 0,5 s y antes habría abierto en cuanto la
+primera oleada cayera.
+
+Tres cosas prácticas que salieron de la sesión de PIE:
+
+- **PIE ya no tumba el servidor MCP.** Se pudo inspeccionar el mundo de juego entero
+  desde fuera mientras corría.
+- **El mundo de PIE se pide con `UnrealEditorSubsystem.get_game_world()`**; el
+  `get_editor_world()` de siempre devuelve el otro y sus arrays salen vacíos.
+- **A un enemigo de DCS no se le mata con `GameplayStatics.apply_damage`** — no usa
+  ese camino. Lo que sí funciona es `StatsManager.SetStat` con el tag
+  `Stat.Health.Current` a 0, y el `GameplayTag` se construye en Python con
+  `import_text('(TagName="Stat.Health.Current")')`, porque `tag_name` es de solo
+  lectura.
 
 Y una diferencia conocida con el simulador: en la Forja, **al que le pegas despierta**.
 Aquí no — con el árbol parado, un enemigo dormido al que ataques no responde hasta que
