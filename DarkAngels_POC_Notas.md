@@ -13670,3 +13670,121 @@ El cambio es correcto de origen y arregla las dos puertas que llevaban el día r
 hasta que la esquiva no deje de encajonar a Malakh contra los muros, adoptarlo cambia un
 problema por otro. El orden sensato es: **primero el encajonamiento, luego el par
 327 + 106.**
+
+## El encajonamiento no era la esquiva: era una trampa de un solo sentido
+
+**25/08.** Fui a arreglar «Malakh se estampa contra el muro» y resultó que la esquiva sólo
+lo *llevaba* al sitio donde el fallo esperaba. El fallo era otro, y estaba en `_mover`.
+
+### Lo que pasaba de verdad
+
+Instrumentando una de las 110 partidas atascadas, el culpable no era Malakh sino el
+**Escudero, parado 30 segundos** en (−2200, −85) con Malakh vivo a 470 cm y los dos en
+estado `libre`. Traza tick a tick:
+
+```
+t=170.03  avanzar: punto=(-2200,390)  parada=93  dObj=475  vel=185
+          mover: delta=(0.00, 6.17)  ->  real=(0.00, 0.00)
+t=170.07  (idéntico)   ... y así 900 ticks
+```
+
+Pide moverse 6,17 cm hacia Malakh y se mueve 0. Su x era **−2200,1**, con el muro en
+−2200: **un milímetro fuera del rectángulo.** `_separarAgentes` y `empujaFuera` mueven
+agentes sin pasar por `_mover`, así que meterse fuera es fácil. Y una vez fuera, la
+lógica de `_mover` —probar el eje X suelto, probar el Y suelto, y si no quedarse— tiene
+las **tres opciones fuera del rectángulo**. El agente queda inmóvil para siempre y sin
+forma de volver a entrar.
+
+El arreglo es de una línea de idea: **el muro recorta, no revierte.** Recortar cada eje a
+su rango desliza igual a lo largo del muro y además devuelve dentro a quien esté fuera en
+el primer paso.
+
+### Los otros dos, y uno que medí mal
+
+1. **La esquiva mira el muro** (`politicas.js`). Prueba los dos signos laterales y se
+   queda con el que acaba más lejos de la pared. Esto sí era mío y sí hacía falta.
+2. **Cruzando un campo de tiro se corre, no se rueda.** Si la amenaza es una flecha desde
+   otra cota y el camino pasa por una rampa, cada rodada de 797 cm deshace los 800 que
+   acababa de caminar. Medido: Malakh de (1038,144) a (774,814) rumbo a la rampa en
+   (700,1000), flecha, vuelta a (1003,795), otra vez, hasta agotar el reloj.
+3. **Lo que probé y descarté**: rodar hacia el *punto de ruta* en vez de hacia el blanco.
+   Suena mejor y mide peor (45 → 58 atascos). Revertido. El agregado manda.
+
+```
+   110  ->  77   la esquiva mira el muro
+    77  ->  45   el muro recorta en vez de revertir     <- el gordo
+    45  ->  33   en tránsito a la rampa no se rueda
+```
+
+### Y los 33 que quedan NO son atascos
+
+Esto es lo importante y lo comprobé antes de dar nada por bueno. Midiendo **cuánto camina
+Malakh en los últimos 30 s** de cada partida que agota el reloj:
+
+```
+   combates que agotan el reloj: 31
+     caminando de verdad (>15 m en los últimos 30 s): 31
+     prácticamente quietos:                            0
+   recorrido en esos 30 s: mín 2083 cm · mediana 5206 · máx 7900
+```
+
+**Ninguno está clavado.** Son marchas legítimas: el último arquero está en el balcón del
+otro extremo y cruzar la arena cuesta ~20 s por trayecto. Confirmado subiendo el reloj:
+
+```
+   límite   atascos/1500   victorias   hp
+    180 s        33           93%      91
+    200 s        13           95%      90.8
+    220 s         1           96%      90.9
+```
+
+O sea que la puerta del watchdog está **midiendo duración, no bloqueo**, y su texto
+(«suele ser un enemigo que no se puede alcanzar o un arquero que huye sin fin») ya no
+describe lo que ocurre. Si 180 s es el contrato, la receta hay que apretarla; si no, el
+límite. **Esa decisión es de diseño y la dejo sin tocar.**
+
+## Aplicado: el par 327 + 106
+
+Con el encajonamiento muerto, se ha escrito en `calibracion.json`:
+
+```
+   ataqueLigero   alcance 444 -> 327   + embestida 106
+   ataquePesado   alcance 422 -> 310   + embestida 103
+```
+
+La procedencia completa está en el propio campo. Resumen: el avance del root motion
+estaba duplicado para el **alcance** pero el **desplazamiento** no se modelaba, y por eso
+el simulador atacaba desde 400 y se quedaba en 400 mientras el motor se lanzaba y acababa
+a 244.
+
+### Qué cambia, medido
+
+```
+   composición    antes (444)  VVX~~VVVV   esp 100%  hp 95,7  armas +89%  atascos  0
+                  ahora        VVV~~VVVX   esp  93%  hp 91,0  armas +30%  atascos 33
+```
+
+**La ventaja de las armas pasa de ROJO a verde**, que es para lo que existía el cambio.
+A cambio el watchdog se pone rojo, y ya está medido arriba que es reloj, no bloqueo.
+
+En la matriz de armas se pasa de 1 fallo a 2, pero **cambia la naturaleza del fallo**:
+
+```
+   caso                   444          327+106
+   Guardia  <- Espadón   +68% FALLO    +83% OK
+   Cierre   <- Lanza     -47% OK       -61% FALLO  (banda -30..-55)
+   Mole     <- Espadón   -53% OK       -57% FALLO  (banda -30..-55)
+   Formación (margen)     -1% degenerado   -43% ya da de sí
+```
+
+Con 444 el fallo era **+68%: el Espadón salía PEOR que la espada** contra su propio caso.
+Ahora los dos fallos son por pasarse de generoso (6 y 2 puntos fuera de banda), y el
+criterio de «la espada base nunca es la peor opción» sigue pasando 5 de 5. Es un fallo
+mejor, pero es un fallo: los counters de Cierre y Mole piden un repaso de números.
+
+### Una advertencia sobre las cifras de la nota anterior
+
+La tabla de «Medido: arregla dos puertas y rompe otra» decía hp 79,5 y «cuesta algo» en
+verde. Ahora sale hp 91 y en aviso. **No es que el cambio mida distinto: es que arreglar
+el encajonamiento quitó daño que Malakh recibía *por estar clavado contra un muro*.**
+Aquel daño era falso y aquella puerta estaba verde por el motivo equivocado.

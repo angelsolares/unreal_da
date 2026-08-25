@@ -1075,7 +1075,10 @@ export class Simulacion {
     // vertice fuera del rectangulo, y la barandilla de `_mover` lo rechaza, asi que el
     // agente se queda clavado. Medido: Malakh quieto en (1280,1000) sobre el balcon
     // sur, con el vertice fijo en (1047,652) y velocidad cero.
-    const bloqueo = ruta.intermedio ? null : this._coberturaEnMedio(A.pos, destino);
+    let bloqueo = ruta.intermedio ? null : this._coberturaEnMedio(A.pos, destino);
+    // Un rodeo que acaba de demostrar que no mueve no se vuelve a intentar en 2 s.
+    if (bloqueo && A._rodeoVetado && A._rodeoVetado.id === bloqueo.id &&
+        this.t < A._rodeoVetado.hasta) bloqueo = null;
     if (bloqueo) {
       // MEMORIA DE RODEO. Sin ella la eleccion avariciosa se recalcula cada tick y hace
       // ping-pong: al acercarse a la esquina elegida, esa esquina cae dentro del radio
@@ -1096,7 +1099,28 @@ export class Simulacion {
       A._rodeo = null;
     }
     A.yaw = giraHacia(A.yaw, yawDe(dir), (A.perfil.velocidadGiro || 360) * dt);
+
+    // UN RODEO QUE NO TE MUEVE NO ES UN RODEO. La memoria de arriba arregla el
+    // ping-pong pero abre un fallo peor: si el vertice elegido cae FUERA de la arena,
+    // `_mover` lo rechaza entero, el agente no avanza ni un centimetro, y como nunca
+    // llega al vertice tampoco recalcula. Se queda clavado para siempre.
+    //
+    // Medido con el alcance 327: el Escudero de la primera oleada 30 s inmovil en
+    // (-2200,-85) —pegado al muro oeste— con Malakh vivo a 470 cm y ambos `libre`.
+    // De ahi salian la mayoria de los 77 combates que agotaban el reloj.
+    //
+    // El arreglo es medir, no adivinar: si tras moverse sigue donde estaba, se veta
+    // ese rodeo y se reintenta RECTO en el mismo tick. Recto contra un muro si
+    // funciona, porque `_mover` desliza por el eje que si cabe.
+    const antes = A.pos;
     this._mover(A, escala(dir, this._velocidadDe(A) * dt));
+    if (A._rodeo && dist(antes, A.pos) < 0.01) {
+      A._rodeoVetado = { id: A._rodeo.id, hasta: this.t + 2 };
+      A._rodeo = null;
+      const recto = normaliza(resta(destino, A.pos));
+      A.yaw = giraHacia(A.yaw, yawDe(recto), (A.perfil.velocidadGiro || 360) * dt);
+      this._mover(A, escala(recto, this._velocidadDe(A) * dt));
+    }
   }
 
   /**
@@ -1223,12 +1247,24 @@ export class Simulacion {
       if (dentroDePoligono(p, c.poli)) p = empujaFuera(p, c.poli, A.radio + 5);
     }
 
-    if (!dentroDeRect(p, this.enc.arena.bounds)) {
-      const soloX = { x: p.x, y: A.pos.y }, soloY = { x: A.pos.x, y: p.y };
-      if (dentroDeRect(soloX, this.enc.arena.bounds)) p = soloX;
-      else if (dentroDeRect(soloY, this.enc.arena.bounds)) p = soloY;
-      else p = A.pos;
-    }
+    // EL MURO SE RECORTA, NO SE REVIERTE, y esto no es cosmetica: revertir es una
+    // TRAMPA DE UN SOLO SENTIDO. `_separarAgentes` y `empujaFuera` mueven agentes sin
+    // pasar por aqui, asi que uno puede acabar UNOS MILIMETROS fuera del rectangulo.
+    // A partir de ese momento las tres opciones de la version antigua —los dos ejes
+    // sueltos y quedarse— caen todas fuera, y el agente se queda inmovil PARA SIEMPRE
+    // sin poder volver a entrar.
+    //
+    // Medido con el alcance 327: el Escudero en x=-2200.1 (el muro esta en -2200),
+    // pidiendo (0,+6.17) cada tick durante 30 s y recibiendo (0,0), con Malakh vivo a
+    // 475 cm. La mayoria de los 77 combates que agotaban el reloj eran esto.
+    //
+    // Recortar cada eje a su rango cumple las dos cosas: desliza a lo largo del muro
+    // igual que antes, y a quien este fuera lo devuelve dentro en el primer paso.
+    const bb = this.enc.arena.bounds;
+    p = {
+      x: Math.min(Math.max(p.x, bb.min.x), bb.max.x),
+      y: Math.min(Math.max(p.y, bb.min.y), bb.max.y)
+    };
     A.pos = p;
   }
 

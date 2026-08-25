@@ -110,7 +110,19 @@ class PoliticaBase {
     // son las flechas que entran mientras estas clavado en tu propia animacion,
     // y eso lo hace solo (`mitigacionEnCompromiso`), sin cambiar como se juega.
     const amenaza = sim.amenazaInminente(0.45);
-    if (amenaza && M.stamina >= sim.cal.malakh.esquiva.costeStamina * 1.5) {
+
+    // CRUZANDO UN CAMPO DE TIRO SE CORRE, NO SE RUEDA. Si la amenaza es una flecha
+    // desde OTRA COTA y el camino hasta ella pasa por una rampa, cada rodada de 797 cm
+    // deshace los 800 que acababa de caminar y el avance neto del ciclo es cero.
+    // Medido: Malakh de (1038,144) a (774,814) rumbo a la rampa en (700,1000), flecha,
+    // vuelta a (1003,795), y asi hasta agotar los 180 s. Un jugador que va a por el
+    // arquero del balcon come la flecha y sigue subiendo.
+    const blancoRuta = sim.agente(M.objetivoId);
+    const enTransito = amenaza && amenaza.proyectil && blancoRuta &&
+      Math.abs((blancoRuta.cota || 0) - (M.cota || 0)) > 100 &&
+      sim._rutaHacia(M, blancoRuta).intermedio;
+
+    if (amenaza && !enTransito && M.stamina >= sim.cal.malakh.esquiva.costeStamina * 1.5) {
       const origen = amenaza.proyectil ? amenaza.proyectil : amenaza.de;
       const alejarse = normaliza(resta(M.pos, origen.pos));
       const lateral = { x: -alejarse.y, y: alejarse.x };
@@ -129,12 +141,33 @@ class PoliticaBase {
       const radial = cerrar ? normaliza(resta(blanco.pos, M.pos)) : alejarse;
       const peso = cerrar ? 0.8 : 0.4;
 
+      // NADIE RUEDA CONTRA UNA PARED. La esquiva mide 797 cm: desde media arena, una
+      // sola rodada te estampa contra el muro, y ahi te quedas —`_mover` te frena y el
+      // enemigo te cobra—. Medido: 110 partidas de 900 agotando el reloj con Malakh
+      // clavado en x=-2191 con el limite en -2200.
+      //
+      // Se prueban los DOS lados y se elige el que acabe mas adentro. No es una malla
+      // de navegacion: es mirar antes de tirarse.
+      const bordes = sim.enc?.arena?.bounds;
+      const largo = sim.cal.malakh.esquiva.distancia;
+      const holgura = (sg) => {
+        const d = normaliza({ x: radial.x * peso + lateral.x * sg,
+                              y: radial.y * peso + lateral.y * sg });
+        if (!bordes) return { d, sitio: Infinity };
+        const fin = { x: M.pos.x + d.x * largo, y: M.pos.y + d.y * largo };
+        // cuanto margen queda hasta el muro mas cercano en el punto de llegada
+        const sitio = Math.min(fin.x - bordes.min.x, bordes.max.x - fin.x,
+                               fin.y - bordes.min.y, bordes.max.y - fin.y);
+        return { d, sitio };
+      };
+      const a = holgura(signo), b = holgura(-signo);
+      // El lado elegido al azar manda salvo que acabe pegado al muro (menos de una
+      // capsula de margen) y el otro no.
+      const elegida = (a.sitio > M.radio || a.sitio >= b.sitio) ? a.d : b.d;
+
       return {
         accion: 'esquivar',
-        direccion: normaliza({
-          x: radial.x * peso + lateral.x * signo,
-          y: radial.y * peso + lateral.y * signo
-        }),
+        direccion: elegida,
         objetivo: M.objetivoId
       };
     }
