@@ -13469,3 +13469,71 @@ la latencia del MCP es de segundos y el combate cambia de fase dentro de una ven
 De ahí cuelgan las dos cosas que quedan flojas: la Guardia fuera de banda y la receta,
 que ahora sale `VVX~~VVV~` — 100% a espada sola pero con **88% de vida al terminar**
 (no enseña nada) y las armas un +50% peor. Ambas son síntomas del mismo número sin fijar.
+
+## El medidor de daño, y lo que midió (2026-08-25)
+
+### La herramienta
+
+`BP_DA_MedidorDano` — un actor que muestrea a **50 Hz con un temporizador dentro del
+juego**, que era exactamente el problema: desde fuera cada llamada por MCP tarda segundos
+y el combate cambia de fase dentro de una ventana. La pasada es
+[`Tools/MCP/medidor_dano.py`](Tools/MCP/medidor_dano.py). Sólo lee; arrancar y curar se
+hacen desde Python.
+
+**Tres cosas que costaron y valen para la próxima:**
+
+- **`Interface|GetStatValue` está cerrado al escritor del DSL.** No sabe cablear el pin
+  `self` de un mensaje de interfaz, ni desde variable ni en línea (*«Could not connect pin
+  ReturnValue to self»*). La vía que sí pasa es el componente:
+  `Actor|GetComponentbyClass` → `Class|BPStatsManagerComponent|GetStats` →
+  `Utilities|Struct|BreakFStat`, leyendo **por índice** (Health.Current = 0,
+  ReceivedHitCount = 12). La pasada verifica los índices contra el array vivo.
+- **`Stat.ReceivedHitCount` NO es un total.** `TakeDamage` lo sube en 1 y arma un
+  temporizador de 4 s a `ResetRecentHit`: es un contador de golpes *recientes* que vuelve
+  a cero. Contarlo con `>` se pierde todo golpe posterior a un reset — medido, 4 golpes
+  reales dejaron **un solo** intervalo. Ahora se cuenta por **caídas de vida**, que sí son
+  monótonas, con un flag `EnGolpe` para no partir un golpe en dos.
+  **Eso invalida el «12 golpes en 7,4 s» de la nota anterior**: salió del método roto.
+- **Para ventanas largas, subir `Stat.Health.Max` y `Current` a 100.000.** El medidor mide
+  deltas, así que le da igual el valor absoluto, y la ventana ya no se corta porque el
+  jugador muera y la arena repueble.
+
+### Las tres ventanas, con Malakh **quieto y sin defenderse**
+
+```
+   composición            ventana   golpes   daño   dmg/golpe   cadencia    dmg/s
+   Lancero + Vigilante     151 s      11      495     45,00     1/13,7 s    3,28
+   Lancero solo            162 s       6      270     45,00     1/27,0 s    1,67
+   Vigilante solo          162 s       0        0       —          —        0,00
+```
+
+Intervalos del Lancero solo: 30,3 · 16,0 · 28,3 · 34,3 · 16,3 · 13,0.
+De la pareja: 5,7 · 19,3 · 7,0 · 13,7 · 7,3 · 10,7 · 19,7 · 22,7 · 16,0 · 13,0 · 12,0.
+
+**Tres hallazgos sólidos:**
+
+1. **45 de daño por golpe, exacto, en los 17 golpes de las tres ventanas.** Y los stats
+   dicen otra cosa: Lancero `Stat.Damage` 10+20 = **30**, Vigilante 10+10 = **20**. Hay un
+   multiplicador en la cadena que el simulador no modela, y **no depende del arma** — si el
+   Vigilante pegara, pegaría 45 igual que el Lancero.
+2. **El Vigilante no golpeó ni una vez en 2 minutos y 42 segundos**, plantado a 174 cm.
+   Eso no es un fallo: es exactamente su ficha —*«su trabajo no es matar: es que no puedas
+   moverte mientras otro te mata»*—, sólo que el simulador le da 20 de daño con la misma
+   cadencia que a los demás.
+3. **La cadencia real está en el orden de 15-30 s por golpe**, no los 3,8 s del simulador
+   (`duracion` 2,206 + `recarga` 1,6).
+
+### Lo que estos números NO autorizan todavía
+
+**Malakh estaba quieto.** El árbol de DCS reacciona al estado del jugador, así que es
+muy posible que ataque bastante más contra alguien que se mueve, ataca y se compromete.
+Estas cifras son un **suelo para blanco pasivo**, comparable entre motor y simulador
+—y ahí el simulador es **2,9× más violento**— pero no son el ritmo de un combate real.
+
+Y los conteos son cortos: 11 y 6 golpes dan un error de Poisson del 30-40%, así que el
+«la pareja es justo el doble que el Lancero solo» es coincidencia dentro del margen, no
+un resultado.
+
+**Antes de recalibrar `dano` y `recarga` con esto falta una cosa**, y ahora es barata:
+repetir las ventanas con un Malakh que se mueva y ataque. El medidor ya está montado y
+el jugador puede hacerse inmortal, así que es cuestión de jugarlo.
