@@ -194,8 +194,30 @@ export function planificar(enc, opciones = {}) {
     luz: { clase: 'luz', etiqueta: 'Forja_Luz', pos: alMundo(centro, 1200), yaw: 0 }
   };
 
+  // EL VOLUMEN DE NAVEGACION. Sin esto los enemigos PERCIBEN al jugador, le fijan
+  // como objetivo... y no se mueven, porque no hay a donde pathfindear. Medido en
+  // PIE el 25/08: el nivel exportado solo tenia `AbstractNavData`, la velocidad de
+  // los de mele era 0 y `GetRandomReachablePointInRadius` devolvia None. Con el
+  // volumen puesto, el `auto_create_navigation_data` del proyecto crea el
+  // RecastNavMesh solo y el Lancero cruza 1.600 cm en diez segundos.
+  //
+  // Se pasa del radio a proposito (el suelo tambien) y cubre en Z desde bajo el
+  // suelo hasta por encima del balcon mas alto: un balcon sin navmesh es un arquero
+  // que no puede ni retroceder.
+  const cotaMax = Math.max(0, ...(enc.plataformas || []).map(pl => pl.cota || 0));
+  const navAlto = cotaMax + 700;
+  const navegacion = {
+    clase: 'navmesh', etiqueta: 'Forja_NavBounds',
+    pos: alMundo(centro, navAlto / 2 - 250),
+    yaw: 0,
+    // el cubo del volumen mide 200 cm de lado
+    escala: { x: +((radio * 2.1) / 200).toFixed(4),
+              y: +((radio * 2.1) / 200).toFixed(4),
+              z: +((navAlto + 500) / 200).toFixed(4) }
+  };
+
   return {
-    offset: off, enemigos, arena, solidos, marcas, escena,
+    offset: off, enemigos, arena, solidos, marcas, escena, navegacion,
     oleadas: olas.map((o, i) => ({
       indice: i + 1, id: o.id, nombre: o.nombre,
       activacion: o.activacion, retardo: o.retardo, presencia: o.presencia,
@@ -237,6 +259,7 @@ export async function exportar(cuerpo) {
     oleadas: plan.oleadas,
     arena: plan.arena,
     solidos: plan.solidos,
+    navegacion: plan.navegacion,
     marcas: plan.marcas,
     escena: plan.escena
   });
@@ -412,6 +435,23 @@ else:
             "el semilado mayor (%s), asi que el sello queda mas ancho de lo "
             "diseñado en el lado corto." % (A["semiX"], A["semiY"], A["radio"]))
 
+# El volumen de navegacion. Va SIEMPRE, no solo en nivel en blanco: sin el, los
+# enemigos ven al jugador y no pueden ir a por el (medido en PIE, 25/08).
+N = D["navegacion"]
+nav = subsys.spawn_actor_from_class(unreal.NavMeshBoundsVolume,
+    unreal.Vector(N["pos"]["x"], N["pos"]["y"], N["pos"]["z"]), unreal.Rotator(0, 0, 0))
+marcar(nav, N)
+if nav is not None:
+    nav.set_actor_scale3d(unreal.Vector(N["escala"]["x"], N["escala"]["y"], N["escala"]["z"]))
+    b = nav.get_actor_bounds(False)
+    informe["colocados"].append({"etiqueta": N["etiqueta"], "clase": "navmesh",
+        "pedido": [N["pos"]["x"], N["pos"]["y"], N["pos"]["z"]],
+        "real": [round(b[0].x), round(b[0].y), round(b[0].z)],
+        "extent": [round(b[1].x), round(b[1].y), round(b[1].z)]})
+else:
+    informe["avisos"].append("NO se pudo colocar el volumen de navegacion: los"
+                             " enemigos veran al jugador pero no podran moverse.")
+
 # Los solidos: coberturas, plataformas y rampas. Cubos del motor escalados.
 cubo = unreal.EditorAssetLibrary.load_asset("/Engine/BasicShapes/Cube.Cube")
 for sdef in D["solidos"]:
@@ -426,9 +466,15 @@ for sdef in D["solidos"]:
 
 # Suelo y luz, SOLO si el nivel esta en blanco. Se cuenta antes de mirar nada
 # mas: si hay algo que no sea nuestro, se supone que el mapa ya esta vestido.
+# Los actores de navegacion NO cuentan como "ajenos": los crea el motor solo, en
+# cuanto se coloca el volumen, y contarlos hacia que la propia exportacion se
+# convenciera de que el nivel ya estaba habitado y se saltara el suelo y la luz.
+IGNORAR = ("RecastNavMesh", "AbstractNavData", "NavMeshBoundsVolume",
+           "NavigationData", "WorldPartitionMiniMap", "WorldDataLayers")
 ajenos = [a for a in subsys.get_all_level_actors()
           if D["marca"] not in [str(t) for t in a.tags]
-          and not a.get_actor_label().startswith("Forja_")]
+          and not a.get_actor_label().startswith("Forja_")
+          and a.get_class().get_name() not in IGNORAR]
 if ajenos:
     informe["avisos"].append(
         "El nivel ya tiene %d actores propios: NO se ha puesto suelo ni luz." % len(ajenos))

@@ -12873,3 +12873,66 @@ Notas de método, por si sirven la próxima vez:
 - **Al terminar se limpió `Enemigos` en la instancia**, que se había quedado relleno de
   una prueba de editor. `OleadasEnemigos` es privada y no se puede tocar en la
   instancia, pero da igual: `LeerOleadas` la vacía y la reconstruye al sellar.
+
+## No era la percepción: el nivel exportado no tenía NavMesh (2026-08-25)
+
+El Lancero no reaccionaba, y la sospecha era la percepción. **No lo era.** Preguntándole
+en vivo, el Lancero percibía perfectamente:
+
+```
+PERCIBE por vista: ['BP_DA_Vigilante_C_18', 'BP_Malakh_DCS_C_0']
+blackboard Target:  BP_Malakh_DCS_C_0
+arbol corriendo:    True
+```
+
+Y su configuración estaba bien: radio 2000, `LoseSight` 2500, cono de 75°, y
+`DetectionByAffiliation` con los tres —enemigos, neutrales y amigos— en `True`, así que
+tampoco era el clásico problema de equipos.
+
+Lo que fallaba era **que no podía ir**:
+
+```
+actores de navegacion:  [('AbstractNavData', 'AbstractNavData')]
+GetRandomReachablePointInRadius(500) -> None
+velocidad del Lancero -> 0
+```
+
+El nivel que produce el exportador **no llevaba `NavMeshBoundsVolume`**, y sin volumen no
+hay RecastNavMesh, y sin navmesh un `MoveTo` no tiene a dónde ir. Los enemigos te ven, te
+fijan como objetivo y se quedan clavados.
+
+Mi lectura anterior —«no adquieren al jugador si te teleportas»— estaba mal: sí lo
+adquirían. Lo que no podían era caminar.
+
+### El arreglo va en el exportador, no en el nivel
+
+Ahora coloca un `Forja_NavBounds` a medida de la arena, **siempre**, no sólo en nivel en
+blanco. Se pasa un 5% del radio y cubre en Z desde bajo el suelo hasta por encima del
+balcón más alto — un balcón sin navmesh es un arquero que no puede ni retroceder, que es
+justo la mecánica que la receta mide. Como el proyecto tiene
+`auto_create_navigation_data` en `True`, el `RecastNavMesh` nace solo.
+
+Y un efecto colateral que hubo que atajar: la detección de «nivel en blanco» contaba los
+actores de navegación como ajenos, así que colocar el volumen hacía que la propia
+exportación se convenciera de que el nivel ya estaba habitado y **se saltara el suelo y
+la luz**. Ahora `RecastNavMesh`, `AbstractNavData` y `NavMeshBoundsVolume` no cuentan.
+
+### Comprobado en PIE, de punta a punta
+
+- Al sellar: `MaxOleada = 5`, `Activos = 1`, los otros cuatro con `arbol=False`.
+- El Lancero de la oleada 1 **se mueve a 185 cm/s** y reposiciona alrededor del jugador.
+- Acercándose a 110 cm del Escudero de la oleada 2: pasa a `arbol=True`, entra en
+  `EnemigosActivos` **y camina a 185 cm/s**. Los de las oleadas 3, 4 y 5 siguen
+  dormidos y `OleadaActual` sigue en 1.
+
+**Ojo a lo que esto cambia de las pruebas anteriores:** todo lo verificado en PIE hasta
+hoy se hizo sobre un nivel donde los enemigos no podían moverse. Lo que se comprobó
+entonces —activación de oleadas, `StopLogic`/`RestartLogic`, el guardia del despertar— no
+depende de la navegación y sigue en pie; pero cualquier conclusión sobre *cómo pelean* no
+valía.
+
+Queda una cosa vista de pasada y que no es de la arena: **antes de sellar, los cinco
+enemigos están sueltos** y ahora que pueden andar salen a recibirte. Al sellar se les
+duerme donde estén, así que el Escudero de la segunda oleada se quedó congelado a 600 cm
+de la puerta en vez de en su marca. En juego la ventana es corta —el `BoxComponent` de
+`Entrada` llega hasta x=-1870 y el jugador aparece en -1900—, pero conviene saberlo.
