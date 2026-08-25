@@ -559,9 +559,38 @@ export class Simulacion {
    * Meterlos en un solo numero deja al enemigo congelado: se para donde le dice
    * su MoveTo (200) y nunca entra en el rango de golpe, asi que no ataca jamas.
    */
+  /**
+   * EL RODEO, y por que existe.
+   *
+   * Hasta el 25/08 el enemigo se plantaba en `distanciaPreferida` y picaba cada vez
+   * que la recarga se lo permitia. Medido en PIE contra un Malakh pasivo —la misma
+   * condicion en los dos lados— eso daba 240 de daño en 16 s con una pareja, y el
+   * motor da 45. Cinco veces mas violento.
+   *
+   * El arbol no pelea asi. Bajo su puerta de combate hay un Selector con TRES ramas y
+   * la primera es un ESTRAFE: `Chance 30` envuelto en un `TimeLimit` (5 s por
+   * defecto) que hace un bucle de Walk + MoveTo alrededor del jugador. O sea que
+   * casi un tercio de los ciclos de decision se van en rodear sin atacar. Y cuando
+   * si ataca, lo hace DESPUES de un MoveTo que le mete encima: medido en PIE, se
+   * asientan entre 108 y 165 de centro a centro, no a distancia de arma.
+   *
+   * Los dos numeros salen del propio arbol (Chance 30, TimeLimit 5 s), no de un
+   * ajuste a ojo. Lo que NO cierra del todo es el ritmo de daño: ver la nota de
+   * `arquetipos.*.probabilidadRodeo` en calibracion.json.
+   */
   _pasoCuerpoACuerpo(E, dt) {
     const M = this.malakh;
     const p = E.perfil;
+
+    if ((E.rodeando || 0) > 0) {
+      E.rodeando -= dt;
+      const hacia = normaliza(resta(M.pos, E.pos));
+      const lado = E.sentidoRodeo || 1;
+      this._mover(E, escala({ x: -hacia.y * lado, y: hacia.x * lado }, this._velocidadDe(E) * dt));
+      E.yaw = giraHacia(E.yaw, yawDe(hacia), (p.velocidadGiro || 360) * dt);
+      return;
+    }
+
     const d = dist(E.pos, M.pos) - M.radio;
     const decide = p.distanciaDecision ?? p.alcanceAtaque;
     if (d > decide) {
@@ -569,6 +598,13 @@ export class Simulacion {
       return;
     }
     if (E.recarga <= 0 && Math.abs(deltaAngulo(E.yaw, yawDe(resta(M.pos, E.pos)))) < 35) {
+      // La rama de estrafe del arbol se come el ciclo entero: ni ataca ni recarga
+      // mientras rodea.
+      if (this.azar.probabilidad(p.probabilidadRodeo ?? 0)) {
+        E.rodeando = p.duracionRodeo ?? 0;
+        E.sentidoRodeo = this.azar.probabilidad(0.5) ? 1 : -1;
+        return;
+      }
       this._iniciarAtaque(E, { ...p.ataque, alcance: p.alcanceAtaque, dano: this._danoDe(E) });
     }
   }

@@ -79,7 +79,7 @@
       "velocidadGiro": 360,
       "dano": 30,
       "alcanceAtaque": 448,
-      "distanciaPreferida": 240,
+      "distanciaPreferida": 93,
       "rangoAggro": 2000,
       "ataque": {
         "duracion": 2.206,
@@ -92,7 +92,9 @@
       "elevable": false,
       "arma": "lanza_del_alba",
       "reduccionGuardia": 0.75,
-      "distanciaDecision": 250
+      "distanciaDecision": 110,
+      "probabilidadRodeo": 0.3,
+      "duracionRodeo": 5
     },
     "arquero_del_firmamento": {
       "nombre": "Arquero del Firmamento",
@@ -126,7 +128,7 @@
       "velocidadGiro": 360,
       "dano": 20,
       "alcanceAtaque": 440,
-      "distanciaPreferida": 240,
+      "distanciaPreferida": 93,
       "rangoAggro": 2000,
       "ataque": {
         "duracion": 1.765,
@@ -139,7 +141,9 @@
       "reduccionGuardia": 1,
       "elevable": false,
       "arma": "escudo_celestial",
-      "distanciaDecision": 250
+      "distanciaDecision": 110,
+      "probabilidadRodeo": 0.3,
+      "duracionRodeo": 5
     },
     "elite_pesado": {
       "nombre": "Elite pesado",
@@ -149,7 +153,7 @@
       "velocidadGiro": 360,
       "dano": 30,
       "alcanceAtaque": 437,
-      "distanciaPreferida": 240,
+      "distanciaPreferida": 93,
       "rangoAggro": 2000,
       "ataque": {
         "duracion": 2.206,
@@ -162,7 +166,9 @@
       "elevable": false,
       "arma": "espadon_alabarda",
       "reduccionGuardia": 0.75,
-      "distanciaDecision": 250
+      "distanciaDecision": 110,
+      "probabilidadRodeo": 0.3,
+      "duracionRodeo": 5
     },
     "portador_del_estandarte": {
       "nombre": "Portador del Estandarte",
@@ -172,7 +178,7 @@
       "velocidadGiro": 360,
       "dano": 20,
       "alcanceAtaque": 440,
-      "distanciaPreferida": 240,
+      "distanciaPreferida": 93,
       "rangoAggro": 2000,
       "ataque": {
         "duracion": 1.765,
@@ -185,7 +191,9 @@
       "elevable": false,
       "arma": "estandarte_ritual",
       "reduccionGuardia": 1,
-      "distanciaDecision": 250
+      "distanciaDecision": 110,
+      "probabilidadRodeo": 0.3,
+      "duracionRodeo": 5
     }
   },
   "procedencia": {
@@ -235,19 +243,20 @@
     "arquetipos.lancero_del_alba.alcanceAtaque": "medido 2026-08-24 — LA LANZA SIGUE SIN DAR ALCANCE: 245 contra los 241 de la espada. Cuatro centimetros. Mide 175 cm contra los 138,8 de la espada, pero se agarra a un tercio del asta y sobresale casi lo mismo por delante de la mano. Los 320 que tenia eran invencion, y con ellos se cae la premisa de que al Lancero se le responde por el alcance.",
     "arquetipos.arquero_del_firmamento.alcanceAtaque": "medido 2026-08-24 — NO TIENE LIMITE DE ALCANCE. El decorador D_CanShootArrow solo comprueba un cono de 25 grados y la vision: no hay comprobacion de distancia. La flecha sale a 3500 cm/s, vive 4 s y su projectile_gravity_scale es 0 — no cae. Eso son 14.000 cm en linea recta, tres veces la diagonal de la arena de \"Romper la linea\". El arquero dispara desde donde sea con tal de verte. Los 2200 que tenia eran invencion, y ademas dulcificaban el problema: cortar la linea de vision no es UNA respuesta, es LA respuesta.",
     "arquetipos.*.ataque.duracion": "medido 2026-08-24 — los montages de IA tambien llevan rate_scale (1,3 y 1,4), igual que los del jugador. Reales: ligero 1,555 s, pesado 1,729, especial 2,292; media de los seis 1,765. Mi \"2,000 s medidos\" del Lancero era la longitud EN CRUDO. Con el -20% de las armas a dos manos, Lancero y Heraldo quedan en 2,206 — no en los 2,5 y 3,1 que tenia.",
-    "arquetipos.*.distanciaPreferida": "ALINEADA 2026-08-25 con el alcance escalado, y ya no es solo medida: es DECISION DE DISEÑO APLICADA AL MOTOR. Tras escalar los alcances (245 -> 448), el compromiso a 200 dejaba una ventana geometrica absurda —el enemigo cruzaba 250 cm de arco de espada gratis y dos Lanceros pasaron de costar 84 de daño a costar 7—. Se barrio en la Forja: el escalado por proporcion (preferida 366) MATA el encuentro (0% de victorias), el acantilado esta entre 300 y 310, y 240 es el valor que deja el veredicto sin ningun rojo: VV~V~VVVV, 94% a espada, hp 74, cero atascos. En el motor son 190 de AcceptableRadius (240 = 190 + 50 de capsula del enemigo) en el MoveTo de mele de BT_DA_Guerrero, la COPIA propia de BT_WarriorAI — el asset de DCS no se toca: los cuatro BP_DA_* de mele apuntan su BehaviorTreeAsset a la copia. medido 2026-08-24 — BT_WarriorAI, BTTask_MoveTo de combate: AcceptableRadius 150, y bReachTestIncludesAgentRadius y bReachTestIncludesGoalRadius estan los DOS en True (comprobado, no supuesto). O sea que los 150 son entre SUPERFICIES: centro a centro son 150 + 50 del enemigo + 42 de Malakh = 242. El simulador mide esta distancia como centro-a-superficie, asi que le corresponden 200. Es el mismo arbol para los cuatro de mele: no hay preferencia por arquetipo, y el Lancero ya no se queda atras.",
+    "arquetipos.*.distanciaPreferida": "MEDIDO EN PIE 2026-08-25, y deroga el 240 que se puso esta misma tarde: aquel salio de un barrido de puertas CONTRA EL SIMULADOR, no del motor. En juego, con BT_DA_Guerrero, el Lancero se asienta entre 108 y 165 de centro a centro (seis muestras: 162, 124, 108, 145, 146, 125; media 135). El campo se mide de centro del enemigo a SUPERFICIE de Malakh, asi que 135 - 42 = 93. Y ojo: el AcceptableRadius 190 de BT_DA_Guerrero NO gobierna esto — el arbol tiene un SEGUNDO MoveTo, el agresivo de radio 50 (50+50+42 = ~142), y es el que manda una vez estan peleando. ALINEADA 2026-08-25 con el alcance escalado, y ya no es solo medida: es DECISION DE DISEÑO APLICADA AL MOTOR. Tras escalar los alcances (245 -> 448), el compromiso a 200 dejaba una ventana geometrica absurda —el enemigo cruzaba 250 cm de arco de espada gratis y dos Lanceros pasaron de costar 84 de daño a costar 7—. Se barrio en la Forja: el escalado por proporcion (preferida 366) MATA el encuentro (0% de victorias), el acantilado esta entre 300 y 310, y 240 es el valor que deja el veredicto sin ningun rojo: VV~V~VVVV, 94% a espada, hp 74, cero atascos. En el motor son 190 de AcceptableRadius (240 = 190 + 50 de capsula del enemigo) en el MoveTo de mele de BT_DA_Guerrero, la COPIA propia de BT_WarriorAI — el asset de DCS no se toca: los cuatro BP_DA_* de mele apuntan su BehaviorTreeAsset a la copia. medido 2026-08-24 — BT_WarriorAI, BTTask_MoveTo de combate: AcceptableRadius 150, y bReachTestIncludesAgentRadius y bReachTestIncludesGoalRadius estan los DOS en True (comprobado, no supuesto). O sea que los 150 son entre SUPERFICIES: centro a centro son 150 + 50 del enemigo + 42 de Malakh = 242. El simulador mide esta distancia como centro-a-superficie, asi que le corresponden 200. Es el mismo arbol para los cuatro de mele: no hay preferencia por arquetipo, y el Lancero ya no se queda atras.",
     "arquetipos.*.rangoAggro": "medido 2026-08-24 — BP_BaseAIController, AIPerception: AISenseConfig_Sight con SightRadius 2000, LoseSightRadius 2500 y un cono de vision de 75 grados. Los cinco comparten controlador, asi que es el mismo numero para todos; mis 1200-2400 por arquetipo eran invencion. NO confundir con el < 500 del decorador \"Is In Attack Range?\" del Behaviour Tree: eso es la puerta de la rama de combate, no la deteccion. Ponerlo como aggro dejaba al Lancero plantado sin enterarse de nada mientras mataban a sus companeros a 20 metros.",
     "arquetipos.arquero_del_firmamento.distanciaMinima": "medido 2026-08-24 — BT_ArcherAI, decorador \"Is Close to Target\": DistanceToTarget < 300. Tenia 500. NO SUBIRLO: el 25/08 se probo a 450 y sale al reves de lo que dice la intuicion. En un balcon acotado el Arquero no tiene sitio para conseguir esa separacion, asi que se pasa la pelea intentando retroceder contra la barandilla — y retrocediendo NO dispara. Medido en el balcon: a 300 hace 64,7 de daño con 4,0 flechas; a 450 hace CERO con 1,8. En \"Romper la linea\" el encuentro entero se volvia trivial (100% con espada sola, una muerte en 800 partidas) y el arsenal, decorativo. Ademas es NO MONOTONO: en campo abierto el arquero es MAS letal a 350 (118 de daño) que a 300 (84) o a 450 (79). Lo que gobierna lo que cuesta un arquero no es este numero, es EL TAMAÑO DE SU PLATAFORMA.",
     "arquetipos.*.reduccionGuardia": "medido 2026-08-24 — es el BlockValue del objeto con el que paran, igual que en Malakh: DA_WoodenShield 100 (Vigilante e Inspector absorben el golpe ENTERO), DA_DA_Lanza y DA_GreatAxe 75.",
     "arquetipos.lancero_del_alba.guardia": "CORREGIDO, y a medias. Tenia 0 porque razone \"sin escudo no bloquea\", y eso es falso: en DCS se bloquea con el arma —Malakh lo hace con la espada sola— y el BT_WarriorAI tiene cuatro nodos \"Set Activity: Block\", asi que el Lancero SI bloquea, absorbiendo el 75%. Lo que NO esta medido es con que frecuencia: el 0.4 es el mismo numero que uso para los demas, puesto a mano. La frecuencia sale de las condiciones del arbol y habria que simular el arbol para saberla.",
     "arquetipos.elite_pesado.guardia": "CORREGIDO igual que el Lancero. El Heraldo lleva hacha a dos manos con BlockValue 75 y el mismo arbol, asi que bloquea. Deroga lo que decia el contrato en su §1.2 —\"lento y sin guardia\"— y deroga tambien mi propia nota de que el hacha es el arma anti-guardia porque solo el Vigilante bloquea: bloquean CUATRO de los cinco.",
     "aviso.medicionDeEnemigos": "Segunda pasada sobre los enemigos (24/08). Tres cosas que daba por buenas eran falsas: la lanza no da alcance (4 cm sobre la espada, no 120), el arquero no tiene limite de alcance (14.000 cm, no 2200), y el Lancero y el Heraldo SI bloquean (75%, no 0). Los veredictos anteriores a esta fecha se calcularon con enemigos mas faciles de lo que son.",
-    "arquetipos.*.distanciaDecision": "ALINEADA 2026-08-25: 250, justo por encima de la parada (240), el mismo patron que tenian los valores medidos (208 sobre 200). Ver arquetipos.*.distanciaPreferida. medido 2026-08-24 — BT_WarriorAI, decorador \"Distance Check\": la rama que ataca pide DistanceToTarget < 250, que es centro a centro; menos los 42 de la capsula de Malakh son 208 de centro a superficie. NO es lo mismo que alcanceAtaque: el enemigo LANZA el golpe desde 208 pero su arma solo llega a 171, asi que amaga y falla a maxima distancia. Tenerlos como un solo numero dejaba al enemigo parado sin atacar nunca, porque su MoveTo lo planta a 200 y eso ya esta fuera de su rango de golpe.",
+    "arquetipos.*.distanciaDecision": "AJUSTADA 2026-08-25 a 110, justo por encima de la parada (93). En el arbol el ataque normal NO tiene puerta de distancia propia: llega DESPUES de un MoveTo, dentro de una rama cuya unica condicion es la puerta de combate (DistanceToTarget < 500). O sea que el enemigo ataca CUANDO HA LLEGADO, y eso es lo que modela decide ~= preferida. El \"Distance Check > 250\" que se cito en su dia es del ataque ESPECIAL, no del normal.",
     "aviso.ataqueEspecial": "NO MODELADO, y es gordo. El M_AI_SpecialAttack_01 del Behaviour Tree es una estocada que avanza 500 cm: su alcance efectivo son 698 cm, casi tres veces el de un ataque normal. Esta en el arbol como una de las tres ramas de ataque, asi que los cuatro de mele lo tienen. El simulador usa un solo perfil de ataque por enemigo y se queda con la media de los CINCO ataques normales (241), o sea que HOY SUBESTIMA a los enemigos: en el juego pueden cerrar siete metros de golpe. Modelarlo pide un segundo perfil de ataque por arquetipo.",
     "aviso.percepcion": "NO MODELADO: el cono de vision de 75 grados (el simulador usa un radio, asi que sus enemigos ven por detras) y el AISenseConfig_Damage, que hace que golpear a uno lo despierte aunque no te vea. El segundo importa para el diseno: no se puede ir picoteando enemigos por la espalda sin que se enteren.",
     "EL AVANCE YA ESTA DENTRO DEL ALCANCE": "REGLA, 2026-08-25. `alcance` y `alcanceAtaque` NO son la longitud del arma: son la distancia desde DONDE EL ATACANTE SE COMPROMETE hasta donde llega la punta, o sea que el root motion del golpe YA ESTA SUMADO, en los dos bandos. La espada avanza 46,9 y 164,6 cm en su combo y eso es parte de sus 243. Por eso el simulador no mueve a nadie mientras ataca. Anadirle ADEMAS un `embestida` a un arma es CONTARLO DOS VECES: probado el 25/08, la espada base pasaba de 40 a 59 de daño contra dos Escuderos y de 65 a 37 contra el Arquero, y ninguna de las dos cosas es real.",
     "arena.radioDespertar": "DECISION DE DISENO CON TECHO MEDIDO, 2026-08-25. Un dormido al que te acercas se levanta aunque su oleada no haya entrado. Existe porque escalonar de uno en uno deja a cuatro de los cinco quietos casi todo el encuentro, uno de ellos plantado en mitad del claro. El numero NO es libre: el que despiertas te persigue y ya no lo despegas, asi que pasarse reconstruye la pareja simultanea que la receta evita a proposito. Medido sobre «Romper la linea», 400 partidas por politica: 0 -> 98% y 1 a la vez; 150 -> 92%, 2 a la vez y el veredicto IDENTICO; 200 -> 90% y la puerta de ganable ya cae a aviso; 250 -> 88% y 6 atascadas; 300 -> 84%, 3 a la vez y 12 atascadas; 700 -> 35%; sin limite -> 0%. Los 150 son el techo que no mueve ni una puerta. Para hacerse una idea: la capsula de Malakh mide 42 de radio y la del enemigo 50, asi que a 150 centro a centro las superficies estan a 58 cm. Hay que pasarle por encima.",
-    "LAS ANIMACIONES NO ESTAN EN CENTIMETROS DE MUNDO": "REGLA, 2026-08-25, y es la correccion mas gorda de la calibracion. El componente de malla de Malakh esta a escala 1,8273 y el de los enemigos a 1,8289 (la CAPSULA no: sigue en radio 42/50). Comprobado que el factor es EXACTO para huesos: la misma distancia de un socket medida en espacio de componente y en mundo da 1,8273 clavado en hand_r, head y foot_l. O sea que todo lo medido con AnimPoseExtensions —posiciones de hueso, largo de arma, alcance— esta en unidades de animacion y hay que multiplicar por la escala antes de compararlo con geometria del nivel. Lo que viene de Blueprints (distanciaPreferida, distanciaMinima, distanciaDecision, velocidad, radios, rangoAggro) YA esta en centimetros de mundo y NO se toca. Mezclarlos era el error."
+    "LAS ANIMACIONES NO ESTAN EN CENTIMETROS DE MUNDO": "REGLA, 2026-08-25, y es la correccion mas gorda de la calibracion. El componente de malla de Malakh esta a escala 1,8273 y el de los enemigos a 1,8289 (la CAPSULA no: sigue en radio 42/50). Comprobado que el factor es EXACTO para huesos: la misma distancia de un socket medida en espacio de componente y en mundo da 1,8273 clavado en hand_r, head y foot_l. O sea que todo lo medido con AnimPoseExtensions —posiciones de hueso, largo de arma, alcance— esta en unidades de animacion y hay que multiplicar por la escala antes de compararlo con geometria del nivel. Lo que viene de Blueprints (distanciaPreferida, distanciaMinima, distanciaDecision, velocidad, radios, rangoAggro) YA esta en centimetros de mundo y NO se toca. Mezclarlos era el error.",
+    "arquetipos.*.probabilidadRodeo": "DEL ARBOL, 2026-08-25, no de un ajuste a ojo. Bajo la puerta de combate hay un Selector de tres ramas y la PRIMERA es un estrafe: Chance 30 envuelto en un TimeLimit (5 s por defecto) con un bucle de Walk + MoveTo alrededor del jugador. De ahi salen 0,30 y 5,0 s. Lo que ARREGLA es la DISTANCIA, que es lo que estaba medido y roto: con el rodeo puesto el simulador se asienta en 106-178 de centro a centro y el motor en 108-165. Antes se plantaba en 289.\n\nLO QUE NO SE PUDO FIJAR ES EL RITMO DE DAÑO, y conviene no fingir lo contrario. Se instrumento con Stat.ReceivedHitCount (el StatsManager cuenta los golpes recibidos, asi que separa cadencia de pegada) y DOS ventanas sobre un Malakh pasivo con la misma pareja dieron resultados irreconciliables: 12 golpes en 7,4 s (5,4 de daño cada uno, 8,8 dmg/s) frente a 1 golpe en 21 s. Un factor 35 entre ventanas. Con esa varianza no se puede calibrar nada, y la estimacion anterior de \"2,8 dmg/s en el motor\" —de una sola ventana, con los enemigos aun llegando— tampoco vale. El simulador se queda en 9,4 dmg/s con pareja pasiva; si eso es alto, bajo o justo, HOY NO SE SABE.\n\nPara cerrarlo hace falta muestrear dentro del juego (un notify o un tick de Blueprint que acumule), no desde fuera por MCP: la latencia de cada llamada es de segundos y el combate cambia de fase dentro de una sola ventana."
   },
   "aura": {
     "arquetipo": "portador_del_estandarte",

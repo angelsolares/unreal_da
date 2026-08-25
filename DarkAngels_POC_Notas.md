@@ -13411,3 +13411,61 @@ Detalle de método: durante la prueba el jugador murió y la arena hizo lo suyo 
 `ReintentarAlMorir` está en `False`, así que abrió y repobló. Los enemigos respawneados
 salen **sin tags y con etiqueta por defecto** (`BP_DA_Lancero0`), que es la conducta ya
 documentada. El nivel del editor queda intacto: 21 actores, los cinco con sus oleadas.
+
+## El modelo de duelo, arreglado — y la Lanza vuelve a ser la Lanza (2026-08-25)
+
+### Lo que se cambió, con los números del propio árbol
+
+El enemigo ya no se planta a distancia de arma picando. Bajo la puerta de combate, la
+**primera** rama del Selector es un estrafe: `Chance 30` envuelto en un `TimeLimit` de
+5 s con un bucle de Walk + MoveTo alrededor del jugador. De ahí salen
+`probabilidadRodeo 0,30` y `duracionRodeo 5,0` — no son un ajuste a ojo. Y el ataque
+normal **no tiene puerta de distancia propia**: llega *después* de un MoveTo, así que el
+enemigo ataca cuando ha llegado (`decide ≈ preferida`).
+
+`distanciaPreferida` pasa de 240 a **93**, que son los 135 medidos de centro a centro
+menos el radio de Malakh. Eso también corrige la alineación de esta misma tarde: los 240
+salieron de un barrido contra el simulador, no del motor.
+
+| | antes | ahora | motor |
+|---|---|---|---|
+| distancia de reposo | 289 | **106–178** | 108–165 |
+
+### Y el mapa de counters resucita
+
+Esto es lo importante. Con el duelo roto, la conclusión de hace un rato era que *«el
+mapa de counters del §4 dejó de ser verdad»* — la Lanza ganaba el 8% contra dos
+Lanceros. Arreglado el modelo:
+
+```
+   problema      espada     Lanza    Espadon    Escudo      Arco   Estandarte
+   Guardia       21 dmg       +5%    [+58%]      -31%       +43%      +240%
+   Cierre        43 dmg    [-51%]     -20%        +7%       -22%       -56%
+   Compromiso     8 dmg      -15%     +46%     [-40%]      +18%       +333%
+   Mole          49 dmg       -2%    [-52%]       -2%       +15%       -84%
+
+   [OK] Cierre <- Lanza -51%   ·   [OK] Compromiso <- Escudo -40%   ·   [OK] Mole <- Espadon -52%
+   [FALLO] Guardia <- Espadon +58%
+```
+
+**La Lanza vuelve a ser el counter del Cierre (−51%), en banda.** O sea que el §4 nunca
+estuvo equivocado: lo que mentía era la pelea que el simulador ponía debajo. Queda un
+criterio roto, la Guardia, donde el Espadón sale +58% — y con la espada costando ya sólo
+21 de daño, ese caso tiene poco fondo donde meter un counter.
+
+### Lo que NO se pudo cerrar, dicho sin adornos
+
+**El ritmo de daño del motor no se pudo fijar**, y la estimación anterior de «2,8 dmg/s»
+que dio pie a todo esto tampoco vale. Se instrumentó bien —`Stat.ReceivedHitCount`, que
+el StatsManager lleva, separa cadencia de pegada— y dos ventanas sobre un Malakh pasivo
+con la misma pareja dieron **12 golpes en 7,4 s (5,4 de daño cada uno, 8,8 dmg/s)** y
+**1 golpe en 21 s**. Un factor 35 entre ventanas.
+
+Con esa varianza no se calibra nada. El simulador se queda en 9,4 dmg/s con pareja
+pasiva; si eso es alto, bajo o justo, **hoy no se sabe**. Para cerrarlo hace falta
+muestrear desde DENTRO del juego —un notify o un tick de Blueprint que acumule—, porque
+la latencia del MCP es de segundos y el combate cambia de fase dentro de una ventana.
+
+De ahí cuelgan las dos cosas que quedan flojas: la Guardia fuera de banda y la receta,
+que ahora sale `VVX~~VVV~` — 100% a espada sola pero con **88% de vida al terminar**
+(no enseña nada) y las armas un +50% peor. Ambas son síntomas del mismo número sin fijar.
