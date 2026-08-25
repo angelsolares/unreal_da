@@ -12764,3 +12764,69 @@ están dormidos casi todo el encuentro. Y aquí sigue en pie la diferencia conoc
 el simulador: **al dormido que le pegas no despierta** hasta que entre su oleada. Antes
 molestaba poco porque los dormidos estaban en balcones; ahora hay un Vigilante quieto
 en mitad del claro durante media pelea.
+
+## El dormido ya se despierta si te acercas (2026-08-25)
+
+`BP_DA_Arena` tiene `RadioDespertar` (pública, categoría *Oleadas*, **150 cm**) y una
+función nueva, `DespertarPorProximidad`, que el watchdog llama como primer paso de su
+rama sellada. La pasada es
+[`Tools/MCP/despertar_proximidad.py`](Tools/MCP/despertar_proximidad.py).
+
+### Y de paso, un fallo que había metido yo esta misma tarde
+
+`LeerOleadas` sólo reconocía los tags `Oleada2/3/4`. La receta recompuesta tiene
+**cinco** oleadas, así que su quinto enemigo llevaba un `Oleada5` que nadie miraba: se
+leía como oleada 1 y **arrancaba despierto** — justo la pareja simultánea que la receta
+evita. Ahora se leen hasta `Oleada8`.
+
+Verificado sobre los actores del nivel, sin PIE: `MaxOleada = 5`, las cinco oleadas
+correctas y un solo enemigo despierto tras `AplicarOleadas`.
+
+### El radio no es libre, y esto es lo importante
+
+Al que despiertas **te persigue y ya no lo despegas**, así que pasarse reconstruye la
+pareja simultánea. Por eso el simulador aprendió a despertar por proximidad *antes* de
+tocar el motor: si el motor lo hace y la Forja no, la Forja vuelve a mentir.
+
+```
+   radio        gana a espada   a la vez   atascadas
+     0                 98%          1          1
+   150                 92%          2          1     <- el veredicto NO se mueve
+   200                 90%          2          1
+   250                 89%          2          1
+   300                 86%          2          1
+   700                 35%          4         12
+sin limite              0%          5          0
+```
+
+150 es el único que no mueve ni una puerta. Para hacerse una idea: la cápsula de Malakh
+mide 42 de radio y la del enemigo 50, así que a 150 centro a centro las superficies
+están a 58 cm. **Hay que pasarle por encima.** La variable es pública; subirla cuesta lo
+que dice la tabla.
+
+La distancia se mide en **3D** (`GetDistanceTo`), y el simulador se cambió para medirla
+igual. En planta, un arquero de balcón se despertaría desde abajo sin que puedas ni
+verle.
+
+### Lo que costó, y son cuatro cosas nuevas del MCP
+
+- **El prevuelo volvió a pagar.** `Utilities|Array|Contains` no existe —es
+  `ContainsItem`— y `Math|Vector|Vector_Distance` tampoco; el nodo bueno es
+  `Transformation|GetDistanceTo`. Las dos veces abortó sin tocar nada.
+- **Los toolsets de Epic quieren la ruta del OBJETO** (`...BP_DA_Arena.BP_DA_Arena`);
+  los de VibeUE, la del paquete. Mezclarlas da *"is not a valid object path"*.
+- **El sandbox del `ProgrammaticToolset` usa un dict estricto**: `.get(clave, defecto)`
+  revienta con *"does not support a default value"*. Hay que acceder por clave.
+- **`AddMemberVariable` ignora el `defaultValue`**, al menos en floats: la variable
+  nació con **700**, que es el `RadioArena` que ya estaba en el Blueprint. Se arregla
+  con `SetVariableDefaultValue` — y se pilló releyendo, no fiándose del `true`.
+
+El nodo se insertó **por forma, no por nombre**: se busca el branch cuya salida `else`
+va a un `SetHayVivos`, que es el camino "sellada y con el jugador vivo". Así la pasada
+sigue siendo idempotente aunque los nodos se renumeren.
+
+**Queda por ver en PIE**, que es lo único que no se puede comprobar desde fuera: que el
+`RestartLogic` despierte de verdad al acercarse, y que el guardia de "ya está despierto"
+—`ContainsItem` sobre `EnemigosActivos`— impida que se reinicie el árbol cada 0,5 s. Si
+ese guardia fallara, el enemigo no llegaría a rematar un solo golpe y se notaría al
+instante.

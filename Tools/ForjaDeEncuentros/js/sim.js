@@ -216,6 +216,36 @@ export class Simulacion {
       }
       if (this.t >= o.tDisparo) this._activarOleada(o, true);
     }
+    this._despertarPorProximidad();
+  }
+
+  /**
+   * Un dormido al que te acercas se levanta, aunque su oleada no haya entrado.
+   *
+   * Existe porque escalonar de uno en uno deja a cuatro de los cinco quietos casi
+   * todo el encuentro, y uno de ellos plantado en mitad del claro. El simulador ya
+   * despertaba AL QUE LE PEGAS (ver _aplicarDano); el motor no, y con un radio por
+   * encima del alcance de mele las dos cosas acaban siendo casi la misma.
+   *
+   * OJO AL RADIO: pasarse reconstruye la pareja simultanea que la receta evita a
+   * proposito, y dos cuerpos a la vez no se ganan con espada sola. Se despierta al
+   * enemigo SUELTO, nunca a su oleada entera.
+   */
+  _despertarPorProximidad() {
+    const R = this.cal.arena?.radioDespertar || 0;
+    if (R <= 0) return;
+    const M = this.malakh;
+    if (!M || M.estado === ESTADOS.MUERTO) return;
+    for (const E of this.enemigos) {
+      if (E.activo || !E.presente || E.estado === ESTADOS.MUERTO) continue;
+      // 3D, con la cota: es lo que mide el `GetDistanceTo` del motor. En planta, un
+      // arquero de balcon se despertaria desde abajo sin que puedas ni verle.
+      const dz = (E.cota || 0) - (M.cota || 0);
+      if (Math.hypot(dist(E.pos, M.pos), dz) > R) continue;
+      E.activo = true;
+      E.alertado = true;
+      this._evento('despertar', { agente: E.id, oleada: E.oleadaId, motivo: 'proximidad' });
+    }
   }
 
   // -------------------------------------------------------------------- bucle

@@ -187,7 +187,9 @@ console.log('\n--- "Romper la linea", el encuentro real ---');
   const enc = encuentro('romper-la-linea');
   const olas = oleadasDe(enc);
   const problemas = validar(enc);
-  comprobar('cuatro oleadas y cinco enemigos', olas.length === 4 && enc.enemigos.length === 5);
+  // Cinco desde el 25/08: con la esquiva medida en 532, dos cuerpos a la vez no se
+  // ganan con espada sola, asi que la receta va de uno en uno.
+  comprobar('cinco oleadas y cinco enemigos', olas.length === 5 && enc.enemigos.length === 5);
   comprobar('ninguna oleada trae mas de dos cuerpos', olas.every(o => o.enemigos.length <= 2),
     olas.map(o => o.enemigos.length).join('+'));
   comprobar('la validacion estatica esta limpia', problemas.length === 0,
