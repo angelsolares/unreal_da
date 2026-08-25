@@ -38,7 +38,7 @@
         "duracion": 1,
         "impacto": 0.398,
         "ventana": 0.117,
-        "alcance": 245,
+        "alcance": 448,
         "arco": 100,
         "costeStamina": 12,
         "dano": 17,
@@ -48,7 +48,7 @@
         "duracion": 1.5,
         "impacto": 0.6,
         "ventana": 0.16,
-        "alcance": 245,
+        "alcance": 448,
         "arco": 110,
         "costeStamina": 26,
         "dano": 30,
@@ -141,7 +141,7 @@
         "duracion": 1.25,
         "impacto": 0.55,
         "ventana": 0.16,
-        "alcance": 245,
+        "alcance": 448,
         "arco": 120,
         "costeStamina": 14,
         "dano": 22,
@@ -152,7 +152,7 @@
         "duracion": 1.9,
         "impacto": 0.9,
         "ventana": 0.22,
-        "alcance": 245,
+        "alcance": 448,
         "arco": 170,
         "costeStamina": 30,
         "dano": 38,
@@ -183,7 +183,7 @@
         "duracion": 1.2,
         "impacto": 0.5,
         "ventana": 0.15,
-        "alcance": 245,
+        "alcance": 448,
         "arco": 120,
         "costeStamina": 12,
         "dano": 16,
@@ -217,5 +217,6 @@
     "armaLentaSinArmadura": "Es estrictamente peor, por buena que sea su propiedad. Un arma pesada NECESITA armadura de compromiso, el hyperarmor de cualquier action RPG. Sin eso, \"pesado\" no es una fantasia jugable: es una trampa.",
     "elControlDeMasasEsNegativo": "Aturdir a uno de dos sale PEOR que no hacerlo. Medido: la lanza con el perfil EXACTO de la espada mas interrumpir recibia 86 de daño contra los 60 de la espada sola. El motivo es que no puedes desengancharte —corren mas que tu—, asi que el hueco que abres lo gastas en un ataque comprometido y el otro te castiga. Por eso la Lanza acabo APARTANDO en vez de aturdiendo: al que empujas no se queda ofreciendote la nuca.",
     "elAlcanceEsUnaAnimacion": "No es un numero que se pueda poner aqui. Los cuatro de melé comparten animacion y llegan a 245 cm, medido de la pose. Y es la palanca mas potente que existe: al Espadon se le pusieron 260 por descuido y el duelo contra el Arquero paso de 25 s a 16 s, porque el arquero se planta a 300 cm — justo al filo de los 243 de la espada. Diecisiete centimetros. Si algun dia se anima un asta de verdad, pruebas/matriz.mjs ya mide lo que compraria."
-  }
+  },
+  "escala": "ESCALADO 2026-08-25 x 1,8273. Los alcances de melé estaban en unidades de animacion y el mundo esta en centimetros: ver la regla \"LAS ANIMACIONES NO ESTAN EN CENTIMETROS DE MUNDO\" en calibracion.json. NO se escalan los 2400 del Arco ni los descartes de proyectil (2600): esos son vuelo de flecha o de lanza arrojada, y ya son mundo. El `empuje` se queda como estaba y queda PENDIENTE de comprobar si es mundo o animacion."
 }

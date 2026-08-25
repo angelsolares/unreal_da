@@ -26,7 +26,7 @@
       "duracion": 1,
       "impacto": 0.398,
       "ventana": 0.117,
-      "alcance": 243,
+      "alcance": 444,
       "arco": 100,
       "costeStamina": 10,
       "empuje": 20
@@ -35,7 +35,7 @@
       "duracion": 1.212,
       "impacto": 0.53,
       "ventana": 0.121,
-      "alcance": 231,
+      "alcance": 422,
       "arco": 110,
       "costeStamina": 25,
       "multiplicadorDano": 2,
@@ -45,7 +45,7 @@
       "duracion": 0.917,
       "iframeInicio": 0.107,
       "iframeFin": 0.459,
-      "distancia": 532,
+      "distancia": 797,
       "costeStamina": 25
     },
     "reaccionGolpe": 0.75,
@@ -78,7 +78,7 @@
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 30,
-      "alcanceAtaque": 245,
+      "alcanceAtaque": 448,
       "distanciaPreferida": 200,
       "rangoAggro": 2000,
       "ataque": {
@@ -125,7 +125,7 @@
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 20,
-      "alcanceAtaque": 241,
+      "alcanceAtaque": 440,
       "distanciaPreferida": 200,
       "rangoAggro": 2000,
       "ataque": {
@@ -148,7 +148,7 @@
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 30,
-      "alcanceAtaque": 239,
+      "alcanceAtaque": 437,
       "distanciaPreferida": 200,
       "rangoAggro": 2000,
       "ataque": {
@@ -171,7 +171,7 @@
       "radio": 50,
       "velocidadGiro": 360,
       "dano": 20,
-      "alcanceAtaque": 241,
+      "alcanceAtaque": 440,
       "distanciaPreferida": 200,
       "rangoAggro": 2000,
       "ataque": {
@@ -202,7 +202,7 @@
     "malakh.reaccionGolpe": "medido 2026-08-23 — M_GetHitFront_Add, 0.750 s a rate 1.0. Antes puse 0.687 leyendo la secuencia, no el montage.",
     "malakh.ataqueLigero.impacto": "medido 2026-08-23 — AnimNotifyState ANS_HitBox, ya en tiempo real: 0.494 s en el _01 y 0.302 s en el _02. El 0.398 es la media de los dos golpes del combo.",
     "malakh.ataqueLigero.ventana": "medido 2026-08-23 — duracion del mismo ANS_HitBox: 0.099 s y 0.135 s. Media 0.117.",
-    "malakh.ataqueLigero.alcance": "medido 2026-08-24 — mismo criterio que los enemigos, para que se comparen: 221,3 y 264,1 en los dos montages del combo, media 243. Antes puse 179, que era el arma medida desde el root del INSTANTE; pero el simulador no mueve a Malakh mientras ataca, asi que lo que le corresponde es el alcance desde donde se compromete.",
+    "malakh.ataqueLigero.alcance": "ESCALADO 2026-08-25: 243 medidos sobre la animacion x 1,8273 de escala de malla = 444. El 243 sigue siendo la medida buena EN UNIDADES DE ANIMACION; lo que estaba mal era usarlo contra un mundo en centimetros. medido 2026-08-24 — mismo criterio que los enemigos, para que se comparen: 221,3 y 264,1 en los dos montages del combo, media 243. Antes puse 179, que era el arma medida desde el root del INSTANTE; pero el simulador no mueve a Malakh mientras ataca, asi que lo que le corresponde es el alcance desde donde se compromete.",
     "malakh.ataquePesado.impacto": "medido 2026-08-23 — ANS_HitBox a 0.448 s y 0.612 s reales. Media 0.53.",
     "malakh.esquiva": "medido 2026-08-23 — M_Roll: 1.375 s a rate 1.50 = 0.917 s reales. Los i-frames son el ANS_Activity llamado \"IsImmortal\", de 0.107 a 0.459 s reales — 0.353 s de invulnerabilidad, no los 0.35 que estime por casualidad bien. El coste son 25 de stamina (Stat.Cost.Roll), no 10: con 100 de stamina caben CUATRO esquivas, no diez.",
     "malakh.pocion.curacion": "medido — DA_HealthPotion.value = 25",
@@ -220,7 +220,7 @@
     "arquetipos.portador_del_estandarte.buff": "YA SE MODELA. Hasta el 23/08 esto decia \"NO MODELADO A PROPOSITO\" porque el aura no existia en Unreal. Existe desde ese dia y el simulador la aplica: ver el bloque aura y _danoDe() en sim.js. Lo que sigue sin existir es el EFECTO VISUAL — el jugador sufre el buff sin ver de donde viene — y el estandarte como objeto: el portador lleva espada y escudo.",
     "aviso.velocidad": "OJO: los cinco enemigos corren a 600 y Malakh a 400. No se puede huir de NINGUNO. Antes esto solo pasaba con el Lancero; medido, pasa con todos.",
     "malakh.ataquePesado.ventana": "medido 2026-08-23 — ANS_HitBox de 0.123 s y 0.119 s. Media 0.121.",
-    "malakh.esquiva.distancia": "medido 2026-08-25 — 531,9 cm, y ya no es estimado. La nota vieja decia que pedir la pose de un MONTAGE tira el interprete; se mide en la SECUENCIA fuente, Anim_Roll, sobre el trozo que el montage reproduce (0,000-1,375 de 1,400) y sin ningun ANS_IgnoreRootMotion que lo cancele. Los 400 anteriores se quedaban un 33% cortos. La tuberia esta validada contra dos valores que ya estaban en este fichero: la duracion real sale 1,375/1,50 = 0,917 s, y los i-frames del notify IsImmortal (0,160 + 0,529) dan 0,107 y 0,459. Los dos coinciden clavados.",
+    "malakh.esquiva.distancia": "MEDIDO EN EL MUNDO 2026-08-25: 797 cm, tres veces seguidas y repetible al centimetro, reproduciendo M_Roll sobre Malakh en PIE y midiendo cuanto se desplaza el ACTOR. NO se escala el 532: el desplazamiento no se multiplica limpio por la escala porque el blend-out del montage se come la cola del root motion (532 x 1,8273 darian 972, y el juego da 797, un factor efectivo de 1,4986). Para desplazamientos, medir en juego; para alcances, escalar. medido 2026-08-25 — 531,9 cm, y ya no es estimado. La nota vieja decia que pedir la pose de un MONTAGE tira el interprete; se mide en la SECUENCIA fuente, Anim_Roll, sobre el trozo que el montage reproduce (0,000-1,375 de 1,400) y sin ningun ANS_IgnoreRootMotion que lo cancele. Los 400 anteriores se quedaban un 33% cortos. La tuberia esta validada contra dos valores que ya estaban en este fichero: la duracion real sale 1,375/1,50 = 0,917 s, y los i-frames del notify IsImmortal (0,160 + 0,529) dan 0,107 y 0,459. Los dos coinciden clavados.",
     "malakh.regenStamina": "medido 2026-08-23 — RegeneratedStats: 1.75 de stamina cada 0.05 s = 35/s, y se corta 1 s despues de gastar. Antes puse 25.",
     "malakh.velocidadSprint": "medido 2026-08-23 — BP_MovementSpeedComponent: Walk 200 / Jog 400 / Sprint 550. El estado por defecto es Jog, y por eso la velocidad del simulador son 400. IMPORTANTE: ni esprintando (550) llega a los 600 de los enemigos.",
     "malakh.ataqueLigero.costeStamina": "medido 2026-08-23 — Stat.Cost.MeleeAttack = 10. Ya estaba bien.",
@@ -230,8 +230,8 @@
     "aviso.medicionDeMalakh": "Los ataques de Malakh son MUCHO mas rapidos de lo que este simulador creyo hasta hoy (ligero 1.0 s en vez de 1.5; pesado 1.21 en vez de 2.3), y su esquiva cuesta 2.5 veces mas. Los veredictos de antes del 23/08 estaban calculados con un Malakh lento y con esquivas baratas: no se comparan con los de ahora.",
     "aviso.pythonCaido": "Pedirle la pose a un AnimMontage (get_anim_pose_at_time) revienta el interprete de Python del editor con un assert y ya no vuelve: hay que reiniciar el editor. Los toolsets C++ siguen funcionando despues del golpe. Si hace falta root motion, sacarlo de la SECUENCIA, no del montage.",
     "aura": "medido 2026-08-23 — BP_DA_AuraComponent en /Game/DarkAngels/Blueprints/Combat/. RadioAura 1200, Bonificacion +15, editables por instancia. Comprobado en juego con dos Vigilantes: 35 de dano a 506 uu del portador, 20 a 3000 uu, 20 con el portador muerto. Un +75% mientras viva.",
-    "malakh.ataquePesado.alcance": "medido 2026-08-24 — 212,1 y 250,7, media 231. El pesado llega MENOS que el ligero.",
-    "arquetipos.*.alcanceAtaque": "medido 2026-08-24 — alcance EFECTIVO desde donde el atacante se compromete: la longitud del arma MAS lo que el root motion lo lleva hacia delante durante el golpe. Medir solo el arma daba enemigos que no llegaban nunca (se plantan a 200 y el arma llega a 171), y eso es falso: los ataques de la IA avanzan entre 15 y 154 cm. Media de los cinco ataques normales: espada 241,3 / hacha 238,5 / lanza 245,1. Los CUATRO de mele comparten animacion, asi que la unica diferencia es el arma.",
+    "malakh.ataquePesado.alcance": "ESCALADO 2026-08-25: 231 x 1,8273 = 422. medido 2026-08-24 — 212,1 y 250,7, media 231. El pesado llega MENOS que el ligero.",
+    "arquetipos.*.alcanceAtaque": "ESCALADO 2026-08-25 x 1,8273. El del Arquero NO se toca: sus 14.000 son el vuelo de la flecha, que ya es mundo. medido 2026-08-24 — alcance EFECTIVO desde donde el atacante se compromete: la longitud del arma MAS lo que el root motion lo lleva hacia delante durante el golpe. Medir solo el arma daba enemigos que no llegaban nunca (se plantan a 200 y el arma llega a 171), y eso es falso: los ataques de la IA avanzan entre 15 y 154 cm. Media de los cinco ataques normales: espada 241,3 / hacha 238,5 / lanza 245,1. Los CUATRO de mele comparten animacion, asi que la unica diferencia es el arma.",
     "arquetipos.lancero_del_alba.alcanceAtaque": "medido 2026-08-24 — LA LANZA SIGUE SIN DAR ALCANCE: 245 contra los 241 de la espada. Cuatro centimetros. Mide 175 cm contra los 138,8 de la espada, pero se agarra a un tercio del asta y sobresale casi lo mismo por delante de la mano. Los 320 que tenia eran invencion, y con ellos se cae la premisa de que al Lancero se le responde por el alcance.",
     "arquetipos.arquero_del_firmamento.alcanceAtaque": "medido 2026-08-24 — NO TIENE LIMITE DE ALCANCE. El decorador D_CanShootArrow solo comprueba un cono de 25 grados y la vision: no hay comprobacion de distancia. La flecha sale a 3500 cm/s, vive 4 s y su projectile_gravity_scale es 0 — no cae. Eso son 14.000 cm en linea recta, tres veces la diagonal de la arena de \"Romper la linea\". El arquero dispara desde donde sea con tal de verte. Los 2200 que tenia eran invencion, y ademas dulcificaban el problema: cortar la linea de vision no es UNA respuesta, es LA respuesta.",
     "arquetipos.*.ataque.duracion": "medido 2026-08-24 — los montages de IA tambien llevan rate_scale (1,3 y 1,4), igual que los del jugador. Reales: ligero 1,555 s, pesado 1,729, especial 2,292; media de los seis 1,765. Mi \"2,000 s medidos\" del Lancero era la longitud EN CRUDO. Con el -20% de las armas a dos manos, Lancero y Heraldo quedan en 2,206 — no en los 2,5 y 3,1 que tenia.",
@@ -246,7 +246,8 @@
     "aviso.ataqueEspecial": "NO MODELADO, y es gordo. El M_AI_SpecialAttack_01 del Behaviour Tree es una estocada que avanza 500 cm: su alcance efectivo son 698 cm, casi tres veces el de un ataque normal. Esta en el arbol como una de las tres ramas de ataque, asi que los cuatro de mele lo tienen. El simulador usa un solo perfil de ataque por enemigo y se queda con la media de los CINCO ataques normales (241), o sea que HOY SUBESTIMA a los enemigos: en el juego pueden cerrar siete metros de golpe. Modelarlo pide un segundo perfil de ataque por arquetipo.",
     "aviso.percepcion": "NO MODELADO: el cono de vision de 75 grados (el simulador usa un radio, asi que sus enemigos ven por detras) y el AISenseConfig_Damage, que hace que golpear a uno lo despierte aunque no te vea. El segundo importa para el diseno: no se puede ir picoteando enemigos por la espalda sin que se enteren.",
     "EL AVANCE YA ESTA DENTRO DEL ALCANCE": "REGLA, 2026-08-25. `alcance` y `alcanceAtaque` NO son la longitud del arma: son la distancia desde DONDE EL ATACANTE SE COMPROMETE hasta donde llega la punta, o sea que el root motion del golpe YA ESTA SUMADO, en los dos bandos. La espada avanza 46,9 y 164,6 cm en su combo y eso es parte de sus 243. Por eso el simulador no mueve a nadie mientras ataca. Anadirle ADEMAS un `embestida` a un arma es CONTARLO DOS VECES: probado el 25/08, la espada base pasaba de 40 a 59 de daño contra dos Escuderos y de 65 a 37 contra el Arquero, y ninguna de las dos cosas es real.",
-    "arena.radioDespertar": "DECISION DE DISENO CON TECHO MEDIDO, 2026-08-25. Un dormido al que te acercas se levanta aunque su oleada no haya entrado. Existe porque escalonar de uno en uno deja a cuatro de los cinco quietos casi todo el encuentro, uno de ellos plantado en mitad del claro. El numero NO es libre: el que despiertas te persigue y ya no lo despegas, asi que pasarse reconstruye la pareja simultanea que la receta evita a proposito. Medido sobre «Romper la linea», 400 partidas por politica: 0 -> 98% y 1 a la vez; 150 -> 92%, 2 a la vez y el veredicto IDENTICO; 200 -> 90% y la puerta de ganable ya cae a aviso; 250 -> 88% y 6 atascadas; 300 -> 84%, 3 a la vez y 12 atascadas; 700 -> 35%; sin limite -> 0%. Los 150 son el techo que no mueve ni una puerta. Para hacerse una idea: la capsula de Malakh mide 42 de radio y la del enemigo 50, asi que a 150 centro a centro las superficies estan a 58 cm. Hay que pasarle por encima."
+    "arena.radioDespertar": "DECISION DE DISENO CON TECHO MEDIDO, 2026-08-25. Un dormido al que te acercas se levanta aunque su oleada no haya entrado. Existe porque escalonar de uno en uno deja a cuatro de los cinco quietos casi todo el encuentro, uno de ellos plantado en mitad del claro. El numero NO es libre: el que despiertas te persigue y ya no lo despegas, asi que pasarse reconstruye la pareja simultanea que la receta evita a proposito. Medido sobre «Romper la linea», 400 partidas por politica: 0 -> 98% y 1 a la vez; 150 -> 92%, 2 a la vez y el veredicto IDENTICO; 200 -> 90% y la puerta de ganable ya cae a aviso; 250 -> 88% y 6 atascadas; 300 -> 84%, 3 a la vez y 12 atascadas; 700 -> 35%; sin limite -> 0%. Los 150 son el techo que no mueve ni una puerta. Para hacerse una idea: la capsula de Malakh mide 42 de radio y la del enemigo 50, asi que a 150 centro a centro las superficies estan a 58 cm. Hay que pasarle por encima.",
+    "LAS ANIMACIONES NO ESTAN EN CENTIMETROS DE MUNDO": "REGLA, 2026-08-25, y es la correccion mas gorda de la calibracion. El componente de malla de Malakh esta a escala 1,8273 y el de los enemigos a 1,8289 (la CAPSULA no: sigue en radio 42/50). Comprobado que el factor es EXACTO para huesos: la misma distancia de un socket medida en espacio de componente y en mundo da 1,8273 clavado en hand_r, head y foot_l. O sea que todo lo medido con AnimPoseExtensions —posiciones de hueso, largo de arma, alcance— esta en unidades de animacion y hay que multiplicar por la escala antes de compararlo con geometria del nivel. Lo que viene de Blueprints (distanciaPreferida, distanciaMinima, distanciaDecision, velocidad, radios, rangoAggro) YA esta en centimetros de mundo y NO se toca. Mezclarlos era el error."
   },
   "aura": {
     "arquetipo": "portador_del_estandarte",
@@ -256,5 +257,10 @@
   },
   "arena": {
     "radioDespertar": 150
+  },
+  "escala": {
+    "meshMalakh": 1.8273,
+    "meshEnemigos": 1.8289,
+    "capsula": 1
   }
 }

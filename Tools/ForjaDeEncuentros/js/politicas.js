@@ -115,11 +115,25 @@ class PoliticaBase {
       const alejarse = normaliza(resta(M.pos, origen.pos));
       const lateral = { x: -alejarse.y, y: alejarse.x };
       const signo = this.azar.probabilidad(0.5) ? 1 : -1;
+
+      // LA COMPONENTE RADIAL DEPENDE DE SI HAY QUE CERRAR, y no es un adorno.
+      // Hasta el 25/08 se rodaba SIEMPRE un poco hacia atras (0,4 de alejarse). Con
+      // la esquiva medida en el mundo —797 cm, no 532— cada rodada apartaba unos 300
+      // cm, y contra un arquero de balcon Malakh se pasaba la partida rodando sin
+      // acercarse: 69 esquivas seguidas y 567 partidas de 1200 agotando el reloj. Un
+      // jugador no hace eso: bajo flechas se rueda HACIA el arquero, que es la unica
+      // forma de cruzar un campo de tiro.
+      const blanco = sim.agente(M.objetivoId);
+      const alcance = perfilAtaque(M, sim.cal, sim.armas, false).alcance;
+      const cerrar = !!blanco && dist(M.pos, blanco.pos) > alcance;
+      const radial = cerrar ? normaliza(resta(blanco.pos, M.pos)) : alejarse;
+      const peso = cerrar ? 0.8 : 0.4;
+
       return {
         accion: 'esquivar',
         direccion: normaliza({
-          x: alejarse.x * 0.4 + lateral.x * signo,
-          y: alejarse.y * 0.4 + lateral.y * signo
+          x: radial.x * peso + lateral.x * signo,
+          y: radial.y * peso + lateral.y * signo
         }),
         objetivo: M.objetivoId
       };

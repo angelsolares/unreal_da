@@ -1032,10 +1032,32 @@ export class Simulacion {
     if (d <= parada) return;
 
     let dir = normaliza(resta(destino, A.pos));
-    const bloqueo = this._coberturaEnMedio(A.pos, destino);
+
+    // EL RODEO NO SE APLICA CUANDO YA VAMOS A UN PUNTO INTERMEDIO. Si `_rutaHacia`
+    // mando a la rampa, la ruta ya esta resuelta y el obstaculo en medio es
+    // normalmente LA PROPIA PLATAFORMA sobre la que estamos: rodearla manda a un
+    // vertice fuera del rectangulo, y la barandilla de `_mover` lo rechaza, asi que el
+    // agente se queda clavado. Medido: Malakh quieto en (1280,1000) sobre el balcon
+    // sur, con el vertice fijo en (1047,652) y velocidad cero.
+    const bloqueo = ruta.intermedio ? null : this._coberturaEnMedio(A.pos, destino);
     if (bloqueo) {
-      const vertice = this._verticeDeRodeo(A.pos, destino, bloqueo);
-      if (vertice) dir = normaliza(resta(vertice, A.pos));
+      // MEMORIA DE RODEO. Sin ella la eleccion avariciosa se recalcula cada tick y hace
+      // ping-pong: al acercarse a la esquina elegida, esa esquina cae dentro del radio
+      // de "ya estoy" de `_verticeDeRodeo`, se descarta, y la mas barata pasa a ser la
+      // del otro extremo del muro. Medido el 25/08 con la calibracion escalada: Malakh
+      // oscilando entre x=-362 y x=-349 durante 180 s con un Escudero vivo a 655 cm.
+      //
+      // Lo que faltaba no era una ruta mejor —la buena existia: bordear el muro por
+      // debajo en linea recta— sino COMPROMETERSE con ella. Se recalcula solo cuando
+      // cambia el obstaculo o cuando ya se ha llegado al vertice.
+      const llegado = A._rodeo && dist(A.pos, A._rodeo.punto) < 60;
+      if (!A._rodeo || A._rodeo.id !== bloqueo.id || llegado) {
+        const vertice = this._verticeDeRodeo(A.pos, destino, bloqueo);
+        A._rodeo = vertice ? { id: bloqueo.id, punto: vertice } : null;
+      }
+      if (A._rodeo) dir = normaliza(resta(A._rodeo.punto, A.pos));
+    } else {
+      A._rodeo = null;
     }
     A.yaw = giraHacia(A.yaw, yawDe(dir), (A.perfil.velocidadGiro || 360) * dt);
     this._mover(A, escala(dir, this._velocidadDe(A) * dt));

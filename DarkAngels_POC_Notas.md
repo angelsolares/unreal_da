@@ -13068,3 +13068,91 @@ juego la espada llega a ~444 y lo alcanza sin moverse.
 **No se ha rebaseado nada.** Después de lo de la esquiva ya sabemos lo que cuesta mover
 la línea base, y esto es más gordo: toca `alcance`, `alcanceAtaque` y de rebote la
 geometría de todas las recetas. Es decisión de diseño cuándo abrirlo.
+
+## El rebaseo por escala, y lo que destapó (2026-08-25)
+
+### Primero, separar dos cosas que no son la misma
+
+**El alcance SÍ escala, y de forma exacta.** Medido sin experimento: la misma distancia
+de un socket, en espacio de componente y en mundo, da **1,8273 clavado** en `hand_r`,
+`head` y `foot_l`. Es aritmética de la jerarquía de transformadas, no una estimación.
+
+**El desplazamiento NO escala limpio.** El roll recorre 531,9 en la animación; escalado
+darían 972, y el juego da **797** —tres veces seguidas, repetible al centímetro—, porque
+el blend-out del montage se come la cola del root motion (factor efectivo 1,4986).
+
+De ahí la regla: **para alcances, escalar; para desplazamientos, medir en juego.**
+
+### Lo aplicado
+
+| | antes | ahora |
+|---|---|---|
+| espada, ligero / pesado | 243 / 231 | **444 / 422** |
+| Lancero | 245 | 448 |
+| Vigilante e Inspector | 241 | 440 |
+| Heraldo | 239 | 437 |
+| Lanza, Espadón, Estandarte | 245 | 448 |
+| esquiva | 532 | **797** (medido, no escalado) |
+
+Sin tocar lo que ya venía de Blueprints y por tanto ya era mundo: `distanciaPreferida`,
+`distanciaMinima`, `distanciaDecision`, velocidades, radios de cápsula, `rangoAggro`, ni
+el vuelo de flechas y lanzas arrojadas.
+
+### Tres cosas se rompieron, y las tres eran fallos de verdad
+
+El veredicto se fue a `VXXV~VVVX` con **567 partidas atascadas de 1200**. Ninguna era
+dificultad: eran bugs que sólo aparecen cuando las distancias cambian.
+
+1. **Se rodaba siempre hacia atrás.** La esquiva llevaba un 0,4 fijo de «alejarse», y con
+   797 cm cada rodada apartaba unos 300. Contra un arquero de balcón, Malakh se pasaba la
+   partida rodando sin acercarse: 69 esquivas seguidas. Ahora, cuando hay que cerrar, se
+   rueda **hacia** el objetivo — que es lo único que cruza un campo de tiro.
+
+2. **La elección de esquina no tenía memoria.** Se recalculaba cada tick, así que al
+   acercarse a la esquina elegida ésta caía dentro del radio de «ya estoy» y la más barata
+   pasaba a ser la del otro extremo del muro:
+
+   ```
+   Malakh (-362,-1233) -> (-349,-1233)   vertice=(-316,-1233)   <- al este
+   Malakh (-349,-1233) -> (-362,-1233)   vertice=(-984,-1233)   <- al oeste
+   ```
+
+   180 s oscilando 13 cm con un Escudero vivo a 655. **La ruta buena existía** —bordear el
+   muro por debajo en línea recta—, sólo faltaba comprometerse. Ahora el vértice se guarda
+   y sólo se recalcula si cambia el obstáculo o si ya se llegó.
+
+3. **El rodeo pisaba la ruta por rampa.** Con la memoria puesta salió el siguiente:
+   Malakh quieto sobre el balcón sur intentando rodear la plataforma en la que estaba.
+   `_rutaHacia` ya le había mandado a la rampa y el rodeo le sobreescribía el destino con
+   un vértice fuera del rectángulo, que la barandilla de `_mover` rechaza: velocidad cero
+   para siempre. Ahora, si la ruta va a un punto intermedio, el rodeo no se aplica.
+
+**Resultado: cero atascos.** 200 semillas limpias en `pruebas/atasco`, y 0 de 60 por cada
+una de las tres políticas.
+
+### Y lo que el rebaseo dice del juego, que es lo importante
+
+Con todo arreglado, «Romper la línea» sale `VVXV~VVVV`: **94% a espada sola, sin una sola
+partida atascada** — y la puerta de la ventaja en ROJO, porque recoger armas sale un
+**+30% peor**. La matriz lo explica:
+
+```
+   problema      espada    Lanza   Espadon   Escudo     Arco
+   Guardia       19 dmg     +13%    +165%      +4%     +416%
+   Cierre         7 dmg    +403%   +1343%      +1%    +1231%
+   Compromiso    11 dmg    +105%      +1%     -40%      -18%
+   Mole          89 dmg     -15%     -66%      +0%     -100%
+```
+
+Dos Lanceros pasan de costar 84 de daño a costar **7**. El motivo es geométrico y no se
+arregla con números de arma: **Malakh ataca desde 311 cm y los enemigos se acercan hasta
+200**, así que cruzan medio arco de espada recibiendo golpes gratis. Con el alcance
+antiguo (243) esa ventana no existía.
+
+O sea que el rebaseo no ha «puesto bien» la Forja: ha movido el problema de sitio. Lo que
+queda desalineado ahora son **las distancias de la IA y la geometría de las arenas**,
+que siguen dimensionadas para un alcance de 243. Un criterio de la matriz queda ROTO
+(la Mole) y la arena se ha quedado holgada (79% de vida al terminar).
+
+**No se ha tocado nada de eso**: cambiar `distanciaPreferida` es tocar el árbol de DCS, y
+redimensionar arenas es rehacer el §6 entero. Es la siguiente decisión, no un descuido.
