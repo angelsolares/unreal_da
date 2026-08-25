@@ -72,40 +72,118 @@ export function planificar(enc, opciones = {}) {
     };
   });
 
-  // El sello del §7: una barrera por lado del perimetro.
-  // bounds es un rectangulo alineado a los ejes (contrato §1.4): cuatro muros y
-  // ninguna ambiguedad. Un poligono arbitrario queda fuera de v2 a proposito.
-  const muros = [];
+  // EL SELLO NO SE COLOCA A MANO. `BP_DA_Arena` se planta sus propios cuatro
+  // muros en BeginPlay (ColocarMuros), con su trigger de entrada y sus bandas
+  // de luz. Poner BlockingVolumes encima era duplicar la barrera y dejar fuera
+  // todo lo demas que la arena trae: victoria, purga, checkpoint, watchdog y
+  // reintento. Lo que se exportaba antes era un diorama, no un encuentro.
+  //
+  // OJO: la arena es CUADRADA (un solo RadioArena para X e Y) y el `bounds` del
+  // encuentro es un rectangulo. Se coge el semilado MAYOR para que nada de lo
+  // diseñado quede fuera del sello, y la diferencia se avisa.
   const bb = enc.arena.bounds;
-  const b = [
-    { x: bb.min.x, y: bb.min.y }, { x: bb.max.x, y: bb.min.y },
-    { x: bb.max.x, y: bb.max.y }, { x: bb.min.x, y: bb.max.y }
-  ];
-  for (let i = 0; i < b.length; i++) {
-    const a = b[i], c = b[(i + 1) % b.length];
-    const dx = c.x - a.x, dy = c.y - a.y;
-    const largo = Math.hypot(dx, dy);
-    if (largo < 1) continue;
-    muros.push({
-      clase: 'sello',
-      etiqueta: `Forja_Sello_${i}`,
-      pos: alMundo({ x: (a.x + c.x) / 2, y: (a.y + c.y) / 2 }, ALTURA_SELLO / 2),
-      yaw: Math.atan2(dy, dx) * 180 / Math.PI,
+  const centro = { x: (bb.min.x + bb.max.x) / 2, y: (bb.min.y + bb.max.y) / 2 };
+  const semiX = (bb.max.x - bb.min.x) / 2;
+  const semiY = (bb.max.y - bb.min.y) / 2;
+  const radio = Math.round(Math.max(semiX, semiY));
+
+  const arena = {
+    clase: 'arena',
+    etiqueta: 'Forja_Arena',
+    pos: alMundo(centro, 0),
+    radio,
+    // AutoDetectarEnemigos los recoge solos por estar dentro del cuadrado; no
+    // hay que enumerarlos. ReintentarAlMorir lo decide el encuentro.
+    reintentar: !!(enc.arena && enc.arena.reintentarAlMorir),
+    semiX: Math.round(semiX),
+    semiY: Math.round(semiY)
+  };
+
+  // --- la geometria, que es lo que hace que la receta signifique algo --------
+  //
+  // Sin esto lo exportado es una caja vacia: el muro tras el que se cubren los
+  // arqueros y el balcon a cota son PRECISAMENTE lo que crea la lectura del
+  // §5.1 y lo que el simulador modela. Cubos de /Engine/BasicShapes escalados:
+  // feos pero solidos, medibles y con la cota correcta. Vestirlos es trabajo de
+  // arte, no del exportador.
+  const caja = (r, clase, etiqueta, alturaZ, cotaBase) => {
+    const anchoX = Math.abs(r.max.x - r.min.x);
+    const anchoY = Math.abs(r.max.y - r.min.y);
+    return {
+      clase,
+      etiqueta,
+      // el cubo del motor mide 100 cm y su origen esta en el CENTRO
+      pos: alMundo({ x: (r.min.x + r.max.x) / 2, y: (r.min.y + r.max.y) / 2 },
+                   (cotaBase || 0) + alturaZ / 2),
+      yaw: 0,
       escala: {
-        x: +(largo / 200).toFixed(4),
-        y: +(GROSOR_SELLO / 200).toFixed(4),
-        z: +(ALTURA_SELLO / 200).toFixed(4)
+        x: +(anchoX / 100).toFixed(4),
+        y: +(anchoY / 100).toFixed(4),
+        z: +(alturaZ / 100).toFixed(4)
       }
-    });
+    };
+  };
+
+  const solidos = [];
+  for (const c of (enc.coberturas || [])) {
+    solidos.push(caja(c, 'cobertura',
+      `Forja_Cobertura_${c.id || solidos.length}`, c.altura || 200, c.cota || 0));
+  }
+  for (const pl of (enc.plataformas || [])) {
+    // la plataforma es el SUELO a su cota: un tablero fino, no un bloque
+    solidos.push(caja(pl, 'plataforma',
+      `Forja_Plataforma_${pl.id || solidos.length}`, 40, (pl.cota || 0) - 40));
+    // y cada acceso, una rampa: se coloca como cubo tumbado con el pitch justo
+    for (const [k, ac] of (pl.accesos || []).entries()) {
+      const dx = ac.hasta.x - ac.desde.x, dy = ac.hasta.y - ac.desde.y;
+      const largo = Math.hypot(dx, dy);
+      const subida = pl.cota || 0;
+      solidos.push({
+        clase: 'rampa',
+        etiqueta: `Forja_Rampa_${pl.id || ''}_${k}`,
+        pos: alMundo({ x: (ac.desde.x + ac.hasta.x) / 2,
+                       y: (ac.desde.y + ac.hasta.y) / 2 }, subida / 2),
+        yaw: Math.atan2(dy, dx) * 180 / Math.PI,
+        pitch: -Math.atan2(subida, largo) * 180 / Math.PI,
+        escala: {
+          x: +(Math.hypot(largo, subida) / 100).toFixed(4),
+          y: +((ac.ancho || 300) / 100).toFixed(4),
+          z: 0.2
+        }
+      });
+    }
   }
 
+  // El arranque del jugador: un PlayerStart de verdad, no un TargetPoint. Sin
+  // esto el encuentro no es jugable — apareces donde diga el GameMode.
   const marcas = [
-    { clase: 'marca', etiqueta: 'Forja_Jugador', pos: alMundo(enc.jugador.pos, enc.jugador.cota) },
-    enc.arena.trigger && { clase: 'marca', etiqueta: 'Forja_TriggerSello', pos: alMundo(enc.arena.trigger) },
-    enc.arena.checkpoint && { clase: 'marca', etiqueta: 'Forja_Checkpoint', pos: alMundo(enc.arena.checkpoint) }
+    { clase: 'inicio', etiqueta: 'Forja_PlayerStart',
+      pos: alMundo(enc.jugador.pos, enc.jugador.cota), yaw: enc.jugador.yaw ?? 0 },
+    enc.arena.checkpoint && { clase: 'marca', etiqueta: 'Forja_Checkpoint',
+      pos: alMundo(enc.arena.checkpoint) }
   ].filter(Boolean);
 
-  return { offset: off, enemigos, muros, marcas };
+  // Suelo y luz. Un nivel de trabajo recien creado esta VACIO: sin suelo Malakh
+  // se cae al vacio y sin luz no se ve nada, asi que el encuentro exportado no
+  // seria jugable por mucho que los enemigos esten en su sitio.
+  //
+  // Solo se colocan si el nivel esta en blanco (lo decide el lado de Unreal
+  // contando actores que no sean nuestros): si exportas sobre un mapa que ya
+  // tiene terreno, poner un plano encima seria estropearlo.
+  const escena = {
+    suelo: {
+      clase: 'suelo', etiqueta: 'Forja_Suelo',
+      pos: alMundo(centro, -10),
+      yaw: 0,
+      // el plano del motor mide 100 cm; se pasa del radio para que haya
+      // margen fuera del sello y no se vea el borde del mundo
+      escala: { x: +((radio * 2.6) / 100).toFixed(3),
+                y: +((radio * 2.6) / 100).toFixed(3), z: 1 }
+    },
+    luz: { clase: 'luz', etiqueta: 'Forja_Luz', pos: alMundo(centro, 1200), yaw: 0 }
+  };
+
+  return { offset: off, enemigos, arena, solidos, marcas, escena };
 }
 
 // ------------------------------------------------------------------- exportar
@@ -138,8 +216,10 @@ export async function exportar(cuerpo) {
     protegidos: NIVELES_PROTEGIDOS.map(r => r.source),
     confirmado: !!confirmarNivel,
     enemigos: plan.enemigos,
-    muros: plan.muros,
-    marcas: plan.marcas
+    arena: plan.arena,
+    solidos: plan.solidos,
+    marcas: plan.marcas,
+    escena: plan.escena
   });
 
   const { salida } = await python(`
@@ -174,12 +254,24 @@ for a in subsys.get_all_level_actors():
         subsys.destroy_actor(a)
         informe["borrados"] += 1
 
+def marcar(actor, spec):
+    """Etiqueta y marca NADA MAS NACER.
+
+    Si la colocacion revienta despues (poner una propiedad que no existe, por
+    ejemplo), el actor ya queda reconocible y la siguiente pasada lo barre. Sin
+    esto quedan huerfanos sin marca que ademas envenenan la deteccion de "nivel
+    en blanco" para siempre. Paso de verdad con un DirectionalLight."""
+    if actor is None:
+        return None
+    actor.set_actor_label(spec["etiqueta"])
+    actor.tags = [unreal.Name("Forja"), unreal.Name(D["marca"]), unreal.Name(spec["clase"])]
+    return actor
+
 def coloca(actor, spec):
     if actor is None:
         informe["avisos"].append("No se pudo crear " + spec["etiqueta"])
         return
-    actor.set_actor_label(spec["etiqueta"])
-    actor.tags = [unreal.Name("Forja"), unreal.Name(D["marca"]), unreal.Name(spec["clase"])]
+    marcar(actor, spec)
     if "escala" in spec:
         s = spec["escala"]
         actor.set_actor_scale3d(unreal.Vector(s["x"], s["y"], s["z"]))
@@ -216,15 +308,113 @@ for e in D["enemigos"]:
             "OJO con " + e["etiqueta"] + ": el aura de buff/debuff del Inspector no existe todavia. "
             "Hoy pelea como un Vigilante, asi que no midas nada que dependa de ese buff.")
 
-for m in D["muros"]:
-    a = subsys.spawn_actor_from_class(unreal.BlockingVolume,
-        unreal.Vector(m["pos"]["x"], m["pos"]["y"], m["pos"]["z"]),
-        unreal.Rotator(0, 0, m["yaw"]))
-    coloca(a, m)
+# EL GAMEMODE DEL NIVEL. Sin esto sale BP_CombatCharacter -el personaje de demo
+# de DCS- en vez de Malakh, y entonces no estas probando NADA de lo tuyo: ni la
+# espada base, ni el ciclo de arma temporal, ni los descartes, ni el HUD.
+# Verificado: exportado sin override, el pawn de PIE era BP_CombatCharacter_C.
+GM = "/Game/DarkAngels/Blueprints/World/BP_DA_GameMode"
+cls_gm = unreal.EditorAssetLibrary.load_blueprint_class(GM)
+if cls_gm is None:
+    informe["avisos"].append(
+        "FALTA " + GM + ": el nivel se queda con el GameMode del proyecto y "
+        "saldra el personaje de demo de DCS en vez de Malakh.")
+else:
+    ws = mundo.get_world_settings()
+    antes = ws.get_editor_property("default_game_mode")
+    ws.set_editor_property("default_game_mode", cls_gm)
+    ahora = ws.get_editor_property("default_game_mode")
+    informe["gamemode"] = {
+        "antes": antes.get_name() if antes else None,
+        "ahora": ahora.get_name() if ahora else None
+    }
+    if ahora is None or "BP_DA_GameMode" not in ahora.get_name():
+        informe["avisos"].append("El GameMode del nivel NO quedo puesto: " + str(ahora))
 
+# La ARENA: un solo actor que trae sello, victoria, purga, checkpoint, watchdog
+# y reintento. Sin el, lo exportado no es jugable.
+A = D["arena"]
+ruta_arena = "/Game/DarkAngels/Blueprints/Combat/BP_DA_Arena.BP_DA_Arena_C"
+cls_arena = unreal.EditorAssetLibrary.load_blueprint_class(
+    "/Game/DarkAngels/Blueprints/Combat/BP_DA_Arena")
+if cls_arena is None:
+    informe["avisos"].append("FALTA BP_DA_Arena: el encuentro se coloca SIN sello ni victoria.")
+else:
+    a = subsys.spawn_actor_from_class(cls_arena,
+        unreal.Vector(A["pos"]["x"], A["pos"]["y"], A["pos"]["z"]),
+        unreal.Rotator(0, 0, 0))
+    marcar(a, A)
+    if a is not None:
+        a.set_editor_property("RadioArena", float(A["radio"]))
+        a.set_editor_property("ReintentarAlMorir", bool(A["reintentar"]))
+        # AutoDetectarEnemigos ya viene a True: recoge solo a los BP_BaseAI que
+        # caigan dentro del cuadrado, asi que no hay que enumerarlos.
+    coloca(a, A)
+    if a is not None:
+        leido = a.get_editor_property("RadioArena")
+        if abs(leido - float(A["radio"])) > 0.5:
+            informe["avisos"].append(
+                "RadioArena pedido %s pero el editor dice %s" % (A["radio"], leido))
+    if A["semiX"] != A["semiY"]:
+        informe["avisos"].append(
+            "La arena de Unreal es CUADRADA y el encuentro es %sx%s: se ha usado "
+            "el semilado mayor (%s), asi que el sello queda mas ancho de lo "
+            "diseñado en el lado corto." % (A["semiX"], A["semiY"], A["radio"]))
+
+# Los solidos: coberturas, plataformas y rampas. Cubos del motor escalados.
+cubo = unreal.EditorAssetLibrary.load_asset("/Engine/BasicShapes/Cube.Cube")
+for sdef in D["solidos"]:
+    a = subsys.spawn_actor_from_class(unreal.StaticMeshActor,
+        unreal.Vector(sdef["pos"]["x"], sdef["pos"]["y"], sdef["pos"]["z"]),
+        unreal.Rotator(0, sdef.get("pitch", 0), sdef.get("yaw", 0)))
+    marcar(a, sdef)
+    if a is not None and cubo is not None:
+        a.static_mesh_component.set_static_mesh(cubo)
+        a.set_mobility(unreal.ComponentMobility.STATIC)
+    coloca(a, sdef)
+
+# Suelo y luz, SOLO si el nivel esta en blanco. Se cuenta antes de mirar nada
+# mas: si hay algo que no sea nuestro, se supone que el mapa ya esta vestido.
+ajenos = [a for a in subsys.get_all_level_actors()
+          if D["marca"] not in [str(t) for t in a.tags]
+          and not a.get_actor_label().startswith("Forja_")]
+if ajenos:
+    informe["avisos"].append(
+        "El nivel ya tiene %d actores propios: NO se ha puesto suelo ni luz." % len(ajenos))
+else:
+    E = D["escena"]
+    plano = unreal.EditorAssetLibrary.load_asset("/Engine/BasicShapes/Plane.Plane")
+    a = subsys.spawn_actor_from_class(unreal.StaticMeshActor,
+        unreal.Vector(E["suelo"]["pos"]["x"], E["suelo"]["pos"]["y"], E["suelo"]["pos"]["z"]),
+        unreal.Rotator(0, 0, 0))
+    marcar(a, E["suelo"])
+    if a is not None and plano is not None:
+        a.static_mesh_component.set_static_mesh(plano)
+        a.set_mobility(unreal.ComponentMobility.STATIC)
+    coloca(a, E["suelo"])
+    l = subsys.spawn_actor_from_class(unreal.DirectionalLight,
+        unreal.Vector(E["luz"]["pos"]["x"], E["luz"]["pos"]["y"], E["luz"]["pos"]["z"]),
+        unreal.Rotator(0, -50, -40))
+    marcar(l, E["luz"])
+    if l is not None:
+        # el actor de luz no tiene set_mobility: la movilidad vive en su componente
+        l.light_component.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
+    coloca(l, E["luz"])
+    sk = subsys.spawn_actor_from_class(unreal.SkyLight,
+        unreal.Vector(E["luz"]["pos"]["x"], E["luz"]["pos"]["y"], E["luz"]["pos"]["z"]),
+        unreal.Rotator(0, 0, 0))
+    marcar(sk, {"etiqueta": "Forja_Cielo", "clase": "luz"})
+    if sk is not None:
+        sk.light_component.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
+
+# El arranque del jugador y el checkpoint.
 for m in D["marcas"]:
-    a = subsys.spawn_actor_from_class(unreal.TargetPoint,
-        unreal.Vector(m["pos"]["x"], m["pos"]["y"], m["pos"]["z"]))
+    if m["clase"] == "inicio":
+        a = subsys.spawn_actor_from_class(unreal.PlayerStart,
+            unreal.Vector(m["pos"]["x"], m["pos"]["y"], m["pos"]["z"]),
+            unreal.Rotator(0, 0, m.get("yaw", 0)))
+    else:
+        a = subsys.spawn_actor_from_class(unreal.TargetPoint,
+            unreal.Vector(m["pos"]["x"], m["pos"]["y"], m["pos"]["z"]))
     coloca(a, m)
 
 print(json.dumps(informe))
@@ -242,10 +432,17 @@ print(json.dumps(informe))
   // con lo releido. Si algo no cuadra, sale con nombre y apellidos.
   informe.desviados = informe.colocados.filter(c =>
     c.pedido.some((v, i) => Math.abs(v - c.real[i]) > TOLERANCIA));
+  const cuantos = clase => informe.colocados.filter(c => c.clase === clase).length;
   informe.resumen = {
-    enemigos: informe.colocados.filter(c => c.clase === 'enemigo').length,
-    sello: informe.colocados.filter(c => c.clase === 'sello').length,
-    marcas: informe.colocados.filter(c => c.clase === 'marca').length,
+    enemigos: cuantos('enemigo'),
+    arena: cuantos('arena'),
+    coberturas: cuantos('cobertura'),
+    plataformas: cuantos('plataforma'),
+    rampas: cuantos('rampa'),
+    inicio: cuantos('inicio'),
+    suelo: cuantos('suelo'),
+    luz: cuantos('luz'),
+    marcas: cuantos('marca'),
     pedidos: plan.enemigos.length,
     desviados: informe.desviados.length
   };
