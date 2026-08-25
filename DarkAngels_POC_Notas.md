@@ -13597,3 +13597,76 @@ dónde *no* buscar.
 
 El medidor se queda colocado en el nivel como `DA_MedidorDano`. No lleva el tag de la
 Forja, así que las reexportaciones no lo barren.
+
+## El espaciado: encontrado el mecanismo, y el arreglo a medio camino (2026-08-25)
+
+Con el daño ya descartado como culpable, el sospechoso era la geometría. Lo es.
+
+### La banda de golpes gratis
+
+Malakh ataca desde cualquier punto dentro de sus **444**; el enemigo no ataca hasta
+estar a **110** (llega después de su MoveTo, como en el árbol). Entre medias hay una
+banda de **334 cm** que el enemigo cruza a 185 cm/s: **1,8 s de golpes gratis por cada
+aproximación**. Medido, 200 partidas por caso, 1v1:
+
+```
+   enemigo      seg   recibe   atMalakh  atEnemigo   ratio   dist Malakh  dist enemigo
+   Lancero     14,5     12,3      10,4       2,1     4,9:1      274 cm       150 cm
+   Escudero    17,5      0,6       8,5       1,9     4,5:1      408 cm       148 cm
+   Heraldo     27,7     47,9      20,9       3,9     5,3:1      244 cm       149 cm
+```
+
+**Cinco ataques de Malakh por cada uno del enemigo**, y contra el Escudero recibe 0,6 de
+daño en 17 segundos.
+
+### El error es mío, y de esta misma sesión
+
+Los 444 se midieron *«desde donde el atacante se compromete hasta la punta»*: **incluyen**
+los 46,9/164,6 cm que el root motion lleva a Malakh hacia delante. En el motor, atacar
+desde 400 significa lanzarse y **acabar a 244**, dentro del alcance del enemigo. En el
+simulador ataca desde 400 y **se queda en 400**.
+
+Cuando descarté la `embestida` por «contar el avance dos veces» tenía razón a medias:
+está duplicado para el **alcance**, pero el **desplazamiento** es real y no se modela. El
+par físicamente correcto ya estaba en la procedencia:
+
+```
+   alcance instantaneo   179 anim x 1,8273 = 327
+   + avance del golpe                      ~106
+   = desde donde se compromete              433  ≈ 444  ✓
+```
+
+Y la propia procedencia dice que los 179 se descartaron **sólo porque «el simulador no
+mueve a Malakh mientras ataca»**. Ahora sí lo mueve.
+
+### Medido: arregla dos puertas y rompe otra
+
+```
+   caso          espada HOY   espada NUEVO   |  counter HOY   counter NUEVO
+   Guardia          20 dmg         16 dmg   |        +61%           +96%
+   Cierre           42 dmg         55 dmg   |        -45%           -58%
+   Compromiso        8 dmg         11 dmg   |        -40%           -40%
+   Mole             48 dmg         53 dmg   |        -53%           -57%
+   Formacion        22 dmg         31 dmg   |          —              —
+
+   receta HOY     VVX~~VVVV   esp 100%   hp 87,7   atascos   0
+   receta NUEVO   V~VV~VVVX   esp  85%   hp 79,5   atascos 110
+```
+
+**Arregla justo lo que estaba roto**: la ventaja pasa de ROJO a verde (las armas por fin
+pagan) y «el encuentro cuesta algo» también. La distancia media de ataque cae de 274-408
+a 196-267, que es donde el motor los pone. Y el Escudero pasa de morir en 17,5 s a
+39,8 s: el muro por fin es un muro.
+
+**Pero mete 110 partidas atascadas**, y la causa no es el alcance: en las atascadas
+**Malakh acaba clavado contra el muro oeste** (x = −2191 con el límite en −2200). Con la
+esquiva en 797 cm, una sola rodada desde el centro lo estampa contra la pared. Es el
+mismo tipo de fallo geométrico que ya se arregló dos veces hoy —el ping-pong de esquinas
+y el rodeo pisando la rampa—, no un problema de este cambio.
+
+### NO SE HA APLICADO
+
+El cambio es correcto de origen y arregla las dos puertas que llevaban el día rotas, pero
+hasta que la esquiva no deje de encajonar a Malakh contra los muros, adoptarlo cambia un
+problema por otro. El orden sensato es: **primero el encajonamiento, luego el par
+327 + 106.**
