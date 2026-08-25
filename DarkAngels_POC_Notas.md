@@ -13012,3 +13012,59 @@ Y probado en PIE sobre el nivel recién exportado, sin sellar y a los 12 s:
 `MaxOleada = 5`, `OleadasEnemigos = [1,2,3,4,5]`, `Activos = 1`, las oleadas 2 a 5 con
 el árbol parado y **a 0 cm de su marca**, y el navmesh respondiendo en el mundo de
 juego. El Lancero de la oleada 1 sale a recibir, que es lo acordado.
+
+## La Lanza, montada en el combo ligero de DCS (2026-08-25)
+
+`M_DA_Lanza_AtaqueLigero_01` está en la fila `1` de `DT_Player_1H_Montages`, que es
+`Action.Attack.Light`. **Se añadió, no se sustituyó**: la fila queda
+
+    M_1H_LightAttack_02  +  M_1H_LightAttack_01  +  M_DA_Lanza_AtaqueLigero_01
+
+La pasada es [`Tools/MCP/lanza_en_dt_1h.py`](Tools/MCP/lanza_en_dt_1h.py), es idempotente
+y lleva dentro el contenido original literal para poder revertir (`MODO = "restaurar"`).
+
+**Es una modificación viva sobre un asset de pago.** `DT_Player_1H_Montages` es de DCS y
+está en `.gitignore`, así que **el cambio no viaja en el repositorio**: viaja la receta.
+Si se reinstala DCS, se pierde.
+
+Y hay que decirlo claro: esa tabla la elige `BP_CombatCharacter` **por tipo de combate,
+no por arma** —la referencia está cableada en un grafo suyo y el personaje no tiene
+ninguna variable de DataTable que cambiar al equipar—, así que **el tercer golpe del
+combo ligero saldrá con animación de lanza lleves lo que lleves**, también con la espada.
+Para que fuera exclusivo haría falta duplicar la tabla y enganchar el cambio al equipar,
+que ya es tocar los grafos de DCS.
+
+### Comprobado en PIE: el esqueleto compatible funciona en runtime
+
+Era el riesgo real —el montaje está autorizado para el esqueleto del Spear Pack y Malakh
+usa el de DCS—, y sale bien: `Montage_Play` sobre la malla de Malakh devuelve **1,833**
+(la duración), no 0. O sea que `add_compatible_skeleton` vale también en juego, no sólo
+en el editor.
+
+### Y de ahí salió algo bastante más gordo: EL MESH VA ESCALADO ×1,83
+
+Midiendo cuánto avanzaba el jugador al reproducir el montaje: **204 cm por golpe**,
+cuando la animación tiene 111,6. La cuenta cuadra clavada — el componente de malla de
+Malakh está a escala **1,8273**, y 111,6 × 1,8273 = 203,9. Los enemigos igual (1,8289 el
+Lancero, 1,8273 el Vigilante). La cápsula NO está escalada: sigue en radio 42/50.
+
+Eso significa que **todo lo que se midió sobre las animaciones está en unidades de
+animación, y el mundo está en centímetros**. Se multiplican por 1,83:
+
+| | en la Forja | en el mundo |
+|---|---|---|
+| alcance de la espada | 243 | ~444 |
+| alcance del Lancero | 245 | ~448 |
+| avance del combo ligero | 46,9 / 164,6 | ~86 / ~301 |
+
+Y hay números de la calibración que **sí** están en centímetros de mundo porque salieron
+de Blueprints, no de animaciones: `distanciaPreferida` 242, la `distanciaMinima` 300 del
+Arquero, el `DistanceToTarget < 250` del árbol. Mezclados con los otros, no cuadran.
+
+El caso donde más se nota es justo el que mide la matriz: el simulador cree que un
+Arquero a 300 está fuera del alcance de la espada (243) y hay que perseguirlo; en el
+juego la espada llega a ~444 y lo alcanza sin moverse.
+
+**No se ha rebaseado nada.** Después de lo de la esquiva ya sabemos lo que cuesta mover
+la línea base, y esto es más gordo: toca `alcance`, `alcanceAtaque` y de rebote la
+geometría de todas las recetas. Es decisión de diseño cuándo abrirlo.
