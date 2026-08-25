@@ -12985,3 +12985,30 @@ Al ver que el sello hace `CastToBP_DA_PlayerCharacter` y que el pawn es
 Comprobado: `BP_Malakh_DCS_C` **sí** es un `BP_DA_PlayerCharacter`, así que el cast pasa.
 Lo que no dispara el solape es **teleportar** al jugador dentro del box; por eso en las
 pruebas hay que llamar a `Sellar` a mano.
+
+## El nivel reexportado, comprobado entero (2026-08-25)
+
+Reexportado con el exportador ya arreglado (volumen de navegación) y verificado
+**contra el editor y contra el JSON**, no contra el informe del exportador. 18 actores
+colocados, los 18 en su sitio exacto.
+
+| | |
+|---|---|
+| enemigos | los 5, posición exacta, cotas 0/0/350/0/350 y tags `Oleada2..Oleada5` correctos |
+| navegación | `Forja_NavBounds` x/y −2310..2310, z −500..1050 — cubre la arena (−2200..2200 / −1700..1700) y el balcón más alto (350) |
+| arena | `RadioArena` 2200, `RetardoEntreOleadas` 3, `RadioDespertar` 150, `Estado` 0, y el array `Enemigos` **vacío** (no viaja relleno) |
+| plataformas | norte 350×450 y sur **400×550**, las dos con la cima clavada en z=350 |
+| rampas | las dos suben hasta z=359, o sea que se llega al balcón |
+| coberturas | las tres, con sus alturas 250/250/400 |
+| arranque | `PlayerStart` en (−1900, 0) y checkpoint en (−2100, 0) |
+| suelo | 5720×5720, cubre la arena entera |
+| restos | **ninguno sin marcar**: todo lleva la etiqueta de la Forja y la próxima pasada lo barre |
+
+El único aviso es el de siempre y es de diseño: la arena de Unreal es cuadrada y el
+encuentro mide 2200×1700, así que el sello queda más ancho de lo diseñado en el lado
+corto.
+
+Y probado en PIE sobre el nivel recién exportado, sin sellar y a los 12 s:
+`MaxOleada = 5`, `OleadasEnemigos = [1,2,3,4,5]`, `Activos = 1`, las oleadas 2 a 5 con
+el árbol parado y **a 0 cm de su marca**, y el navmesh respondiendo en el mundo de
+juego. El Lancero de la oleada 1 sale a recibir, que es lo acordado.
