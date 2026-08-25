@@ -12616,3 +12616,78 @@ a la espada también. Las salidas son dos, y la elección es de diseño, no téc
 Detalle menor: los cuatro notifies quedaron en la pista 0 del panel, y DCS los reparte
 en tres. `TrackIndex` es solo presentación —el runtime no lo mira—, pero en el editor
 `HitBox` e `InpBuffer` se solapan visualmente. Un arrastre y ya.
+
+## El rebaseo de la Forja (2026-08-25)
+
+Pedí rebasear la calibración «con el avance real de la espada». **Hacerlo habría sido
+un error, y la propia Forja lo tenía escrito.** La procedencia de
+`malakh.ataqueLigero.alcance` dice, literal:
+
+> mismo criterio que los enemigos, para que se comparen: 221,3 y 264,1 en los dos
+> montages del combo, media 243. Antes puse 179, que era el arma medida desde el root
+> del INSTANTE; pero **el simulador no mueve a Malakh mientras ataca, así que lo que le
+> corresponde es el alcance desde donde se compromete**.
+
+O sea que `alcance` y `alcanceAtaque` **no son la longitud del arma**: son la distancia
+desde donde el atacante se compromete hasta donde llega la punta, con el root motion ya
+sumado, en los dos bandos. Añadirle además `embestida` a un arma cuenta el avance dos
+veces — y eso es exactamente lo que hicieron mis medidas de la tarde: la espada base
+pasaba de 40 a 59 de daño contra dos Escuderos y de 65 a 37 contra el Arquero, y
+ninguna de las dos cosas es real.
+
+Queda escrito en `calibracion.json` como regla, y con un aviso en `sim.js` junto al
+código de `embestida`, que se deja **solo** para contestar «¿y si el desplazamiento
+fuera una mecánica aparte?» (`pruebas/embestida.mjs`), nunca para calibrar.
+
+### Y el pack sí compra alcance, con el criterio bueno
+
+Mis 224 cm estaban medidos con el criterio VIEJO, el que en su día dio 179 para la
+espada. Con el de la casa, y midiendo espada y lanza con el mismo método: el combo
+ligero de la espada da 264,2 de media y el de la lanza 288,6. **Un 9,2% más**, que
+sobre los 243 registrados son **~265 cm**.
+
+Se anota, no se aplica: en el juego la Lanza sigue usando la animación compartida
+porque el montage no está enganchado. El día que lo esté, entra el 265 — y la matriz
+dice qué compra: *Cierre* pasa de −31% a −39% (más adentro de la banda del counter) y
+la penalización contra la Mole baja de +51% a +21%.
+
+### El rebaseo que sí había que hacer: la esquiva
+
+De 52 entradas de procedencia, 47 están medidas y 5 estimadas. De las cinco, **una se
+podía cerrar hoy** — su propia nota decía cómo: «se mide en PIE o desde la secuencia
+fuente, no desde el montage», que es lo que llevo toda la sesión haciendo.
+
+`malakh.esquiva.distancia`: **400 estimados → 531,9 medidos.** Un 33% corto.
+
+La tubería queda validada contra dos valores que ya estaban en el fichero: la duración
+real sale 1,375/1,50 = **0,917 s**, y los i-frames del notify `IsImmortal`
+(0,160 + 0,529) dan **0,107 y 0,459**. Los dos coinciden clavados con lo calibrado.
+
+### Lo que ha movido, y no es poco
+
+```
+quien             Guardia       Cierre   Compromiso      Mole    Formacion
+espada             40->40       60->84       65->30    30->31       87->92
+Lanza              37->29       50->58       60->60    34->47       70->71
+Espadon            20->60       63->58       33->46    15->15       57->56
+Escudo             40->40       60->84       39->18    30->31       88->92
+```
+
+Una esquiva un tercio más larga **te saca del tiro y te pasa de largo en cuerpo a
+cuerpo**. Contra el Arquero es un regalo (65 → 30); contra dos Lanceros sales rodando
+lejos y tienes que volver andando (60 → 84).
+
+**Dos consecuencias que hay que decidir, no esconder:**
+
+1. **El Espadón deja de contestar la guardia**: contra dos Escuderos pasa de 20 a 60 de
+   daño, de −50% a +50%. La suite sigue en verde sólo por un tecnicismo —el caso se
+   marca «no da de sí» porque ni el mejor llega a −30%—, pero su verbo ROMPER se ha
+   quedado sin caso donde lucirse.
+
+2. **«Romper la línea» ya no pasa limpio.** Era `VVV~VVVVV` con un 93% a espada sola;
+   ahora es `V~~V~VVV~` con un 80% y 7 partidas atascadas. Y el banco de composiciones
+   ya señala la alternativa: **«de uno en uno»** —escalonar del todo, un enemigo por
+   oleada— saca 93% y una sola atascada.
+
+Volver a elegir la composición **no se ha hecho**: cambia el §6 ya cerrado y obliga a
+reexportar. Es decisión de diseño.

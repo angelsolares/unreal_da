@@ -45,7 +45,7 @@
       "duracion": 0.917,
       "iframeInicio": 0.107,
       "iframeFin": 0.459,
-      "distancia": 400,
+      "distancia": 532,
       "costeStamina": 25
     },
     "reaccionGolpe": 0.75,
@@ -220,7 +220,7 @@
     "arquetipos.portador_del_estandarte.buff": "YA SE MODELA. Hasta el 23/08 esto decia \"NO MODELADO A PROPOSITO\" porque el aura no existia en Unreal. Existe desde ese dia y el simulador la aplica: ver el bloque aura y _danoDe() en sim.js. Lo que sigue sin existir es el EFECTO VISUAL — el jugador sufre el buff sin ver de donde viene — y el estandarte como objeto: el portador lleva espada y escudo.",
     "aviso.velocidad": "OJO: los cinco enemigos corren a 600 y Malakh a 400. No se puede huir de NINGUNO. Antes esto solo pasaba con el Lancero; medido, pasa con todos.",
     "malakh.ataquePesado.ventana": "medido 2026-08-23 — ANS_HitBox de 0.123 s y 0.119 s. Media 0.121.",
-    "malakh.esquiva.distancia": "ESTIMADO — la distancia del roll es root motion y no se pudo evaluar: pedir la pose de un montage tira el interprete de Python del editor (assertion en AnimMontage.h:781). Se mide en PIE o desde la secuencia fuente, no desde el montage.",
+    "malakh.esquiva.distancia": "medido 2026-08-25 — 531,9 cm, y ya no es estimado. La nota vieja decia que pedir la pose de un MONTAGE tira el interprete; se mide en la SECUENCIA fuente, Anim_Roll, sobre el trozo que el montage reproduce (0,000-1,375 de 1,400) y sin ningun ANS_IgnoreRootMotion que lo cancele. Los 400 anteriores se quedaban un 33% cortos. La tuberia esta validada contra dos valores que ya estaban en este fichero: la duracion real sale 1,375/1,50 = 0,917 s, y los i-frames del notify IsImmortal (0,160 + 0,529) dan 0,107 y 0,459. Los dos coinciden clavados.",
     "malakh.regenStamina": "medido 2026-08-23 — RegeneratedStats: 1.75 de stamina cada 0.05 s = 35/s, y se corta 1 s despues de gastar. Antes puse 25.",
     "malakh.velocidadSprint": "medido 2026-08-23 — BP_MovementSpeedComponent: Walk 200 / Jog 400 / Sprint 550. El estado por defecto es Jog, y por eso la velocidad del simulador son 400. IMPORTANTE: ni esprintando (550) llega a los 600 de los enemigos.",
     "malakh.ataqueLigero.costeStamina": "medido 2026-08-23 — Stat.Cost.MeleeAttack = 10. Ya estaba bien.",
@@ -244,7 +244,8 @@
     "aviso.medicionDeEnemigos": "Segunda pasada sobre los enemigos (24/08). Tres cosas que daba por buenas eran falsas: la lanza no da alcance (4 cm sobre la espada, no 120), el arquero no tiene limite de alcance (14.000 cm, no 2200), y el Lancero y el Heraldo SI bloquean (75%, no 0). Los veredictos anteriores a esta fecha se calcularon con enemigos mas faciles de lo que son.",
     "arquetipos.*.distanciaDecision": "medido 2026-08-24 — BT_WarriorAI, decorador \"Distance Check\": la rama que ataca pide DistanceToTarget < 250, que es centro a centro; menos los 42 de la capsula de Malakh son 208 de centro a superficie. NO es lo mismo que alcanceAtaque: el enemigo LANZA el golpe desde 208 pero su arma solo llega a 171, asi que amaga y falla a maxima distancia. Tenerlos como un solo numero dejaba al enemigo parado sin atacar nunca, porque su MoveTo lo planta a 200 y eso ya esta fuera de su rango de golpe.",
     "aviso.ataqueEspecial": "NO MODELADO, y es gordo. El M_AI_SpecialAttack_01 del Behaviour Tree es una estocada que avanza 500 cm: su alcance efectivo son 698 cm, casi tres veces el de un ataque normal. Esta en el arbol como una de las tres ramas de ataque, asi que los cuatro de mele lo tienen. El simulador usa un solo perfil de ataque por enemigo y se queda con la media de los CINCO ataques normales (241), o sea que HOY SUBESTIMA a los enemigos: en el juego pueden cerrar siete metros de golpe. Modelarlo pide un segundo perfil de ataque por arquetipo.",
-    "aviso.percepcion": "NO MODELADO: el cono de vision de 75 grados (el simulador usa un radio, asi que sus enemigos ven por detras) y el AISenseConfig_Damage, que hace que golpear a uno lo despierte aunque no te vea. El segundo importa para el diseno: no se puede ir picoteando enemigos por la espalda sin que se enteren."
+    "aviso.percepcion": "NO MODELADO: el cono de vision de 75 grados (el simulador usa un radio, asi que sus enemigos ven por detras) y el AISenseConfig_Damage, que hace que golpear a uno lo despierte aunque no te vea. El segundo importa para el diseno: no se puede ir picoteando enemigos por la espalda sin que se enteren.",
+    "EL AVANCE YA ESTA DENTRO DEL ALCANCE": "REGLA, 2026-08-25. `alcance` y `alcanceAtaque` NO son la longitud del arma: son la distancia desde DONDE EL ATACANTE SE COMPROMETE hasta donde llega la punta, o sea que el root motion del golpe YA ESTA SUMADO, en los dos bandos. La espada avanza 46,9 y 164,6 cm en su combo y eso es parte de sus 243. Por eso el simulador no mueve a nadie mientras ataca. Anadirle ADEMAS un `embestida` a un arma es CONTARLO DOS VECES: probado el 25/08, la espada base pasaba de 40 a 59 de daño contra dos Escuderos y de 65 a 37 contra el Arquero, y ninguna de las dos cosas es real."
   },
   "aura": {
     "arquetipo": "portador_del_estandarte",

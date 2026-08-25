@@ -576,9 +576,18 @@ export class Simulacion {
     A.estado = ESTADOS.ANTICIPACION;
     A.tEstado = 0;
     A.accion = { ...perfil, yaGolpeo: false };
-    // Embestida. El pack de la Lanza no alarga el brazo: ADELANTA EL CUERPO. Medido
-    // sobre el root de las secuencias, el avance esta entero en los primeros 0.4 s
-    // del golpe y para en seco. Se recorta para no atravesar al objetivo.
+    // Embestida: el ataque adelanta el cuerpo antes de golpear.
+    //
+    // CUIDADO — CASI SIEMPRE NO SE DEBE USAR. En esta calibracion el avance YA ESTA
+    // DENTRO DE `alcance`: los 243 de la espada y los 245 del Lancero se midieron
+    // desde donde el atacante SE COMPROMETE hasta la punta del arma, root motion
+    // incluido, y por eso el simulador no mueve a nadie mientras ataca. Declarar
+    // ademas `embestida` en un arma es contar el avance DOS VECES: probado, la
+    // espada base pasaba de 40 a 59 de daño contra dos Escuderos y de 65 a 37
+    // contra el Arquero, y ninguna de las dos cosas es real.
+    //
+    // Se deja porque contesta "¿y si el desplazamiento fuera una mecanica APARTE del
+    // alcance?" —ver pruebas/embestida.mjs—, no para calibrar.
     if (perfil.embestida) {
       const blanco = A.bando === 'malakh' ? this.agente(A.objetivoId) : this.malakh;
       if (blanco && blanco.estado !== ESTADOS.MUERTO) {

@@ -262,52 +262,43 @@ for (const c of CASOS) {
 //   ~306 cm — 245 x 1.25, el punto en el que Malakh puede quedarse FUERA del
 //             alcance enemigo y pinchar. Es donde el espaciado empieza a
 //             funcionar, y con el cambia como se pelea, no solo cuanto llegas.
-// EL PACK, MEDIDO (25-08-2026). Se compro el Spear Animation Pack esperando
-// ALCANCE, y el alcance no esta: del hueso root a la punta del asta son 224 cm
-// como maximo —y 246 es la cota superior teorica, mano mas medio asta, que
-// ninguna pose alcanza—. La espada mide 243. O sea que el asta llega MENOS.
+// EL PACK DE LA LANZA, MEDIDO — y por que aqui NO aparece ninguna "embestida".
 //
-// Lo que si trae, y no estaba en ningun presupuesto, es EMBESTIDA: el root de
-// cada ataque avanza de verdad (el idle de control da 0.0 cm en 10 s, asi que
-// la traslacion no es ruido), y avanza TODO en los primeros 0.4 s, con parada
-// en seco. Ligero 112 cm, pesado 296 cm.
+// Se compro el Spear Animation Pack esperando ALCANCE. Con el criterio VIEJO —del
+// root del INSTANTE a la punta— sale 224 cm y parece que llega menos que la espada.
+// Con el criterio QUE USA ESTA CALIBRACION —desde donde el atacante SE COMPROMETE,
+// root motion incluido— llega mas: midiendo espada y lanza con el mismo metodo, el
+// combo ligero de la espada da 264,2 de media y el de la lanza 288,6, un 9,2% mas.
+// Sobre los 243 registrados, eso son ~265.
 //
-// Asi que la pregunta ya no es "cuanto compra alargar el asta" sino: ¿compra el
-// DESPLAZAMIENTO lo que el alcance no compro? Las cuatro filas la contestan.
+// Hubo un rodeo por creer que el avance era una mecanica APARTE que habia que sumarle
+// al arma. No lo es: ya esta DENTRO de `alcance`, en los dos bandos, y sumarlo otra
+// vez lo cuenta dos veces. Esa exploracion vive en pruebas/embestida.mjs y ahi se queda.
+//
+// Y el alcance de la Lanza sigue en 245 A PROPOSITO: el montage propio existe, pero la
+// fila 1 de DT_Player_1H_Montages sigue apuntando a la espada, asi que en el juego la
+// Lanza todavia no lo usa. Los 265 entran el dia que se enganche.
 const ANIMAR = [
-  { etq: 'Lanza hoy (compartida)', fam: 'lanza_del_alba', mod: f => {} },
-  { etq: 'Lanza pack MEDIDO', fam: 'lanza_del_alba', mod: f => {
-      f.ataqueLigero.alcance = 224; f.ataqueLigero.embestida = 112;
-      f.ataquePesado.alcance = 221; f.ataquePesado.embestida = 296; } },
-  { etq: 'Lanza pack sin avance', fam: 'lanza_del_alba', mod: f => {
-      f.ataqueLigero.alcance = 224; f.ataquePesado.alcance = 221; } },
-  { etq: 'Lanza pack + abrir', fam: 'lanza_del_alba', mod: f => {
-      f.ataqueLigero.alcance = 224; f.ataqueLigero.embestida = 112;
-      f.ataqueLigero.embestidaAbreAtaque = true;
-      f.ataquePesado.alcance = 221; f.ataquePesado.embestida = 296;
-      f.ataquePesado.embestidaAbreAtaque = true; } },
-  { etq: 'Lanza 320 (hipotesis)', fam: 'lanza_del_alba', mod: f => {
-      f.ataqueLigero.alcance = 320; f.ataquePesado.alcance = 320; } },
-  { etq: 'Espadon 320 (hipotesis)', fam: 'espadon_alabarda', mod: f => {
-      f.ataqueLigero.alcance = 320; f.ataquePesado.alcance = 320; } }
+  { etq: "Lanza hoy (245)",                 fam: "lanza_del_alba",   alcance: 245 },
+  { etq: "Lanza con su montage (265)",      fam: "lanza_del_alba",   alcance: 265 },
+  { etq: "Lanza 320 (donde esta el techo)", fam: "lanza_del_alba",   alcance: 320 },
+  { etq: "Espadon 320 (hipotesis)",         fam: "espadon_alabarda", alcance: 320 }
 ];
-console.log('');
-console.log('=== QUE COMPRA EL PACK DE LA LANZA ===');
-console.log('');
-console.log('   ' + 'variante'.padEnd(26) + CASOS.map(c => c.etiqueta.padStart(13)).join(''));
-console.log('   ' + 'espada base (243)'.padEnd(26)
-  + CASOS.map(c => `${base[c.clave].dano.toFixed(0)} dmg`.padStart(13)).join(''));
+console.log("");
+console.log("=== QUE COMPRARIA ALARGAR EL ASTA ===");
+console.log("");
+console.log("   " + "variante".padEnd(34) + CASOS.map(c => c.etiqueta.padStart(13)).join(""));
+console.log("   " + "espada base (243)".padEnd(34)
+  + CASOS.map(c => (base[c.clave].dano.toFixed(0) + " dmg").padStart(13)).join(""));
 for (const v of ANIMAR) {
   const A = JSON.parse(JSON.stringify(armas));
-  v.mod(A.familias[v.fam]);
-  const fila = CASOS.map(c => {
-    const r = medir(c, v.fam, A);
-    return `${pctd(delta(r, base[c.clave]))}`.padStart(13);
-  });
-  console.log('   ' + v.etq.padEnd(26) + fila.join(''));
+  A.familias[v.fam].ataqueLigero.alcance = v.alcance;
+  A.familias[v.fam].ataquePesado.alcance = v.alcance;
+  const fila = CASOS.map(c => pctd(delta(medir(c, v.fam, A), base[c.clave])).padStart(13));
+  console.log("   " + v.etq.padEnd(34) + fila.join(""));
 }
 
-console.log(`
-${rotos ? `${rotos} criterios ROTOS — hay que recalibrar` : 'los tres criterios se cumplen'}
-`);
+console.log("");
+console.log(rotos ? (rotos + " criterios ROTOS — hay que recalibrar") : "los tres criterios se cumplen");
+console.log("");
 process.exitCode = rotos ? 1 : 0;
