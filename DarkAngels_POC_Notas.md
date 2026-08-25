@@ -13537,3 +13537,63 @@ un resultado.
 **Antes de recalibrar `dano` y `recarga` con esto falta una cosa**, y ahora es barata:
 repetir las ventanas con un Malakh que se mueva y ataque. El medidor ya está montado y
 el jugador puede hacerse inmortal, así que es cuestión de jugarlo.
+
+## El ritmo de daño, cerrado — y el simulador estaba bien (2026-08-25)
+
+Angel jugó, yo leí. Es la única forma de medir esto: el árbol de DCS **reacciona al estado
+del jugador**, así que un muñeco quieto mide otra cosa.
+
+```
+   ventana          tiempo   golpes   dmg/golpe   cadencia    dmg/s
+   P — pasivo        151 s     11       45,00     1/13,7 s     3,28
+   A1 — agresivo      48 s     13       30,00     1/ 3,7 s     8,18
+   A2 — agresivo      99 s     28       31,96     1/ 3,5 s     9,07
+   ──────────────────────────────────────────────────────────────────
+   A1+A2             146 s     41       31,3      1/ 3,6 s     8,78
+```
+
+Intervalos de A2, agrupados entre 0,4 y 4,8 s con tres colas de 9-11:
+4,77 · 11,62 · 0,41 · 2,68 · 4,32 · 3,65 · 4,38 · 1,78 · 1,74 · 1,08 · 0,76 · 9,14 ·
+2,96 · 2,72 · 4,42 · 0,65 · 3,24 · 1,60 · 2,26 · 6,24 · 1,20 · 10,18 · 1,66 · 3,02 ·
+0,88 · 1,56 · 1,14 · 1,79. Contra el pasivo iban de 13 a 34 s.
+
+### El veredicto
+
+| | dmg/s |
+|---|---|
+| **simulador (pareja)** | **9,38** |
+| **motor, combate real** | **8,78** ± 1,4 |
+| motor, blanco pasivo | 3,28 |
+
+**Un 6% de diferencia, dentro del error de Poisson de 41 golpes: indistinguibles.** El
+modelo de daño del simulador **es correcto** y no hay que tocar `dano` ni `recarga`.
+
+Y con eso queda **derogada** la afirmación de la nota anterior de que «el simulador es
+2,9× más violento». Era comparar contra un muñeco quieto, y estaba mal encuadrada.
+
+### El misterio del 45, resuelto
+
+No hay multiplicador oculto: **hay dos ataques**. Contra un blanco pasivo tiran del
+**pesado** (45 = 30 × 1,5) porque les sobra el tiempo; contra alguien que les presiona,
+del **ligero** (30, que es el `Stat.Damage` del Lancero). La media de A2, 31,96, son unos
+24 golpes de 30 y 4 de 45.
+
+### Lo que esto reabre
+
+Si el daño está bien, **la Guardia fuera de banda y la receta demasiado holgada (88% de
+vida al terminar) no vienen de ahí**. Son consecuencia de los otros dos rebaseos —alcance
+×1,83 y velocidad 185— o de algo sin mirar. Es el siguiente hilo, y al menos ya sabemos
+dónde *no* buscar.
+
+### El protocolo, para repetirlo
+
+1. `node ue.mjs py /tmp/prep.py` — lanza PIE, sella, despierta la pareja y pone
+   `Stat.Health.Max/Current` a 100.000 **al jugador y a los enemigos activos**: sin eso la
+   ventana se corta porque alguien muere.
+2. Clic en la ventana de PIE.
+3. `arranca.py` para poner el medidor a cero, jugar **dos minutos largos**, y leer.
+4. Reglas: sin coger armas del suelo, sin alejarse más de 25 m (a 2.596 cm sueltan el
+   objetivo), y ventanas de 2 minutos — con 48 s el error de Poisson ronda el 28%.
+
+El medidor se queda colocado en el nivel como `DA_MedidorDano`. No lleva el tag de la
+Forja, así que las reexportaciones no lo barren.
