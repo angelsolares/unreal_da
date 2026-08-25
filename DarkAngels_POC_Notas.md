@@ -12561,3 +12561,58 @@ atacaba ya estaba pegado), y un booleano de «se aleja» por tick, que hacía sa
 distancia de parada entre 157 y 235 en ticks alternos — Malakh se pasaba el combate
 avanzando y retrocediendo en el sitio, 1,8 ataques por combate. Se arregló con una
 media móvil de la velocidad radial.
+
+## El ataque ligero de la Lanza, montado (2026-08-25)
+
+`M_DA_Lanza_AtaqueLigero_01`, en `Content/DarkAngels/Animations/Lanza/`. El alcance
+del simulador **no se ha tocado**: sigue en 245.
+
+La pasada que lo reconstruye es [`Tools/MCP/montage_lanza.py`](Tools/MCP/montage_lanza.py),
+y existe porque `Content/DarkAngels/Animations/` está entero en `.gitignore` —esa
+carpeta referencia animaciones de packs de pago—, así que **el asset no viaja en el
+repo, viaja la receta**. Lo mismo que ya pasaba con `M_DA_ArrojarLanza`.
+
+| | |
+|---|---|
+| secuencia | `AS_Combo_Attack_01_01_Seq`, la que menos viaja (111,6) y más llega (224) |
+| slot | `FullBody`, mezcla 0,25 / 0,25 — la forma de todo DCS |
+| `ANS_HitBox` | 0,20 → 0,37 |
+| `ANS_InputBuffer` | 0,13 → 0,46 |
+| `ANS_IgnoreRootMotion` | 1,68 → 1,83 |
+| sonido | `CUE_SwingSmall` en 0,21 |
+
+El hitbox no está puesto a ojo: muestreando la punta del asta, el alcance salta de 146
+a 224 cm en t=0,244 y la punta va a 5000 cm/s entre 0,18 y 0,37. Lo que parece un
+segundo golpe hacia t=1,2 es el **recoger** el arma.
+
+### Lo que hay que corregir de la nota anterior: la espada de DCS YA embiste
+
+Escribí que el pack traía «embestida» como si fuera una novedad. No lo es. Las cuatro
+secuencias de ataque de DCS llevan `enable_root_motion = True` y viajan **46,9 / 164,6
+/ 103 / 113,9 cm**. Los 111,6 de la lanza caen justo en medio de ese rango, así que
+activar el root motion no es una licencia: es la norma de la casa. Sin activarlo el
+mesh se desplaza 111 cm respecto a la cápsula y pega un tirón al terminar.
+
+Y eso deja al descubierto algo más gordo: **la Forja modela una espada que no avanza**.
+Dándole a la espada base su avance real de 106 cm, la referencia entera se mueve:
+
+```
+                          Guardia   Cierre  Compromiso   Mole  Formacion
+espada SIN avance (hoy)    40 dmg   60 dmg    65 dmg    30 dmg   87 dmg
+espada CON avance (real)   59 dmg   62 dmg    37 dmg    30 dmg   80 dmg
+```
+
+Contra dos Escuderos la espada real recibe un 48% más, y contra el Arquero un 43%
+menos. No es un matiz: es la línea base de todo lo que mide la Forja, incluido el
+veredicto de «Romper la línea». **Rebasear eso es un trabajo aparte y no se ha hecho.**
+
+### Lo que falta para que se juegue
+
+El montaje existe y es correcto, pero **todavía no lo dispara nadie**. La lista de
+ataques ligeros del jugador vive en la fila `1` de `DT_Player_1H_Montages`, que es un
+DataTable **de DCS y compartido con la espada**: meterlo ahí le cambiaría la animación
+a la espada también. Las salidas son dos, y la elección es de diseño, no técnica.
+
+Detalle menor: los cuatro notifies quedaron en la pista 0 del panel, y DCS los reparte
+en tres. `TrackIndex` es solo presentación —el runtime no lo mira—, pero en el editor
+`HitBox` e `InpBuffer` se solapan visualmente. Un arrastre y ya.
