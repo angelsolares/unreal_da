@@ -12018,3 +12018,54 @@ Trampa nueva del ciclo borrar-recrear: **el nombre no siempre se libera en la mi
 de compilación** — `add_function_graph` tras un `remove` puede devolver `Nombre_0` incluso
 con el hueco "limpio"; si pasa, borrar el `_0` y volver a crear en una llamada MCP nueva, y
 **mirar siempre el nombre que devuelve** antes de escribir el DSL.
+
+### El rebote del muro, verificado — y las siete vueltas que costó (2026-08-24)
+
+**Funciona.** La prueba, con una flecha del Arquero volando sola hacia el muro:
+
+```
+t=0.67  d=186  dueño=BP_DA_Arquero_C   <- antes de entrar en el radio
+t=0.67  d=186  dueño=BP_Malakh_DCS_C   <- el mismo tick, tras Barrer
+```
+
+**El cambio de dueño es la mitad que importa**: el `HandleHit` del proyectil de DCS pregunta
+`IsEnemy(GetOwner, víctima)` antes de aplicar daño, así que una flecha cuyo dueño pasa a ser
+Malakh hiere al arquero. La inversión de velocidad va en el mismo camino de ejecución (el
+nodo siguiente), pero **no la llegué a ver en una lectura**: `GetVelocity()` del ACTOR va
+cacheada y en el mismo tick sigue dando el valor viejo; hay que leer `velocity` del
+`ProjectileMovementComponent`.
+
+Y la amortiguación del melé sí está medida entera: **`Stat.Damage` del Vigilante 20 → 10**
+dentro de la zona.
+
+#### Las siete causas, en orden
+
+1. **Los proyectiles de DCS no generan eventos de overlap.** Una flecha cruzó la caja del
+   muro sin disparar nada. Fuera el `EventActorBeginOverlap`.
+2. **Radio 260 medido en 3D**: las flechas vuelan ~2 m por encima del root del muro, que está
+   a ras de suelo. Subido a 420.
+3. **Los eventos de actor de la clase no corren.** Instrumentado con `PrintString`: ni
+   `EventTick` ni `EventBeginPlay` escriben una línea. `BP_DA_EstandartePlantado` —del que se
+   duplicó— arrastra el mismo defecto y nunca se notó porque su lógica vive en el componente
+   del aura. **El barrido pasó a un `SetTimerbyFunctionName` que arma el JUGADOR** sobre el
+   muro recién spawneado; verificado con `is_timer_active(muro, "Barrer") = True`.
+4. **El umbral de velocidad del muestreador estaba en 800** y las flechas vuelan a ~540: los
+   sondeos descartaban todas las flechas y devolvían cero muestras. Error mío de medición,
+   no del juego — costó tres pasadas en blanco.
+5. **A los proyectiles no se les puede teleportar**: `set_actor_location` sobre ellos no pega,
+   el `ProjectileMovement` reescribe la posición. Para cruzarlos con el muro hay que **mover
+   el muro**, que sí se deja.
+6. **Una referencia de actor caducada miente sin avisar**: un `_muro` viejo daba posición
+   (0,0,0) y dueño `None`, lo que parecía el bug de `IsEnemy`. El muro recién plantado sí
+   trae `dueño = BP_Malakh_DCS_C`. **Comprobar `is_valid` antes de creer una referencia.**
+7. **PIE arranca y el servidor MCP se cae** en algunos arranques: el puerto 8000 pasa a
+   rechazar conexiones con el editor vivo. Se recupera con `ModelContextProtocol.StartServer`
+   en la consola del editor, y eso lo tiene que teclear Angel.
+
+#### Lo que queda por ver
+
+La **inversión de velocidad** leída del componente. La lógica está y el cambio de dueño
+demuestra que el cuerpo del `if` se ejecuta entero, pero conviene mirarlo en una partida de
+verdad: si una flecha rebotada sale despedida hacia atrás, cerrado; si atraviesa, hay que
+revisar que `SetVelocityInLocalSpace` use el eje correcto (asume que la X local del proyectil
+es su dirección de vuelo).
