@@ -12936,3 +12936,52 @@ enemigos están sueltos** y ahora que pueden andar salen a recibirte. Al sellar 
 duerme donde estén, así que el Escudero de la segunda oleada se quedó congelado a 600 cm
 de la puerta en vez de en su marca. En juego la ventana es corta —el `BoxComponent` de
 `Entrada` llega hasta x=-1870 y el jugador aparece en -1900—, pero conviene saberlo.
+
+## Los enemigos se duermen en BeginPlay, no al sellar (2026-08-25)
+
+`BuscarEnemigos` —que es quien llama a `LeerOleadas` y `AplicarOleadas`— sólo corría
+desde `Sellar`. O sea que entre el BeginPlay y el momento en que el jugador cruza el
+`BoxComponent` de `Entrada`, **los cinco estaban sueltos**. No se notaba porque el nivel
+no tenía NavMesh y no podían moverse; en cuanto se le puso volumen salieron a recibir al
+jugador, y al sellar se les duerme *donde estén*.
+
+Ahora el `EventBeginPlay` llama a `BuscarEnemigos` justo tras `SetEstado 0` y antes de
+armar el temporizador del watchdog. La pasada es
+[`Tools/MCP/dormir_en_beginplay.py`](Tools/MCP/dormir_en_beginplay.py).
+
+**La oleada 1 sigue suelta a propósito**: es el comité de recepción, y en el flujo real
+la ventana no existe —el box de `Entrada` llega hasta x=-1870 y el jugador aparece en
+-1900—. Dormirla también dejaría la arena llena de estatuas para quien la mire desde
+fuera.
+
+**El riesgo era el orden de arranque** y se comprobó, no se supuso: `AplicarOleadas`
+necesita el `AIController` de cada enemigo, y si al BeginPlay de la arena no estuvieran
+poseídos, el `IsValid` se los saltaría y se quedarían despiertos en silencio. **Sí están.**
+Si algún día fallara, la solución es un `SetTimerByFunctionName` de 0,2 s en vez de la
+llamada directa. La llamada del `Sellar` se queda: es idempotente y hace de red.
+
+### Medido en PIE
+
+Sin sellar, a los 11 s de juego:
+
+```
+Estado=0   MaxOleada=5   OleadasEnemigos=[1,2,3,4,5]   Activos=1
+
+Lancero          ola 1  arbol=True   a 791 cm de su marca   <- el comite de recepcion
+Escudo linea     ola 2  arbol=False  a   0 cm de su marca
+Balcon firmam.   ola 3  arbol=False  a   0 cm de su marca
+Vigilante claro  ola 4  arbol=False  a   0 cm de su marca
+Balcon claro     ola 5  arbol=False  a   0 cm de su marca
+```
+
+Y el resto del flujo sigue entero: al sellar, `Activos=1` con las cuatro dormidas; y
+acercándose a 110 cm del Vigilante de la oleada 4, despierta (`arbol=True`, `Activos=2`)
+sin que `OleadaActual` se mueva del 1.
+
+### Y una sospecha que resultó ser falsa
+
+Al ver que el sello hace `CastToBP_DA_PlayerCharacter` y que el pawn es
+`BP_Malakh_DCS_C`, parecía que la arena no podría sellarse nunca en juego normal.
+Comprobado: `BP_Malakh_DCS_C` **sí** es un `BP_DA_PlayerCharacter`, así que el cast pasa.
+Lo que no dispara el solape es **teleportar** al jugador dentro del box; por eso en las
+pruebas hay que llamar a `Sellar` a mano.
