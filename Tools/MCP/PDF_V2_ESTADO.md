@@ -9,8 +9,13 @@ ya se equivocaron una vez este mes afirmando cosas que el motor desmentía, así
 vale lo medido.
 
 **Titular:** de las 13 fases y bloques del PDF, **el bucle de arena está entero** y **el ciclo
-de arma temporal casi**. Lo que falta se concentra en tres sitios: **tres de los cinco ataques
-de descarte**, **las cinco recetas de encuentro sin construir** y **el director de drops**.
+de arma temporal casi**. Lo que falta se concentra en dos sitios: **las recetas de encuentro
+sin montar** y **el director de drops**.
+
+**Puesta al día del 2026-08-25:** «Romper la línea» (§6.1) pasa de perderse el 100% de las
+veces a ganarse el **94% solo con la espada**, sin cambiar un número de la calibración: lo que
+cambió es **cuándo entra cada enemigo**. La receta está medida y validada en la Forja, y lo que
+la separa del juego son dos datos que a `BP_DA_Arena` le faltan. Detalle en el §6.
 
 ---
 
@@ -20,10 +25,10 @@ de descarte**, **las cinco recetas de encuentro sin construir** y **el director 
 |---|---|---|
 | 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
 | 3.2 | Ataque de descarte por familia | 🟢 **5 de 5** (el escudo, pendiente de ver el rebote en PIE) |
-| 4 | Arsenal de oportunidad | 🟢 las 5 familias existen y las 5 aportan |
+| 4 | Arsenal de oportunidad | 🟢 las 5 familias existen; **counters medidos el 25/08**, 3 de 5 en banda y las otras 2 con diagnóstico |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
 | 5 | Orden de bajas implícito | 🟠 falta la reacción enemiga |
-| 6 | Recetas de encuentro | 🔴 **0 de 5 construidas** |
+| 6 | Recetas de encuentro | 🟠 **1 de 5 diseñada y validada**, ninguna en el nivel todavía |
 | 7 | Arenas selladas | 🟢 completo |
 | 8 | Sistema de drops | 🔴 sin las 4 políticas |
 | 9 | Feedback visual/audio/UX | 🟢 casi; falta VFX del descarte |
@@ -66,20 +71,40 @@ arrojadiza, así que **todo lo demás caía por un camino vacío** — con el ha
 hacía nada. Ahora es un `else` que va al golpe de suelo, así que **ninguna arma temporal se
 queda sin remate**. Al escudo y al arco les falta su gesto propio del §3.2, no un descarte.
 
-### 2. Las cinco recetas de encuentro, sin construir (§6)
+### 2. Las recetas de encuentro (§6) — «Romper la línea» ya cuadra sobre el papel
 
 El PDF trae cinco composiciones con su ruta de ventaja: *Romper la línea*, *La lluvia del
 firmamento*, *El estandarte vive*, *Pesado contra pesado* y *Cadena perfecta*. **Ninguna está
-montada en el juego.**
+montada en el juego todavía**, pero la 6.1 ya tiene una forma que el simulador aprueba.
 
-- La **Forja de Encuentros** las simula, que es la mitad del trabajo.
-- `L_Forja_romper-la-linea.umap` está **a medias**: ✅ verificado sobre el binario, tiene 3
+**Lo que cambió el 25/08.** La receta se perdía **el 100% de las veces con espada sola** y el
+techo medido eran dos enemigos. Con **activación escalonada** —cuatro oleadas, nunca más de dos
+cuerpos a la vez— la misma composición del PDF (2 Escuderos + 1 Lancero + 2 Arqueros, sin tocar
+un número de la calibración) se gana el **94%** solo con la espada, y recoger las armas baja el
+daño recibido un **24%**. **Ninguna puerta del veredicto en rojo**: ocho de nueve en verde con
+el lote por defecto, y con 2.000 partidas por política aparece un segundo ámbar de cola —
+2 partidas de 10.000 agotan el límite de 180 s.
+
+La novena, *«el orden de bajas ya cambia algo por sí solo»*, se queda en ámbar y **es
+estructural**: los enemigos corren a 600 y Malakh a 400, así que elijas a quien elijas los
+tienes encima en tres segundos. En este juego el orden que importa es el de las **armas**, y esa
+puerta sí está verde.
+
+**Lo que falta para que exista en el juego, y es lo siguiente:**
+
+- **`BP_DA_Arena` no sabe escalonar.** ✅ Leído del CDO: sus propiedades son `RadioArena`,
+  `ReintentarAlMorir`, `AutoDetectarEnemigos` y `Enemigos`. Ninguna dice cuándo entra cada uno.
+  Sin eso, exportar la receta coloca a los cinco de golpe — el encuentro que se pierde siempre.
+  Hace falta un entero `OleadaIndice` en el AI y que la arena active la oleada N+1 cuando la N
+  esté limpia, tras `RetardoEntreOleadas` segundos. **El exportador ya manda el número por
+  enemigo y avisa en cabecera si no ha viajado.**
+- `L_Forja_romper-la-linea.umap` sigue **a medias**: ✅ verificado sobre el binario, tiene 3
   referencias a `BP_DA_Lancero` y **cero** a Vigilante, Arquero, `BP_DA_Arena` y `PlayerStart`.
-  La receta 6.1 pide 2 Escuderos + 1 Lancero + 2 Arqueros. No es jugable.
 - La arena de El Claro funciona, pero **no es ninguna de las cinco**.
 
-Esto bloquea el criterio del §12 *«un encounter de prueba con un orden de bajas ventajoso pero
-ganable sólo con espada»*, que es el que demuestra que todo el sistema sirve para algo.
+Esto sigue bloqueando el criterio del §12 *«un encounter de prueba con un orden de bajas
+ventajoso pero ganable sólo con espada»* — pero ya no por no saber qué construir, sino por no
+tenerlo construido.
 
 ### 3. El director de drops (§8)
 
@@ -129,6 +154,19 @@ como «armas de oportunidad» que abren una ruta táctica (§4: *«Arco del Firm
 espada —y entonces el arco y el escudo vuelven a ser recompensa—, o las versiones celestiales
 son items distintos y mejores. Tal como está, dos de las cinco familias no aportan lo que el
 PDF promete.
+
+### Volver a la espada cuando quieras (§5.2) — lo destapó la matriz de counters
+
+El §5.2 promete que *«cualquier encuentro se completa sin depender de un drop»*, y hoy eso solo
+se cumple a medias: se vuelve a la espada al **cambiar de arma, sacrificarla o purgarla**, pero
+no cuando el jugador quiere.
+
+✅ **MEDIDO el 25/08** en `pruebas/matriz.mjs`: con el Arco en la mano, dos Escuderos se ganan
+el **42%** de las veces. Con el Estandarte, el 0%. Son muros, y no se arreglan calibrando.
+
+Mientras no exista un «guardar arma temporal», **cada drop es también una trampa potencial** —
+recoger el arco antes de una oleada de melé te deja peor que no haberlo tocado. Y eso bloquea
+el director de drops del §8: repartiría trampas sin saberlo.
 
 ### La regla de dos manos vs. escudo (§4.1)
 
@@ -199,7 +237,7 @@ trabajo de construir las arenas, o sea el punto 2 de arriba.
 | Corrupción visual sin reducir vida útil | ✅ |
 | Al cambiar/purgar nunca queda sin loadout válido | ✅ verificado |
 | **Al menos un** ataque de descarte funcional | ✅ (hay dos) |
-| **Encounter de prueba con orden de bajas ventajoso** | ❌ **sin construir** |
+| **Encounter de prueba con orden de bajas ventajoso** | ⚠️ diseñado y validado en la Forja (94% con espada sola, −25% de daño con armas); falta montarlo, y para eso `BP_DA_Arena` tiene que saber escalonar |
 | La arena se sella tras el trigger y se abre al vencer | ✅ |
 | Al morir, checkpoint previo y poder retirarse | ✅ |
 | Reset limpia enemigos/drops sin tocar NPCs externos | ✅ |
@@ -210,9 +248,11 @@ trabajo de construir las arenas, o sea el punto 2 de arriba.
 
 ## Orden sugerido para cerrar
 
-1. **Construir «Romper la línea» (§6.1) de verdad**, con su `BP_DA_Arena`. Desbloquea el
-   criterio que falta del §12 y da banco de pruebas real a todo lo demás. La Forja ya tiene
-   la composición simulada.
+1. **Oleadas en `BP_DA_Arena`** — un `OleadaIndice` por enemigo y la arena activando la
+   siguiente cuando la anterior esté limpia. Son los dos únicos datos que le faltan al motor
+   para que «Romper la línea» exista, y sin ellos exportarla da el encuentro que se pierde
+   siempre. Luego **construirla**, que desbloquea el criterio que falta del §12 y da banco de
+   pruebas real a todo lo demás. La composición ya está medida y validada.
 2. ~~El golpe de suelo del Espadón/Alabarda~~ — **hecho el 24/08.**
 3. **Decidir qué pasa con el arco y el escudo base.** Es una decisión de Angel, y hasta que se
    tome, dos familias del §4 no significan nada.

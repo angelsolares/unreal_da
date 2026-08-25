@@ -31,6 +31,9 @@ node Tools/ForjaDeEncuentros/pruebas/humo.mjs
 | script | para qué |
 |---|---|
 | `pruebas/humo.mjs [encuentro]` | lote completo + veredicto. Comprueba también el determinismo. |
+| `pruebas/oleadas.mjs` | la activación escalonada del §6, mecanismo a mecanismo |
+| `pruebas/matriz.mjs` | **cada arma contra cada comportamiento enemigo** (§4) |
+| `pruebas/composicion.mjs` | varias formas del mismo encuentro, ordenadas por veredicto |
 | `pruebas/escala.mjs` | ¿cuántos enemigos aguanta la espada, y cuánto cambia con armas? |
 | `pruebas/lanza.mjs` | composiciones elegidas para que **sí** se recoja cada arma |
 | `pruebas/diag.mjs` | techo de la espada y daño necesario para este encuentro |
@@ -74,9 +77,22 @@ del §5.2:
 | `codicioso` | el más cercano, y recoge todo lo que ve. |
 | `aleatoria` | orden distinto por semilla. |
 
-**Panel de veredicto** (`js/lote.js`) — ocho puertas, cada una referenciada a su
+**Panel de veredicto** (`js/lote.js`) — nueve puertas, cada una referenciada a su
 sección del PDF. Cuando la de "ganable" se pone roja, `js/diagnostico.js` calcula
 el **techo de la espada** y busca por bisección el daño que haría falta.
+
+**Cada diferencia lleva su margen** (`-25% ±2`). Una puerta que compara dos
+políticas solo se pone verde si cruza el umbral **contando el error típico**, y
+eso no es pedantería: con 200 partidas una composición daba las nueve en verde y
+la misma con 2000 dejaba dos en ámbar. No era el encuentro, era la muestra. Por
+eso el lote por defecto son **400 partidas** y no 200.
+
+**Activación escalonada** (§6) — un encuentro puede declarar `oleadas`, y cada
+enemigo decir a cuál pertenece. Una oleada entra `inicio` (al romper el sello),
+`tiempo`, `bajas` o `oleadaLimpia`, con un `retardo` opcional. Quien espera su
+turno está **plantado y quieto en la arena** (`presencia: "en-escena"`, se lee
+desde la puerta) o **no está** (`"entra"`, que es una emboscada y la puerta del
+§5.1 lo dice). Un encuentro sin `oleadas` se comporta exactamente como antes.
 
 ## Fase B: el ciclo del arma temporal
 
@@ -87,10 +103,18 @@ natural o el seal break. La corrupción visual no se modela: es cosmética y no 
 la vida útil.
 
 `datos/armas.json` define las cinco familias del §4. Es **diseño, no medida**, y
-por eso vive aparte de `calibracion.json`. Cada familia se diferencia por alcance
-y ritmo, no por números de daño: la lanza vale 340 cm frente a los 180 de la
-espada, el espadón ignora la guardia y pega a varios, el escudo cambia cómo se
-navega la arena.
+por eso vive aparte de `calibracion.json`.
+
+**La v2 (25/08/2026): un VERBO por arma.** El counter no es «+40% contra X», es
+una propiedad mecánica que anula un **comportamiento**: el Espadón *rompe* la
+guardia y deja *plantar los pies*, el Escudo *encaja* lo que no puedes cubrir, la
+Lanza *aparta*, el Arco *llega*, el Estandarte *corrompe*. Así, el día que exista
+un enemigo nuevo con guardia, el Espadón ya lo cubre sin tocar una tabla.
+
+Lo mide `pruebas/matriz.mjs`, y el bloque `limitesDelMotor` del propio JSON
+recoge las cuatro cosas que la medición impuso — el tiempo de compromiso manda,
+un arma lenta necesita hyperarmor, el control de masas tiene valor negativo, y el
+alcance no es un número sino una animación.
 
 Modelado: drops con TTL y política por enemigo (garantizado / estándar / piedad /
 ninguno), recogida con ventana de vulnerabilidad, swap irreversible con purga del
@@ -464,8 +488,205 @@ ida y vuelta exacta.
 
 ---
 
+## Lo que salió al escalonar «Romper la línea» (25/08/2026)
+
+La receta 6.1 se perdía **el 100% de las veces** con espada sola. Ahora se gana
+el **94%**, con la misma composición del PDF —2 Escuderos, 1 Lancero, 2
+Arqueros— y sin tocar un solo número de la calibración. Lo que cambió fue
+**cuándo entra cada uno**, y tres errores del simulador que hasta hoy nadie
+había visto porque nunca se había pedido rodear un muro de verdad.
+
+**Ninguna puerta en rojo.** Ocho de nueve en verde con el lote por defecto; con
+2.000 partidas por política sale un segundo ámbar de cola —2 partidas de 10.000
+agotan el límite de 180 s—, y el otro, el del orden de bajas, es estructural y
+tiene su apartado abajo.
+
+### 1. Tres fallos del propio simulador, y qué tapaban
+
+| lo que estaba roto | lo que provocaba |
+|---|---|
+| **El rodeo de esquina se elegía a sí mismo.** Al llegar al vértice, ese vértice seguía siendo el más barato (coste de ida ≈ 0). | Malakh temblando en la punta del muro hasta el watchdog: **con UN muro en el camino, 180 s de partida y 0 de daño**. Por eso «poner cobertura» nunca había funcionado como palanca. |
+| **Misma cota = camino recto.** Con dos torres gemelas eso es falso: hay que bajar y volver a subir. | Se quedaba varado en la torre recién limpiada mientras el arquero de enfrente le mataba a placer. **Es la razón entera del 0% de la versión anterior.** |
+| **La distancia de parada la fijaba el arma, sin mirar si veía al objetivo.** | Con el Arco en la mano y un balcón tapando, se plantaba a 17 m —«ya estoy en alcance»— sin línea de tiro y sin acercarse. |
+
+Ninguno era del diseño. Los tres se arreglaron y `pruebas/solidos.mjs` sigue
+verde: 250 000 ticks y nadie dentro de un muro.
+
+### 2. El acantilado no es el tercer enemigo: es el segundo arquero
+
+Medido 1v1, a vida llena y sin pociones:
+
+| enemigo | gana | daño recibido |
+|---|---|---|
+| Escudero | 100% | 18,8 |
+| Lancero | 100% | 30,0 |
+| Heraldo | 100% | 18,9 |
+| **Arquero** | **60%** | **102,0** |
+
+Y **dos arqueros a la vez es una derrota segura**, en cualquier geometría
+probada: mientras subes a una torre, el otro dispara gratis. La activación
+escalonada existe sobre todo para eso.
+
+### 3. Lo que cuesta un arquero lo fija el sitio que tiene para retroceder
+
+No la distancia. Un arquero alertado a 40 m cuesta 9 de vida si está encajonado,
+y 65 si tiene balcón por donde correr:
+
+| balcón | espada sola | con arco | con lanza (arrojada) |
+|---|---|---|---|
+| 900 × 1800 | 52,6 | 12,3 | 4,3 |
+| 600 × 1000 | 44,7 | 18,3 | 6,2 |
+| 500 × 700 | 28,6 | 17,1 | 18,0 |
+| 400 × 500 | 9,6 | 20,3 | 23,7 |
+
+**Esa tabla es el diseño del encuentro.** El balcón chico es donde se aprende el
+gesto y el arma sobra; el grande es donde el arsenal del §4 paga de verdad. Por
+eso los dos balcones de «Romper la línea» son de tamaños distintos a propósito.
+
+### 4. Dos huecos de la política, que no eran trampa sino realismo
+
+- **Malakh se moría con dos frascos en el bolsillo**: en mitad de la pelea nunca
+  se abre un hueco de 2,2 s, así que bebía 2,17 de 4. Ahora, con la arena en
+  calma —lo que la activación escalonada crea entre oleada y oleada— bebe por
+  debajo del 90%. Es lo que hace cualquiera entre dos oleadas.
+- **En el hueco, cruzaba la arena a despertar al arquero de la torre de
+  enfrente**, porque al no quedar nadie activo se caía a la lista entera. Moría
+  el 100% de las veces peleando contra los dos arqueros: justo lo que escalonar
+  existía para evitar.
+
+### 5. Y el arsenal, pesado en la balanza
+
+- **El Escudo Celestial no hacía nada contra las flechas**: solo se levantaba
+  ante el melé. Ahora se avanza tras él al 60% de velocidad — que es lo que el
+  §4 le pide. Aun así **contra un arquero sale peor que rodar**, porque el daño
+  del arquero no lo hacen las flechas del trayecto sino las de bocajarro
+  mientras estás comprometido en una animación, y bloqueando no se pega.
+- **La Lanza como arma de melé es un lastre**: con ella en la mano, dos
+  Escuderos pasan de 50 a 99 de daño recibido y de ganarse el 96% a ganarse el
+  5%. Su valor es entero el del arrojado.
+- **El que paga es el Arco.** Quitándolo de la receta, la ventaja de las armas
+  cae del 25% al 11%. Quitando la Lanza no cambia nada.
+- **Cambiar a dos manos cuesta el escudo** (§4.1) y eso ahora tiene precio en la
+  decisión. Antes el Escudo Celestial se soltaba por cualquier cosa y no había
+  forma de volver a él.
+
+### 6. La puerta que no se puede poner verde, y por qué
+
+«El orden de bajas ya cambia algo por sí solo» se queda en **ámbar, y es
+estructural**: los enemigos corren a 600 y Malakh a 400, así que elijas a quien
+elijas los tienes a los dos encima en tres segundos. Barrido a lo ancho, el
+efecto del orden entre dos cuerpos no pasa del 12%, y el −15% que aparece en la
+posición exacta del Escudero de la línea es **un pico**: 20 cm a un lado o a
+otro y vuelve a 0.
+
+En este juego **el orden que importa es el de las ARMAS, no el de los cuerpos**,
+y esa es la puerta de al lado, que sí está verde.
+
+### 7. Cuidado al colocar a mano
+
+El encuentro es **sensible a la posición de la primera oleada**. Moviendo al
+Escudero de la línea un metro hacia atrás, la espada sola cae del 93% al 65%.
+Al colocar en el editor conviene volver a leer las posiciones con la pestaña
+Unreal y pasar el lote otra vez, que para eso está el viaje de ida y vuelta.
+
+---
+
+## La matriz de counters (25/08/2026)
+
+`node pruebas/matriz.mjs` — cada arma contra cada comportamiento, midiendo
+**cuánto baja el daño recibido**. No el reloj: un arma que resuelve el encuentro
+en un tercio del tiempo no es un counter, es un arma mejor.
+
+| problema | espada | Lanza | Espadón | Escudo | Arco | Estandarte |
+|---|---|---|---|---|---|---|
+| **Guardia** · 2 Escuderos | 40 dmg | −7% | **[−50%]** | −1% | +112% | +148% |
+| **Cierre** · 2 Lanceros | 60 dmg | **[−17%]** | +5% | +0% | +33% | +100% |
+| **Compromiso** · Arquero en balcón | 65 dmg | −7% | −50% | **[−40%]** | −73% | −3% |
+| **Mole** · Heraldo de 200 hp | 30 dmg | +12% | **[−50%]** | +0% | +114% | +189% |
+| **Formación** · Inspector con escolta | 87 dmg | −20% | −34% | +1% | +25% | +5% |
+
+Tres counters en la banda de diseño. Los otros dos **no fallan por calibración**:
+
+- **Contra el Cierre no hay margen.** Con la espada sola ya se pasa comiendo dos
+  golpes, y lo mejor que consigue cualquier arma es −18%. Si el Lancero tiene que
+  ser un eslabón de la cadena, necesita un *comportamiento* que la espada no
+  conteste — no más vida ni más daño.
+- **El aura del Inspector no la contesta ninguna arma.** El Arco, que sobre el
+  papel debería matarlo de lejos, sale un 25% **peor** porque la escolta le cierra
+  antes de gastar el carcaj. Lo único que apaga un aura es matar al portador
+  primero: eso es **orden**, no arsenal.
+
+Y una casilla que es un muro por diseño: **un arco en melé gana el 42%**. No se
+arregla calibrando — se arregla dejando que Malakh **vuelva a su espada cuando
+quiera**, que es lo que el §5.2 promete y hoy sólo pasa al cambiar de arma,
+sacrificarla o purgarla. Mientras no exista, cada drop es también una trampa
+potencial y el director de drops del §8 estaría repartiéndolas.
+
+### Qué compraría animar cada arma
+
+Los cuatro de melé comparten animación, así que hoy un asta llega como una espada
+(245 cm, medidos de la pose). Poner precio a animarla de verdad da respuestas
+**opuestas** para las dos armas largas:
+
+| arma | Guardia | Cierre | Compromiso | Mole | Formación |
+|---|---|---|---|---|---|
+| espada (243) | 40 dmg | 60 dmg | 65 dmg | 30 dmg | 87 dmg |
+| Lanza 245 (hoy) | −5% | −18% | −6% | +13% | −18% |
+| **Lanza 320 (animada)** | +3% | **−56%** | −14% | **−55%** | −20% |
+| Espadón 245 (hoy) | **−50%** | +5% | −50% | **−50%** | −34% |
+| Espadón 320 (animada) | +25% | −50% | −100% | −50% | −11% |
+
+**La Lanza gana dos casillas y no pierde ninguna.** Pasa a ser el counter del
+Cierre y de la Mole, que es exactamente lo que el §4 le pedía y hoy no cumple.
+
+**El Espadón cambia de identidad y sale perdiendo**: deja de romper guardias
+(−50% → +25%) porque con alcance el jugador se dedica a espaciar, y espaciando no
+se usa ni el guard break ni la armadura de compromiso. Su verbo vive a distancia
+de intercambio. Mecánicamente ya funciona con la animación compartida: lo que
+necesita es verse **ancho**, no llegar **largo**.
+
+**Dos umbrales, y por debajo del primero el dinero no compra nada:**
+
+- **~300 cm** — el Arquero se planta ahí al retroceder. Un arma que llegue le toca
+  mientras se aparta; una que no, tiene que perseguirle. Pero **no vale
+  generalizar**: el Espadón a 320 lo deja en cero daño —porque además pega 22 y lo
+  mata en cuatro golpes—, mientras que la Lanza a 320 le sigue costando ~37 en
+  cualquier balcón. La lanza es un counter, no un borrado.
+
+**Y no se toca la `distanciaMinima` del Arquero para compensar.** Se probó a subirla
+de 300 a 450 y sale al revés: en un balcón acotado no tiene sitio para conseguir esa
+separación, así que se pasa la pelea retrocediendo contra la barandilla — y
+retrocediendo *no dispara*. Medido: 64,7 de daño a 300, **0,0 a 450**. En «Romper la
+línea» el encuentro entero se volvía trivial. Además es no monótono: en campo
+abierto es más letal a 350 (118) que a 300 (84) o a 450 (79). Lo que gobierna lo que
+cuesta un arquero es **el tamaño de su plataforma**:
+
+| balcón del arquero | espada | lanza 320 |
+|---|---|---|
+| 350×450 | 14 dmg | 41 dmg *(la lanza estorba)* |
+| 500×700 | 29 | 38 |
+| 700×1000 | 46 | 37 |
+| 900×1400 | 56 | 36 |
+| 1200×1800 | 65 | 39 |
+- **~306 cm** — es 245 × 1,25, el punto en el que Malakh puede quedarse *fuera*
+  del alcance enemigo y pinchar. Ahí se activa el espaciado, y con él cambia
+  **cómo** se pelea, no sólo cuánto se llega.
+
+Una animación que se quede en 280 no compra nada. La cifra que hay que pedirle al
+artista es **la punta por encima de 3 metros desde el root**.
+
+---
+
 ## Lo que falta
 
+- **`BP_DA_Arena` no sabe escalonar.** Leído del CDO el 25/08/2026, sus
+  propiedades son `RadioArena`, `ReintentarAlMorir`, `AutoDetectarEnemigos` y
+  `Enemigos`: ninguna dice cuándo entra cada uno. El exportador ya manda el
+  número de oleada por enemigo y **avisa en cabecera si no ha viajado**, porque
+  sin eso lo exportado son los cinco de golpe — que es el encuentro que se
+  pierde el 100% de las veces. Hace falta un entero `OleadaIndice` en el AI y
+  que la arena active la oleada N+1 cuando la N esté limpia, esperando
+  `RetardoEntreOleadas`.
 - **Siluetas reales en la 3D.** `ThreeJSPOC/` ya tiene los GLB de Malakh, el
   Arcángel y las armas. Los primitivos bastan para juzgar posición y oclusión,
   pero para juzgar *lectura* de silueta el modelo real diría más.
