@@ -452,6 +452,31 @@ else:
     informe["avisos"].append("NO se pudo colocar el volumen de navegacion: los"
                              " enemigos veran al jugador pero no podran moverse.")
 
+# EL INSTALADOR DEL DEBUG HUD. Sin este actor la tecla "." no abre nada, y no
+# por un fallo del panel: el GameMode del proyecto es el de DCS y su HUDClass
+# es el pelado del motor, asi que el HUD de DA no llega a instanciarse. Es
+# `BP_DA_DebugZonas` quien hace el ClientSetHUD en su BeginPlay.
+#
+# Pide la clase por referencia BLANDA dentro de si mismo, asi que el nivel NO
+# ata /Game/DarkAngels/Debug y esa carpeta sigue pudiendo estar en
+# DirectoriesToNeverCook: en un build empaquetado devuelve nulo y se cae al HUD
+# normal del juego.
+#
+# Se coloco a mano en L_Forja_romper-la-linea el 26/08 y falto desde el primer
+# dia; va aqui para que las recetas que quedan no repitan el mismo olvido.
+dz = unreal.EditorAssetLibrary.load_blueprint_class(
+    "/Game/DarkAngels/Blueprints/Level/BP_DA_DebugZonas")
+if dz is not None:
+    a = subsys.spawn_actor_from_class(dz,
+        unreal.Vector(N["pos"]["x"], N["pos"]["y"], N["pos"]["z"]),
+        unreal.Rotator(0, 0, 0))
+    marcar(a, {"etiqueta": "Forja_DebugZonas", "clase": "debug"})
+    informe["colocados"].append({"etiqueta": "Forja_DebugZonas", "clase": "debug"})
+else:
+    informe["avisos"].append(
+        "NO se encontro BP_DA_DebugZonas: la tecla . no abrira el Debug HUD en"
+        " este nivel.")
+
 # Los solidos: coberturas, plataformas y rampas. Cubos del motor escalados.
 cubo = unreal.EditorAssetLibrary.load_asset("/Engine/BasicShapes/Cube.Cube")
 for sdef in D["solidos"]:
