@@ -31,6 +31,8 @@ export const ESTADOS = {
 
 const AGUANTE_POR_DEFECTO = { arquero_del_firmamento: 20, elite_pesado: 120 };
 const REGEN_AGUANTE = 20;
+/** Segundos que la stamina tarda en volver a subir tras gastarla. Medido 23/08. */
+const PAUSA_STAMINA = 1.0;
 const RADIO_ALERTA_ALIADOS = 900;
 
 export class Simulacion {
@@ -271,10 +273,24 @@ export class Simulacion {
       if (a.estado === ESTADOS.MUERTO) continue;
       a.aguante = Math.min(a.aguanteMax, a.aguante + REGEN_AGUANTE * dt);
     }
-    this.malakh.stamina = Math.min(
-      this.malakh.staminaMax,
-      this.malakh.stamina + this.cal.malakh.regenStamina * dt
-    );
+    // LA PAUSA DE 1 s TRAS GASTAR, que estaba MEDIDA desde el 23/08 y sin cablear.
+    // La procedencia de `malakh.regenStamina` lo dice literal: "1,75 cada 0,05 s = 35/s,
+    // y se corta 1 s despues de gastar". Solo se habia implementado la primera mitad.
+    //
+    // Sin la pausa, la defensa de Malakh es GRATIS y con ella se cae media calibracion:
+    // bloquear cuesta 22 por golpe parado y dos Escuderos pegan cada 1,1 s, o sea 20/s
+    // de gasto contra 35/s de regeneracion. La guardia no se rompia jamas. Medido: en
+    // 100 partidas contra dos Escuderos la stamina no bajo de 100 NI UNA VEZ, Malakh
+    // eligio `bloquear` 2419 veces por partida y el combate duro 111 s costando 18 de
+    // daño. Un combate de casi dos minutos que cuesta el 18% de la vida no es un
+    // combate, es una espera.
+    if (this.malakh.stamina < this.malakh.staminaMax &&
+        this.t - (this.malakh.tUltimoGasto ?? -Infinity) >= PAUSA_STAMINA) {
+      this.malakh.stamina = Math.min(
+        this.malakh.staminaMax,
+        this.malakh.stamina + this.cal.malakh.regenStamina * dt
+      );
+    }
 
     this.t += dt;
     this.tick += 1;
@@ -467,6 +483,7 @@ export class Simulacion {
   _iniciarEsquiva(M, direccion) {
     const e = this.cal.malakh.esquiva;
     M.stamina -= e.costeStamina;
+    M.tUltimoGasto = this.t;
     M.estado = ESTADOS.ESQUIVA;
     M.tEstado = 0;
     M.accion = { ...e, dir: normaliza(direccion || { x: -1, y: 0 }) };
@@ -672,7 +689,10 @@ export class Simulacion {
         A.accion.embestidaRestante = 0;
       }
     }
-    if (A.bando === 'malakh') A.stamina -= perfil.costeStamina || 0;
+    if (A.bando === 'malakh') {
+      A.stamina -= perfil.costeStamina || 0;
+      A.tUltimoGasto = this.t;
+    }
     this._evento('ataque', {
       agente: A.id,
       pesado: !!perfil.esPesado,
@@ -939,10 +959,11 @@ export class Simulacion {
       if (frontal && puedeParar) {
         if (O.stamina >= b.costeStaminaPorGolpe) {
           O.stamina -= b.costeStaminaPorGolpe;
+          O.tUltimoGasto = this.t;
           dano *= 1 - b.reduccion;
           bloqueado = true;
         } else {
-          O.stamina = 0; O.aguante = 0;
+          O.stamina = 0; O.aguante = 0; O.tUltimoGasto = this.t;
           this._evento('guardiaRota', { agente: O.id, de: origen.id });
         }
       }

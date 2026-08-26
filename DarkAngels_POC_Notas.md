@@ -13888,3 +13888,66 @@ peor opción contra guardias** contradice la regla 2 de la propia filosofía («
 equivocada cuesta tempo, nunca daño»). El caso Guardia necesita más mordiente antes de
 poder juzgar a su propio counter — con la espada base en 18 de daño, ahí no cabe medir
 nada.
+
+## El caso Guardia no estaba roto: la vara de medir sí
+
+**26/08.** Ayer escribí «lo que hay que arreglar es el caso Guardia, no el arma».
+Tampoco era el caso. Medido, contra dos Escuderos:
+
+```
+   espada    18 de daño, 112 s, el 40% de tus golpes anulado
+   Espadón   47 de daño,  47 s, el  0% anulado
+```
+
+El Espadón hace **exactamente su trabajo** —parte el combate por la mitad y nada le para
+el arma— y en la vara del daño salía un **167% peor**. Probé rehacer el caso con 3
+Escuderos, con 4 rodeando y con escolta: en las cuatro variantes el Espadón **siempre**
+parte el tiempo por la mitad y **siempre** recibe más. No es la casilla. Es que un arma
+de compromisos largos come más golpes por intercambio, y contra un enemigo que apenas
+hiere, un combate largo sale casi gratis.
+
+**La regla «comodidad = daño recibido, nunca reloj»** se puso para que un arma
+simplemente rápida no colara como counter, y es buena. Pero tiene un agujero: **hay un
+enemigo cuya amenaza no es herir.** El Escudero niega. Y la negación sólo se puede pagar
+en tiempo.
+
+Así que cada caso de la matriz **declara su moneda** (`eje`): `dano` por defecto,
+`tiempo` donde el problema es la negación. Hoy sólo Guardia lo pide, y la salvaguarda
+sigue siendo que hay que justificarlo en la cabecera del fichero.
+
+### Y por el camino, otro dato medido sin cablear
+
+Buscando por qué 112 segundos de combate costaban 18 de daño encontré que **la stamina de
+Malakh nunca bajaba de 100** —mínimo 100 en 100 partidas— y que elegía `bloquear` 2419
+veces por partida. Bloquear cuesta 22 por golpe parado y dos Escuderos pegan cada 1,1 s:
+20/s de gasto contra 35/s de regeneración. **La guardia no se rompía jamás.**
+
+La procedencia de `malakh.regenStamina` lo decía desde el 23/08, literal: *«1,75 cada
+0,05 s = 35/s, **y se corta 1 s después de gastar**»*. Sólo estaba implementada la primera
+mitad. Cableada la pausa, el mínimo baja a 23 en Guardia y a **1** en Cierre.
+
+No cambia la receta (90% de vida y las mismas puertas con y sin ella) pero **sí la
+economía de las armas**, y por eso obligó a rehacer los dos counters de ayer. Se conserva
+igual: es verdad medida, y hoy ya van tres veces que un modelo falso producía calibración
+falsa.
+
+### Los números finales
+
+```
+   Espadón   ligero 1,45 -> 1,42     Guardia -51% ±2 (tiempo) · Mole -52% ±5 (daño)
+   Lanza     empuje 160 -> 200       Cierre  -31% ±7 (daño)
+```
+
+**Criterio 1: 4 de 4 en verde**, por primera vez. El Espadón sigue en una repisa estrecha
+(1,44 → −26%, 1,42 y 1,40 → −52%, 1,38 → −100%): está en el borde alto de 0,03 s, con el
+acantilado 0,04 por debajo. Estrecho, pero no *en* el borde.
+
+La receta no se mueve (53 partidas al límite frente a 55, mismas puertas) y `npm test`
+sigue verde.
+
+### Lo que queda rojo, y es honesto que lo esté
+
+**Criterio 3, contra Cierre**: la espada recibe 50 y la peor familia (Arco) 46. O sea que
+contra el caso más duro **cualquier arma es un poco mejor que la espada desnuda**, por un
+8%. Es un empate técnico que se sale de la tolerancia del 5%, no una trampa: ninguna
+familia hace que el caso se pierda. Lo dejo declarado en vez de moverle la tolerancia.

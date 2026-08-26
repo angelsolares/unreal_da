@@ -13,6 +13,24 @@
 //   2. El arma equivocada nunca baja del 70% de victoria: dificil, no imposible.
 //   3. La espada base nunca es la peor opcion contra nadie.
 //
+// CADA CASO SE MIDE EN SU PROPIA MONEDA (`eje`), y esto costo un dia entero de
+// recalibrar el arma equivocada. La regla original era "COMODIDAD = daño recibido,
+// nunca reloj", puesta para que un arma simplemente rapida no pasara por counter. Pero
+// hay un enemigo cuya amenaza NO ES HERIR: el Escudero niega. Contra dos, medido:
+//
+//   espada    18 de daño, 112 s, el 40% de tus golpes anulado
+//   Espadon   47 de daño,  47 s, el  0% anulado
+//
+// El Espadon hace EXACTAMENTE su trabajo —parte el combate por la mitad y nada le
+// para el arma— y en la vara del daño sale un 167% PEOR. Y no es cosa de esta casilla:
+// probado con 3 Escuderos, con 4, y con escolta, el Espadon siempre parte el tiempo por
+// la mitad y siempre recibe mas. Un arma de compromisos largos come mas golpes por
+// intercambio, y contra un enemigo que no hace daño el combate largo sale casi gratis.
+//
+// Asi que el caso declara su eje: 'dano' por defecto, 'tiempo' donde el problema es la
+// NEGACION. La salvaguarda contra "rapido = counter" no desaparece: sigue siendo que
+// solo un caso de negacion puede pedir el eje del reloj, y hay que justificarlo aqui.
+//
 // COMODIDAD = daño recibido, no reloj. Un arma que resuelve el encuentro en un
 // tercio del tiempo no es un counter, es un arma mejor. Lo que un counter tiene
 // que bajar es el RIESGO.
@@ -60,6 +78,8 @@ function arena(enemigos, plataformas = []) {
 const CASOS = [
   {
     clave: 'guardia', etiqueta: 'Guardia', problema: '2 Escuderos — el 40% de tus golpes hace cero',
+    // NEGACION: su amenaza es que no te dejan matar, no que te maten. Ver la cabecera.
+    eje: 'tiempo',
     counter: 'espadon_alabarda',
     enc: () => arena([enemigo('a', 'escudero_celestial', 0, -260),
                       enemigo('b', 'escudero_celestial', 0, 260)])
@@ -111,19 +131,22 @@ function medir(caso, familia, armasUsadas = armas) {
   const c = JSON.parse(JSON.stringify(cal));
   c.malakh.pocion.cantidad = 0;
   let dano = 0, t = 0, gana = 0, atascos = 0;
-  const danos = [];
+  const danos = [], tiempos = [];
   for (let i = 0; i < PARTIDAS; i++) {
     const s = new Simulacion(enc, c, armasUsadas, crearPolitica('guionizada'), 4000 + i);
     if (familia) equipar(s.malakh, familia, armasUsadas, 'matriz');
     const r = s.correr();
     dano += r.danoRecibido; danos.push(r.danoRecibido);
-    t += r.tiempo;
+    t += r.tiempo; tiempos.push(r.tiempo);
     if (r.victoria) gana += 1;
     if (r.razonFin === 'tiempo') atascos += 1;
   }
   const media = dano / PARTIDAS;
   const v = danos.reduce((a, x) => a + (x - media) ** 2, 0) / Math.max(1, PARTIDAS - 1);
-  return { gana: gana / PARTIDAS, dano: media, error: Math.sqrt(v / PARTIDAS), tiempo: t / PARTIDAS, atascos };
+  const mt = t / PARTIDAS;
+  const vt = tiempos.reduce((a, x) => a + (x - mt) ** 2, 0) / Math.max(1, PARTIDAS - 1);
+  return { gana: gana / PARTIDAS, dano: media, error: Math.sqrt(v / PARTIDAS),
+           tiempo: mt, tError: Math.sqrt(vt / PARTIDAS), atascos };
 }
 
 // -------------------------------------------------------------------- informe
@@ -131,7 +154,10 @@ function medir(caso, familia, armasUsadas = armas) {
 // Si la espada ya sale con CERO de daño, la casilla no tiene fondo: no hay
 // porcentaje que calcular y decirlo asi es mas util que un +Infinity%.
 const pctd = (x) => (x == null || !isFinite(x) ? '     —' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(0)}%`);
-const delta = (r, b) => (b.dano === 0 ? null : (r.dano - b.dano) / b.dano);
+const EJES = { dano: { campo: 'dano', err: 'error', unidad: 'dmg', verbo: 'recibe' },
+               tiempo: { campo: 'tiempo', err: 'tError', unidad: 's', verbo: 'tarda' } };
+const ejeDe = (c) => EJES[c.eje || 'dano'];
+const delta = (r, b, e = EJES.dano) => (b[e.campo] === 0 ? null : (r[e.campo] - b[e.campo]) / b[e.campo]);
 
 console.log(`\n=== LA MATRIZ ===  ${PARTIDAS} duelos por casilla, sin pociones\n`);
 console.log('Cada casilla: cuanto BAJA el daño recibido frente a hacerlo con la espada base.');
@@ -144,17 +170,20 @@ let cab = '   ' + 'problema'.padEnd(14) + 'espada'.padStart(9);
 for (const a of ARMAS.slice(1)) cab += a.etiqueta.padStart(12);
 console.log(cab);
 for (const c of CASOS) {
-  let fila = '   ' + c.etiqueta.padEnd(14) + `${base[c.clave].dano.toFixed(0)} dmg`.padStart(9);
+  const e = ejeDe(c);
+  let fila = '   ' + c.etiqueta.padEnd(14)
+    + `${base[c.clave][e.campo].toFixed(0)} ${e.unidad}`.padStart(9);
   for (const a of ARMAS.slice(1)) {
     const r = medir(c, a.id);
     celda[c.clave][a.id] = r;
-    const d = delta(r, base[c.clave]);
+    const d = delta(r, base[c.clave], e);
     fila += (c.counter === a.id ? `[${pctd(d)}]` : pctd(d)).padStart(12);
   }
   console.log(fila);
 }
 console.log('');
-for (const c of CASOS) console.log(`   ${c.etiqueta.padEnd(12)} ${c.problema}`);
+for (const c of CASOS) console.log(`   ${c.etiqueta.padEnd(12)} ${c.problema}`
+  + (c.eje ? `   [se mide en ${c.eje}]` : ''));
 
 // ----------------------------------------------------------- los tres criterios
 
@@ -164,9 +193,10 @@ const decir = (ok, texto) => { console.log(`   ${ok ? '[OK]   ' : '[FALLO]'} ${t
 
 console.log('1. El counter correcto, entre 30% y 55% mas comodo\n');
 for (const c of CASOS) {
+  const e = ejeDe(c);
   if (!c.counter) {
     const mejor = ARMAS.slice(1).reduce((p, a) => {
-      const d = delta(celda[c.clave][a.id], base[c.clave]) ?? 0;
+      const d = delta(celda[c.clave][a.id], base[c.clave], e) ?? 0;
       return d < p.d ? { n: a.etiqueta, d } : p;
     }, { n: null, d: Infinity });
     console.log(`   [--]    ${c.etiqueta.padEnd(12)} <- ninguna: el diseño dice que no hay arma que lo conteste.`);
@@ -176,12 +206,12 @@ for (const c of CASOS) {
   }
   const r = celda[c.clave][c.counter];
   const b = base[c.clave];
-  const d = delta(r, b) ?? 0;
-  const err = Math.sqrt(r.error ** 2 + b.error ** 2) / b.dano;
+  const d = delta(r, b, e) ?? 0;
+  const err = Math.sqrt(r[e.err] ** 2 + b[e.err] ** 2) / b[e.campo];
   const arma = ARMAS.find(a => a.id === c.counter);
   // Solo cuenta como ROTO si el caso tiene margen. Si ni el mejor de la matriz
   // llega a la banda, no hay nada que recalibrar: el problema no da de si.
-  const mejorPosible = Math.min(...ARMAS.slice(1).map(x => delta(celda[c.clave][x.id], b) ?? 0));
+  const mejorPosible = Math.min(...ARMAS.slice(1).map(x => delta(celda[c.clave][x.id], b, e) ?? 0));
   const enBanda = d <= -0.30 && d >= -0.55;
   const hayMargen = mejorPosible <= -0.30;
   decir(enBanda || !hayMargen,
@@ -197,12 +227,13 @@ for (const c of CASOS) {
 // sin despeinarse y no hay margen donde meter un counter.
 console.log('\n   margen de cada caso — lo mejor que consigue CUALQUIER arma:\n');
 for (const c of CASOS) {
+  const e = ejeDe(c);
   const mejor = ARMAS.slice(1).reduce((p, a) => {
-    const d = delta(celda[c.clave][a.id], base[c.clave]) ?? 0;
+    const d = delta(celda[c.clave][a.id], base[c.clave], e) ?? 0;
     return d < p.d ? { n: a.etiqueta, d } : p;
   }, { n: ARMAS[1].etiqueta, d: Infinity });
   const hayMargen = mejor.d <= -0.30;
-  console.log(`   ${hayMargen ? ' ' : '·'} ${c.etiqueta.padEnd(12)} espada ${base[c.clave].dano.toFixed(0).padStart(3)} dmg`
+  console.log(`   ${hayMargen ? ' ' : '·'} ${c.etiqueta.padEnd(12)} espada ${base[c.clave][e.campo].toFixed(0).padStart(3)} ${e.unidad}`
     + ` · el mejor es ${mejor.n.padEnd(11)}${pctd(mejor.d).padStart(6)}`
     + (hayMargen ? '' : '   <- el caso NO DA DE SI: con la espada ya sale barato'));
 }
@@ -232,11 +263,12 @@ console.log(muros ? '   espada base, que es lo que el §5.2 promete. Ver la nota
 
 console.log('\n3. La espada base nunca es la peor opcion\n');
 for (const c of CASOS) {
+  const e = ejeDe(c);
   const peor = ARMAS.slice(1).reduce((p, a) =>
-    celda[c.clave][a.id].dano > p.d ? { n: a.etiqueta, d: celda[c.clave][a.id].dano } : p, { n: null, d: -1 });
+    celda[c.clave][a.id][e.campo] > p.d ? { n: a.etiqueta, d: celda[c.clave][a.id][e.campo] } : p, { n: null, d: -1 });
   // Con un 5% de tolerancia: un empate tecnico no es que la espada sea la peor.
-  decir(base[c.clave].dano <= peor.d * 1.05,
-    `contra ${c.etiqueta.padEnd(12)} la espada recibe ${base[c.clave].dano.toFixed(0)}`
+  decir(base[c.clave][e.campo] <= peor.d * 1.05,
+    `contra ${c.etiqueta.padEnd(12)} la espada ${e.verbo} ${base[c.clave][e.campo].toFixed(0)} ${e.unidad}`
     + ` y la peor familia (${peor.n}) ${peor.d.toFixed(0)}`);
 }
 
