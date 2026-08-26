@@ -14124,3 +14124,66 @@ verdad**, con las oleadas de la receta.
   `RunBehaviorTree` en su controlador y ponerle el `Target` a mano. `IsPaused` devuelve
   `False` aunque esté parado: mirar `DistanceToTarget`, que se queda en 0 si el árbol no
   está corriendo.
+
+## Con las oleadas de la receta: el balcón manda, no el umbral
+
+**26/08.** Fui a comprobar el aviso que yo mismo había dejado —«a 450 el Arquero se
+desenganchará más a menudo y puede que no dispare»— jugando la receta de verdad: sellar
+la arena, ir matando a los de melé para que avancen las oleadas, y observar la oleada 3,
+que es el Arquero solo.
+
+### El aviso era mío y era falso
+
+Con el blanco puesto y Malakh clavado a 430 cm:
+
+```
+   umbral 450     el arquero se queda entre 409 y 447
+   umbral 300     el arquero se queda entre 430 y 520
+```
+
+**No se va a ninguna parte, con ninguno de los dos.** Los ocho metros de fuga que había
+medido salieron del banco aislado, en campo abierto y con el árbol arrancado a mano.
+
+El motivo es geométrico y está en la propia receta:
+
+```
+   balcon del firmamento   x[1100..1450] y[-1225..-775]  ->  350 x 450 cm
+   balcon del claro        x[1100..1500] y[ 725..1275]   ->  400 x 550 cm
+```
+
+**El balcón entero mide menos que el umbral.** La rama de huida corre —`Jog`, EQS,
+`MoveTo` con su `TimeLimit` de 3 s— pero la EQS no tiene adónde mandarlo. Y el `Roll`
+tampoco entra, porque lleva `IsNothingBehind` invertido y detrás hay barandilla.
+
+O sea que **en este encuentro el espaciado del Arquero lo gobierna su plataforma, no el
+número**. Subirlo de 300 a 450 no cambia casi nada aquí; se notará en suelo abierto, que
+es donde el número tiene sentido.
+
+### Lo que NO se pudo medir, y hay que decirlo
+
+**Si dispara o no, sigue sin medirse.** Malakh acabó las tres tandas con 100 de vida: a
+430 con umbral 450, a 430 con umbral 300, y a 1200 de control. Cero daño en las tres, o
+sea que **el banco nunca consiguió que el Arquero disparase**, ni cerca ni lejos ni con un
+umbral ni con el otro. No es un hallazgo sobre el umbral: es que el instrumento no llega.
+
+La causa está identificada: **el teleport le tira el blanco**. Leído del blackboard,
+`Target` salía vacío y `DistanceToTarget` congelado en un valor viejo; el Arquero estaba
+patrullando, no combatiendo, porque toda la rama de apuntar y disparar —y la de huir—
+cuelga de `Is Target Set?`. Poniéndole el `Target` a mano en cada muestra las distancias
+pasan a ser buenas (es lo que están arriba), pero el disparo sigue sin salir: le faltará
+el cono de 25 grados del `Can Shoot Arrow`, o línea de visión desde el sitio al que lo
+teleporté.
+
+**Para medir el disparo hace falta jugarlo con las manos**, o un banco que mueva a Malakh
+andando en vez de teleportándolo. Queda pendiente.
+
+### Cómo montar este banco, para la próxima
+
+- `Sellar()` sobre `BP_DA_Arena` sin argumentos sella la arena y arranca las oleadas.
+  Teleportar a Malakh dentro **no** dispara el box de `Entrada`.
+- Las oleadas avanzan por bajas, y Malakh no pelea solo: hay que matar a mano al activo
+  (`StatsManager.TakeDamage(9999, false)`) para llegar a la oleada que interesa.
+- La vida se lee en `StatsManager.Stats[0].BaseValue`. `GetStats` no es invocable desde
+  Python, pero la propiedad `Stats` sí, y del struct `F_Stat` sólo `BaseValue` es legible.
+- Las flechas **no se pueden contar muestreando**: vuelan a 3500 cm/s, o sea 0,16 s para
+  cruzar 550 cm, y el muestreo por MCP va a 1 Hz como mucho. Hay que medirlo por la vida.
