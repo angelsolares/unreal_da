@@ -613,7 +613,26 @@ export class Simulacion {
       E.rodeando -= dt;
       const hacia = normaliza(resta(M.pos, E.pos));
       const lado = E.sentidoRodeo || 1;
-      this._mover(E, escala({ x: -hacia.y * lado, y: hacia.x * lado }, this._velocidadDe(E) * dt));
+      // RODEAR ES ORBITAR, NO DERIVAR. Esto era una tangente pura, y una tangente pura
+      // solo describe un circulo si el CENTRO no se mueve. Con Malakh andando —y va a 400
+      // contra los 185 de un enemigo— el rodeo se convertia en una fuga: el Escudero salia
+      // despedido por la arena y Malakh no cerraba nunca.
+      //
+      // Medido el 26/08 en "Romper la linea": de las 27 partidas que agotaban los 180 s, 9
+      // eran esto. El Escudero acababa contra los muros del mapa —(-2200,816), (2200,-572),
+      // (-657,-1700)— con Malakh detras habiendo recorrido entre 7.000 y 18.000 cm.
+      //
+      // El arbol real hace Walk + MoveTo ALREDEDOR del jugador, y un MoveTo mantiene la
+      // distancia por definicion. Asi que la tangente lleva ahora una correccion radial
+      // hacia `distanciaPreferida`: gira igual, pero sin alejarse.
+      const sep = dist(E.pos, M.pos);
+      const quiere = p.distanciaPreferida ?? sep;
+      const correccion = Math.max(-1, Math.min(1, (sep - quiere) / 200));
+      const dir = normaliza({
+        x: -hacia.y * lado + hacia.x * correccion,
+        y: hacia.x * lado + hacia.y * correccion
+      });
+      this._mover(E, escala(dir, this._velocidadDe(E) * dt));
       E.yaw = giraHacia(E.yaw, yawDe(hacia), (p.velocidadGiro || 360) * dt);
       return;
     }

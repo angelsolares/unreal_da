@@ -215,7 +215,7 @@
       "cota": 350,
       "yaw": 180,
       "drop": {
-        "principal": true,
+        "principal": false,
         "secundaria": false
       },
       "oleada": "ola_3",
@@ -232,7 +232,7 @@
       "yaw": 180,
       "drop": {
         "principal": false,
-        "secundaria": false
+        "secundaria": true
       },
       "oleada": "ola_4",
       "etiqueta": "vigilante del claro"
