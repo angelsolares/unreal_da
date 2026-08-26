@@ -14376,3 +14376,77 @@ puesto a 1364 cm no tiró ni una. Ese camino sólo lo abre la percepción de ver
 
 Con lo cual el §6.1 sigue con un agujero: **un Arquero que dentro de 4,4 m se calla y
 fuera no acierta no es una amenaza**, y la receta lo trata como si lo fuera.
+
+## Por qué no acierta: las flechas salen hacia arriba
+
+**26/08.** Jugado por mí desde dentro, con `SetTargetActor` en el controlador —que es la
+puerta buena, no el blackboard: por ahí sí entra en combate y dispara—. La respuesta no
+tiene nada que ver con la puntería ni con la predicción.
+
+### Las flechas suben catorce mil centímetros
+
+Una misma flecha, muestra a muestra:
+
+```
+   (1192,-854,  1656)   |v|=3500
+   (1195,-665,  5135)   |v|=3402
+   (1198,-476,  8385)   |v|=3108
+   (1202,-287, 11341)   |v|=2815
+   (1205, -97, 14002)   |v|=2521
+```
+
+**Salen casi verticales.** La velocidad decae porque la gravedad las frena; la X no se
+mueve. Ninguna pasa a menos de 1.200 cm de Malakh.
+
+### Y no es el cuerpo, ni el arco, ni la vista
+
+Todo lo de delante está bien, medido en el mismo instante:
+
+```
+   cuerpo del Arquero        yaw +144,9                      apunta bien
+   eje "adelante" del arco   pitch -15,0  yaw +144,9         apunta bien
+   ojos (EyesViewPoint)      pitch -18,8  yaw +144,1         apunta bien
+   Malakh esta a             pitch -16,1  yaw +144,1
+   ---
+   GetLocAndDirToSpawnArrow  pitch +84,9  yaw  +94,3         <- AQUI se rompe
+```
+
+Y la línea de visión está libre: una traza desde los ojos, **ignorando al propio Arquero**,
+alcanza a Malakh a 1282 cm. (Ojo con esto: la primera traza que hice sin ignorar al
+tirador chocaba con él mismo a 0 cm y casi me lleva a una conclusión falsa.)
+
+### El culpable, con nombre
+
+`BP_CombatComponent.GetDirectionToSpawnProjectile`, de DCS. Llamada a mano con la
+dirección correcta como entrada:
+
+```
+   direccion que se le pasa   (-0.743, 0.613, -0.267)   pitch -15,5
+   lo que devuelve            (-0.086, 0.161,  0.983)   pitch +79,5
+```
+
+**Devuelve casi el eje Z del mundo.** Y da igual la dispersión: probado con
+`SpreadAngleDeg` 15 y 0, y con `SpreadExponent` 1 y 0 — el mismo vector las tres veces.
+
+Su cuerpo hace un `MultiSphereTraceByChannel` y, por cada impacto, sustituye la dirección
+de salida por `GetUnitDirection(SpawnLocation, <algo del HitResult>)`. Ahí está el fallo:
+el vector que devuelve **tiene toda la pinta de ser una NORMAL de impacto** —mayormente
+hacia arriba, que es lo que devuelve un suelo— usada como si fuera un punto del mundo.
+Eso hay que confirmarlo abriendo el grafo, que el lector del DSL colapsa los pines del
+`BreakHitResult` y no deja ver cuál está cableado.
+
+### Lo que esto significa
+
+- **El Arquero no puede acertar nunca**, ni cerca ni lejos, ni con un umbral ni con otro.
+  Lo del §5.1 y lo del balcón eran ruido encima de esto.
+- La receta §6.1 tiene un enemigo que **no hace daño en absoluto**, y está construida
+  contando con que sí.
+- Está en un asset de PAGO (`BP_CombatComponent`, DCS). Si se arregla ahí, es una
+  modificación viva más de las que hay que apuntar, porque DCS la revierte sin avisar.
+
+### Lo siguiente
+
+**Comprobar si al jugador le pasa igual.** Si Malakh dispara el arco y sus flechas también
+suben, el fallo es del canal de proyectil o de la configuración de colisión del proyecto y
+se arregla en un sitio; si sólo le pasa a la IA, es la rama del arquero. Esa es la pregunta
+que parte el problema en dos, y es media hora.
