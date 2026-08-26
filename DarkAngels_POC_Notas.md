@@ -14646,3 +14646,57 @@ combate. `ShootArrow` y la `LluviaDelFirmamento` tampoco spawnean nada por la mi
 O sea que quedan dos arreglos hechos y verificados en su nivel —la dirección del disparo y
 las cajas que lo interceptaban— y **la confirmación final es una partida de diez segundos**:
 plantarse a diez metros del Arquero, a la vista, y ver si baja la vida.
+
+## El BeginPlay de la arena pisaba el arreglo
+
+**26/08.** Angel jugó y lo dijo antes que ningún instrumento: *«veo que el arquero me
+dispara pero sus flechas no me dan»*. El medidor, leído con la partida congelada tras 33 s
+de juego real con el Arquero solo, le dio la razón: **golpes 0, daño 0**.
+
+### Por qué el arreglo anterior no había servido
+
+Leído de la partida VIVA:
+
+```
+   Entrada    perfil=OverlapAllDynamic   vs Projectile = OVERLAP    <- seguía mal
+   MuroNorte  perfil=Custom              vs Projectile = IGNORE
+   MuroSur / MuroEste / MuroOeste        igual que el norte
+```
+
+Los cuatro muros habían cogido el cambio y `Entrada` no. El motivo estaba en el EventGraph:
+
+```
+   (SetCollisionProfileName (GetEntrada)   "OverlapAllDynamic" false)
+   (SetCollisionProfileName (GetMuroNorte) "InvisibleWall"     false)   ... y los otros tres
+```
+
+**El BeginPlay fuerza el perfil** y pisa lo que dejó el ConstructionScript. Los muros se
+salvaban de rebote porque `InvisibleWall` ignora los canales personalizados; `Entrada` no.
+
+Y esto es la **tercera vez** que el mismo fallo aparece en este proyecto: la nota de los
+ZoneTrigger de Malkuth ya decía *«su BeginPlay fuerza el perfil; OverlapOnlyPawn o
+envenenan la puntería»*. Lo que faltaba era buscarlo también aquí.
+
+### El arreglo, ahora en el sitio bueno
+
+Ese literal del BeginPlay pasa de `OverlapAllDynamic` a **`OverlapOnlyPawn`**. Se localiza
+por el VALOR y no por la posición: de los cinco nodos, sólo el de `Entrada` ponía
+`OverlapAllDynamic`.
+
+Verificado en la partida viva, después del BeginPlay:
+
+```
+   Entrada / los cuatro muros    vs Projectile = IGNORE
+   arena Estado = 1              <- y sigue sellando al entrar
+```
+
+Y el barrido del arco a Malakh, por el canal de proyectil, **ya sólo toca a Malakh**: antes
+salía `Forja_Arena/Entrada` por delante.
+
+### Lo que queda
+
+Los tres arreglos están hechos y verificados cada uno en su nivel —la dirección del
+disparo, las cinco cajas de la arena, y el literal del BeginPlay que revertía la última—.
+**Falta ver una flecha hacer daño**, y eso sigue necesitando una partida: el disparo del
+Arquero está detrás de la actividad `Activity.IsInCombat`, que no se puede poner desde
+Python porque es un GameplayTag.
