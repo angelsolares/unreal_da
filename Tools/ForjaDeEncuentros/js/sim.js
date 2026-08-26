@@ -1122,13 +1122,24 @@ export class Simulacion {
 
     let dir = normaliza(resta(destino, A.pos));
 
-    // EL RODEO NO SE APLICA CUANDO YA VAMOS A UN PUNTO INTERMEDIO. Si `_rutaHacia`
-    // mando a la rampa, la ruta ya esta resuelta y el obstaculo en medio es
-    // normalmente LA PROPIA PLATAFORMA sobre la que estamos: rodearla manda a un
-    // vertice fuera del rectangulo, y la barandilla de `_mover` lo rechaza, asi que el
-    // agente se queda clavado. Medido: Malakh quieto en (1280,1000) sobre el balcon
-    // sur, con el vertice fijo en (1047,652) y velocidad cero.
-    let bloqueo = ruta.intermedio ? null : this._coberturaEnMedio(A.pos, destino);
+    // EL OBSTACULO SE MIRA DESDE LA COTA DEL QUE ANDA, y esto sustituye a un parche
+    // que costaba mas de lo que arreglaba. El fallo original era real: yendo a la boca
+    // de una rampa, el obstaculo en medio es LA PROPIA PLATAFORMA sobre la que estamos
+    // —rodearla manda a un vertice fuera del rectangulo, la barandilla de `_mover` lo
+    // rechaza y el agente se queda clavado (medido: Malakh quieto en (1280,1000) sobre
+    // el balcon sur, vertice fijo en (1047,652), velocidad cero)—. Pero el parche era
+    // apagar el rodeo ENTERO mientras la ruta fuera intermedia, y eso rompe el caso
+    // simetrico: al SUBIR desde el suelo la plataforma de destino es un obstaculo de
+    // verdad y hay que bordearla. Sin rodeo, Malakh se restriega contra su cara oeste.
+    // Medido en el caso Compromiso: 18 s para una ruta de 8, merodeando entre
+    // (1053,-399) y (1089,-126) mientras el Arquero le tiraba.
+    //
+    // La raiz no era el rodeo sino que `_coberturaEnMedio` no sabia a que ALTURA va
+    // quien pregunta: encima de la plataforma la veia igual que desde el suelo.
+    // `_mover` ya filtraba por cota; ahora las dos usan el mismo criterio, y el caso
+    // de bajar sigue resuelto —tu propia plataforma deja de ser obstaculo— por el
+    // motivo correcto en vez de por un interruptor.
+    let bloqueo = this._coberturaEnMedio(A.pos, destino, A.cota);
     // Un rodeo que acaba de demostrar que no mueve no se vuelve a intentar en 2 s.
     if (bloqueo && A._rodeoVetado && A._rodeoVetado.id === bloqueo.id &&
         this.t < A._rodeoVetado.hasta) bloqueo = null;
@@ -1229,9 +1240,13 @@ export class Simulacion {
     return { punto: mejor.boca, intermedio: true };
   }
 
-  _coberturaEnMedio(a, b) {
+  /** Lo que corta el paso ENTRE a y b para quien va a la cota `cota`. El filtro de
+   *  altura es el mismo que usa `_mover`: un bloque cuya cima no supera tus pies mas
+   *  20 cm no es un obstaculo, es el suelo que pisas. */
+  _coberturaEnMedio(a, b, cota = 0) {
     for (const c of this.coberturas) {
       if (!c.bloqueaPaso) continue;
+      if ((c.cota || 0) + (c.altura || 0) <= (cota || 0) + 20) continue;
       if (segmentoCortaPoligono(a, b, c.poli)) return c;
     }
     return null;

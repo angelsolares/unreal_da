@@ -14820,3 +14820,130 @@ Y una nota sobre la matriz: el caso **Compromiso** (1 Arquero en balcón) sigue 
 daño, pero no por el Arquero: **el caso dura 8 segundos**. Malakh cruza, sube y lo mata
 antes de que dispare más de una vez. Ese caso está mal construido y no mide lo que dice
 medir — es el mismo problema que tenía Guardia antes de medirla en tiempo.
+
+## El caso Compromiso no medía nada, y debajo había un fallo del simulador
+
+**26/08.** El caso **Compromiso** de `pruebas/matriz.mjs` —1 Arquero en un balcón— daba
+**0 de daño en 8 segundos**. La nota de ayer lo dejó apuntado como «mal construido». Al
+abrirlo salieron dos cosas: el caso estaba mal, sí, pero debajo había un fallo del
+simulador que lo tapaba todo.
+
+### La prueba de que el balcón no pintaba nada
+
+Radiografiado con 200 partidas, el caso daba **1,00 disparos y 0,00 impactos**. Uno. Y la
+línea de tiempo explicaba por qué: el Arquero tira una flecha a los 3,3 s, Malakh llega a
+los 5,9 y a partir de ahí **cada golpe lo aturde**, así que no vuelve a disparar nunca.
+
+La rampa arrancaba en `(700,0)` y remataba en `(1280,0)`: **sobre la línea recta** de la
+entrada al Arquero. Malakh no tenía que desviarse ni un centímetro. La comprobación que lo
+cierra sin discusión es quitar el balcón entero y poner al Arquero a ras de suelo:
+
+```
+   A. con balcon (como estaba)     0 dmg   8 s   1,0 disparos
+   E. sin balcon, a ras            0 dmg   9 s   1,0 disparos
+```
+
+**Idéntico.** Una plataforma que da el mismo resultado que no existir no es un escenario.
+
+### Y debajo, el simulador regalaba medio recorrido
+
+Al mover la rampa detrás del balcón el caso empezó a dar daño, pero la traza tenía algo que
+no se podía dar por bueno: entre t=6,7 y t=17,5 **Malakh merodeaba** frente a la cara oeste
+del balcón, entre `(1053,-399)` y `(1089,-126)`. La ruta mínima eran ~8 s y tardaba 18. La
+mitad del daño del caso habría salido de eso.
+
+La causa estaba en `_avanzarHacia`, y era un parche razonable que se pasó de ancho:
+
+```js
+   let bloqueo = ruta.intermedio ? null : this._coberturaEnMedio(A.pos, destino);
+```
+
+O sea: **yendo a una rampa, no se rodea nada**. Se puso para un fallo real —al BAJAR, el
+obstáculo en medio es tu propia plataforma, rodearla manda a un vértice fuera del
+rectángulo y la barandilla de `_mover` te deja clavado—. Pero apaga también el caso
+simétrico: al **SUBIR** desde el suelo, la plataforma de destino es un obstáculo de verdad
+y hay que bordearla.
+
+La raíz no era el rodeo: era que **`_coberturaEnMedio` no sabía a qué ALTURA va quien
+pregunta**. Encima de la plataforma la veía igual que desde el suelo. `_mover` ya filtraba
+por cota desde siempre; esta función no. Ahora usan el mismo criterio:
+
+```js
+   if ((c.cota || 0) + (c.altura || 0) <= (cota || 0) + 20) continue;
+```
+
+Con eso el caso de bajar sigue resuelto —tu propia plataforma deja de ser obstáculo— pero
+**por el motivo correcto en vez de por un interruptor**, y el de subir se arregla solo.
+
+### Lo que movió en lo que ya estaba
+
+Un cambio en el movimiento toca todas las recetas, así que se midió antes y después con el
+`sim.js` de HEAD en una copia aparte:
+
+```
+   Romper la linea    espada 81% -> 83%   muertes 178 -> 157   atascos 75 -> 77
+                      ruta de ventaja 85% -> 88%   muertes 142 -> 110
+                      NINGUNA puerta del veredicto cambia de color
+   Cadena perfecta    identica
+   solidos.mjs        verde        atasco.mjs   idéntico antes y después
+   npm test           verde
+```
+
+Mejora leve y nada se mueve de sitio, que es lo que se espera de quitar un merodeo.
+
+### El caso, reconstruido
+
+La rampa **es la misma de 580 cm**: no se alarga ni se acorta, se mueve al otro lado del
+balcón —de `(700→1280)` a `(2100→1520)`—. Ahora hay que bordear la plataforma, que desde
+abajo es un bloque, y el fuego del Arquero cruza el camino, que es literalmente lo que pide
+su ficha: *«donde su fuego cruce el camino natural del jugador»*.
+
+```
+   antes    0 dmg    8 s    1,0 disparos   counter: sin medir («el caso no da de si»)
+   ahora   76 dmg   19 s    3,4 disparos   counter: Escudo -38% ±2  [OK]
+```
+
+**El criterio 1 pasa a 4 de 4 en verde con el cuarto midiendo de verdad**, no por omisión.
+
+Y el enunciado cambia, porque el viejo describía algo que no puede ocurrir: *«te pega
+mientras atacas»* no existe contra un Arquero **solo** —en cuanto llegas lo aturdes cada
+golpe—. Lo que cobra de verdad es el traslado, que es lo que dice su propia ficha: *«obliga
+a moverse»*, *«deja de importar el traslado»*. Ahora pone **«te tira mientras rodeas»**.
+
+### Dos cosas que la geometría elegida NO decide
+
+Se barrieron cinco posiciones de rampa (de 1800 a 2300) antes de elegir, justo para no
+ajustar a ojo:
+
+- **El Escudo sale entre −35% y −38% en las cinco.** El veredicto del counter no depende de
+  dónde se ponga la rampa, así que no lo he elegido yo.
+- Con el simulador arreglado la casilla **dejó de ser sensible**: antes el daño iba de 71 a
+  110 y la victoria del 100% al 25% según dónde cayera la rampa. Esa sensibilidad salvaje
+  era el merodeo, no el diseño.
+
+Se eligió la espejada por ser el cambio mínimo defendible, no por su número.
+
+### Lo que el caso arreglado deja ver, y antes tapaba
+
+- **El Arco y el Estandarte ganan el 0%** contra Compromiso, y el Espadón el 66%. No es
+  nuevo como problema —la cabecera ya dice que un arco en melé es un muro y que se
+  resuelve dejando volver a la espada base, §5.2— pero **el 0% sólo se ve ahora**, porque
+  antes la casilla no mataba a nadie.
+- La nota del asta afirmaba que *«el ESPADÓN a 320 lo deja en cero daño»*. Estaba medida
+  contra la casilla rota, **donde todas las armas daban cero**. Con el caso midiendo, el
+  Espadón a ~585 sale **+23%**: alargar el asta no contesta a un arquero, porque el
+  problema nunca estuvo en el alcance. Corregido en el fichero.
+
+### Y un aviso sobre el criterio 3, que NO es una rotura
+
+La matriz canta `[FALLO] contra Cierre` de forma intermitente. Medido con 3.000 partidas:
+
+```
+   Espada 51,3 ±0,6      Escudo 49,4 ±0,6      (la tolerancia es del 5%)
+   criterio 3: 51,3 <= 51,9 -> PASA
+```
+
+Es un **empate técnico** que a 200-400 partidas cae a un lado o a otro según la semilla. No
+hay nada que recalibrar; lo que hay es una casilla al filo de la tolerancia. Si molesta,
+lo honesto sería que el criterio 3 mirase la barra de error como ya hace el 1 — pero eso es
+tocar la vara de medir, y eso se decide aparte.

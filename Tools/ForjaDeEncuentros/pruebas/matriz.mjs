@@ -58,9 +58,21 @@ const enemigo = (id, arquetipo, x, y, cota = 0) => ({
   id, arquetipo, pos: { x, y }, cota, yaw: 180,
   drop: { principal: false, secundaria: false }, etiqueta: id
 });
+// LA RAMPA VA POR DETRAS, y no es un detalle de decorado: es lo unico que hacia que
+// esta casilla midiera algo. Hasta el 26/08 arrancaba en (700,0) y remataba en
+// (1280,0), o sea SOBRE LA LINEA RECTA de la entrada al Arquero. Malakh no tenia que
+// desviarse ni un centimetro: llegaba, subia y lo mataba en 8 s con UN disparo
+// recibido y CERO de daño. La prueba de que el balcon no pintaba nada es que quitarlo
+// entero —el Arquero a ras de suelo— daba exactamente el mismo resultado.
+//
+// Ahora arranca en (2100,0), detras del balcon. Es LA MISMA RAMPA de 580 cm: no se
+// alarga ni se acorta, se mueve al lado que tiene sentido. Con eso hay que bordear la
+// plataforma —que desde abajo es un bloque— y el fuego del Arquero cruza el camino,
+// que es lo que su ficha pide («donde su fuego cruce el camino natural del jugador»).
+// Medido, 800 partidas: de 0 a 77 de daño y de 1,0 a 3,4 flechas.
 const balcon = {
   id: 'plat', min: { x: 1100, y: -500 }, max: { x: 1700, y: 500 }, cota: 350,
-  accesos: [{ desde: { x: 700, y: 0 }, hasta: { x: 1280, y: 0 }, ancho: 300 }],
+  accesos: [{ desde: { x: 2100, y: 0 }, hasta: { x: 1520, y: 0 }, ancho: 300 }],
   etiqueta: 'balcon'
 };
 function arena(enemigos, plataformas = []) {
@@ -91,7 +103,12 @@ const CASOS = [
                       enemigo('b', 'lancero_del_alba', 0, 260)])
   },
   {
-    clave: 'compromiso', etiqueta: 'Compromiso', problema: '1 Arquero en balcon — te pega mientras atacas',
+    clave: 'compromiso', etiqueta: 'Compromiso', problema: '1 Arquero en balcon — te tira mientras rodeas',
+    // EL PROBLEMA ES EL TRASLADO, NO EL INTERCAMBIO. El enunciado decia «te pega
+    // mientras atacas» y con eso el caso no se sostenia: contra un Arquero SOLO nunca
+    // hay un «mientras atacas», porque en cuanto Malakh llega lo aturde cada golpe y
+    // no vuelve a disparar. Lo que el Arquero cobra de verdad es el CAMINO, que es lo
+    // que dice su ficha: «obliga a moverse», «deja de importar el traslado».
     counter: 'escudo_celestial',
     enc: () => arena([enemigo('a', 'arquero_del_firmamento', 1400, 0, 350)], [balcon])
   },
@@ -284,13 +301,21 @@ for (const c of CASOS) {
 //
 //   ~300 cm — el Arquero se planta a esa distancia cuando retrocede. Un arma
 //             que llegue ahi le toca mientras se aparta; una que no, tiene que
-//             perseguirle. OJO, y no vale generalizar: el ESPADON a 320 lo deja
-//             en cero daño porque ademas pega 22 y lo mata en cuatro golpes; la
-//             LANZA a 320 le sigue costando ~37 en cualquier balcon, o sea que
-//             es un counter, no un borrado. Lo que gobierna lo que cuesta un
-//             arquero es EL TAMAÑO DE SU PLATAFORMA, no su distancia de
-//             retirada — subir esa distancia sale al reves (ver la procedencia
-//             de `arquetipos.arquero_del_firmamento.distanciaMinima`).
+//             perseguirle. Subir su distancia de retirada sale al reves (ver la
+//             procedencia de `arquetipos.arquero_del_firmamento.distanciaMinima`).
+//
+//             LO QUE DE VERDAD GOBIERNA LO QUE CUESTA UN ARQUERO ES EL CAMINO
+//             DESCUBIERTO QUE TE OBLIGA A RECORRER, y esto se midio el 26/08 al
+//             reconstruir la casilla. Mover la rampa de delante del balcon a
+//             detras —la misma rampa, 580 cm, sin tocar al Arquero ni una cifra—
+//             llevo el caso de 0 a 76 de daño y de 1,0 a 3,4 flechas. Ningun
+//             ajuste de alcance, alcance de arma o distancia se acerca a eso.
+//
+//             Y la lectura anterior —«el ESPADON a 320 lo deja en cero daño»—
+//             estaba medida contra la casilla rota, donde TODAS las armas daban
+//             cero porque el Arquero no llegaba a disparar. Con el caso midiendo,
+//             el Espadon a ~585 sale +23%: alargar el asta no contesta a un
+//             arquero, porque el problema nunca estuvo en el alcance.
 //   ~306 cm — 245 x 1.25, el punto en el que Malakh puede quedarse FUERA del
 //             alcance enemigo y pinchar. Es donde el espaciado empieza a
 //             funcionar, y con el cambia como se pelea, no solo cuanto llegas.
