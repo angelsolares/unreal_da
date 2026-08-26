@@ -644,16 +644,24 @@ export class Simulacion {
     A.accion = { ...perfil, yaGolpeo: false };
     // Embestida: el ataque adelanta el cuerpo antes de golpear.
     //
-    // CUIDADO — CASI SIEMPRE NO SE DEBE USAR. En esta calibracion el avance YA ESTA
-    // DENTRO DE `alcance`: los 243 de la espada y los 245 del Lancero se midieron
-    // desde donde el atacante SE COMPROMETE hasta la punta del arma, root motion
-    // incluido, y por eso el simulador no mueve a nadie mientras ataca. Declarar
-    // ademas `embestida` en un arma es contar el avance DOS VECES: probado, la
-    // espada base pasaba de 40 a 59 de daño contra dos Escuderos y de 65 a 37
-    // contra el Arquero, y ninguna de las dos cosas es real.
+    // O TODOS O NINGUNO — esta es la regla, y saltarsela costo una tarde.
     //
-    // Se deja porque contesta "¿y si el desplazamiento fuera una mecanica APARTE del
-    // alcance?" —ver pruebas/embestida.mjs—, no para calibrar.
+    // El aviso original decia "no uses embestida, el avance ya esta dentro de
+    // `alcance`", y era cierto MIENTRAS `alcance` fuera el numero completo (243 de la
+    // espada, 245 del Lancero: desde donde el atacante se compromete hasta la punta,
+    // root motion incluido). Anadir embestida encima contaba el avance dos veces.
+    //
+    // El 25/08 se partio en dos el de Malakh (327 instantaneo + 106 de avance) para
+    // que el simulador MOVIERA el cuerpo, que era lo que faltaba. Pero las armas de
+    // armas.json se quedaron enteras, con `alcance` 448 y sin embestida — o sea que
+    // cada arma del suelo cobraba 121 cm de alcance instantaneo sobre la espada, un
+    // regalo que no sale de ninguna medicion. Eso, y no sus verbos, era TODO el
+    // efecto que la matriz atribuia a los counters: al partirlas igual, Cierre paso
+    // de -61% a -7% y Mole de -57% a +8%.
+    //
+    // Asi que la regla no es "no uses embestida": es que `alcance` y `embestida`
+    // tienen que estar partidos IGUAL en los dos bandos y en todas las armas. Si
+    // tocas uno, tocalos todos.
     if (perfil.embestida) {
       const blanco = A.bando === 'malakh' ? this.agente(A.objetivoId) : this.malakh;
       if (blanco && blanco.estado !== ESTADOS.MUERTO) {

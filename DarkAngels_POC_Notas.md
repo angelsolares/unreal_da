@@ -13788,3 +13788,103 @@ La tabla de «Medido: arregla dos puertas y rompe otra» decía hp 79,5 y «cues
 verde. Ahora sale hp 91 y en aviso. **No es que el cambio mida distinto: es que arreglar
 el encajonamiento quitó daño que Malakh recibía *por estar clavado contra un muro*.**
 Aquel daño era falso y aquella puerta estaba verde por el motivo equivocado.
+
+## Los counters no existían: era mi propio regalo de 121 cm
+
+**26/08.** Fui a repasar por qué Cierre (−61%) y Mole (−57%) se pasaban de banda, y la
+respuesta era que **me los había inventado el día anterior**.
+
+### El fallo
+
+Al partir el alcance de Malakh en 327 + 106 no partí el de las armas. `perfilAtaque`
+**sustituye** el perfil base entero por el de la familia —no mezcla— así que cada arma
+del suelo se quedó con `alcance: 448` y sin `embestida`:
+
+```
+   espada base   327 instantáneo  (+106 de avance)
+   cualquier arma 448 instantáneo  (+0)          <- +121 cm gratis
+```
+
+Ciento veintiún centímetros de alcance instantáneo que no salen de ninguna medición.
+Partidas igual (342 + 106, total 448 idéntico), los counters se desinflan:
+
+```
+   Cierre <- Lanza     -61%  ->   -7%
+   Mole   <- Espadon   -57%  ->   +8%   (peor que la espada)
+```
+
+**Todo el efecto que la matriz atribuía a los verbos era el regalo.** La regla queda
+reescrita en `sim.js` y en `calibracion.json`: **o todos o ninguno.**
+
+### Y debajo había otra cosa: el tambaleo no existe
+
+Barrí las palancas propias de cada arma y no movían nada. El motivo:
+
+```
+   pesados lanzados por Malakh, 200 partidas, cualquier arma:  0.0
+   aturdimientos, 200 partidas, cualquier arma:                0.0
+```
+
+`REGEN_AGUANTE` son **20 por segundo** y un ligero quita 20 cada ~1,7 s: el aguante sólo
+sube. Nadie se tambalea jamás — ni el Lancero (aguante 40) ni el Heraldo (120). Y la
+política sólo lanza pesados **contra un enemigo aturdido**, así que no lanza ninguno. O
+sea que la matriz mide **únicamente ataques ligeros**, y todo lo que un arma declare en
+su pesado es decorativo: el `empuje 260` de la Lanza y el `multiObjetivo` del Espadón
+nunca se ejecutaron.
+
+Probé bajar la regeneración a 10, 5 y 0. **Ni con 0 se arreglan** (Cierre −3%, Mole
++10%), así que el tambaleo es un problema aparte, no la causa. Queda anotado en
+`armas.json`: los 20/s no salen de ninguna medición del motor.
+
+### El empuje no es veneno: es veneno a dosis baja
+
+El veredicto del 25/08 —«el empuje en el ligero es veneno, +389%»— se midió con el
+alcance regalado y con dosis 20. Barrido limpio, 300 duelos por punto:
+
+```
+   empuje    0     40     80    120    160    200    260
+   Cierre   -4%   +47%   +47%   -24%   -43%   -44%   -47%
+   gana     93%    69%    68%    98%    98%    98%    99%
+```
+
+El veneno **es real, pero sólo por debajo de ~100**: apartas al Lancero lo justo para que
+vuelva a cerrar y te cobre la aproximación. Por encima de 120 se invierte. Se fija en
+**160**: centro de banda, 98% de victorias, lejos de la zona tóxica. APARTAR se muda al
+ligero porque es el único ataque que se ejecuta.
+
+Lo que **no** se aplica: el alcance pendiente de 378 de la Lanza. Medido, **empeora** el
+caso (+22%) — atacas desde más lejos y los dos Lanceros te cierran durante el compromiso.
+
+### El Espadón es una escalera, no una pendiente
+
+Su único mando útil contra la Mole es la duración del ligero, y responde a saltos —cada
+escalón es un ataque enemigo más que cabe en el hueco:
+
+```
+   duración  1.50   1.48   1.46   1.44   1.42   1.40   1.38
+   Mole       +7%   -26%   -29%   -29%   -54%   -54%  -100%
+```
+
+No hay valor en el centro de la banda; hay que elegir escalón. Se coge **1,45**: −31% ±4,
+dentro, en mitad de una meseta de 0,05 s y a 0,07 del acantilado. El escalón de −54% está
+a 0,02 del −100% y no es sitio para vivir.
+
+### Resultado
+
+```
+   criterio 1        antes        ahora
+   Cierre <- Lanza   -61% FALLO   -39% ±6  OK
+   Mole <- Espadon   -57% FALLO   -31% ±4  OK
+```
+
+Cero fallos en la matriz. La receta no se mueve (55 partidas al límite frente a 53,
+mismas puertas) y `npm test` sigue verde.
+
+### El precio, que hay que verlo
+
+Contra **Guardia** el Espadón pasa a **+167%** (47 de daño contra 18 de la espada). El
+criterio pasa sólo porque ese caso «ya no da de sí», pero **un rompeguardias que es la
+peor opción contra guardias** contradice la regla 2 de la propia filosofía («el arma
+equivocada cuesta tempo, nunca daño»). El caso Guardia necesita más mordiente antes de
+poder juzgar a su propio counter — con la espada base en 18 de daño, ahí no cabe medir
+nada.

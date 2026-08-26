@@ -38,16 +38,19 @@
         "duracion": 1,
         "impacto": 0.398,
         "ventana": 0.117,
-        "alcance": 448,
+        "alcance": 342,
+        "embestida": 106,
         "arco": 100,
         "costeStamina": 12,
-        "dano": 20
+        "dano": 20,
+        "empuje": 160
       },
       "ataquePesado": {
         "duracion": 1.5,
         "impacto": 0.6,
         "ventana": 0.16,
-        "alcance": 448,
+        "alcance": 342,
+        "embestida": 106,
         "arco": 110,
         "costeStamina": 26,
         "dano": 30,
@@ -63,7 +66,7 @@
         "alcance": 2600,
         "aturde": true
       },
-      "porQue": "Recalibrada el 25/08 contra la matriz alineada (alcances escalados, IA a 250/240). El empuje EN EL LIGERO era veneno medido: +389% de daño contra dos Lanceros aun pagando dano 20, porque cada golpe les regalaba una aproximacion nueva; sin el, -45% y en banda. APARTAR sobrevive donde es una decision: el pesado (empuje 260) y el descarte. El ligero deja de pagar impuesto de daño (17 -> 20, el de la espada): su identidad no era ser peor espada. En el motor: Stat.Damage +10 y el empuje del pesado como notify propio.",
+      "porQue": "REPASADA 26/08, y esto DEROGA el veredicto de \"el empuje en el ligero es veneno\". Aquel se midio con dos numeros que hoy sabemos falsos: el arma llevaba 121 cm de alcance instantaneo de regalo (ver la nota de sim.js sobre embestida) y la dosis probada era 20. Barrido limpio contra dos Lanceros, 300 duelos por punto: empuje 40 y 80 dan +47% de daño —el veneno es REAL pero solo a dosis baja: apartas al enemigo lo justo para que vuelva a cerrar y te cobre la aproximacion—, 120 da -24%, y 160-260 caen en -43/-47%. Se fija en 160: centro de la banda 30-55%, 98% de victorias, y lejos de la zona toxica. APARTAR pasa a vivir en el LIGERO porque es donde se usa: la politica solo lanza pesados contra un enemigo aturdido y NADIE se aturde jamas (el aguante regenera 20/s y un ligero quita 20 cada ~1,7 s), asi que el empuje 260 del pesado nunca se ejecuto ni una vez en 200 partidas. Lo que NO se aplica: el alcance pendiente de 378. Medido, empeora el caso (+22%): atacas desde mas lejos y los dos Lanceros te cierran durante el compromiso. ANTES (25/08, con el alcance regalado): El empuje EN EL LIGERO era veneno medido: +389% de daño contra dos Lanceros aun pagando dano 20. En el motor: Stat.Damage +10 y el empuje como notify propio.",
       "pendiente": "MEDIDO PERO NO APLICADO, 2026-08-25. El alcance sigue en 245 porque en el juego la Lanza TODAVIA usa la animacion compartida de DCS: el montage propio (M_DA_Lanza_AtaqueLigero_01) existe pero la fila 1 de DT_Player_1H_Montages sigue apuntando a los montages de la espada, asi que nadie lo dispara. Cuando se enganche, este numero pasa a ~265: midiendo con UN MISMO metodo el combo ligero de la espada (264,2 de media) y el de la lanza (288,6), la lanza llega un 9,2% mas, y ese 9,2% sobre los 243 registrados dan 265. Se da como RATIO y no como valor absoluto porque mi metodo (maximo entre los seis ejes del hueso) sale un 9% alto frente al que produjo los 221,3 y 264,1 originales, y una calibracion no se reescribe con un metodo distinto del que la creo."
     },
     "arco_del_firmamento": {
@@ -137,10 +140,11 @@
         "tipo": "persistencia"
       },
       "ataqueLigero": {
-        "duracion": 1.5,
+        "duracion": 1.45,
         "impacto": 0.55,
         "ventana": 0.16,
-        "alcance": 448,
+        "alcance": 342,
+        "embestida": 106,
         "arco": 120,
         "costeStamina": 14,
         "dano": 28,
@@ -151,7 +155,8 @@
         "duracion": 1.9,
         "impacto": 0.9,
         "ventana": 0.22,
-        "alcance": 448,
+        "alcance": 342,
+        "embestida": 106,
         "arco": 170,
         "costeStamina": 30,
         "dano": 38,
@@ -169,7 +174,7 @@
         "aturde": true,
         "rompeGuardia": true
       },
-      "porQue": "Recalibrado el 25/08 contra la matriz alineada. El mando estaba cambiado: la armadura no gobierna la Mole (0.5 -> 0.3 solo movia -85% -> -79%) pero destroza la Guardia (+1% -> +42%); el daño gobierna la Guardia. La combinacion que clava LAS DOS casillas en banda es 28 de daño / 1,5 s / armadura 0,4: Guardia -37%, Mole -47%. ROMPER es eso: menos golpes, mas pesados, que la guardia no para y que no se interrumpen. En el motor: Stat.Damage +18 y Stat.AttackSpeed.Melee negativo."
+      "porQue": "REPASADO 26/08. Con los alcances ya partidos igual que los de Malakh, el Espadon a 1,5 s no hacia NADA contra su propia Mole (+8%: peor que la espada). La duracion del ligero es el unico mando que la mueve, y no es una pendiente sino una ESCALERA —cada escalon es un ataque enemigo mas que cabe en el hueco—: 1,50 -> +7%, 1,48-1,44 -> -29%, 1,42-1,40 -> -54%, 1,38 -> -100%. No hay valor que caiga en el centro de la banda; hay que elegir escalon. Se coge 1,45: -31% ±4, dentro de banda, en mitad de una meseta de 0,05 s de ancho y a 0,07 del acantilado. El escalon de -54% queda a 0,02 del -100% y no es sitio para vivir. PRECIO, y hay que verlo: contra Guardia el Espadon pasa a +167% (47 dmg contra 18 de la espada). El criterio pasa porque ese caso ya no da de si, pero un rompeguardias que es la PEOR opcion contra guardias contradice la regla2 de esta misma filosofia. El caso Guardia necesita mas mordiente antes de poder juzgar a su propio counter. ANTES (25/08, con el alcance regalado): la combinacion que clava las dos casillas en banda es 28 de daño / 1,5 s / armadura 0,4: Guardia -37%, Mole -47%. En el motor: Stat.Damage +18 y Stat.AttackSpeed.Melee negativo."
     },
     "estandarte_ritual": {
       "nombre": "Estandarte ritual",
@@ -182,7 +187,8 @@
         "duracion": 1.2,
         "impacto": 0.5,
         "ventana": 0.15,
-        "alcance": 448,
+        "alcance": 342,
+        "embestida": 106,
         "arco": 120,
         "costeStamina": 12,
         "dano": 16,
@@ -208,7 +214,9 @@
     "espadon_alabarda.*.rompeGuardia": "En Unreal es `HitData.CanBeBlocked = false`. La bandera existe y esta identificada; el Golpe de Suelo del §3.2 se monto SIN ella, y por eso un guard break bloqueable no rompia ninguna guardia.",
     "espadon_alabarda.ataqueLigero.armaduraDeCompromiso": "DISEÑO NUEVO. En Unreal es suprimir la reaccion a golpe durante la ventana del ataque (hyperarmor). DCS ya controla las hit reactions, asi que la pieza existe.",
     "lanza_del_alba.ataqueLigero.empuje": "El campo estaba MEDIDO en calibracion.json desde el 23/08 (20 cm el ligero de la espada, 45 el pesado) y el simulador no lo usaba. Ahora si. Los 150 de la lanza son diseño.",
-    "escudo_celestial.bloqueo.mitigacionPasiva": "DISEÑO NUEVO. En Unreal haria falta que el componente de daño mire el estado de animacion del receptor antes de aplicar el golpe de un proyectil."
+    "escudo_celestial.bloqueo.mitigacionPasiva": "DISEÑO NUEVO. En Unreal haria falta que el componente de daño mire el estado de animacion del receptor antes de aplicar el golpe de un proyectil.",
+    "familias.*.alcance": "PARTIDO EN DOS 26/08, igual que malakh.ataque*.alcance: cada 448 pasa a 342 de alcance instantaneo + 106 de avance del golpe. El 106 es el mismo que el de Malakh a proposito, porque es LA MISMA animacion compartida de mele. El total se conserva exacto (448), asi que la posicion relativa de cada arma frente a la espada no cambia: 342 contra 327 son los mismos +15 que 448 contra 433. Sin este corte, partir solo el de Malakh regalaba 121 cm de alcance instantaneo a toda arma recogida.",
+    "aguante.regeneracion": "MEDIDO 26/08 — EL TAMBALEO NO EXISTE. `REGEN_AGUANTE` son 20 por segundo en sim.js y un ataque ligero quita 20 cada ~1,7 s, asi que el aguante solo sube. Cero aturdimientos en 200 partidas, con cualquier arma, contra Lancero (aguante 40) y contra Heraldo (120). Consecuencia en cadena: la politica solo lanza ataques PESADOS contra un enemigo aturdido, asi que no lanza ninguno — la matriz mide solo ataques ligeros y todo lo que un arma declare en su pesado (el empuje 260 de la Lanza, el multiObjetivo del Espadon) es decorativo. Probado bajar la regeneracion a 10, 5 y 0: ni con 0 se arreglan los counters (Cierre -3%, Mole +10%), asi que el tambaleo es un problema APARTE y no la causa. Los 20/s no salen de ninguna medicion del motor; habria que medir el poise real de DCS en PIE."
   },
   "limitesDelMotor": {
     "nota": "Cuatro cosas que la matriz descubrio y que no son opinion. Cualquier arma futura tiene que respetarlas o sale trampa.",
