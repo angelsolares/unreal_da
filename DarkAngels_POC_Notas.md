@@ -14249,3 +14249,69 @@ Porque el encuentro se había probado **sellándolo a mano** (`Sellar()` por Pyt
 lo que hice yo todo el día. El único camino que nadie había recorrido era el del jugador:
 aparecer y andar. La lección no es sobre cajas de colisión — es que **un banco que se salta
 el arranque no prueba el arranque**.
+
+## Jugado de verdad: el Arquero dispara, no acierta, y no retrocede
+
+**26/08.** Segunda partida de Angel, ya con la arena sellándose. 222 muestras, oleadas 1,
+2 y 3, y **37,6 s de oleada 3 — el Arquero solo**, que es justo el tramo que hacía falta.
+
+### 1. Sí dispara
+
+`maxIndiceFlecha` llegó a **2**, o sea que salieron **al menos tres flechas** (los actores
+se numeran desde 0), y una se pilló en vuelo a 1152 cm. **El umbral de 450 no lo calla.**
+Ese era el riesgo que yo había apuntado y no existe.
+
+### 2. No acierta ni una
+
+```
+   oleada 3:  golpes 3 -> 3     daño 105 -> 105     37,6 segundos
+```
+
+**Cero impactos.** Los 105 de daño son de las oleadas 1 y 2, a espada. En 37 segundos con
+el Arquero solo, con Malakh a 424 cm en un momento y a 1100 la mayor parte, no le entró
+una sola flecha. Un arquero que no acierta nunca no es una amenaza, y toda la receta §6.1
+lo trata como si lo fuera. **Esto es más gordo que el umbral.**
+
+### 3. La reacción del §5.1 no llegó a dispararse
+
+Y aquí me equivocaba yo. El Arquero del claro (el 27) tuvo **UNA SOLA POSICIÓN en toda la
+oleada**: (1300,1113), clavado. El que se movía era Malakh:
+
+```
+   t=69.46  Malakh [ 866, 843]   d=624
+   t=70.70  Malakh [1032,1217]   d=460
+   t=70.96  Malakh [1128,1257]   d=424   <- DENTRO del umbral de 450
+   t=71.86  Malakh [1457,1381]   d=475
+   t=73.31  Malakh [1696, 855]   d=594
+   t=74.19  Malakh [1773, 664]   d=744   <- y aqui pierde el blanco
+```
+
+**Entró a 424 cm y el Arquero no se movió un centímetro.** La rama de huida corre —tiene
+`Force Success`— pero no tiene adónde ir: el balcón del claro es `x[1100..1500]
+y[725..1275]`, o sea **400 × 550 cm**, más pequeño que el propio umbral. El `Roll` tampoco
+entra, que lleva `IsNothingBehind` invertido y detrás hay barandilla.
+
+Esto **confirma lo del balcón** y **deroga** lo que escribí desde el banco aislado («huye
+a 430 y aguanta a 727»): aquello era campo abierto. En la receta, el espaciado del Arquero
+lo gobierna su plataforma y el número es inerte.
+
+### 4. Y pierde el blanco con una facilidad que asusta
+
+A 744 cm —bien dentro de sus 2500 de `LoseSightRadius`— `conBlanco` pasa a **NO** en
+cuanto Malakh se va a (1773,664), por detrás del balcón. Y ahí se queda **los últimos 7
+segundos: ciego y quieto**. El otro Arquero, a 1690, mantuvo el blanco todo el rato. O sea
+que no es distancia, es geometría: rodearlo lo apaga.
+
+### Qué hacer con esto
+
+El umbral en 450 **no hace daño** (no lo calla, no lo hace huir) pero **tampoco entrega la
+señal del §5.1**, y no la va a entregar mientras el Arquero esté en una plataforma más
+pequeña que el umbral. Dos caminos, y son de diseño:
+
+- **Bajarlo del balcón**, o darle un balcón donde quepa retroceder.
+- **O entregar la reacción de otra forma**: un paso atrás con animación propia en vez de
+  una reubicación por EQS, que es lo que el PDF pide de verdad («retrocede al ver la
+  lanza»), no una huida.
+
+Y antes que nada de eso: **averiguar por qué no acierta**. Tres flechas en 37 segundos y
+ninguna dentro.
