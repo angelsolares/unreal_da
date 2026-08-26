@@ -600,8 +600,10 @@ print(json.dumps(informe))
 
   // La verificacion de verdad se hace AQUI, no en el editor: comparar lo pedido
   // con lo releido. Si algo no cuadra, sale con nombre y apellidos.
+  // No todo lo colocado lleva posicion que verificar: el instalador del Debug
+  // HUD se apunta sin pedido/real, y compararlos a ciegas revienta aqui.
   informe.desviados = informe.colocados.filter(c =>
-    c.pedido.some((v, i) => Math.abs(v - c.real[i]) > TOLERANCIA));
+    c.pedido && c.real && c.pedido.some((v, i) => Math.abs(v - c.real[i]) > TOLERANCIA));
   const cuantos = clase => informe.colocados.filter(c => c.clase === clase).length;
   informe.resumen = {
     enemigos: cuantos('enemigo'),
