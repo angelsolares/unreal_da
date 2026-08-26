@@ -165,16 +165,40 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
       : 'Ningun enemigo queda fuera del alcance de la espada, ni esperando una oleada que no llega.'
   });
 
-  // --- 2. Ganable solo con espada ---
+  // --- 2. Ganable solo con espada, PERO QUE DUELA ---
+  //
+  // ESTA PUERTA AVISA POR LOS DOS LADOS, y el motivo es un criterio de Angel del 26/08:
+  // «los combates siempre deben ser posibles de ganar sólo con la espada pero que esto sea
+  // bastante complicado, que se sienta que es necesario el arsenal».
+  //
+  // Hasta entonces la puerta daba OK a partir del 90% y con eso premiaba justo lo
+  // contrario: un encuentro que se pasa de calle con la espada deja el arsenal en
+  // decorado, y el §5.2 no promete un paseo, promete que NUNCA dependas de un drop. Las
+  // dos mitades del criterio son bandas distintas y hay que medirlas por separado:
+  //
+  //     < 70%   FALLO   no se puede con espada sola: cada drop pasa a ser una trampa
+  //   70 - 90%  OK      ganable y cuesta — la zona que el diseño busca
+  //     > 90%   AVISO   se pasa comodo: el arsenal no se siente necesario
+  //
+  // OJO CON LEER ESTE NUMERO COMO SI FUERA EL DEL JUGADOR. Es la tasa de una politica
+  // guionizada: no lee el encuentro, no cambia de plan y no aprende entre intentos. Sirve
+  // para descartar los extremos —imposible o trivial—, no para afinar la dificultad. Eso
+  // se decide jugando.
   const tasa = base?.resumen.tasaVictoria ?? 0;
+  const comodo = tasa > 0.90;
   puertas.push({
     id: 'ganable-espada',
-    titulo: 'Ganable solo con la espada base',
+    titulo: 'Ganable solo con la espada base, y que cueste',
     referencia: '§5.2 Regla de oro / §12 Criterios',
-    estado: tasa >= 0.90 ? 'ok' : tasa >= 0.70 ? 'aviso' : 'fallo',
+    estado: tasa < 0.70 ? 'fallo' : comodo ? 'aviso' : 'ok',
     texto: `Sin tocar un arma del suelo, "${base?.nombre}" gana el ${(tasa * 100).toFixed(0)}% de ${n} partidas`
       + (base?.resumen.porMuerte ? `, muere en ${base.resumen.porMuerte}` : '')
-      + (base?.resumen.porTiempo ? ` y se queda sin tiempo en ${base.resumen.porTiempo}` : '') + '.',
+      + (base?.resumen.porTiempo ? ` y se queda sin tiempo en ${base.resumen.porTiempo}` : '') + '.'
+      + (comodo
+        ? ' Se pasa comodo: por encima del 90% el arsenal no se siente necesario.'
+        : tasa < 0.70
+          ? ' No llega: por debajo del 70% cada drop es una trampa, y el §5.2 promete lo contrario.'
+          : ' Ganable y cuesta, que es donde tiene que estar.'),
     dato: tasa
   });
 
