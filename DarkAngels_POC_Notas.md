@@ -14520,3 +14520,70 @@ mirar dónde va la flecha.
 - Una traza para comprobar línea de visión **tiene que ignorar al tirador**. La primera que
   hice chocaba con el propio Arquero a 0 cm y estuve a punto de escribir que el problema
   era la oclusión de la rampa. No lo era.
+
+## Arreglada la puntería del arco, para los dos
+
+**26/08.** El fallo estaba en `BP_CombatComponent.GetDirectionToSpawnProjectile` (DCS), que
+convierte una dirección correcta en una que apunta al cielo. **No se toca DCS**: se
+sobrescribe `GetLocAndDirToSpawnArrow` en nuestros dos blueprints, que son quienes la
+llaman. El asset de pago queda intacto y el arreglo viaja en git.
+
+Y hay una razón técnica además de la de higiene: **una función sobrescrita hereda los pines
+de retorno del padre.** El escritor del DSL no sabe crearlos —esta misma tarde tres
+funciones salieron vacías por eso— así que sobrescribir es la única forma de escribir por
+MCP una función que devuelve dos valores.
+
+### Qué hace cada una
+
+- **El Arquero** apunta al blanco con la misma predicción que traía el original: posición
+  del objetivo más su velocidad por el tiempo de vuelo. Lo único que se quita es la llamada
+  rota.
+- **Malakh** apunta a 150 m por delante de la cámara. Sin traza: arco y cámara convergen a
+  esa distancia, que es lo normal en un tercera persona.
+
+### Verificado en PIE
+
+```
+   ARQUERO -> Malakh a 1179 cm
+      debería disparar a  pitch -19,1  yaw +166,9
+      y ahora dispara a   pitch -19,1  yaw +166,9
+```
+
+Y la flecha, en vuelo: `en (531,-125,49) |v|=3499 -> PASA A 0 cm de Malakh`. **Plana y a
+ras de suelo**, en vez de subir catorce mil centímetros.
+
+### Tres trampas del DSL que costaron una vuelta cada una
+
+- **La aritmética se escribe con OPERADORES.** El lector muestra `Math|Vector|vector*float`
+  y `vector+vector`, pero el escritor no conoce ninguno de los dos —ni
+  `Multiply_VectorFloat`, ni `ScaleVector`, ni `vector*vector`: probados los seis—. Lo que
+  sí acepta es `(* v f)` y `(+ a b)`.
+- **El nodo de retorno se llama `ReturnNode`, no `FunctionResult`.** Un `vaciar()` que
+  filtre mal lo borra, y con él se van los pines de salida que eran justo lo que se venía a
+  aprovechar.
+- **`Combat|GetProjectileSpawnLocation` resuelve a la versión de `BP_CombatCharacter`**, y
+  el Arquero no es uno (deriva de `BP_BaseAI`). Sin target no compila, con `self` da pines
+  incompatibles y `CallFunction|...` no existe. Lo que vale para los dos es inlinear lo que
+  hace `BP_BaseAI.GetProjectileSpawnLocation`: pedirle el punto al item de la mano
+  principal.
+
+## Y debajo había un SEGUNDO fallo: las flechas no hacen daño
+
+Con la puntería ya arreglada y una flecha pasando **a 0 cm** de Malakh, el medidor de 50 Hz
+sigue en **golpes 0, daño 0, vida 100** tras varias tandas. O sea que la flecha lo
+atraviesa.
+
+Lo medido hasta ahora:
+
+- La flecha **no tiene colisión propia**: sus dos componentes (malla y partículas) están en
+  `NoCollision`. Es a propósito — golpea con un `BP_CollisionHandlerComponent` que traza a
+  lo largo de la malla, el mismo sistema que las armas de melé.
+- Su daño es **40** y su velocidad **3500**, o sea que el disparo está bien formado.
+- El canal existe: `Projectile` es `ECC_GameTraceChannel1` con `DefaultResponse=ECR_Ignore`,
+  así que **sólo le pega a quien lo declare**.
+- Y ahí está lo raro: en Malakh y en el Arquero, **la cápsula (perfil `Pawn`) IGNORA el
+  canal Projectile**, pero **la malla del personaje (`CharacterMesh`) lo BLOQUEA**.
+
+O sea que el cuerpo debería pararla. Que no lo haga apunta a la traza del manejador de
+colisión, no al perfil. **Sin resolver todavía**, y es lo siguiente: hasta que se resuelva,
+el Arquero apunta perfecto y sigue sin hacer daño.
