@@ -1,34 +1,43 @@
-"""La caja `Entrada` de la arena deja de interceptar flechas. De verdad esta vez.
+"""La caja `Entrada` deja de interceptar flechas, SIN cegar a los enemigos.
 
     node ue.mjs script arena_entrada_ignora_flechas.py
 
-POR QUE HAY UNA SEGUNDA PASADA. `arena_no_come_flechas.py` puso las cinco cajas en
-`OverlapOnlyPawn` desde el ConstructionScript, y agarro en los cuatro muros... pero NO en
-`Entrada`. Leido de la partida viva:
+HISTORIA CORTA, porque hubo dos intentos fallidos antes de este y los dos enseñan algo.
 
-    Entrada    perfil=OverlapAllDynamic   vs Projectile = OVERLAP    <- seguia mal
-    MuroNorte  perfil=Custom              vs Projectile = IGNORE
-    MuroSur/Este/Oeste   igual que el norte
+EL PROBLEMA ORIGINAL. `Entrada` es una caja de 37 m que cubre la arena entera, con perfil
+`OverlapAllDynamic`, que **solapa el canal `Projectile`**. Las flechas de DCS golpean con un
+`CollisionHandler` que barre por ese canal, asi que lo PRIMERO que tocaba cualquier flecha
+disparada dentro de la arena era la caja de la propia arena. El Arquero disparaba y no
+acertaba nunca.
 
-El motivo estaba en el EventGraph, en el BeginPlay de la arena:
+INTENTO 1: poner las cinco cajas en `OverlapOnlyPawn` desde el ConstructionScript. No
+sirvio: **el BeginPlay fuerza el perfil** y pisa lo que deje el ConstructionScript.
 
-    (SetCollisionProfileName (GetEntrada)   "OverlapAllDynamic" false)
-    (SetCollisionProfileName (GetMuroNorte) "InvisibleWall"     false)   ... y los otros tres
+INTENTO 2: cambiar el literal del BeginPlay a `OverlapOnlyPawn`. Arreglo las flechas y
+**rompio la IA**: Angel lo vio enseguida —"no voltean para atacarme, como si no se
+activaran"— y el registro le dio la razon, 47 s de partida con vida 100 y cero golpes.
+El motivo, medido:
 
-O sea que **el BeginPlay fuerza el perfil** y pisa lo que dejo el ConstructionScript. Los
-muros salvan porque `InvisibleWall` ignora los canales personalizados; `Entrada` no.
+    Entrada con OverlapOnlyPawn:   vs Visibility = BLOCK
 
-Y esto ya estaba escrito en las notas de Malkuth, sobre los ZoneTrigger: "su BeginPlay
-fuerza el perfil; OverlapOnlyPawn o envenenan la punteria". Mismo fallo, tercer actor.
+`OverlapOnlyPawn` solo declara Pawn, Vehicle y Camera; para Visibility se queda con el
+defecto del canal, que es BLOQUEAR. O sea que una caja de 37 m pasaba a **cortar todas las
+trazas de linea de vision de la arena**, que es exactamente lo que usa la percepcion de la
+IA para verte. Con `OverlapAllDynamic` eso no pasaba porque solapa TODO, y un solapamiento
+no corta una traza.
 
-QUE HACE ESTA PASADA. Cambia ese literal del BeginPlay: `OverlapAllDynamic` ->
-`OverlapOnlyPawn`. Nada mas. Se busca POR FORMA —el nodo `SetCollisionProfileName` cuyo
-target es `Entrada`— y no por posicion, para que aguante que el grafo se reordene.
+LO QUE HACE ESTA PASADA, que es lo que habia que hacer desde el principio: **no tocar el
+perfil**. Se deja `OverlapAllDynamic` en el BeginPlay tal y como estaba, y se le cambia
+UNICAMENTE la respuesta al canal `Projectile` a Ignore, en las cinco cajas. Todo lo demas
+—Visibility, Camera, Pawn— sigue igual que antes.
 
-`OverlapOnlyPawn` solapa Pawn y Vehicle e ignora Camera; para los canales PERSONALIZADOS
-—`Projectile` es uno, `ECC_GameTraceChannel1`— usa el defecto del canal, que es Ignore. La
-caja sigue detectando al jugador (que es su unico trabajo: sellar al entrar) y desaparece
-para las flechas.
+Y se llama DESPUES del BeginPlay, no desde el ConstructionScript, porque si no lo pisa
+igual que la primera vez.
+
+LA LECCION, que ya iba por la tercera repeticion en este proyecto: cambiar un PERFIL entero
+para arreglar UN canal toca todos los demas de rebote. La nota de los ZoneTrigger de
+Malkuth avisaba de la mitad de esto ("su BeginPlay fuerza el perfil"); la otra mitad —que
+`OverlapOnlyPawn` bloquea Visibility— es nueva y cara.
 """
 import json
 
@@ -36,8 +45,14 @@ RUTA = "/Game/DarkAngels/Blueprints/Combat/BP_DA_Arena"
 BPP = RUTA + ".BP_DA_Arena"
 BP = {"refPath": BPP}
 GRAFO = {"refPath": BPP + ":EventGraph"}
-VIEJO = "OverlapAllDynamic"
-NUEVO = "OverlapOnlyPawn"
+PERFIL_BUENO = "OverlapAllDynamic"
+CAJAS = ["Entrada", "MuroNorte", "MuroSur", "MuroEste", "MuroOeste"]
+CANAL = "ECC_GameTraceChannel1"        # el canal "Projectile" de este proyecto
+FN = "AjustarColisiones"
+
+AJUSTAR = ("(fn " + FN + " ()\n" + "\n".join(
+    '  (Collision|SetCollisionResponseToChannel (Variables|Default|Get%s) "%s" "ECR_Ignore")'
+    % (c, CANAL) for c in CAJAS) + ")\n")
 
 
 def call(t, a):
@@ -52,41 +67,102 @@ def st(t, a):
     return call("editor_toolset.toolsets.asset.AssetTools." + t, a)
 
 
+def grafos():
+    return [g["refPath"].split(":")[-1] for g in bt("list_graphs", {"blueprint": BP})]
+
+
+def vaciar(g):
+    for nodo in bt("find_nodes", {"graph": g, "title": ""}):
+        tid = str(bt("get_node_infos", {"nodes": [nodo]})[0]["type_id"])
+        if "FunctionEntry" in tid or "FunctionResult" in tid or "ReturnNode" in tid:
+            continue
+        bt("delete_node", {"node": nodo})
+
+
 def run():
     if call("EditorToolset.EditorAppToolset.IsPIERunning", {}):
         return {"error": "PIE esta corriendo; parar antes de tocar blueprints"}
-    out = {"candidatos": []}
+    out = {}
 
-    nodos = bt("find_nodes", {"graph": GRAFO, "title": ""})
-    infos = bt("get_node_infos", {"nodes": nodos})
-
-    objetivo = None
+    # 1. El perfil del BeginPlay vuelve a ser el de siempre. Si el intento 2 lo dejo en
+    #    OverlapOnlyPawn, aqui se deshace: es lo que cegaba a los enemigos.
+    infos = bt("get_node_infos", {"nodes": bt("find_nodes", {"graph": GRAFO, "title": ""})})
+    perfiles = []
     for i in infos:
         if "SetCollisionProfileName" not in str(i["type_id"]):
             continue
-        # OJO: el valor del pin viene en la clave "value", no en "default_value".
-        perfil = None
         for p in i["input_pins"]:
             if p["name"] == "InCollisionProfileName":
-                perfil = p
-        v = str(perfil["value"]) if perfil is not None else "?"
-        out["candidatos"].append("%s perfil=%s" % (i["type_id"], v))
-        # Se identifica por el VALOR y no por el target: de los cinco nodos, solo el de
-        # "Entrada" pone OverlapAllDynamic; los cuatro muros ponen InvisibleWall.
-        if v == VIEJO:
-            objetivo = (i, perfil)
+                perfiles.append((i, p, str(p["value"])))
+    out["perfiles_antes"] = [v for _i, _p, v in perfiles]
+    for i, p, v in perfiles:
+        if v == "OverlapOnlyPawn":
+            bt("set_pin_value", {"pin": p["pin_id"], "value": PERFIL_BUENO})
+            out["perfil_restaurado"] = PERFIL_BUENO
 
-    if objetivo is None:
-        out["error"] = "no encuentro el SetCollisionProfileName con " + VIEJO
-        return out
+    # 2. La funcion que apaga SOLO el canal de proyectil.
+    if FN not in grafos():
+        bt("add_function_graph", {"blueprint": BP, "graph_name": FN})
+    g = {"refPath": BPP + ":" + FN}
+    vaciar(g)
+    bt("write_graph_dsl", {"graph": g, "code": AJUSTAR})
 
-    i, perfil = objetivo
-    bt("set_pin_value", {"pin": perfil["pin_id"], "value": NUEVO})
+    # 3. Engancharla en el BeginPlay DETRAS del ultimo SetCollisionProfileName. Se busca
+    #    por forma: el ultimo de la cadena es el que no encadena con otro igual.
+    infos = bt("get_node_infos", {"nodes": bt("find_nodes", {"graph": GRAFO, "title": ""})})
+    porRef = {}
+    for i in infos:
+        porRef[i["node"]["refPath"]] = i
+    if any(FN in str(i["type_id"]) for i in infos):
+        out["enchufe"] = "ya estaba"
+    else:
+        ultimo = None
+        salida = None
+        siguiente = None
+        for i in infos:
+            if "SetCollisionProfileName" not in str(i["type_id"]):
+                continue
+            for p in i["output_pins"]:
+                if p["name"] != "then":
+                    continue
+                sig = None
+                for c in p["connected_pins"]:
+                    sig = porRef.get(c["node"]["refPath"])
+                if sig is not None and "SetCollisionProfileName" not in str(sig["type_id"]):
+                    ultimo, salida, siguiente = i, p["pin_id"], sig
+        if ultimo is None:
+            out["enchufe"] = "NO ENCONTRADO el final de la cadena de perfiles"
+            return out
+        entrada = None
+        for p in siguiente["input_pins"]:
+            if p["type_id"] == "Exec" and p["name"] in ("execute", "then", "Exec"):
+                entrada = p["pin_id"]
+        if entrada is None:
+            out["enchufe"] = "el nodo siguiente no tiene pin de ejecucion"
+            return out
+        pos = ultimo["position"]
+        nuevo = bt("create_node", {"graph": GRAFO, "type_id": "CallFunction|" + FN,
+                                   "pos": {"x": int(pos["x"]) + 160, "y": int(pos["y"]) + 200}})
+        ni = bt("get_node_infos", {"nodes": [nuevo]})[0]
+        pin_in = pin_out = None
+        for p in ni["input_pins"]:
+            if p["type_id"] == "Exec":
+                pin_in = p["pin_id"]
+        for p in ni["output_pins"]:
+            if p["type_id"] == "Exec":
+                pin_out = p["pin_id"]
+        bt("break_pins", {"output_pin": salida, "input_pin": entrada})
+        bt("connect_pins", {"output_pin": salida, "input_pin": pin_in})
+        bt("connect_pins", {"output_pin": pin_out, "input_pin": entrada})
+        out["enchufe"] = "enchufada tras el ultimo SetCollisionProfileName"
+
     bt("compile_blueprint", {"blueprint": BP})
     st("save_assets", {"asset_paths": [RUTA]})
 
-    # RELEER del grafo, que el `true` no vale nada.
-    releido = str(bt("read_graph_dsl", {"graph": GRAFO}))
-    out["quedan_OverlapAllDynamic"] = releido.count(VIEJO)
-    out["hay_OverlapOnlyPawn"] = releido.count(NUEVO)
+    # RELEER, que el `true` no vale nada.
+    ev = str(bt("read_graph_dsl", {"graph": GRAFO}))
+    out["perfiles_despues"] = [v for v in ["OverlapAllDynamic", "OverlapOnlyPawn", "InvisibleWall"]
+                               if v in ev]
+    out["llama_a_" + FN] = FN in ev
+    out[FN] = str(bt("read_graph_dsl", {"graph": g}))
     return out

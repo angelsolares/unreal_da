@@ -14700,3 +14700,49 @@ disparo, las cinco cajas de la arena, y el literal del BeginPlay que revertía l
 **Falta ver una flecha hacer daño**, y eso sigue necesitando una partida: el disparo del
 Arquero está detrás de la actividad `Activity.IsInCombat`, que no se puede poner desde
 Python porque es un GameplayTag.
+
+## Cambiar un perfil para arreglar un canal ciega a media arena
+
+**26/08.** Angel volvió a jugar y lo cantó antes que ningún instrumento: *«ahora
+simplemente no voltean para atacarme, como si no se activaran»*. El registro lo confirmó:
+47 s de partida, las tres oleadas alcanzadas, y **vida 100 de principio a fin, cero
+golpes**. Ni siquiera los de melé le tocaron.
+
+### Lo había roto yo, en el arreglo anterior
+
+Poner `Entrada` en `OverlapOnlyPawn` arreglaba las flechas y rompía la percepción:
+
+```
+   Entrada con OverlapOnlyPawn:   vs Visibility = BLOCK
+```
+
+Ese perfil sólo declara Pawn, Vehicle y Camera; **para Visibility se queda con el defecto
+del canal, que es BLOQUEAR**. Y `Entrada` mide 37 metros y cubre la arena entera, así que
+pasó a cortar **todas las trazas de línea de visión** — que es justo lo que usa la
+percepción de la IA para verte. Con `OverlapAllDynamic` no pasaba porque solapa todo, y un
+solapamiento no corta una traza.
+
+### El arreglo bueno, que era el de siempre
+
+**No tocar el perfil.** Se deja `OverlapAllDynamic` tal cual y se le cambia únicamente la
+respuesta al canal `Projectile` a `Ignore`, en las cinco cajas. Y se hace **después** del
+BeginPlay —desde una función enganchada detrás del último `SetCollisionProfileName`— porque
+si no, el propio BeginPlay lo pisa, que es lo que pasó en el primer intento.
+
+Verificado en la partida viva:
+
+```
+   Entrada    Visibility=OVERLAP   Pawn=OVERLAP   Projectile=IGNORE
+   los muros  Visibility=IGNORE    Pawn=BLOCK     Projectile=IGNORE
+   arena Estado = 1                     <- sigue sellando
+   traza de visión arquero->Malakh      <- la corta Malakh, o sea que LLEGA
+```
+
+### La lección, que ya iba por la tercera repetición
+
+**Cambiar un PERFIL entero para arreglar UN canal toca todos los demás de rebote.** La nota
+de los ZoneTrigger avisaba de la mitad («su BeginPlay fuerza el perfil»); la otra mitad
+—que `OverlapOnlyPawn` bloquea Visibility— es nueva y ha costado una partida entera.
+
+Y una de método, que se repite: **Angel vio el síntoma antes que el instrumento en las dos
+últimas vueltas.** El registro sirvió para confirmarlo y acotarlo, no para encontrarlo.
