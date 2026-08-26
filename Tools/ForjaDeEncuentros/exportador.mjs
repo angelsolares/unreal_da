@@ -455,7 +455,7 @@ else:
 # EL INSTALADOR DEL DEBUG HUD. Sin este actor la tecla "." no abre nada, y no
 # por un fallo del panel: el GameMode del proyecto es el de DCS y su HUDClass
 # es el pelado del motor, asi que el HUD de DA no llega a instanciarse. Es
-# `BP_DA_DebugZonas` quien hace el ClientSetHUD en su BeginPlay.
+# 'BP_DA_DebugZonas' quien hace el ClientSetHUD en su BeginPlay.
 #
 # Pide la clase por referencia BLANDA dentro de si mismo, asi que el nivel NO
 # ata /Game/DarkAngels/Debug y esa carpeta sigue pudiendo estar en
@@ -532,13 +532,13 @@ else:
 # El arranque del jugador y el checkpoint.
 #
 # EL JUGADOR NO PUEDE NACER TOCANDO LA CAJA DE ENTRADA, y esto no es quisquilloseria:
-# `OnComponentBeginOverlap` NO dispara para un solapamiento que YA EXISTIA al aparecer.
+# 'OnComponentBeginOverlap' NO dispara para un solapamiento que YA EXISTIA al aparecer.
 # Si nace pegado, la arena no se sella NUNCA, los enemigos se quedan dormidos desde su
 # BeginPlay y el encuentro entero es un paseo.
 #
-# Medido el 26/08 jugandolo: el PlayerStart caia en x=-1900, la caja `Entrada` llega a
+# Medido el 26/08 jugandolo: el PlayerStart caia en x=-1900, la caja 'Entrada' llega a
 # -1870 y la capsula de Malakh mide 42 de radio, o sea que su borde nacia en -1858, DOCE
-# CENTIMETROS dentro. 93 segundos de partida con `Estado=0`, y sacandolo fuera y
+# CENTIMETROS dentro. 93 segundos de partida con 'Estado=0', y sacandolo fuera y
 # volviendo a entrar sellaba a la primera.
 #
 # La holgura no se calcula a mano: se le PREGUNTA a la caja ya construida, porque su
