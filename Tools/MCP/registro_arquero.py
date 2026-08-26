@@ -25,9 +25,22 @@ COMO SE ATRIBUYE EL DAÑO, que es la gracia: la receta "Romper la linea" entra D
 UNO. La oleada 3 es el Arquero SOLO, asi que todo golpe contado mientras `oleada == 3` es
 una flecha. No hace falta identificar al autor: lo hace el guion del encuentro.
 
-DE PROPINA, UN CONTADOR DE FLECHAS QUE SI SOBREVIVE AL MUESTREO LENTO: los actores se
-llaman `BP_MovingProjectile_Arrow_C_<N>` y ese N va subiendo. El mayor visto es una COTA
-INFERIOR de cuantas se han disparado, aunque no se pille ninguna en vuelo.
+EL CONTADOR DE FLECHAS VA DENTRO, Y ESTO CORRIGE LO QUE ESTE FICHERO PROMETIA. Durante
+una temporada aqui ponia que `maxIndiceFlecha` —el mayor N de
+`BP_MovingProjectile_Arrow_C_<N>`— servia de COTA INFERIOR de los disparos. NO SIRVE: solo
+mira las flechas VIVAS, asi que en cuanto ninguna esta en vuelo vuelve a -1 y el maximo se
+pierde. Medido el 26/08 en dos partidas jugadas (113 s): 2 flechas pilladas en vuelo, y de
+casualidad.
+
+No era afinable, era imposible por construccion: la flecha cruza la arena en 0,16 s y por
+MCP no se llega a 1 Hz. Asi que el conteo se hizo DENTRO, donde ya vive el medidor: a 50 Hz
+una flecha dura ~8 muestras y no se escapa. `BP_DA_MedidorDano` cuenta ahora los FLANCOS de
+subida del numero de flechas vivas y guarda `Flechas` y `TiemposFlecha` (segundos desde
+`TInicio`), que es lo que da la cadencia. `flechasEnVuelo` y `maxIndiceFlecha` se siguen
+anotando, pero SOLO como testigo: el numero bueno es el del medidor.
+
+Lo unico que el flanco no distingue es una flecha que nace en el MISMO tick de 0,02 s en
+que otra muere. Con dos arqueros y una cadencia de segundos eso es despreciable.
 
 LA VIDA se lee en `StatsManager.Stats[0].BaseValue`. `GetStats` no es invocable desde
 Python; la propiedad `Stats` si, y del struct `F_Stat` solo `BaseValue` es legible.
@@ -109,6 +122,10 @@ else:
                 d["medidorArrancado"] = True
             d["golpes"] = medidor.get_editor_property("Golpes")
             d["danoTotal"] = round(medidor.get_editor_property("DanoTotal"), 1)
+            # Lo que de verdad contesta la cadencia. Ver la cabecera.
+            d["flechas"] = medidor.get_editor_property("Flechas")
+            d["tiemposFlecha"] = [round(float(x), 2)
+                                  for x in medidor.get_editor_property("TiemposFlecha")]
         except Exception as e:
             d["medidorError"] = str(e)[:120]
     else:
@@ -141,6 +158,6 @@ else:
     anota(d)
     arq = "  ".join("%s d=%s blanco=%s" % (a["id"], a["d"], a["conBlanco"])
                     for a in d["arqueros"] if a["vivo"])
-    print("t=%7s vida=%5s ol=%s golpes=%s dano=%s flechaMax=%s  %s"
+    print("t=%7s vida=%5s ol=%s golpes=%s dano=%s flechas=%s  %s"
           % (d.get("t"), d.get("vida"), d.get("oleada"), d.get("golpes"),
-             d.get("danoTotal"), d.get("maxIndiceFlecha"), arq))
+             d.get("danoTotal"), d.get("flechas"), arq))

@@ -14947,3 +14947,109 @@ Es un **empate técnico** que a 200-400 partidas cae a un lado o a otro según l
 hay nada que recalibrar; lo que hay es una casilla al filo de la tolerancia. Si molesta,
 lo honesto sería que el criterio 3 mirase la barra de error como ya hace el 1 — pero eso es
 tocar la vara de medir, y eso se decide aparte.
+
+## La flecha SÍ hace daño, y el contador de disparos se muda dentro del juego
+
+**26/08.** Angel jugó dos partidas (113 s) con el registrador corriendo. Cierra un
+pendiente de ayer, abre un hilo, y deja claro por qué la cadencia no se podía medir.
+
+### Cerrado: una flecha hace 40, y se ve
+
+El pendiente que quedaba era literal: *«falta ver una flecha hacer daño»*. Ya está.
+
+```
+   partida 2, t=30,15    vida 55 -> 15    +40 exactos
+                         los dos Arqueros enganchados, a 1229 y 1126 cm
+```
+
+Los 40 clavados son el `Damage` del proyectil, y a esa distancia no hay melé que llegue.
+La cadena de cuatro arreglos del día anterior —el PlayerStart, la puntería, las cinco
+cajas de la arena y el literal del BeginPlay— funciona de principio a fin.
+
+### Nuevo: el Arquero tarda 22-24 s en engancharte
+
+En las dos partidas el `Target` del blackboard sigue vacío hasta bien entrado el combate:
+
+```
+   partida 1    primer instante con blanco   t = 22,16
+   partida 2                                 t = 24,19
+```
+
+Es un número consistente y explica por qué los encuentros cortos no ven al Arquero hacer
+nada. **El caso Compromiso de la matriz duraba 8 segundos**: ahora se entiende que no era
+sólo que Malakh llegara pronto, es que el Arquero ni siquiera había fichado.
+
+### Un hilo abierto: 25 segundos enganchado y cero daño
+
+En la partida 1, tras morir y reaparecer, hubo **25,2 s con los dos Arqueros enganchados a
+~1250 cm de media y la vida clavada en 100**. Cero flechas vistas, cero daño.
+
+Primero lo di por contaminado, suponiendo que el medidor se habría quedado apuntando al
+pawn viejo. **Es falso, y conviene que quede escrito**: `Muestrear` llama a `Get Player
+Character` en CADA muestra, no guarda el pawn. Así que el medidor sigue al jugador actual
+y el tramo es medida válida.
+
+Lo que sí lo condiciona es otra cosa: al revivir, la arena volvió a **oleada 1**, y los
+Arqueros son de la 3. La sospecha razonable es que un enemigo de una oleada no activada
+puede tener blanco sin llegar a combatir. **No está comprobado** y es lo siguiente que
+mirar por ese lado.
+
+### Por qué la cadencia no salía, y no era cuestión de afinar
+
+El registrador prometía en su propia cabecera que `maxIndiceFlecha` —el mayor N de
+`BP_MovingProjectile_Arrow_C_<N>`— servía de cota inferior de los disparos. **No sirve, y
+la promesa llevaba ahí desde que se escribió**: sólo mira las flechas VIVAS, así que en
+cuanto ninguna está en vuelo vuelve a `-1` y el máximo se pierde.
+
+El resultado, en 113 s de juego: **2 flechas pilladas en vuelo, y de casualidad**. No era
+un problema de afinar el muestreo: es imposible por construcción. La flecha cruza la arena
+en 0,16 s y por MCP no se llega a 1 Hz — cosa que el propio fichero ya avisaba para el
+daño y que no se aplicó a las flechas.
+
+Y una tercera pieza que tampoco se cumplía: la atribución descansaba en que *«la oleada 3
+es el Arquero SOLO»*. En este nivel hay **dos**.
+
+### El arreglo: contar donde ya se cuenta bien
+
+El daño se mide desde dentro a 50 Hz desde hace días y funciona. Las flechas se mudan al
+mismo sitio. A 0,02 s de muestreo una flecha dura ~8 muestras y no se escapa ninguna.
+
+`BP_DA_MedidorDano` gana una función **`ContarFlechas`**, llamada desde `Muestrear` justo
+detrás del `Branch` de `Midiendo`, y tres variables:
+
+```
+   Flechas         int            disparos contados
+   TiemposFlecha   TArray<float>  el instante de cada uno, desde TInicio
+   UltimasFlechas  int            cuantas habia en el tick anterior
+   ClaseProyectil  TSubclassOf<Actor>   por defecto BP_MovingProjectile_Arrow_C
+```
+
+Cuenta **flancos de subida** del número de flechas vivas, no nombres: más barato y sin
+arrays que crezcan. Lo único que un flanco no distingue es una flecha que nace en el mismo
+tick de 0,02 s en que otra muere — con dos arqueros y cadencia de segundos, despreciable.
+`Arrancar` los pone a cero, así que cada partida empieza limpia.
+
+`ClaseProyectil` es una variable y no un literal por un motivo que costó descubrirlo:
+**`SetNodePinValue` devuelve `true` sobre un pin de clase y no escribe nada**. El pin
+guarda la clase en `DefaultObject` y el lector sólo devuelve `DefaultValue`, así que
+mienten los dos lados. Se detectó con `get_graph_definition`, que reportaba **0
+pinDefaults**. De rebote la herramienta queda mejor: se puede apuntar a otro proyectil sin
+tocar el grafo.
+
+### Una trampa nueva del MCP, y esta escuece
+
+Para borrar UNA variable usé `remove_unused_variables`. **Es una limpieza masiva**: se
+llevó 7 de golpe, incluidas `Objetivo`, `MantenerVivo` y `VidaMax`, que eran del medidor y
+no tenían nada que ver. No hay aviso ni confirmación, y devuelve sólo el número.
+
+Se restauraron con sus tipos y su visibilidad —que también se pierde: vuelven como no
+públicas—. **`remove_unused_variables` no es "borra esta variable": es "borra todas las
+que no estén cableadas en un grafo"**, y una variable que sólo se lee desde Python cuenta
+como no usada.
+
+### Lo que queda por ver
+
+El contador compila limpio (`BS_UP_TO_DATE`), está guardado y verificado contra el binario
+del `.uasset`. Lo que **no** se ha podido probar es la ruta viva: sólo corre con partida, y
+arrancar PIE guarda el nivel. Se comprueba en la próxima sesión jugada, que es la misma en
+la que saldrá la cadencia.
