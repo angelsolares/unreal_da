@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 2,
+  "id": "lluvia-del-firmamento",
+  "nombre": "La lluvia del firmamento",
+  "unidades": "cm",
+  "arena": {
+    "bounds": {
+      "min": {
+        "x": -2300,
+        "y": -1800
+      },
+      "max": {
+        "x": 2300,
+        "y": 1800
+      }
+    },
+    "trigger": {
+      "x": -1600,
+      "y": 0,
+      "radio": 250
+    },
+    "checkpoint": {
+      "x": -2200,
+      "y": 0
+    }
+  },
+  "jugador": {
+    "pos": {
+      "x": -2000,
+      "y": 0
+    },
+    "cota": 0,
+    "yaw": 0,
+    "vida": 100,
+    "loadout": [
+      "espada"
+    ]
+  },
+  "coberturas": [
+    {
+      "id": "cob_arcada_n",
+      "min": {
+        "x": -500,
+        "y": -1450
+      },
+      "max": {
+        "x": -300,
+        "y": -1150
+      },
+      "cota": 0,
+      "altura": 700,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "arcada del balcon norte (se pasa por debajo)"
+    },
+    {
+      "id": "cob_arcada_s",
+      "min": {
+        "x": -500,
+        "y": 1150
+      },
+      "max": {
+        "x": -300,
+        "y": 1450
+      },
+      "cota": 0,
+      "altura": 700,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "arcada del balcon sur (se pasa por debajo)"
+    },
+    {
+      "id": "cob_pilar_medio",
+      "min": {
+        "x": -200,
+        "y": 400
+      },
+      "max": {
+        "x": 200,
+        "y": 800
+      },
+      "cota": 0,
+      "altura": 500,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
+      "etiqueta": "pilar, apartado del eje de entrada para no tapar la lectura"
+    },
+    {
+      "id": "cob_camino_n",
+      "min": {
+        "x": 100,
+        "y": -1000
+      },
+      "max": {
+        "x": 400,
+        "y": -700
+      },
+      "cota": 0,
+      "altura": 600,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "refugio del camino norte (se pasa por debajo)"
+    },
+    {
+      "id": "cob_camino_s",
+      "min": {
+        "x": 100,
+        "y": 700
+      },
+      "max": {
+        "x": 400,
+        "y": 1000
+      },
+      "cota": 0,
+      "altura": 600,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "refugio del camino sur (se pasa por debajo)"
+    },
+    {
+      "id": "cob_camino_e",
+      "min": {
+        "x": 700,
+        "y": -250
+      },
+      "max": {
+        "x": 1000,
+        "y": 250
+      },
+      "cota": 0,
+      "altura": 600,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "refugio hacia el angulo del fondo"
+    }
+  ],
+  "plataformas": [
+    {
+      "id": "plat_balcon_n",
+      "min": {
+        "x": -250,
+        "y": -1350
+      },
+      "max": {
+        "x": 150,
+        "y": -900
+      },
+      "cota": 350,
+      "accesos": [
+        {
+          "desde": {
+            "x": 550,
+            "y": -1100
+          },
+          "hasta": {
+            "x": 100,
+            "y": -1100
+          },
+          "ancho": 300
+        }
+      ],
+      "etiqueta": "balcon norte"
+    },
+    {
+      "id": "plat_balcon_s",
+      "min": {
+        "x": -250,
+        "y": 900
+      },
+      "max": {
+        "x": 150,
+        "y": 1350
+      },
+      "cota": 350,
+      "accesos": [
+        {
+          "desde": {
+            "x": 550,
+            "y": 1100
+          },
+          "hasta": {
+            "x": 100,
+            "y": 1100
+          },
+          "ancho": 300
+        }
+      ],
+      "etiqueta": "balcon sur"
+    }
+  ],
+  "oleadas": [
+    {
+      "id": "ola_1",
+      "nombre": "El escudero que fija, y su Escudo",
+      "activacion": {
+        "tipo": "inicio"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_2",
+      "nombre": "Primer angulo: el balcon norte",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_1"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_3",
+      "nombre": "El segundo escudero",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_2"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_4",
+      "nombre": "Segundo angulo: el balcon sur",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_3"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_5",
+      "nombre": "Tercer angulo: el del fondo",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_4"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    }
+  ],
+  "enemigos": [
+    {
+      "id": "en_escudero_a",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": -700,
+        "y": 250
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": true
+      },
+      "oleada": "ola_1",
+      "etiqueta": "escudero que fija"
+    },
+    {
+      "id": "en_arquero_n",
+      "arquetipo": "arquero_del_firmamento",
+      "pos": {
+        "x": -50,
+        "y": -1100
+      },
+      "cota": 350,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_2",
+      "etiqueta": "angulo norte"
+    },
+    {
+      "id": "en_escudero_b",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": 400,
+        "y": -500
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_3",
+      "etiqueta": "segundo escudero"
+    },
+    {
+      "id": "en_arquero_s",
+      "arquetipo": "arquero_del_firmamento",
+      "pos": {
+        "x": -50,
+        "y": 1100
+      },
+      "cota": 350,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_4",
+      "etiqueta": "angulo sur"
+    },
+    {
+      "id": "en_arquero_e",
+      "arquetipo": "arquero_del_firmamento",
+      "pos": {
+        "x": 1900,
+        "y": 0
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_5",
+      "etiqueta": "angulo del fondo"
+    }
+  ],
+  "ordenPrevisto": [
+    "en_escudero_a",
+    "en_arquero_n",
+    "en_escudero_b",
+    "en_arquero_s",
+    "en_arquero_e"
+  ],
+  "victoria": {
+    "tipo": "eliminar-todos"
+  },
+  "purgePolicy": "purgar-todo-al-romper-sello",
+  "checkpointPolicy": "antes-del-trigger",
+  "notasDiseno": "Receta 6.2 del PDF: '3 Arqueros en distintos angulos + 2 Escuderos que fijan al jugador'. La ruta de ventaja que pide el documento es bajar primero un Escudero, tomar su Escudo, bloquear mientras reposicionas, alcanzar un Arquero y quedarte su Arco.\n\nAQUI EL PDF Y LA MATRIZ COINCIDEN, que no siempre pasa: el counter medido del Arquero es el ESCUDO (-30% en el caso Compromiso), y el documento ya manda bajar al Escudero primero. En 'Cadena perfecta' el orden del PDF iba al reves de los counters y hubo que corregirlo; aqui no.\n\nTRES ANGULOS, NO TRES ARQUEROS JUNTOS: dos en balcon (norte y sur) y uno a ras al fondo. Nunca coinciden dos Arqueros activos —el techo medido de la espada sola son DOS cuerpos, y dos arqueros a la vez es derrota segura segun la matriz—, pero el escenario si obliga a cruzar la arena tres veces por sitios distintos, que es de donde sale el coste de un arquero (medido el 26/08: lo que cuesta es el CAMINO DESCUBIERTO, no la distancia).\n\nLas dos arcadas son las de 'Romper la linea', y por el mismo motivo: dan refugio en el camino a las rampas sin tapar la linea de vision desde la entrada, que rompe la lectura del §5.1. Se pasa por debajo (bloqueaPaso: false) porque macizas suben los atascos.\n\nCALIBRADA 26/08, y costo tres vueltas.\n\n1. TAL COMO SALIO DEL PDF se ganaba el 2% con espada sola. Dos causas: la ola_3 metia un Escudero Y un Arquero a la vez —y ya estaba medido que juntar al Arquero con otro cuerpo hunde cualquier receta por debajo del 25%— y el Arco lo soltaba el ULTIMO arquero, cuando ya no queda nadie contra quien usarlo. De uno en uno, y con el drop en el PRIMER arquero, sube al 21%.\n\n2. LO QUE DE VERDAD LO ARREGLO fue el escenario, no los numeros: acercar los dos balcones 1350 cm y poner tres refugios en los caminos. De 21% a 72%. Los mismos 1350 SIN refugios dan 35%, asi que la palanca son los refugios; acercar solo acorta la exposicion. Es la leccion del 26/08 otra vez: lo que cuesta de un Arquero es el CAMINO DESCUBIERTO.\n\n3. EL ARCO NO SE SUELTA, Y ESTO SE APARTA DEL PDF. El §6.2 pide expresamente tomar el Arco para neutralizar a otro Arquero desde rango. Medido, hoy es una trampa:\n\n      con Arco    +12 pts de victoria, pero el daño SUBE de 102 a 107\n      sin Arco    +17 pts, y el daño BAJA de 102 a 83\n\nUn arco en mele es un muro, y mientras no exista el «guardar arma temporal» que el §5.2 promete, recogerlo antes de un cuerpo a cuerpo te deja peor. Es la TERCERA receta en la que sale lo mismo. Cuando esa mecanica exista, hay que volver aqui y devolverle el drop: la ruta del PDF es buena, lo que falta es poder soltarlo.\n\nQUEDA ASI (1000 partidas por politica): espada sola 71% —muere en 289—, con arsenal 89%, +18 pts y -8% de daño. Sin puertas en rojo.\n\nEl aviso que queda es «termina con el 85% de vida casi sin despeinarse», y se deja a proposito: mide la RUTA DE VENTAJA, o sea con el Escudo en la mano. Que con la herramienta correcta salga comodo y sin ella cueste es justo lo que el criterio pide; el Escudo es el counter medido del Arquero y aqui hay tres."
+}
