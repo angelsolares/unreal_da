@@ -14,8 +14,16 @@ DOS RELOJES, Y CADA UNO MIDE LO SUYO. Esta es la idea entera:
   - 50 Hz, DENTRO del juego: `BP_DA_MedidorDano`, ya colocado en el nivel, cuenta golpes y
     daño por CAIDAS DE VIDA con un temporizador de 0,02 s. A esa frecuencia no se escapa
     ningun impacto. Esta pasada lo ARRANCA sola en cuanto hay partida.
-  - ~1 Hz, desde fuera: posiciones, distancias, oleada y si el Arquero tiene blanco. Eso
-    cambia despacio y no necesita mas.
+  - ~1 Hz, desde fuera: posiciones, distancias, oleada, y de CADA enemigo si esta vivo, si
+    tiene blanco y si su ARBOL CORRE. Eso cambia despacio y no necesita mas.
+
+EL CAMPO QUE DISTINGUE UN DORMIDO DE UN COLGADO es `ia` (corre / pausada / PARADA), y sin
+el se pierden tardes enteras. El 26/08 los dos arqueros pasaron 63 s vivos, con blanco y
+quietos despues de que a Angel lo mataran, y parecia un cuelgue: era el escalonado
+haciendo su trabajo. `AplicarOleadas` para con StopLogic a todo el que sea de una oleada
+futura y solo `EntrarOleada` lo reanuda; al morir el jugador la arena vuelve a la oleada 1,
+asi que los arqueros —que son de la 3— se duermen otra vez. Tener blanco NO significa
+combatir: la percepcion y el arbol son cosas distintas.
 
 Lo que NO se puede hacer es contar flechas muestreando desde fuera: vuelan a 3500 cm/s, o
 sea 0,16 s para cruzar 550 cm, y por MCP no se llega a 1 Hz. Por eso el numero que vale es
@@ -155,9 +163,67 @@ else:
             "conBlanco": tiene,
             "vida": vida(p),
         })
+    # Y AHORA TODOS LOS ENEMIGOS, NO SOLO LOS ARQUEROS. Lo que decide si uno esta
+    # "trabado" NO es que tenga blanco: es si su ARBOL CORRE. `AplicarOleadas` de la arena
+    # para con StopLogic a todo el que sea de una oleada futura, y solo `EntrarOleada` lo
+    # reanuda con RestartLogic. Un enemigo vivo, con blanco y quieto suele ser uno dormido
+    # esperando su turno — no un fallo. El 26/08 se vieron los dos arqueros asi durante 63 s
+    # tras revivir, y sin este campo no habia forma de distinguirlo de un cuelgue.
+    #
+    # `tags` lleva el numero de oleada: es como la arena marca a quien toca cuando.
+    # BLINDADO A PROPOSITO: si un solo enemigo peta, se pierde LA MUESTRA ENTERA y con ella
+    # la sesion jugada, que no se puede repetir a voluntad. Cada uno va en su try y el que
+    # falle se anota como {"error": ...} en vez de tumbar el registro.
+    d["enemigos"] = []
+    for p in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Pawn):
+      try:
+        if pawn is not None and p.get_name() == pawn.get_name():
+            continue
+        pa = p.get_actor_location()
+        tiene = None
+        ia = None
+        ctrl = p.get_controller()
+        if ctrl:
+            for c in ctrl.get_components_by_class(unreal.ActorComponent):
+                if "Blackboard" in c.get_class().get_name():
+                    try:
+                        tiene = bool(c.get_value_as_object("Target"))
+                    except Exception:
+                        tiene = None
+            try:
+                brain = ctrl.get_editor_property("BrainComponent")
+                if brain:
+                    if brain.is_running():
+                        ia = "corre"
+                    elif brain.is_paused():
+                        ia = "pausada"
+                    else:
+                        ia = "PARADA"
+            except Exception:
+                ia = None
+        try:
+            vivo = p.call_method("IsAlive", ())
+        except Exception:
+            vivo = None
+        d["enemigos"].append({
+            "id": p.get_name(),
+            "clase": p.get_class().get_name(),
+            "pos": [int(pa.x), int(pa.y)],
+            "d": int((pawn.get_actor_location() - pa).length()) if pawn else None,
+            "vivo": vivo,
+            "conBlanco": tiene,
+            "ia": ia,
+            "vida": vida(p),
+            "tags": [str(t) for t in p.tags],
+        })
+      except Exception as e:
+        d["enemigos"].append({"error": str(e)[:120]})
+
     anota(d)
     arq = "  ".join("%s d=%s blanco=%s" % (a["id"], a["d"], a["conBlanco"])
                     for a in d["arqueros"] if a["vivo"])
-    print("t=%7s vida=%5s ol=%s golpes=%s dano=%s flechas=%s  %s"
+    vivos = [e for e in d["enemigos"] if e["vivo"]]
+    corren = len([e for e in vivos if e["ia"] == "corre"])
+    print("t=%7s vida=%5s ol=%s golpes=%s dano=%s flechas=%s  ia %s/%s  %s"
           % (d.get("t"), d.get("vida"), d.get("oleada"), d.get("golpes"),
-             d.get("danoTotal"), d.get("flechas"), arq))
+             d.get("danoTotal"), d.get("flechas"), corren, len(vivos), arq))
