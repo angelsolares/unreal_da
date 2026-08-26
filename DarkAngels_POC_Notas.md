@@ -14047,8 +14047,16 @@ Todas están escritas en las pasadas, pero merecen estar juntas:
    heredada.** `BehaviorTreeAsset` viene de `BP_BaseAI`; aceptó, compiló, guardó, y al
    releer seguía apuntando a DCS. La que sí escribe es `ObjectTools.set_properties`.
 
-Y una sexta, tonta y cara: **un docstring con comillas angulares o guiones largos tumba el
-intérprete** con un `Python execution failed` sin mensaje. En ASCII plano, y ya.
+Y una sexta, tonta y cara: **`ue.mjs py` no admite la línea `# -*- coding: utf-8 -*-`**. El
+MCP hace `exec()` del código como CADENA y Python prohíbe ahí la declaración de
+codificación; sale un `Python execution failed` **sin mensaje**. Sólo afecta al modo `py`:
+los ficheros de `script` la llevan sin problema, y los acentos y las eñes valen igual, que
+el fuente es UTF-8 por defecto.
+
+> *Corrección del 26/08 por la tarde.* Primero escribí aquí que lo tumbaban las comillas
+> angulares y los guiones largos del docstring. **Era falso**: los reescribí a la vez que
+> quitaba la cabecera, y le atribuí el mérito al cambio equivocado. Aislado después
+> carácter a carácter, el culpable es la línea de codificación y sólo ella.
 
 ## Las tres, probadas en PIE
 
