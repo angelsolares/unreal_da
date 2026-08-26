@@ -14049,3 +14049,78 @@ Todas están escritas en las pasadas, pero merecen estar juntas:
 
 Y una sexta, tonta y cara: **un docstring con comillas angulares o guiones largos tumba el
 intérprete** con un `Python execution failed` sin mensaje. En ASCII plano, y ya.
+
+## Las tres, probadas en PIE
+
+**26/08.** Verificadas en juego, no en el editor. Las tres pasan, y de paso salieron dos
+cosas útiles sobre cómo se prueba esto.
+
+### §4.1 — la ranura del escudo sigue al arma de la mano
+
+La primera pasada dio un falso negativo y merece contarse: con la Espada el escudo salía
+`False` y parecía que la regla no lo devolvía. **No era eso**: `SustituirArmaTemporal`
+descarta el temporal anterior, y el escudo *era* el temporal anterior, así que había
+desaparecido del inventario. La lectura buena distingue las dos cosas:
+
+```
+   1. escudo dado                 escudoEquipado=True    enInventario=True
+   2. LANZA (dos manos)           escudoEquipado=False   enInventario=True   <- escondido
+   3. arma de una mano            escudoEquipado=True    enInventario=True   <- devuelto
+```
+
+**Escondido, no perdido**, que es exactamente lo que la regla simétrica promete.
+
+### §8 — el director reparte según la probabilidad
+
+Los cinco enemigos del nivel traen ya los campos nuevos con sus defectos
+(`ProbabilidadDrop 1.0`, `PiedadActiva false`, 35, 50) y los booleanos de mano intactos
+—los Vigilantes sueltan la izquierda, el resto la derecha—. Prueba:
+
+```
+   Vigilante A, ProbabilidadDrop 0.0  ->  muere  ->  nada en el suelo
+   Vigilante B, ProbabilidadDrop 1.0  ->  muere  ->  1 arma en (-661, 17, 104)
+```
+
+Y el sello de tiempo del §8 se anota solo: `TUltimoTemporal` pasó de −1 a 167,47 al
+recoger la primera arma.
+
+### §5.1 — el Arquero huye a 430 y aguanta a 727
+
+Los dos Arqueros vivos corren ya con `BT_DA_Arquero`. Con Malakh a **430 cm** (dentro del
+umbral nuevo, fuera del viejo):
+
+```
+   arquero (1300,1113)  d= 430   <- posición inicial
+   arquero (1247, 951)  d= 419
+   arquero (2023, 619)  d=1259   <- se ha ido
+   arquero (1978, 539)  d=1278
+```
+
+Y el control, con el otro Arquero a **727 cm**:
+
+```
+   arquero (1300,-1112)  d= 727
+   arquero (1251,-1106)  d= 744
+   arquero (1299,-1103)  d= 786   <- no huye, sólo estrafea
+```
+
+Huye a 430, aguanta a 727. **El umbral es real y hace lo que se le pidió.**
+
+**Pero ojo con lo que NO es**: no da un paso atrás, se **reubica unos ocho metros** (es la
+EQS con su `TimeLimit` de 3 s). O sea que a 450 va a desengancharse bastante más a menudo
+que a 300, y el viejo aviso —«retrocediendo no dispara»— puede morder. Esto se ha medido
+con el Arquero aislado y el blackboard puesto a mano: **falta verlo en un combate de
+verdad**, con las oleadas de la receta.
+
+### Dos cosas sobre cómo se prueba esto
+
+- **Los enums no viajan desde Python.** `UpdateItemInSlot` e `IsSlotHidden` piden un
+  `E_ItemType` y no lo aceptan ni como cadena (`"NewEnumerator6"`) ni como entero. Lo que
+  sí pasa son las funciones que toman texto: `DarArmaTemporal(Ruta)`. Y ojo, la ruta
+  necesita el sufijo de objeto (`.../DA_WoodenShield.DA_WoodenShield`); sin él,
+  `MakeSoftObjectPath` no carga nada y la función se salta entera **sin dar error**.
+- **Los enemigos de la arena arrancan dormidos** (`StopLogic` desde el BeginPlay), así
+  que el árbol no corre y el blackboard está vacío. Para probar uno suelto hay que
+  `RunBehaviorTree` en su controlador y ponerle el `Target` a mano. `IsPaused` devuelve
+  `False` aunque esté parado: mirar `DistanceToTarget`, que se queda en 0 si el árbol no
+  está corriendo.
