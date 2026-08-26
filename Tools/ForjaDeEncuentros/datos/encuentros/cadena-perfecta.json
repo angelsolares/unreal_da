@@ -85,7 +85,8 @@
         "principal": true,
         "secundaria": false
       },
-      "etiqueta": "adelantado"
+      "etiqueta": "adelantado",
+      "oleada": "ola_1"
     },
     {
       "id": "en_arquero",
@@ -100,7 +101,8 @@
         "principal": false,
         "secundaria": false
       },
-      "etiqueta": "al fondo"
+      "etiqueta": "al fondo",
+      "oleada": "ola_3"
     },
     {
       "id": "en_escudero",
@@ -115,7 +117,8 @@
         "principal": false,
         "secundaria": true
       },
-      "etiqueta": "guardia"
+      "etiqueta": "guardia",
+      "oleada": "ola_2"
     },
     {
       "id": "en_elite",
@@ -130,7 +133,8 @@
         "principal": false,
         "secundaria": false
       },
-      "etiqueta": "al fondo"
+      "etiqueta": "al fondo",
+      "oleada": "ola_4"
     }
   ],
   "victoria": {
@@ -140,9 +144,50 @@
   "checkpointPolicy": "antes-del-trigger",
   "ordenPrevisto": [
     "en_lancero",
-    "en_arquero",
     "en_escudero",
+    "en_arquero",
     "en_elite"
   ],
-  "notasDiseno": "Receta 6.5 del PDF. La cadena que el documento propone es: espada -> matar Lancero -> Lanza -> arrojar la Lanza al Arquero -> matar Escudero -> Escudo -> bloquear / Shield Bash -> romper Escudo -> volver a Espada -> rematar Elite.\n\nEl reparto de drops esta puesto para que esa cadena sea POSIBLE, no obligatoria: Lancero y Escudero garantizan su arma (son las dos llaves), Arquero y Elite no sueltan nada (el arco y el espadon saturarian la arena y el §8 avisa de eso). Cuatro enemigos y no cinco, porque el techo medido de la espada sola esta ahi.\n\nLo que hay que mirar en el veredicto: si 'Las armas temporales pagan' sale verde aqui pero rojo en Romper la linea, el problema de aquella no son las armas sino la composicion."
+  "notasDiseno": "Receta 6.5 del PDF. La cadena que el documento propone es: espada -> matar Lancero -> Lanza -> arrojar la Lanza al Arquero -> matar Escudero -> Escudo -> bloquear / Shield Bash -> romper Escudo -> volver a Espada -> rematar Elite.\n\nEl reparto de drops esta puesto para que esa cadena sea POSIBLE, no obligatoria: Lancero y Escudero garantizan su arma (son las dos llaves), Arquero y Elite no sueltan nada (el arco y el espadon saturarian la arena y el §8 avisa de eso). Cuatro enemigos y no cinco, porque el techo medido de la espada sola esta ahi.\n\nLo que hay que mirar en el veredicto: si 'Las armas temporales pagan' sale verde aqui pero rojo en Romper la linea, el problema de aquella no son las armas sino la composicion.\n\nESCALONADA Y REORDENADA EL 26/08. Dos cosas, y la segunda no me la esperaba.\n\n1. Los cuatro entraban A LA VEZ y la receta se ganaba el 10% con espada sola: la cadena que describen estas notas era imposible de ejecutar porque no daba tiempo a recoger nada. De uno en uno sube al 84%. Medidas ocho agrupaciones: cualquiera que junte al Arquero con otro se hunde por debajo del 25%, porque obliga a pelear a mele bajo su fuego.\n\n2. EL ORDEN DEL PDF NO CUADRA CON LOS COUNTERS MEDIDOS. La cadena propuesta era Lancero -> Arquero -> Escudero -> Elite, o sea arrojarle la Lanza al Arquero. Pero la matriz dice que el counter del Arquero es el ESCUDO (-30% en el caso Compromiso), y con el orden del PDF el Escudo llega DESPUES de haberlo matado. Resultado: el arsenal salia decorativo (+2 pts de victoria) por muy bien escalonado que estuviera.\n\nPoniendo al Escudero ANTES del Arquero —Lancero, Escudero, Arquero, Elite— el arsenal pasa a pagar: 85% con espada sola, 95% recogiendo, +10 pts y el daño baja de 131 a 115. La narrativa del PDF se mantiene (matas, coges, usas); lo que cambia es CONTRA QUIEN usas lo que coges.\n\nLo que sigue sin tener respuesta en el arsenal es el Elite: su counter medido es el Espadon (-49%) y aqui no lo suelta nadie.",
+  "oleadas": [
+    {
+      "id": "ola_1",
+      "nombre": "El lancero, y la Lanza que deja",
+      "activacion": {
+        "tipo": "inicio"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_2",
+      "nombre": "El escudero: su Escudo es la llave del siguiente",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_1"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_3",
+      "nombre": "El arquero, ya con el Escudo en la mano",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_2"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_4",
+      "nombre": "El elite, a espada y sin red",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_3"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    }
+  ]
 }
