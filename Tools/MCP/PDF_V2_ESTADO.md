@@ -27,7 +27,7 @@ la separa del juego son dos datos que a `BP_DA_Arena` le faltan. Detalle en el �
 | 3.2 | Ataque de descarte por familia | 🟢 **5 de 5** (el escudo, pendiente de ver el rebote en PIE) |
 | 4 | Arsenal de oportunidad | 🟢 las 5 familias existen; **counters medidos el 25/08**, 3 de 5 en banda y las otras 2 con diagnóstico |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
-| 5 | Orden de bajas implícito | 🟠 falta la reacción enemiga |
+| 5 | Orden de bajas implícito | 🟠 el Arquero ya reacciona a la distancia; falta que distinga el arma |
 | 6 | Recetas de encuentro | 🟠 **1 de 5 diseñada y validada**, ninguna en el nivel todavía |
 | 7 | Arenas selladas | 🟢 completo |
 | 8 | Sistema de drops | 🔴 sin las 4 políticas |
@@ -206,11 +206,31 @@ De la lista del §10 faltan:
 - **Watchdog status en pantalla**: hoy el watchdog existe y funciona, pero **escupe al log**;
   el PDF lo quiere visible (enemies alive, victory condition, barrier state).
 
-### La reacción enemiga (§5.1)
+### La reacción enemiga (§5.1) — **a medias desde el 26/08**
 
 *«Arquero retrocede al ver a Malakh con lanza»* — la única señal del §5.1 que es lógica y no
-layout. No implementada. Las otras cinco (posición, presión, silueta, geometría, timing) son
-trabajo de construir las arenas, o sea el punto 2 de arriba.
+layout. Las otras cinco (posición, presión, silueta, geometría, timing) son trabajo de
+construir las arenas, o sea el punto 2 de arriba.
+
+**Resulta que el árbol YA la tenía montada** y nadie la había mirado. Bajo «Is Target Set?»
+hay un `Sequence` con el decorador `Is Close to Target` (DistanceToTarget < 300) que dispara
+un `Roll` (Chance 60) o, si no, `Jog` → `Run EQS Query` → `Move To`. El Arquero ya retrocedía;
+lo que estaba mal era **cuándo**.
+
+Los 300 son de DCS, de un mundo donde la espada medía 243 unidades de animación. El alcance
+REAL de Malakh son **433 cm** (327 + 106), así que el Arquero empezaba a apartarse cuando ya
+llevaba 133 cm dentro del arco de espada: reaccionaba estando muerto. **Puesto en 450** en
+nuestra copia `BT_DA_Arquero` (`Tools/MCP/bt_arquero_da.py`), con el `BT_ArcherAI` de DCS
+intacto y verificado.
+
+**Lo que sigue faltando es el «con lanza».** `Is Close to Target` es un
+`BTDecorator_Blackboard` y compara contra un LITERAL, no contra una clave de blackboard, así
+que no puede depender del arma sin escribir un decorador propio. Con la Lanza en 448 y la
+espada en 433 la diferencia real son 15 cm: distinguirlas sería **lectura**, no balance.
+
+Sin verificar en PIE todavía. Y ojo: subirle la distancia de retirada al Arquero **en el
+simulador** salía al revés —retrocediendo no dispara—, aunque aquello eran valores mucho
+mayores sobre `distanciaMinima`.
 
 ---
 

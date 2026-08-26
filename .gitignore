@@ -228,3 +228,6 @@ Tools/ForjaDeEncuentros/.env
 # BT_DA_Guerrero es una COPIA de BT_WarriorAI (DCS, de pago) con un valor cambiado.
 # No se redistribuye: lo regenera Tools/MCP/bt_guerrero_da.py.
 Content/DarkAngels/AI/BT_DA_Guerrero.uasset
+# BT_DA_Arquero es la copia equivalente de BT_ArcherAI (ArcheryModule, de pago) con el
+# disparador de retirada subido de 300 a 450. La regenera Tools/MCP/bt_arquero_da.py.
+Content/DarkAngels/AI/BT_DA_Arquero.uasset

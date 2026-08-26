@@ -13951,3 +13951,101 @@ sigue verde.
 contra el caso más duro **cualquier arma es un poco mejor que la espada desnuda**, por un
 8%. Es un empate técnico que se sale de la tolerancia del 5%, no una trampa: ninguna
 familia hace que el caso se pierda. Lo dejo declarado en vez de moverle la tolerancia.
+
+## Tres del PDF que estaban en rojo, y las tres ya estaban medio hechas
+
+**26/08.** §4.1, §8 y §5.1. Ninguna necesitaba inventar mecánica: en las tres la pieza
+existía y lo que faltaba era la regla que la usa.
+
+### §4.1 — Las armas a dos manos sueltan el escudo
+
+El PDF pide «definir explícitamente qué armas a dos manos obligan a soltar el escudo», y
+no estaba definido ni de un lado ni del otro. Pero:
+
+- Los ítems de DA son data assets `BP_DA_Item_MeleeWeapon_C` y **ya traen `TwoHanded`**:
+  Lanza `True`, Trompeta `True`, Espada `False`.
+- `BP_EquipmentComponent` de DCS **ya tiene** `SetSlotHidden(Type, SlotIndex, IsHidden)`.
+  La ranura del escudo es `NewEnumerator6`, leído de su propio `IsShieldEquipped` — no
+  contando posiciones en el enum, que es como se cometen los errores de un puesto.
+
+La regla vive en nuestro lado (`BP_DA_PlayerCharacter.AplicarReglaDosManos`) y se dispara
+con un temporizador de 0,7 s desde `SustituirArmaTemporal`, que es el embudo único por
+donde pasan el canje del suelo y el botón del Debug HUD. **El temporizador no es pereza**:
+equipar en DCS no es síncrono y preguntar antes devuelve el arma vieja; `CanjearTemporal`
+ya lo sabía y hace lo mismo con `CorromperArmaTemporal` a 0,6 s.
+
+**Se escribe simétrica a propósito.** «Si es a dos manos, esconde el escudo» deja el
+escudo perdido para siempre en cuanto tocas una lanza. La forma correcta es *la ranura del
+escudo está escondida exactamente cuando el arma en la mano es a dos manos*: volver a un
+arma de una mano lo devuelve solo, y quedarse sin temporal también.
+
+### §8 — El director de drops
+
+`BP_DA_WeaponDropComponent` tenía dos booleanos y nada más. Ahora tiene `ProbabilidadDrop`
+y `PiedadActiva`, y con esos dos números caben las cuatro políticas del PDF:
+
+```
+   Guaranteed Tactical   ProbabilidadDrop 1.0     <- el defecto: lo de hoy, sin cambios
+   Standard Opportunity  ProbabilidadDrop 0.5     <- el mismo 0,5 que declara armas.json
+   Mercy Drop            PiedadActiva true
+   No Drop               ProbabilidadDrop 0.0
+```
+
+Se hace con dos números en vez de un enum porque un enum obliga a **comparar valores de
+enum dentro del DSL**, que es justo donde el escritor tiene menos vocabulario, y no
+expresa nada que estos dos campos no expresen ya.
+
+Los umbrales de piedad (35 s sin arma, 50 de vida) son los que **ya declaraba
+`armas.json`** en `reglas.piedad`, para que motor y simulador digan lo mismo. El «cuánto
+lleva sin arma» sale de `TUltimoTemporal`, un sello de tiempo nuevo en el jugador que
+anota la misma pasada del §4.1: vale −1 mientras no haya tocado ninguna, y entonces
+«ahora − (−1)» es enorme, o sea que quien nunca tuvo herramienta cuenta como quien más la
+necesita.
+
+### §5.1 — El Arquero ya retrocedía; lo que estaba mal era cuándo
+
+Esta es la buena. El árbol del Arquero **ya tenía la reacción montada** y nadie la había
+mirado:
+
+```
+   Sequence  [Is Close to Target: DistanceToTarget < 300]     el disparador
+     Selector
+       Roll   [IsNothingBehind (inverso), Cooldown, Chance 60]
+       Sequence [TimeLimit 3, Force Success]
+         Jog → Run EQS Query → Move To                        la huida
+   Sequence  (apuntar y disparar)
+```
+
+Rueda el 60% de las veces y si no trota a donde le diga la EQS. **Los 300 son de DCS**, de
+un mundo donde la espada medía 243 unidades de animación. El alcance real de Malakh son
+**433 cm** (327 + 106), así que el Arquero empezaba a apartarse **con 133 cm ya dentro del
+arco de espada**: reaccionaba estando muerto, que es lo contrario de una señal legible.
+
+Puesto en **450** en nuestra copia `BT_DA_Arquero`, con el `BT_ArcherAI` de DCS intacto y
+verificado. **Falta el «con lanza»**: `Is Close to Target` es un `BTDecorator_Blackboard`
+y compara contra un literal, no contra una clave, así que no puede depender del arma sin
+un decorador propio. Con la Lanza en 448 y la espada en 433 son 15 cm de diferencia:
+distinguirlas sería lectura, no balance.
+
+### Cinco trampas del MCP que costaron una vuelta cada una
+
+Todas están escritas en las pasadas, pero merecen estar juntas:
+
+1. **El escritor del DSL no sabe crear el pin de retorno de una función.** Tres funciones
+   encadenadas salieron vacías, sin `ReturnNode`. Lo que sí pasa es una función *void*
+   cuyo cuerpo son expresiones puras.
+2. **`DropOne` no se puede reescribir**: su `SpawnActor` el lector lo representa como
+   `Game|SpawnActorBPDADroppedWeapon` y el escritor no sabe crearlo. La decisión entra
+   apagando el permiso antes, no envolviendo la acción.
+3. **El escritor no continúa la ejecución después de una rama** («Unreachable code after
+   branch»): la cola hay que duplicarla en cada rama. Por eso el original ya duplicaba
+   `SetArmaTemporal`.
+4. **Escribir en el objeto por defecto de la clase desde Python ya está bloqueado**
+   (`PYTHON_UNSAFE_CODE`), y el guardia es un **escaneo de texto**: salta con solo ver el
+   nombre de la llamada en un comentario. Deroga la forma de `bt_guerrero_da.py`.
+5. **`SetVariableDefaultValue` devuelve éxito y no escribe nada sobre una variable
+   heredada.** `BehaviorTreeAsset` viene de `BP_BaseAI`; aceptó, compiló, guardó, y al
+   releer seguía apuntando a DCS. La que sí escribe es `ObjectTools.set_properties`.
+
+Y una sexta, tonta y cara: **un docstring con comillas angulares o guiones largos tumba el
+intérprete** con un `Python execution failed` sin mensaje. En ASCII plano, y ya.
