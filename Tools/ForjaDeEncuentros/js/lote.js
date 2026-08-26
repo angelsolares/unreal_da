@@ -209,8 +209,24 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
     const dD = delta(vent.resumen.danoMedio, base.resumen.danoMedio,
                      vent.resumen.danoError, base.resumen.danoError);
     const dV = (vent.resumen.tasaVictoria - base.resumen.tasaVictoria);
-    const mejora = mejorQue(dT, -0.10) || mejorQue(dD, -0.15) || dV >= 0.15;
-    const empeora = peorQue(dT, 0.10) || peorQue(dD, 0.20) || dV <= -0.15;
+    // TRES SEÑALES QUE APUNTAN A LO MISMO SUMAN, y esto corrige un veredicto que
+    // se contradecia a si mismo. Hasta el 26/08 bastaba con que UNA de las tres
+    // cruzara su liston, y si las tres mejoraban un poco sin llegar a el, el
+    // panel decia «recoger armas da practicamente igual» de un +10 pts de
+    // victoria, un -8% de tiempo y un -11% de daño. Eso no es dar igual.
+    //
+    // Se mantiene la via fuerte —una sola señal grande basta— y se añade la
+    // acumulada: DOS de las tres, con un liston mas bajo, tambien cuentan. Que
+    // dos medidas independientes se muevan a la vez y en el mismo sentido es
+    // mejor evidencia que una sola rozando el umbral, no peor.
+    const fuerte = mejorQue(dT, -0.10) || mejorQue(dD, -0.15) || dV >= 0.15;
+    const flojas = [mejorQue(dT, -0.05), mejorQue(dD, -0.08), dV >= 0.05]
+      .filter(Boolean).length;
+    const mejora = fuerte || flojas >= 2;
+    const fuerteMal = peorQue(dT, 0.10) || peorQue(dD, 0.20) || dV <= -0.15;
+    const flojasMal = [peorQue(dT, 0.05), peorQue(dD, 0.08), dV <= -0.05]
+      .filter(Boolean).length;
+    const empeora = fuerteMal || flojasMal >= 2;
     puertas.push({
       id: 'ventaja-existe',
       titulo: 'Las armas temporales pagan',
@@ -219,7 +235,7 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
       texto: (vent.resumen.armasPorPartida < 0.5)
         ? `La ruta de ventaja apenas recoge armas (${vent.resumen.armasPorPartida} por partida). No hay ventaja que medir: revisa los drops.`
         : mejora
-          ? `Recogiendo armas: ${pct(dV, true)} de victorias, ${pct(dT)} de tiempo, ${pct(dD)} de daño. La mecanica paga.`
+          ? `Recogiendo armas: ${pct(dV, true)} de victorias, ${pct(dT)} de tiempo, ${pct(dD)} de daño. ${fuerte ? "La mecanica paga." : "Paga por acumulacion: ninguna señal es grande, pero " + flojas + " de 3 van a favor."}`
           : empeora
             ? `Recoger armas sale PEOR que no recogerlas: ${pct(dV, true)} de victorias, ${pct(dT)} de tiempo, ${pct(dD)} de daño. O las armas estan flojas, o el desvio para cogerlas cuesta mas de lo que dan.`
             : `Recoger armas da practicamente igual (${pct(dV, true)} victorias, ${pct(dT)} tiempo, ${pct(dD)} daño). El arsenal es decorativo en esta arena.`,
