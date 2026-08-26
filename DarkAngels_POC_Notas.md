@@ -14450,3 +14450,73 @@ Eso hay que confirmarlo abriendo el grafo, que el lector del DSL colapsa los pin
 suben, el fallo es del canal de proyectil o de la configuración de colisión del proyecto y
 se arregla en un sitio; si sólo le pasa a la IA, es la rama del arquero. Esa es la pregunta
 que parte el problema en dos, y es media hora.
+
+## No es el Arquero: es la función de puntería, y afecta a los dos
+
+**26/08, misma tarde.** Seguí tirando del hilo. La conclusión cambia de sitio: **el fallo
+no es del Arquero.**
+
+### La prueba que lo mueve
+
+Llamé a `BP_CombatComponent.GetDirectionToSpawnProjectile` con **los mismos argumentos**
+en los dos componentes, el del Arquero y el de Malakh:
+
+```
+   direccion que se le pasa   pitch  -6,4   yaw +162,7
+   componente del ARQUERO ->  pitch +75,6   yaw +168,2
+   componente de MALAKH   ->  pitch +75,6   yaw +168,2
+```
+
+**Idéntico.** El yaw se conserva y el pitch se invierte y se dispara. La función es la
+misma para todos: si el Arquero no acierta, **Malakh con el arco tampoco debería**.
+
+### Qué pasa dentro
+
+Barriendo sus parámetros sale el mecanismo:
+
+```
+   alcance 15000, radio 15  ->  pitch +75,5     (como en el juego)
+   alcance 15000, radio  0  ->  pitch +20,6
+   alcance    50, radio 15  ->  pitch +75,5
+   alcance     1, radio  0  ->  pitch +20,6
+```
+
+**El alcance no cambia NADA** (1 y 15000 dan lo mismo) y el radio sí. O sea que el punto
+al que acaba apuntando **no está lejos: está pegado al tirador**.
+
+Cuadra con su primera línea:
+
+```
+   L_LineTraceStart = ViewLocation + ViewDirection * |SpawnLocation - ViewLocation|
+```
+
+Eso pone el punto de partida a **51 cm** de los ojos (medido: esa es la distancia del arco
+a los ojos). Si el extremo de la traza no llega a extenderse —y el barrido dice que no,
+porque `MaxRange` es inerte—, la dirección de salida acaba siendo
+`unit(arco → un punto justo delante de los ojos)`. Y como **el arco cuelga por debajo de
+los ojos**, ese vector apunta hacia arriba. De ahí los +75°, y de ahí que las flechas
+suban catorce mil centímetros.
+
+Con radio 15 encima la esfera nace solapando y devuelve el impacto en el propio punto de
+salida, que es la versión extrema del mismo error (+75 en vez de +20).
+
+### Lo que queda por confirmar, y por qué no pude
+
+**Que a Malakh le pase en partida real.** Le di el arco, le cambié la mano con
+`SwitchMainHandType` y le pregunté lo mismo, pero **la cámara de PIE se quedó clavada en
+(0,0)** en toda la sesión —`GetPlayerViewPoint` devolvía siempre lo mismo— así que su
+dirección de entrada nunca varió y la prueba no discrimina. Lo que sí se ve es que con un
+punto de salida válido y la cámara horizontal la función le devuelve **pitch 0,0**, o sea
+coherente con lo que mira: el disparo del jugador puede estar menos roto que el de la IA
+simplemente porque casi siempre apunta al frente, donde el error de pitch es pequeño.
+
+**Comprobarlo cuesta diez segundos jugando**: coger el arco, apuntar a algo alto o bajo, y
+mirar dónde va la flecha.
+
+### Dos errores míos de método, para que no se repitan
+
+- `unreal.Rotator(a, b, c)` es **(roll, pitch, yaw)**, no (pitch, yaw, roll). Mi primera
+  prueba del jugador estaba pidiendo giros que no eran los que creía.
+- Una traza para comprobar línea de visión **tiene que ignorar al tirador**. La primera que
+  hice chocaba con el propio Arquero a 0 cm y estuve a punto de escribir que el problema
+  era la oclusión de la rampa. No lo era.
