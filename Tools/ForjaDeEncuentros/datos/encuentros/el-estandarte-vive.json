@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 2,
+  "id": "el-estandarte-vive",
+  "nombre": "El estandarte vive",
+  "unidades": "cm",
+  "arena": {
+    "bounds": {
+      "min": {
+        "x": -2100,
+        "y": -1600
+      },
+      "max": {
+        "x": 2100,
+        "y": 1600
+      }
+    },
+    "trigger": {
+      "x": -1450,
+      "y": 0,
+      "radio": 230
+    },
+    "checkpoint": {
+      "x": -2000,
+      "y": 0
+    }
+  },
+  "jugador": {
+    "pos": {
+      "x": -1800,
+      "y": 0
+    },
+    "cota": 0,
+    "yaw": 0,
+    "vida": 100,
+    "loadout": [
+      "espada"
+    ]
+  },
+  "coberturas": [
+    {
+      "id": "cob_estrado_n",
+      "min": {
+        "x": 200,
+        "y": -900
+      },
+      "max": {
+        "x": 500,
+        "y": -600
+      },
+      "cota": 0,
+      "altura": 450,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
+      "etiqueta": "bloque del estrado, norte"
+    },
+    {
+      "id": "cob_estrado_s",
+      "min": {
+        "x": 200,
+        "y": 600
+      },
+      "max": {
+        "x": 500,
+        "y": 900
+      },
+      "cota": 0,
+      "altura": 450,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
+      "etiqueta": "bloque del estrado, sur"
+    }
+  ],
+  "plataformas": [],
+  "oleadas": [
+    {
+      "id": "ola_1",
+      "nombre": "El lancero de guardia, y su Lanza",
+      "activacion": {
+        "tipo": "inicio"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_2",
+      "nombre": "El Portador y su escolta: el aura ya vale",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_1"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_3",
+      "nombre": "El escudero, ya sin nadie que lo bendiga",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_2"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    }
+  ],
+  "enemigos": [
+    {
+      "id": "en_lancero_a",
+      "arquetipo": "lancero_del_alba",
+      "pos": {
+        "x": -600,
+        "y": 200
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": true,
+        "secundaria": false
+      },
+      "oleada": "ola_1",
+      "etiqueta": "lancero de guardia"
+    },
+    {
+      "id": "en_portador",
+      "arquetipo": "portador_del_estandarte",
+      "pos": {
+        "x": 900,
+        "y": 0
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_2",
+      "etiqueta": "el Portador"
+    },
+    {
+      "id": "en_escudero_a",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": 650,
+        "y": -250
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_3",
+      "etiqueta": "el escudero que queda"
+    },
+    {
+      "id": "en_lancero_b",
+      "arquetipo": "lancero_del_alba",
+      "pos": {
+        "x": 1200,
+        "y": 500
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_2",
+      "etiqueta": "escolta del Portador"
+    }
+  ],
+  "ordenPrevisto": [
+    "en_lancero_a",
+    "en_portador",
+    "en_lancero_b",
+    "en_escudero_a"
+  ],
+  "victoria": {
+    "tipo": "eliminar-todos"
+  },
+  "purgePolicy": "purgar-todo-al-romper-sello",
+  "checkpointPolicy": "antes-del-trigger",
+  "notasDiseno": "Receta 6.3 del PDF: 'un Portador del Estandarte protegido por 2 Lanceros y 2 Escuderos'. La ruta de ventaja del documento es robar la Lanza, abrir hueco, eliminar al Portador, clavar su Estandarte para controlar zona y terminar con los defensores.\n\nEL AURA TIENE QUE IMPORTAR, o matar al Portador primero no premia nada. Por eso NO entra solo: viene con una escolta en la misma oleada, para que su +75% al aliado —medido en juego, 20 -> 35 de daño— se note mientras esta vivo. Un Portador que muere en un 1v1 limpio convierte la receta en una lista de duelos.\n\nY LA MATRIZ YA DIJO QUE ESTO NO SE CONTESTA CON ARSENAL: el caso Formacion es el unico de los cinco sin counter de arma —lo mejor que consigue cualquiera es +13%, y de rebote—. Se contesta con el ORDEN, que es justo lo que esta receta ensena.\n\nCALIBRADA 26/08, y es la que mas peleo de las cinco.\n\nEL PROBLEMA NO FUE LA DIFICULTAD, FUE EL RELOJ. Con los cinco enemigos del PDF se ganaba el 36% y 2534 partidas de 5000 AGOTABAN EL LIMITE de 180 s: no morias, pero tampoco podias matar. Todos los arquetipos de mele llevan guardia 0,4 —el 40% de tus golpes hace cero— y la matriz ya media que DOS Escuderos con espada sola son 102 s. Cinco cuerpos asi no caben en el watchdog del §7.3.\n\nDOS RECORTES, y los dos se apartan del documento a conciencia:\n\n  - CUATRO enemigos, no cinco. Se cae un Escudero. Con cinco no hay agrupacion que baje de 180 atascos por cada 500 partidas.\n  - LA ESCOLTA DEL PORTADOR ES UN LANCERO, no un Escudero. Medido: con Escudero son 141 s de media y 91 atascos; con Lancero, 111 s y 5. El Escudero NIEGA —esa es su gracia— y dos que niegan a la vez no caben en el reloj.\n\nY UNA SOLA LLAVE, la Lanza. El Estandarte del Portador se marco como drop garantizado y llegaba a las manos el 0% de las veces: ya llevas la Lanza y el §8 no deja acumular. Una llave garantizada que nunca se recoge miente en el veredicto. Lo mismo con el Escudo del ultimo Escudero: cae cuando ya no queda nadie contra quien usarlo.\n\nEl Estandarte se pierde como ARMA, pero la ruta del PDF lo queria como DESCARTE —clavarlo para controlar zona—, y eso el simulador no lo modela como recoger. Cuando exista el «guardar arma temporal» del §5.2 hay que volver aqui.\n\nY SIN AIRE ENTRE OLEADAS (retardo 0). Con los 3 s de las otras recetas se iba al 88-91%, pegada al techo de la banda; a 0 baja al 84% y ademas caen los atascos de 14 a 7. Aqui el respiro sobra: los defensores del Portador ya entran de dos en dos.\n\nQUEDA (1000 partidas por politica): espada sola 82% —muere en 180—, con arsenal 92%, +10 pts, vida final 59%, 27 atascos de 5000. Sin puertas en rojo."
+}
