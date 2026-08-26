@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 2,
+  "id": "pesado-contra-pesado",
+  "nombre": "Pesado contra pesado",
+  "unidades": "cm",
+  "arena": {
+    "bounds": {
+      "min": {
+        "x": -2000,
+        "y": -1500
+      },
+      "max": {
+        "x": 2000,
+        "y": 1500
+      }
+    },
+    "trigger": {
+      "x": -1350,
+      "y": 0,
+      "radio": 220
+    },
+    "checkpoint": {
+      "x": -1900,
+      "y": 0
+    }
+  },
+  "jugador": {
+    "pos": {
+      "x": -1700,
+      "y": 0
+    },
+    "cota": 0,
+    "yaw": 0,
+    "vida": 100,
+    "loadout": [
+      "espada"
+    ]
+  },
+  "coberturas": [
+    {
+      "id": "cob_pilar_n",
+      "min": {
+        "x": -300,
+        "y": -800
+      },
+      "max": {
+        "x": 0,
+        "y": -500
+      },
+      "cota": 0,
+      "altura": 420,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
+      "etiqueta": "pilar norte"
+    },
+    {
+      "id": "cob_pilar_s",
+      "min": {
+        "x": 300,
+        "y": 500
+      },
+      "max": {
+        "x": 600,
+        "y": 800
+      },
+      "cota": 0,
+      "altura": 420,
+      "bloqueaVision": true,
+      "bloqueaPaso": true,
+      "etiqueta": "pilar sur"
+    }
+  ],
+  "plataformas": [],
+  "oleadas": [
+    {
+      "id": "ola_1",
+      "nombre": "El portador del arma pesada",
+      "activacion": {
+        "tipo": "inicio"
+      },
+      "retardo": 0,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_2",
+      "nombre": "El que interrumpe",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_1"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    },
+    {
+      "id": "ola_3",
+      "nombre": "La gran guardia, ya con el Espadon en la mano",
+      "activacion": {
+        "tipo": "oleadaLimpia",
+        "oleada": "ola_2"
+      },
+      "retardo": 3,
+      "presencia": "en-escena"
+    }
+  ],
+  "enemigos": [
+    {
+      "id": "en_elite_menor",
+      "arquetipo": "elite_pesado",
+      "pos": {
+        "x": -500,
+        "y": 200
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": true,
+        "secundaria": false
+      },
+      "oleada": "ola_1",
+      "etiqueta": "portador del arma pesada"
+    },
+    {
+      "id": "en_ligero_a",
+      "arquetipo": "escudero_celestial",
+      "pos": {
+        "x": 200,
+        "y": -600
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_2",
+      "etiqueta": "el que interrumpe"
+    },
+    {
+      "id": "en_ligero_b",
+      "arquetipo": "lancero_del_alba",
+      "pos": {
+        "x": 700,
+        "y": 500
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_2",
+      "etiqueta": "el segundo que interrumpe"
+    },
+    {
+      "id": "en_elite_mayor",
+      "arquetipo": "elite_pesado",
+      "pos": {
+        "x": 1100,
+        "y": 0
+      },
+      "cota": 0,
+      "yaw": 180,
+      "drop": {
+        "principal": false,
+        "secundaria": false
+      },
+      "oleada": "ola_3",
+      "etiqueta": "la gran guardia"
+    }
+  ],
+  "ordenPrevisto": [
+    "en_elite_menor",
+    "en_ligero_a",
+    "en_ligero_b",
+    "en_elite_mayor"
+  ],
+  "victoria": {
+    "tipo": "eliminar-todos"
+  },
+  "purgePolicy": "purgar-todo-al-romper-sello",
+  "checkpointPolicy": "antes-del-trigger",
+  "notasDiseno": "Receta 6.4 del PDF. El documento pide 'Elite con gran guardia + enemigos ligeros que interrumpen', y la ruta de ventaja es: eliminar el Elite SECUNDARIO / portador de arma pesada -> usar el Espadon/Alabarda para el guard break del objetivo principal -> ataque de descarte al abrir stagger.\n\nPOR QUE EL ESPADON VIENE DE OTRO CUERPO, y no es un detalle: el arma anti-guardia no puede vivir en el enemigo con guardia, o el counter es circular —para matar al Elite haria falta el Espadon, que solo suelta el Elite—. El propio PDF lo resuelve diciendo 'Elite secundario', y aqui se respeta: el menor lo suelta, el mayor no.\n\nLOS LIGEROS INTERRUMPEN, no acompañan: entran en su propia oleada, entre los dos Elites. El techo medido de la espada sola son DOS cuerpos a la vez, asi que nunca coinciden con un Elite.\n\nMEDIDA A LA PRIMERA, sin tocar un numero (1000 partidas por politica):\n\n   espada sola        77%   <- dentro de la banda 70-90 del criterio\n   con arsenal        87%   +10 pts, -31% de tiempo, -8% de daño\n   vida al acabar     57%\n   maximo a la vez     2 cuerpos (mediana 2)\n   el Espadon se recoge 1,00 veces por partida\n\nSin ninguna puerta en rojo. Los dos avisos son los de siempre: el orden de bajas sin armas da igual —estructural, lo tienen las tres recetas— y 17 partidas de 5000 agotan el limite.\n\nSalio a la primera porque se aplico lo aprendido el 26/08 en las otras dos: escalonar para no pasar de dos cuerpos, comprobar contra la matriz de counters que el arma que cae es la que contesta al que viene despues, y que el drop no sea una trampa."
+}
