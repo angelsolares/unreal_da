@@ -84,6 +84,38 @@
       "bloqueaVision": true,
       "bloqueaPaso": true,
       "etiqueta": "pilar central"
+    },
+    {
+      "id": "cob_rampa_n",
+      "min": {
+        "x": 850,
+        "y": -1350
+      },
+      "max": {
+        "x": 1050,
+        "y": -1050
+      },
+      "cota": 0,
+      "altura": 700,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "arcada del balcon norte (se pasa por debajo)"
+    },
+    {
+      "id": "cob_rampa_s",
+      "min": {
+        "x": 850,
+        "y": 1050
+      },
+      "max": {
+        "x": 1050,
+        "y": 1350
+      },
+      "cota": 0,
+      "altura": 700,
+      "bloqueaVision": true,
+      "bloqueaPaso": false,
+      "etiqueta": "arcada del balcon sur (se pasa por debajo)"
     }
   ],
   "plataformas": [
