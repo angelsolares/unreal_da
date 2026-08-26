@@ -14746,3 +14746,77 @@ de los ZoneTrigger avisaba de la mitad («su BeginPlay fuerza el perfil»); la o
 
 Y una de método, que se repite: **Angel vio el síntoma antes que el instrumento en las dos
 últimas vueltas.** El registro sirvió para confirmarlo y acotarlo, no para encontrarlo.
+
+## Rebaseada la Forja con el Arquero funcionando
+
+**26/08.** Con el Arquero por fin acertando en el motor, todo lo que el simulador tenía
+calibrado sobre él estaba medido contra un enemigo que no hacía daño. Dos cambios, y sólo
+dos, porque son los dos que se pueden respaldar con una medición.
+
+### 1. El daño por flecha: 30 → 40
+
+Es la **primera vez que este número se valida**. El proyectil vivo declara `Damage = 40.0`,
+y la partida lo confirma sin margen: la vida de Malakh fue **100 → 60 → 20 → 0**, o sea 40
+por flecha con el último golpe capado por el suelo de vida.
+
+### 2. Los proyectiles adelantan el tiro
+
+Esto es lo gordo, y no salió de ajustar un número sino de comparar los dos:
+
+```
+   SIMULADOR (receta, 300 partidas)      MOTOR (jugado)
+      disparos:  4,8 por partida            oleada 3, ~18 s de combate
+      impactos:  0,4 por partida            3 impactos
+      acierto:   9%                         y lo mató
+      daño:      17,9 por partida
+```
+
+Un Arquero que acierta una de cada once no es el mismo enemigo que uno que te mata en
+dieciocho segundos. **Y no era la esquiva**: sólo 0,2 decisiones de esquiva por partida con
+una flecha en vuelo. Era la puntería:
+
+```js
+   dir: normaliza(resta(objetivo.pos, A.pos))     // apuntaba a donde ESTA
+```
+
+El motor apunta a donde **estará** —posición más velocidad por tiempo de vuelo, la fórmula
+de `GetLocAndDirToSpawnArrow`— y el simulador no. Con la flecha a 3500 y Malakh a 400, en
+los 0,4 s de vuelo de un tiro de 1.400 cm el blanco se mueve 170 cm, y su cápsula mide 42
+de radio: fallo garantizado.
+
+Se le añade a los agentes la velocidad del tick anterior —que es exactamente la que el
+motor tiene disponible al lanzar— y se apunta con adelanto. Resultado:
+
+```
+   acierto  9% -> 34%        daño del arquero  17,9 -> 63,1 por partida
+```
+
+Sigue por debajo del motor (tres impactos en 18 s serían un 60-70% con su cadencia), pero
+**el arreglo es estructural, no un ajuste a ojo**, y no se toca más: el número de arriba
+sale de UNA sesión jugada y afinar contra eso sería repetir el error de hoy.
+
+### Lo que ha movido en la receta
+
+```
+   antes (arquero roto)   VVV~~VVVX   esp 93%   hp 91,0   armas +30%
+   ahora                  V~VV~VVVX   esp 80%   hp 67,5   armas +10%
+```
+
+**«El encuentro cuesta algo» pasa a VERDE por primera vez en todo el día** —de 91 de vida
+media a 67,5— y a cambio «ganable sólo con la espada» baja de verde a aviso (80%). Es el
+intercambio que uno espera al meter un enemigo que de verdad amenaza: el sitio deja de ser
+un paseo.
+
+La matriz de armas no se mueve: criterio 1 sigue **4 de 4 en verde**.
+
+### Lo que NO se ha podido rebasear, y por qué
+
+**La cadencia de tiro del Arquero.** Los arqueros del motor sólo se activan con un jugador
+de verdad: teleportar a Malakh les rompe la percepción —comprobado a 1568 cm, con línea de
+visión libre y sin que lo fichen— así que no hay forma de montar un banco automático. Las
+dos únicas fuentes son sesiones jugadas.
+
+Y una nota sobre la matriz: el caso **Compromiso** (1 Arquero en balcón) sigue dando 0 de
+daño, pero no por el Arquero: **el caso dura 8 segundos**. Malakh cruza, sube y lo mata
+antes de que dispare más de una vez. Ese caso está mal construido y no mide lo que dice
+medir — es el mismo problema que tenía Guardia antes de medirla en tiempo.

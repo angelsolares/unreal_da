@@ -261,6 +261,16 @@ export class Simulacion {
     if (this.terminada) return;
     const dt = this.dt;
 
+    // La velocidad de cada agente, para que quien dispara pueda ADELANTAR el tiro.
+    // Se toma ANTES de mover a nadie en este tick, o sea que es la del tick anterior:
+    // es exactamente lo que el motor tiene disponible cuando lanza la flecha.
+    for (const a of this.agentes) {
+      a._vel = a._posPrev
+        ? { x: (a.pos.x - a._posPrev.x) / dt, y: (a.pos.y - a._posPrev.y) / dt }
+        : { x: 0, y: 0 };
+      a._posPrev = { x: a.pos.x, y: a.pos.y };
+    }
+
     this._pasoOleadas();
     this._pasoProyectiles(dt);
     this._pasoDrops(dt);
@@ -827,10 +837,24 @@ export class Simulacion {
   _lanzarProyectil(A, a) {
     const objetivo = A.bando === 'malakh' ? this.agente(A.objetivoId) : this.malakh;
     if (!objetivo || objetivo.estado === ESTADOS.MUERTO) return;
+
+    // SE APUNTA A DONDE VA A ESTAR, NO A DONDE ESTA. Es la misma formula que el motor:
+    // posicion del objetivo mas su velocidad por el tiempo de vuelo (ver
+    // `GetLocAndDirToSpawnArrow`). Sin esto el simulador apuntaba al sitio que el blanco
+    // acababa de dejar: con la flecha a 3500 y Malakh a 400, en los 0,4 s de vuelo de un
+    // tiro de 1.400 cm se movia 170 cm, y su capsula mide 42 de radio. Medido en la
+    // receta, 300 partidas: el Arquero acertaba el 9% de sus disparos (0,4 impactos por
+    // partida de 4,8 tiros) mientras que en el motor, jugado, metio TRES en 18 s. No era
+    // la esquiva —solo 0,2 esquivas por partida con una flecha en vuelo— era la punteria.
+    const vel = a.velocidad || 3500;
+    const tv = dist(objetivo.pos, A.pos) / vel;
+    const v = objetivo._vel || { x: 0, y: 0 };
+    const prediccion = { x: objetivo.pos.x + v.x * tv, y: objetivo.pos.y + v.y * tv };
+
     this.proyectiles.push({
       pos: { ...A.pos },
       cota: A.cota,
-      dir: normaliza(resta(objetivo.pos, A.pos)),
+      dir: normaliza(resta(prediccion, A.pos)),
       velocidad: a.velocidad || 3500,
       dano: a.dano,
       aturde: !!a.aturde,
