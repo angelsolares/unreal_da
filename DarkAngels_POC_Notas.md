@@ -14195,3 +14195,57 @@ andando en vez de teleportándolo. Queda pendiente.
   Python, pero la propiedad `Stats` sí, y del struct `F_Stat` sólo `BaseValue` es legible.
 - Las flechas **no se pueden contar muestreando**: vuelan a 3500 cm/s, o sea 0,16 s para
   cruzar 550 cm, y el muestreo por MCP va a 1 Hz como mucho. Hay que medirlo por la vida.
+
+## La arena no se sellaba nunca, y eran doce centímetros
+
+**26/08.** Angel jugó «Romper la línea» para medir lo que el banco automático no pudo —si
+el Arquero dispara con el umbral en 450—. El registro no contestó esa pregunta, pero
+encontró una peor.
+
+### Lo que dice el registro
+
+93 segundos de partida, 160 muestras, y **`Estado = 0` en todas**. La arena **no se selló
+jamás**. Y como los enemigos se duermen en su BeginPlay y es `Sellar` quien los despierta,
+estuvieron dormidos de principio a fin:
+
+```
+   t=43  Malakh (1236,-786)   arquero 26 a 489 cm, con blanco
+   t=49  Malakh (1276,-866)   arquero 26 a 411 cm
+   t=55  Malakh (1212,-1015)  arquero 26 a 318 cm     <- encima de el
+   t=67  Malakh (1170, 949)   arquero 27 a 337 cm, con blanco
+```
+
+Se puso a **318 y 337 cm** de los dos Arqueros —dentro de los 450 *y* de los 300— con
+vida 100,0 todo el rato: **cero golpes, cero flechas**. No es que no disparen; es que su
+árbol estaba parado. Fíjate en `con blanco: sí`: **la percepción sí funciona con la lógica
+detenida**, o sea que el enemigo te ve y no puede hacer nada. Eso, en pantalla, se lee
+como un juego roto.
+
+### La causa
+
+```
+   PlayerStart          x = -1900
+   caja Entrada llega a x = -1870
+   capsula de Malakh    radio 42   ->  su borde nace en x = -1858
+```
+
+**Nace DOCE CENTÍMETROS dentro de la caja.** Y `OnComponentBeginOverlap` **no dispara para
+un solapamiento que ya existía al aparecer**. Comprobado en PIE: `is_overlapping_actor`
+devuelve `True` en el primer fotograma con `Estado = 0`, y sacándolo a x=−2100 y volviendo
+a meterlo, sella a la primera.
+
+### El arreglo, en los dos sitios
+
+- **El exportador** ya no se fía del JSON: después de construir la arena le **pregunta a
+  la caja** por su tamaño real y aparta el `PlayerStart` a `extent + 42 + 60`. Se pregunta
+  en vez de restar 330 a mano porque ese 330 sale del script de construcción de la arena y
+  puede cambiar sin avisar. Si lo mueve, lo canta en los avisos del informe.
+- **El nivel de la Forja**, en sitio: el `PlayerStart` pasa de −1900 a **−1972**.
+  Verificado: nace sin tocar la caja, y al entrar `Estado = 1`.
+
+### Por qué esto no había salido antes
+
+Porque el encuentro se había probado **sellándolo a mano** (`Sellar()` por Python), que es
+lo que hice yo todo el día. El único camino que nadie había recorrido era el del jugador:
+aparecer y andar. La lección no es sobre cajas de colisión — es que **un banco que se salta
+el arranque no prueba el arranque**.

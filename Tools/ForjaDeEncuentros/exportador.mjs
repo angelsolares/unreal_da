@@ -505,10 +505,57 @@ else:
         sk.light_component.set_editor_property("mobility", unreal.ComponentMobility.MOVABLE)
 
 # El arranque del jugador y el checkpoint.
+#
+# EL JUGADOR NO PUEDE NACER TOCANDO LA CAJA DE ENTRADA, y esto no es quisquilloseria:
+# `OnComponentBeginOverlap` NO dispara para un solapamiento que YA EXISTIA al aparecer.
+# Si nace pegado, la arena no se sella NUNCA, los enemigos se quedan dormidos desde su
+# BeginPlay y el encuentro entero es un paseo.
+#
+# Medido el 26/08 jugandolo: el PlayerStart caia en x=-1900, la caja `Entrada` llega a
+# -1870 y la capsula de Malakh mide 42 de radio, o sea que su borde nacia en -1858, DOCE
+# CENTIMETROS dentro. 93 segundos de partida con `Estado=0`, y sacandolo fuera y
+# volviendo a entrar sellaba a la primera.
+#
+# La holgura no se calcula a mano: se le PREGUNTA a la caja ya construida, porque su
+# tamaño sale del script de construccion de la arena (radio menos 330 hoy) y ese numero
+# puede cambiar sin avisar a nadie.
+HOLGURA = 42.0 + 60.0      # capsula de Malakh mas margen
+
+def fuera_de_la_entrada(pos):
+    cajas = []
+    for act in subsys.get_all_level_actors():
+        if act.get_class().get_name() != "BP_DA_Arena_C":
+            continue
+        for c in act.get_components_by_class(unreal.SceneComponent):
+            if c.get_name() == "Entrada":
+                cajas.append((c.get_world_location(), c.get_editor_property("box_extent")))
+    if not cajas:
+        return pos, None
+    centro, ext = cajas[0]
+    # Se empuja por el eje por el que el jugador ya viene, que es el que mas se aleja.
+    dx, dy = pos["x"] - centro.x, pos["y"] - centro.y
+    if abs(dx) >= abs(dy):
+        limite = ext.x + HOLGURA
+        if abs(dx) < limite:
+            nuevo = dict(pos)
+            nuevo["x"] = centro.x + (limite if dx >= 0 else -limite)
+            return nuevo, "x %d -> %d" % (pos["x"], nuevo["x"])
+    else:
+        limite = ext.y + HOLGURA
+        if abs(dy) < limite:
+            nuevo = dict(pos)
+            nuevo["y"] = centro.y + (limite if dy >= 0 else -limite)
+            return nuevo, "y %d -> %d" % (pos["y"], nuevo["y"])
+    return pos, None
+
 for m in D["marcas"]:
     if m["clase"] == "inicio":
+        pos, movido = fuera_de_la_entrada(m["pos"])
+        if movido:
+            informe.setdefault("avisos", []).append(
+                "PlayerStart apartado de la caja de Entrada: " + movido)
         a = subsys.spawn_actor_from_class(unreal.PlayerStart,
-            unreal.Vector(m["pos"]["x"], m["pos"]["y"], m["pos"]["z"]),
+            unreal.Vector(pos["x"], pos["y"], pos["z"]),
             unreal.Rotator(0, 0, m.get("yaw", 0)))
     else:
         a = subsys.spawn_actor_from_class(unreal.TargetPoint,
