@@ -14315,3 +14315,64 @@ pequeña que el umbral. Dos caminos, y son de diseño:
 
 Y antes que nada de eso: **averiguar por qué no acierta**. Tres flechas en 37 segundos y
 ninguna dentro.
+
+## Por qué no acierta: dentro del umbral no dispara, y el umbral era mío
+
+**26/08.** Fui a averiguar por qué el Arquero no acertaba ni una y encontré que **dentro
+del umbral no dispara en absoluto**. Y que subirlo de 300 a 450 —mi cambio de esta mañana—
+agrandó esa zona muda.
+
+### La forma del árbol lo explica entero
+
+```
+   Selector
+   ├── Sequence [Is Close to Target < UMBRAL]              HUIR
+   │     └── Selector
+   │           ├── Roll [IsNothingBehind invertido, Cooldown, Chance 60]
+   │           └── Sequence [TimeLimit 3, Force Success]   <- SIEMPRE triunfa
+   │                 └── Jog · Run EQS Query · Move To
+   └── Sequence  (Walk · apuntar · Can Shoot Arrow · Bow Attack)   DISPARAR
+```
+
+El `Force Success` de la secuencia interior hace que la rama de HUIR **triunfe siempre**,
+así que el Selector **nunca cae a la de DISPARAR** mientras el jugador esté dentro del
+umbral. O sea que ese número no dice «a partir de aquí retrocede»: dice **«a partir de aquí
+se calla»**.
+
+### Y mide en horizontal, no en 3D
+
+Medido en PIE con el Arquero en su balcón (328 cm de alto):
+
+```
+   distancia real 3D      blackboard DistanceToTarget
+        480                        317
+       1364                       1315
+```
+
+Es clavada la distancia **2D**. Así que 450 horizontales son **557 cm reales** desde el
+balcón, contra 443 con el 300. **Subirlo agrandó la burbuja de silencio un 26%.**
+
+Y encima la huida no llega a ocurrir: el balcón mide 400×550, más pequeño que el umbral,
+así que la EQS no tiene adónde mandarlo. **Se queda quieto y callado.** Eso cuadra con la
+partida: Malakh entró a 424 cm y el Arquero no se movió un centímetro en toda la oleada.
+
+### Revertido a 300
+
+`BT_DA_Arquero` vuelve al 300 de DCS, verificado, con el árbol de DCS intacto. La pasada
+`bt_arquero_da.py` lleva ahora el porqué completo, para que a nadie se le ocurra volver a
+subirlo pensando que arregla algo.
+
+**Cualquier umbral aquí sólo compra silencio.** La señal del §5.1 —«retrocede al ver la
+lanza»— pide un **paso atrás con animación propia**, no una reubicación por EQS que además
+apaga el disparo.
+
+### Lo que sigue sin saberse
+
+**Por qué falla las que sí tira.** En la partida salieron al menos tres flechas y ninguna
+entró, pero eso fue a 1100 cm, o sea FUERA del umbral, donde el árbol sí dispara. No pude
+reproducirlo en el banco: forzar el `Target` en el blackboard **no mete al Arquero en
+combate** —no envaina el arco, `Can Shoot Arrow` no pasa— así que en 25 s con el blanco
+puesto a 1364 cm no tiró ni una. Ese camino sólo lo abre la percepción de verdad.
+
+Con lo cual el §6.1 sigue con un agujero: **un Arquero que dentro de 4,4 m se calla y
+fuera no acierta no es una amenaza**, y la receta lo trata como si lo fuera.

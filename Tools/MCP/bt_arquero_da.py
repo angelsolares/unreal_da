@@ -25,35 +25,59 @@ Malakh en centimetros de mundo es 433 (327 instantaneos mas 106 de avance del go
 el disparador en 300, el Arquero empieza a apartarse cuando YA LLEVA 133 CM DENTRO del
 arco de espada: reacciona cuando ya esta muerto, que es lo contrario de una senal legible.
 
-Se pone en 450, un pelo por encima de 433: se aparta en el borde exacto del alcance y el
-jugador VE la reaccion antes de poder cobrarla.
+Se puso en 450, un pelo por encima de 433... Y SE REVIRTIO A 300 EL MISMO DIA. Lo de abajo
+es el porque, y es el motivo de que esta pasada exista tal cual esta.
 
-LO QUE ESTO NO ES. Todavia no es "al ver a Malakh CON LANZA". El decorador
+=========================  POR QUE VOLVIO A 300  =========================
+
+El 450 no solo no entregaba la senal del 5.1: la EMPEORABA. Leida la forma del arbol:
+
+    Selector
+    +- Sequence [Is Close to Target < UMBRAL]              HUIR
+    |    +- Selector
+    |         +- Roll [IsNothingBehind invertido, Cooldown, Chance 60]
+    |         +- Sequence [TimeLimit 3, Force Success]     <- SIEMPRE triunfa
+    |              +- Jog, Run EQS Query, Move To
+    +- Sequence  (Walk, apuntar, Can Shoot Arrow, Bow Attack)      DISPARAR
+
+El `Force Success` de la secuencia interior hace que la rama de HUIR triunfe SIEMPRE, asi
+que el Selector nunca cae a la de DISPARAR mientras el jugador este dentro del umbral. O
+sea que este numero no dice "a partir de aqui retrocede": dice "a partir de aqui SE CALLA".
+
+Y MIDE EN HORIZONTAL, no en 3D. Medido en PIE con el arquero en su balcon (328 cm de alto):
+a 480 cm reales el blackboard decia 317, y a 1364 decia 1315, que es clavada la distancia
+2D. Asi que 450 horizontales son 557 cm REALES desde el balcon, contra 443 con el 300.
+Subirlo agrandaba la burbuja de silencio un 26%.
+
+Encima la huida ni siquiera ocurre: el balcon mide 400x550, mas pequeño que el propio
+umbral, o sea que la EQS no tiene adonde mandarlo. Se queda quieto Y callado. Verificado
+jugandolo: Malakh entro a 424 cm y el Arquero no se movio un centimetro en toda la oleada.
+
+CONCLUSION: cualquier umbral aqui solo compra silencio. La senal del 5.1 —"retrocede al
+ver la lanza"— pide un PASO ATRAS con animacion propia, no una reubicacion por EQS que
+ademas apaga el disparo. Se deja el 300 de DCS hasta que eso exista.
+
+=========================================================================
+
+LO QUE FALTA DEL 5.1, ADEMAS. Nunca fue "al ver a Malakh CON LANZA": el decorador
 "Is Close to Target" es un BTDecorator_Blackboard y compara contra un LITERAL, no contra
-una clave, asi que no se puede hacer depender del arma sin escribir un decorador propio.
-Queda anotado como lo que falta del 5.1. Con la Lanza en 448 y la espada en 433 la
-diferencia real son 15 cm, o sea que el umbral unico de 450 vale para las dos y la
-distincion seria de LECTURA, no de balance.
-
-Y OJO CON LO QUE YA SE MIDIO: subirle al Arquero la distancia de retirada EN EL SIMULADOR
-salia al reves (retrocediendo no dispara), pero aquello eran valores muy grandes sobre
-distanciaMinima. Esto es otra cosa: 150 cm sobre un disparador que ya existia. Hay que
-verlo en PIE antes de darlo por bueno.
+una clave, asi que no puede depender del arma sin un decorador propio.
 
 EL ASSET DE DCS NO SE TOCA. Se duplica a /Game/DarkAngels/AI/BT_DA_Arquero y BP_DA_Arquero
 apunta ahi, igual que BT_DA_Guerrero para los de mele. La copia es CONTENIDO DE PAGO
 duplicado y va en .gitignore: lo que viaja en git es esta pasada, que la regenera.
 
-OJO CON EL DOCSTRING: este fichero fallaba con un "Python execution failed" sin mensaje
-hasta que se le quitaron las comillas angulares y los guiones largos. El interprete del
-MCP no los traga; se escribe en ASCII plano y ya.
+OJO CON LA CABECERA: este fichero NO puede llevar la linea "# -*- coding: utf-8 -*-". El
+MCP hace exec() del codigo como CADENA y Python prohibe ahi la declaracion de codificacion;
+sale un "Python execution failed" SIN mensaje. Primero le eche la culpa al docstring y era
+falso: aislado despues caracter a caracter, es solo esa linea.
 """
 import unreal, json, os
 
 SRC = "/Game/DynamicCombatSystem/ArcheryModule/Blueprints/AI/Archer/BT_ArcherAI"
 DST = "/Game/DarkAngels/AI/BT_DA_Arquero"
 UMBRAL_VIEJO = 300.0
-UMBRAL_NUEVO = 450.0      # alcance real de Malakh 433 (327 + 106), con un pelo de margen
+UMBRAL_NUEVO = 300.0      # REVERTIDO al de DCS: ver "POR QUE VOLVIO A 300" en el docstring
 BP_ARQUERO = "/Game/DarkAngels/Blueprints/Enemies/BP_DA_Arquero"
 
 svc = unreal.BehaviorTreeService
@@ -107,8 +131,8 @@ svc.compile_and_save(DST)
 # RELEER, que el true no vale nada.
 releido = svc.get_node_property_value(DST, objetivo["path"], "FloatValue")
 print("FloatValue releido:", releido)
-if "450" not in str(releido):
-    fallos.append("el umbral no se quedo en 450: " + str(releido))
+if str(int(UMBRAL_NUEVO)) not in str(releido):
+    fallos.append("el umbral no se quedo en %d: %s" % (UMBRAL_NUEVO, releido))
 
 # 3. Y confirmar que el ORIGINAL de DCS sigue intacto.
 original = json.loads(svc.get_tree(SRC))
@@ -143,5 +167,5 @@ print("BP_DA_Arquero: el enganche y su verificacion van en bt_arquero_engancha.p
 f = os.path.join(unreal.Paths.project_content_dir(), "DarkAngels/AI/BT_DA_Arquero.uasset")
 print("copia en disco:", os.path.exists(f), os.path.getsize(f) if os.path.exists(f) else "")
 
-print("\n" + ("[OK] el Arquero reacciona en el borde del alcance real"
+print("\n" + (("[OK] umbral del Arquero en %d, y el arbol de DCS intacto" % UMBRAL_NUEVO)
               if not fallos else "[FALLOS]\n   " + "\n   ".join(fallos)))
