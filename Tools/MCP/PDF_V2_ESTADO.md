@@ -28,7 +28,7 @@ la separa del juego son dos datos que a `BP_DA_Arena` le faltan. Detalle en el �
 | 4 | Arsenal de oportunidad | 🟢 las 5 familias existen; **counters medidos el 25/08**, 3 de 5 en banda y las otras 2 con diagnóstico |
 | 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
 | 5 | Orden de bajas implícito | 🟠 el Arquero ya reacciona a la distancia; falta que distinga el arma |
-| 6 | Recetas de encuentro | 🟠 **1 de 5 diseñada y validada**, ninguna en el nivel todavía |
+| 6 | Recetas de encuentro | 🟢 **5 de 5 montadas y en el motor** (26/08, banda 70-94% con espada sola); falta jugarlas |
 | 7 | Arenas selladas | 🟢 completo |
 | 8 | Sistema de drops | 🔴 sin las 4 políticas |
 | 9 | Feedback visual/audio/UX | 🟢 casi; falta VFX del descarte |
