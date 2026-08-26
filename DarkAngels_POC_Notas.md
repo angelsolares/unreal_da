@@ -14587,3 +14587,62 @@ Lo medido hasta ahora:
 O sea que el cuerpo debería pararla. Que no lo haga apunta a la traza del manejador de
 colisión, no al perfil. **Sin resolver todavía**, y es lo siguiente: hasta que se resuelva,
 el Arquero apunta perfecto y sigue sin hacer daño.
+
+## Las cajas de la arena se comían las flechas
+
+**26/08.** Con la puntería ya arreglada, las flechas seguían sin hacer daño. El manejador
+de colisión no era el culpable: **era nuestra propia arena**.
+
+### La medición
+
+Las flechas de DCS no tienen colisión propia —malla y partículas en `NoCollision`— sino que
+golpean con un `BP_CollisionHandlerComponent` que barre con una esfera entre la posición del
+fotograma anterior y la actual. Trazando ese mismo barrido a mano, del Arquero a Malakh,
+salen dos respuestas muy distintas según cómo se trace:
+
+```
+   por TIPO DE OBJETO (Pawn), que es como traza el manejador de melé que SÍ funciona:
+      2 impactos, los dos Malakh
+
+   por CANAL Projectile:
+      Forja_Arena                comp=Entrada   perfil=OverlapAllDynamic  -> OVERLAP
+      Forja_Cobertura_cob_pilar  comp=Mesh      perfil=BlockAll           -> BLOCK
+```
+
+**Lo primero que toca cualquier flecha disparada dentro de la arena es la caja de la propia
+arena.** Y no es sólo `Entrada`: los cinco componentes —la entrada de 37 m y los cuatro
+muros— tenían `OverlapAllDynamic`, que solapa el canal `Projectile`.
+
+### Y esto ya se había aprendido una vez
+
+La nota de los ZoneTrigger de Malkuth lo dice literal: **«OverlapOnlyPawn o envenenan la
+puntería»**. Se aprendió allí y se volvió a cometer aquí. Es el mismo fallo, en otro actor.
+
+### El arreglo
+
+Las cinco cajas pasan a **`OverlapOnlyPawn`**, que solapa Pawn y para los canales
+personalizados —`Projectile` es uno— usa el defecto del canal, que es `Ignore`. Siguen
+detectando al jugador y dejan de existir para las flechas.
+
+Va en una función nueva colgada del ConstructionScript, detrás de `ColocarMuros`, así que
+**vale para la arena que ya está en el nivel y para todas las que exporte la Forja**, sin
+tocar instancias a mano. Verificado tras el cambio:
+
+```
+   Entrada / MuroNorte / MuroSur / MuroEste / MuroOeste
+      perfil=OverlapOnlyPawn   vs Projectile = IGNORE
+```
+
+Y el sellado sigue funcionando: la arena marcó `Estado: 1` al entrar, después del cambio.
+
+### Lo que falta para cerrarlo del todo
+
+**Ver una flecha hacer daño.** No lo he conseguido desde fuera porque no puedo hacer
+disparar al Arquero a voluntad: `CanBowAttack` exige la actividad `Activity.IsInCombat`, y
+esa se pone con un GameplayTag que **no viaja desde Python** (`AddActivity` rechaza la
+cadena). Poner el `Target` a mano no basta: el árbol apunta y se mueve, pero no entra en
+combate. `ShootArrow` y la `LluviaDelFirmamento` tampoco spawnean nada por la misma razón.
+
+O sea que quedan dos arreglos hechos y verificados en su nivel —la dirección del disparo y
+las cajas que lo interceptaban— y **la confirmación final es una partida de diez segundos**:
+plantarse a diez metros del Arquero, a la vista, y ver si baja la vida.
