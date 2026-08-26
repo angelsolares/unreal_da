@@ -82,6 +82,44 @@ python -c "import debughud_montar as d; print(hasattr(d,'dsl_hover_boton'))"
 `False` = no lanzar. **La regla de fondo: sobre este Blueprint no se hace
 cirugía** — lo que no entre por el generador se pierde en la siguiente pasada.
 
+## 3.c La pestaña WEAPON, y tres trampas que costaron el panel tres veces
+
+**WEAPON** (§10 *Show Weapon State*) es la única pestaña de **sólo lectura**: no tiene un
+botón, y por eso `dsl_click_weapon()` está vacía. Se deja igualmente porque el despachador
+llama a una función por pestaña y una que no existe no pasa el prevuelo.
+
+**Los datos no se leen en el HUD.** El DSL no sabe construir el getter de una variable de
+OTRO blueprint, así que la lectura vive en `BP_DA_PlayerCharacter.DbgEstadoArma`, que
+devuelve cuatro cadenas ya formateadas —arma, tipo, segundos con ella y último motivo de
+salida— y aquí sólo se destructuran con `(bind (arma tipo seg mot) …)` y se pintan.
+
+El **motivo de salida** se escribe en los tres puntos por los que un arma temporal se va:
+`SustituirArmaTemporal` → SWAP, `ArrojarArmaTemporal` → DISCARD, `PurgarTemporales` →
+SEAL BREAK. Un nodo `Set` al principio de cada una.
+
+Lo que **no** tiene, y está escrito en el propio panel para que no se olvide: el **enemigo
+de origen** y el **ammo**. El pickup ocurre dentro de DCS y el drop no guarda quién lo
+soltó; ponerlo pide tocar `BP_DA_WeaponDropComponent` y el camino de recogida.
+
+### Las tres trampas, por orden de lo que cuestan
+
+1. **El generador no puede borrar el asset si está abierto en el editor.** El `delete`
+   falla en silencio y la pasada muere en el `create` con *already exists*. Se cura con
+   `AssetEditorSubsystem.close_all_editors_for_asset` antes de lanzar.
+2. **Un paréntesis de más da *Unexpected )* SIN decir en qué función.** Se busca a ciegas
+   mientras el asset ya está borrado. Por eso el PREVUELO 0 cuenta ahora los paréntesis de
+   cada `dsl_*` y aborta antes de tocar nada. Ojo al meter una pestaña: el fallo estuvo
+   en `dsl_click` —el despacho anidado— y no en la pestaña nueva, que era lo sospechoso.
+3. **En un `Utilities|IsValid` con ramas, el cierre de cada rama va PEGADO a su última
+   sentencia.** Un paréntesis en su propia línea se lee como sentencia suelta y vuelve a
+   dar *Unexpected )*. Y nada puede ir detrás del IsValid, ni un `(return false)`.
+
+**La red que funciona:** el `.uasset` commiteado. Las tres veces se recuperó con
+`git checkout -- Content/DarkAngels/Debug/BP_DA_DebugHUD.uasset`. Antes de una pasada,
+comprobar que está limpio en git.
+
+---
+
 ## 4. Añadir un Teleport
 
 Una línea en el array `Destinos` de `DA_DA_DebugDestinos`:

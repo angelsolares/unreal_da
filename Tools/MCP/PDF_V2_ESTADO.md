@@ -199,8 +199,19 @@ De la lista del §10 faltan:
 - ~~Give Arco~~ — **hecho el 24/08.** La fila tiene ya los seis: LANZA, TROMPETA, HACHA,
   ESPADON, **ARCO** y ESCUDO, verificado en el panel en PIE.
 - **Force Shield Discard** — no existe el descarte, así que tampoco el botón.
-- **Show Weapon State** — arma actual, **enemigo de origen**, moveset, off-hand compatible,
-  ammo y **motivo de salida** (Swap / Discard / Seal Break). No hay nada de esto.
+- ~~**Show Weapon State**~~ — **hecho el 26/08, a medias y con lo que falta escrito en el
+  propio panel.** Pestaña **WEAPON**, la octava, de sólo lectura. Muestra el **arma actual**
+  (nombre del asset), el **tipo** (la clase del item, que dice si es melé, arco o escudo),
+  los **segundos que llevas con ella** y el **motivo de la última salida**.
+
+  El motivo se registra de verdad, no se adivina: `MotivoSalidaArma` se escribe en los
+  tres puntos por los que un arma temporal se va — `SustituirArmaTemporal` → SWAP,
+  `ArrojarArmaTemporal` → DISCARD, `PurgarTemporales` → SEAL BREAK.
+
+  **Faltan el enemigo de origen y el ammo**, y no por dejadez: el pickup ocurre dentro de
+  DCS y el drop no guarda quién lo soltó. Registrarlo pide tocar
+  `BP_DA_WeaponDropComponent` y el camino de recogida, que es asset de pago. El panel lo
+  dice en pantalla («-- sin registrar: el pickup vive en DCS») en vez de fingir que está.
 - **Show recommended tactical chain** (DEBUG ONLY).
 - **Highlight Guaranteed Tactical Drops** (DEBUG ONLY).
 - **Watchdog status en pantalla**: hoy el watchdog existe y funciona, pero **escupe al log**;
@@ -267,7 +278,7 @@ mayores sobre `distanciaMinima`.
 | La arena se sella tras el trigger y se abre al vencer | ✅ |
 | Al morir, checkpoint previo y poder retirarse | ✅ |
 | Reset limpia enemigos/drops sin tocar NPCs externos | ✅ |
-| Debug HUD: dar armas, estados, ammo, descarte, reset | ⚠️ sin arco ni Show Weapon State |
+| Debug HUD: dar armas, estados, ammo, descarte, reset | ⚠️ el arco y Show Weapon State ya están; falta el ammo, que vive en DCS |
 | Nada de debug accesible en Shipping | ✅ |
 
 ---

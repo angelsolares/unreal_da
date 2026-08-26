@@ -40,7 +40,8 @@ DATOS = CARPETA + "/DA_DA_DebugDestinos.DA_DA_DebugDestinos"
 AUTO_ABRIR = False
 
 TECLAS = ["Period", "Decimal"]
-PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY", "FINISHERS"]
+PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY", "FINISHERS",
+            "WEAPON"]
 
 # --- Geometria del panel.
 #
@@ -540,7 +541,7 @@ def dsl_dibujar():
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
          ' (+ 444.0 (* n %.1f))'
-         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 (select (== (Variables|Default|GetDbgTab) 2) 720.0 660.0))))) esc))' % FILA,
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 (select (== (Variables|Default|GetDbgTab) 2) 720.0 (select (== (Variables|Default|GetDbgTab) 7) 420.0 660.0)))))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -562,9 +563,9 @@ def dsl_dibujar():
         # Dos cierres: uno para el (else y otro para el (if.
         l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
         # WORLD, PLAYER, COMBAT y AI ya estan; BOSS y STORY pendientes.
-        etiqueta = '"%s"' % nombre if i < 7 else '"%s  --"' % nombre
+        etiqueta = '"%s"' % nombre if i < 8 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
-                       ORO if i < 7 else GRIS, 1.0))
+                       ORO if i < 8 else GRIS, 1.0))
     # El hover de las 7 pestañas y los dos TAM: aqui, que es el unico punto por
     # el que pasan todos los caminos y donde la tira ya esta pintada.
     l.append('  (CallFunction|DbgHoverTabs)')
@@ -589,7 +590,10 @@ def dsl_dibujar():
     l.append('                          (if (== (Variables|Default|GetDbgTab) 6)')
     l.append('                            (CallFunction|DbgTabFinishers)')
     l.append('                            (else')
-    l.append('                              (CallFunction|DbgTabPendiente)))))))))))))))')
+    l.append('                              (if (== (Variables|Default|GetDbgTab) 7)')
+    l.append('                                (CallFunction|DbgTabWeapon)')
+    l.append('                                (else')
+    l.append('                                  (CallFunction|DbgTabPendiente)))))))))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -2727,11 +2731,80 @@ def dsl_click():
     l.append('                        (CallFunction|DbgClickStory :MX MX :MY MY)')
     l.append('                        (else')
     l.append('                          (if (== (Variables|Default|GetDbgTab) 6)')
-    l.append('                            (CallFunction|DbgClickFinishers :MX MX :MY MY))))))))))))))')
+    l.append('                            (CallFunction|DbgClickFinishers :MX MX :MY MY)')
+    l.append('                            (else')
+    l.append('                              (if (== (Variables|Default|GetDbgTab) 7)')
+    l.append('                                (CallFunction|DbgClickWeapon :MX MX :MY MY))))))))))))))))')
     l.append('  (CallFunction|DbgCfgGuardar)')
     l.append('  (return false))')
     return "\n".join(l)
 
+
+
+# ---------------------------------------------------------------- WEAPON
+#
+# SHOW WEAPON STATE — §10 del PDF. Es la unica pestaña de SOLO LECTURA: no
+# tiene un boton, y por eso `DbgClickWeapon` esta vacia. Se deja igualmente
+# porque el despachador llama a una por pestaña y una funcion que no existe
+# no pasa el PREVUELO.
+#
+# LOS DATOS NO SE LEEN AQUI. El DSL no sabe construir el getter de una variable
+# de OTRO blueprint (ver la nota de `unreal-mcp-limites-blueprint`), asi que la
+# lectura vive en `BP_DA_PlayerCharacter.DbgEstadoArma`, que devuelve las cuatro
+# cadenas ya formateadas. Aqui solo se destructura y se pinta.
+#
+# LO QUE FALTA, y queda escrito en el propio panel para que no se olvide: el
+# ENEMIGO DE ORIGEN. El §10 lo pide, pero el pickup ocurre dentro de DCS y el
+# drop no guarda quien lo solto; ponerlo pide tocar `BP_DA_WeaponDropComponent`
+# y el camino de recogida, que es un asset de pago.
+
+
+def dsl_tab_weapon():
+    """SHOW WEAPON STATE — §10. Solo lectura: ni un boton.
+
+    Dos trampas del DSL, las dos pagadas aqui:
+      - `Utilities|IsValid` con ramas es TERMINAL: no admite NADA detras, ni
+        un (return false).
+      - y el cierre de cada rama va PEGADO a la ultima sentencia. Un ")" en su
+        propia linea se lee como sentencia suelta y da "Unexpected )".
+
+    Los datos NO se leen aqui: el DSL no sabe construir el getter de una
+    variable de OTRO blueprint, asi que la lectura vive en
+    `BP_DA_PlayerCharacter.DbgEstadoArma`, que devuelve las cuatro cadenas ya
+    formateadas. Aqui solo se destructuran y se pintan."""
+    l = ['(fn DbgTabWeapon ()', BIND_GEO]
+    l.append(texto(X(16.0), Y(60.0), '"WEAPON STATE"', ORO, 1.15))
+    l.append('  (bind j (Utilities|Casting|CastToBP_DA_PlayerCharacter'
+             ' (Game|GetPlayerPawn 0)))')
+    l.append('  (Utilities|IsValid j')
+    l.append('    (:"Is Valid"')
+    l.append('      (bind (arma tipo seg mot)'
+             ' (Class|BPDAPlayerCharacter|DbgEstadoArma j))')
+    filas = [(96.0, '"ARMA"', 'arma'),
+             (126.0, '"TIPO"', 'tipo'),
+             (156.0, '"SEGUNDOS CON ELLA"', 'seg'),
+             (186.0, '"ULTIMA SALIDA"', 'mot')]
+    for y, etiqueta, var in filas:
+        l.append('      ' + texto(X(16.0), Y(y), etiqueta, GRIS, 0.95).strip())
+        l.append('      ' + texto(X(250.0), Y(y), var, HUESO, 1.0).strip())
+    l.append('      ' + texto(X(16.0), Y(216.0),
+             '"ENEMIGO DE ORIGEN"', GRIS, 0.95).strip())
+    l.append('      ' + texto(X(250.0), Y(216.0),
+             '"-- sin registrar: el pickup vive en DCS"', GRIS, 1.0).strip())
+    # La ultima del "Is Valid": su cierre va pegado.
+    l.append('      ' + texto(X(16.0), Y(256.0),
+             '"ULTIMA SALIDA se escribe en Swap / Discard / Seal Break."',
+             GRIS, 0.85).strip() + ')')
+    l.append('    (:"Is Not Valid"')
+    # Y la ultima de todo cierra rama, IsValid y fn.
+    l.append('      ' + texto(X(16.0), Y(96.0),
+             '"No es el Malakh de DA."', GRIS, 1.0).strip() + ')))')
+    return "\n".join(l)
+
+def dsl_click_weapon():
+    """Sin botones: WEAPON solo lee. Ver la nota de arriba."""
+    return ('(fn DbgClickWeapon (MX MY)\n'
+            '  (return false))')
 
 def dsl_click_world():
     l = ['(fn DbgClickWorld (MX MY)',
@@ -2925,6 +2998,7 @@ def run():
         ("DbgTabBoss", dsl_tab_boss, []),
         ("DbgTabStory", dsl_tab_story, []),
         ("DbgTabFinishers", dsl_tab_finishers, []),
+        ("DbgTabWeapon", dsl_tab_weapon, []),
         ("DbgTabWorld", dsl_tab_world, []),
         ("DbgClickWorld", dsl_click_world, [("MX", "float", True),
                                             ("MY", "float", True)]),
@@ -2936,6 +3010,7 @@ def run():
         ("DbgClickBoss", dsl_click_boss, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickStory", dsl_click_story, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickFinishers", dsl_click_finishers, [("MX", "float", True), ("MY", "float", True)]),
+        ("DbgClickWeapon", dsl_click_weapon, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
@@ -2950,6 +3025,27 @@ def run():
     # de git. Paso de verdad el 2026-08-24: las cuatro funciones del resalte
     # y el sonido estaban escritas pero sin registrar, y la pasada murio en
     # DbgClick con 'CallFunction|DbgSonarClick does not exist'.
+    # PREVUELO 0: los PARENTESIS de cada funcion tienen que cuadrar.
+    #
+    # Anadido el 2026-08-26 despues de perder el panel TRES veces seguidas. El
+    # error del escritor es "Unexpected )" y NO dice en que funcion, asi que se
+    # busca a ciegas mientras el asset ya esta borrado y hay que sacarlo de git
+    # en cada intento. El fallo real estaba en `dsl_click`: al meter una pestana
+    # nueva en el despacho anidado sobraba un cierre, y la pestana nueva —que
+    # era lo sospechoso— estaba bien.
+    #
+    # Contar parentesis no valida la gramatica, pero pilla el 90% de los
+    # destrozos al tocar los despachos, que es donde de verdad se rompe.
+    descuadradas = {}
+    for nombre, hacer, _p in grafos:
+        cuerpo = hacer()
+        abre, cierra = cuerpo.count("("), cuerpo.count(")")
+        if abre != cierra:
+            descuadradas[nombre] = {"abre": abre, "cierra": cierra}
+    if descuadradas:
+        return {'ABORTADO': 'parentesis descuadrados; no se ha tocado el asset',
+                'funciones': descuadradas}
+
     registradas = {n for n, _, _ in grafos}
     faltan = {}
     for nombre, hacer, _p in grafos:
