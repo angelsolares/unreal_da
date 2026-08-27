@@ -284,7 +284,15 @@ function dictaminar(encuentro, calibracion, armas, porPolitica, n) {
   }
 
   // --- 6. Los drops garantizados llegan a las manos ---
-  const garantizados = encuentro.enemigos.filter(e => e.drop?.principal || e.drop?.secundaria);
+  //
+  // GARANTIZADO es permiso de mano Y probabilidad entera. Un Mercy Drop
+  // (probabilidad 0, piedad activa) tiene permiso pero NO promete llegar:
+  // solo aparece si el jugador va mal, y exigirle el 70% de recogidas es
+  // pedirle a la red de seguridad que se use en cada partida. Salio el 26/08
+  // al adoptar la piedad del §8: la puerta lo marco en rojo siendo la piedad
+  // exactamente lo que debia ser.
+  const garantizados = encuentro.enemigos.filter(e =>
+    (e.drop?.principal || e.drop?.secundaria) && (e.drop?.probabilidad ?? 1) >= 1);
   if (garantizados.length && vent) {
     const llegan = garantizados.map(e => {
       const veces = vent.resultados.filter(r =>

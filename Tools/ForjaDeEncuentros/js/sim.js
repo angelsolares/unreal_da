@@ -1132,10 +1132,12 @@ export class Simulacion {
     }
     // EL DIRECTOR DEL §8, espejo exacto de `AplicarPolitica` en el motor
     // (BP_DA_WeaponDropComponent, 25/08): suelta si el dado entra en la
-    // probabilidad O si la piedad esta activa y el jugador va mal — mucho
-    // tiempo sin tocar una temporal, o la vida por debajo del umbral. La
-    // formula es OR y no AND a proposito, y esta documentada alli: ante la
-    // duda, repartir. Los umbrales salen de reglas.piedad, que es la misma
+    // probabilidad O si la piedad esta activa y el jugador va MAL DE VERDAD:
+    // mucho tiempo sin tocar una temporal Y la vida bajo el umbral. El AND es
+    // del PDF y ademas esta medido (26/08): con OR la piedad saltaba en el 76%
+    // de las partidas de lluvia — un drop estandar disfrazado, no una red de
+    // seguridad. Con AND salta en el 5-10%, solo tarde y herido, y la mitad de
+    // esas partidas se ganan. Los umbrales salen de reglas.piedad, la misma
     // fuente que uso el generador del motor: si cambian, cambian en los dos.
     const d = E.drop || {};
     const prob = d.probabilidad ?? 1.0;
@@ -1146,7 +1148,7 @@ export class Simulacion {
         (p.segundosSinArma ?? 35);
       const vidaBaja = M.hp <
         this.cal.malakh.hp * (p.vidaPorDebajoDe ?? 0.5);
-      const piedad = !!d.piedad && (sinArma || vidaBaja);
+      const piedad = !!d.piedad && sinArma && vidaBaja;
       if (!piedad && !this.azar.probabilidad(prob)) {
         this._evento('sinDrop', { agente: E.id, ranura: E.drop, motivo: 'dado' });
         return;

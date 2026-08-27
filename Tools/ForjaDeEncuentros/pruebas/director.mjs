@@ -3,8 +3,8 @@
 //   node pruebas/director.mjs
 //
 // El contrato que se comprueba es el del MOTOR (25/08): suelta si el dado entra
-// en ProbabilidadDrop O si PiedadActiva y el jugador va mal — mucho tiempo sin
-// tocar una temporal, o la vida bajo el umbral. Y una garantia extra que es
+// en ProbabilidadDrop O si PiedadActiva y el jugador va mal de verdad: mucho
+// tiempo sin tocar una temporal Y la vida bajo el umbral (el AND es del PDF). Y una garantia extra que es
 // nuestra: el camino por defecto (probabilidad 1.0, sin piedad) NO tira ningun
 // dado, asi que las recetas de siempre son BIT-IDENTICAS con y sin director.
 
@@ -72,9 +72,14 @@ function piedadCon(hp, tUltimo, t) {
   s._quizaSoltarArma(E);
   return s.drops.length > 0;
 }
-comprobar('vida baja dispara la piedad', piedadCon(30, 5, 10) === true);
-comprobar('mucho tiempo sin arma dispara la piedad', piedadCon(90, -1, 40) === true);
-comprobar('con vida y arma reciente, no hay piedad', piedadCon(90, 5, 10) === false);
+// La formula es AND, como el PDF ('mucho tiempo sin herramienta Y presion',
+// alta'): medido el 26/08, con OR la piedad saltaba en el 76% de las partidas
+// de lluvia-del-firmamento — eso no es una red de seguridad, es un drop
+// estandar. Con AND salta en el 5-10%, solo cuando vas tarde Y herido.
+comprobar('vida baja SOLA no dispara la piedad', piedadCon(30, 5, 10) === false);
+comprobar('tiempo sin arma SOLO no dispara la piedad', piedadCon(90, -1, 40) === false);
+comprobar('las dos juntas, si', piedadCon(30, -1, 40) === true);
+comprobar('con vida y arma reciente, nada', piedadCon(90, 5, 10) === false);
 comprobar('la piedad apagada no reparte', (() => {
   const s = new Simulacion(duelo({ principal: true, secundaria: false,
     probabilidad: 0, piedad: false }), cal, armas, crearPolitica('cercano'), 5000);

@@ -26,11 +26,11 @@ la separa del juego son dos datos que a `BP_DA_Arena` le faltan. Detalle en el �
 | 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
 | 3.2 | Ataque de descarte por familia | 🟢 **5 de 5** (el escudo, pendiente de ver el rebote en PIE) |
 | 4 | Arsenal de oportunidad | 🟢 las 5 familias existen; **counters medidos el 25/08**, 3 de 5 en banda y las otras 2 con diagnóstico |
-| 4.1 | Reglas de pickup | 🟠 falta la regla de dos manos vs. escudo |
+| 4.1 | Reglas de pickup | 🟢 completa: la regla de dos manos es del 25/08 (52ddd94) |
 | 5 | Orden de bajas implícito | 🟠 el Arquero ya reacciona a la distancia; falta que distinga el arma |
 | 6 | Recetas de encuentro | 🟢 **5 de 5 montadas y en el motor** (26/08, banda 70-94% con espada sola); falta jugarlas |
 | 7 | Arenas selladas | 🟢 completo |
-| 8 | Sistema de drops | 🔴 sin las 4 políticas |
+| 8 | Sistema de drops | 🟢 las 4 políticas: motor 25/08, simulador+exportador+piedad AND 26/08 |
 | 9 | Feedback visual/audio/UX | 🟢 casi; falta VFX del descarte |
 | 10 | Integración con DA Debug HUD | 🟠 faltan 6 entradas |
 | 11 | Guía técnica / arquitectura | 🟢 adaptado a DCS, sin sistemas paralelos |
@@ -112,10 +112,26 @@ Esto sigue bloqueando el criterio del §12 *«un encounter de prueba con un orde
 ventajoso pero ganable sólo con espada»* — pero ya no por no saber qué construir, sino por no
 tenerlo construido.
 
-### 3. El director de drops (§8)
+### 3. ~~El director de drops (§8)~~ — motor el 25/08, camino completo el 26/08
 
-Las cuatro políticas —Guaranteed Tactical / Standard Opportunity / **Mercy Drop** / No Drop—
-no existen. `BP_DA_WeaponDropComponent` tiene **dos booleanos por mano y nada más**:
+**El motor lo tenía desde el 25/08** (commit `52ddd94`, posterior a esta auditoría — que por
+eso lo daba como no hecho): `AplicarPolitica` corre al morir el dueño, y las cuatro políticas
+caben en dos números por instancia — `ProbabilidadDrop` (1.0 garantizado, 0.5 oportunidad,
+0.0 nada) y `PiedadActiva`. El 26/08 se completó lo que faltaba del camino:
+
+- **El simulador lo modela** (espejo de la fórmula del motor), con una garantía: el camino
+  por defecto no tira ningún dado, así que las recetas de siempre son bit-idénticas.
+- **El exportador escribe los cuatro campos** en el componente de cada enemigo — tapando de
+  paso un agujero: hasta hoy nadie escribía `e["drop"]` y los niveles usaban los defectos
+  de clase, dijera lo que dijera la receta.
+- **La piedad es AND, no OR** («mucho tiempo sin herramienta Y presión alta», que es lo que
+  dice el PDF): medido, con OR saltaba en el 76% de las partidas de lluvia-del-firmamento —
+  un drop estándar disfrazado. Con AND salta en el 5-10%, solo tarde y herido, y la mitad de
+  esas partidas se ganan. Corregido en el generador (`director_drops.py`) y en el grafo.
+- **Primera adopción**: el segundo escudero de lluvia-del-firmamento es un Mercy Drop.
+- `pruebas/director.mjs` en `npm test`: las cuatro políticas y la fórmula, 11 de 11.
+
+La tabla de abajo era el estado ANTERIOR (dos booleanos por mano), y se deja como registro:
 
 ✅ **VERIFICADO leyendo los cinco assets:**
 
@@ -174,12 +190,16 @@ Mientras no exista un «guardar arma temporal», **cada drop es también una tra
 recoger el arco antes de una oleada de melé te deja peor que no haberlo tocado. Y eso bloquea
 el director de drops del §8: repartiría trampas sin saberlo.
 
-### La regla de dos manos vs. escudo (§4.1)
+### ~~La regla de dos manos vs. escudo (§4.1)~~ — hecha el 25/08
 
 El PDF: *«Definir explícitamente qué armas a dos manos obligan a soltar el escudo.»*
 
-✅ **VERIFICADO en PIE:** al dar la Lanza —que es a dos manos— `BP_DI_WoodenShield_C` **sigue
-equipado**. La regla no está definida ni en un sitio ni en otro.
+**Hecha en el mismo commit `52ddd94`** (posterior a esta auditoría): la regla vive en
+`BP_DA_PlayerCharacter.AplicarReglaDosManos`, colgada de `SustituirArmaTemporal` — el embudo
+único del canje. Es SIMÉTRICA a propósito: la ranura del escudo está escondida exactamente
+cuando el arma en mano es a dos manos; escrita como «si es a dos manos, escóndelo» el escudo
+se perdía para siempre al tocar una lanza. Los data assets ya traían `TwoHanded` (Lanza y
+Trompeta True) y DCS no se toca. El párrafo de arriba era el diagnóstico del 24/08.
 
 ### La corrupción no progresa (§3.1)
 
