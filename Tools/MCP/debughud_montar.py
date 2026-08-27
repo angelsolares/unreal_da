@@ -1614,8 +1614,14 @@ def dsl_forzar_descarte():
     """FORCE DISCARD ATTACK — §10.
 
     Llama al mismo `ArrojarLanza` que la tecla, asi que respeta el enrutado por
-    familia: la lanza se arroja, la trompeta se clava, y con cualquier otra no
-    pasa nada."""
+    familia. Desde el 24/08 estan las CINCO del §3.2 y ninguna arma temporal se
+    queda sin remate: la lanza se arroja, el estandarte se clava, el arco gasta
+    las flechas en la Lluvia del Firmamento, el escudo planta el Muro del
+    Escudero y CUALQUIER OTRA cae al golpe de suelo por el `else` final
+    —verificado sobre el grafo: cinco ramas, cinco montajes—.
+
+    Por eso el §10 no necesita un boton "Force Shield Discard" aparte: con el
+    escudo en la mano, este ES el descarte del escudo."""
     return jugador_accion(
         "DbgForzarDescarte",
         '      (Class|BPDAPlayerCharacter|ArrojarLanza j)\n',

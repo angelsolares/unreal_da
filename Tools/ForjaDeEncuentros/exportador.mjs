@@ -369,10 +369,32 @@ for e in D["enemigos"]:
         esperado = "Oleada" + str(int(e["oleada"]))
         if esperado not in [str(t) for t in a.tags]:
             informe["sinOleadas"].append(e["etiqueta"])
+    # EL AURA DEL PORTADOR SE COMPRUEBA, NO SE SUPONE. Hasta el 26/08 aqui habia
+    # un aviso fijo diciendo que el aura "no existe todavia": era falso desde el
+    # 23/08 y mandaba a desconfiar de la unica receta que depende de ella. Existe
+    # (BP_DA_AuraComponent, en Blueprints/Combat/) y el simulador la modela con
+    # radio 1200 y +15 PLANO al dano de cada aliado vivo dentro del radio
+    # (calibracion.aura). Lo que se hace ahora es LEER el componente del actor
+    # colocado y gritar solo si falta o si no dice lo que el simulador asumio.
     if a and e["arquetipo"] == "portador_del_estandarte":
-        informe["avisos"].append(
-            "OJO con " + e["etiqueta"] + ": el aura de buff/debuff del Inspector no existe todavia. "
-            "Hoy pelea como un Vigilante, asi que no midas nada que dependa de ese buff.")
+        aura = next((c for c in a.get_components_by_class(unreal.ActorComponent)
+                     if "Aura" in c.get_class().get_name()), None)
+        if aura is None:
+            informe["avisos"].append(
+                "OJO con " + e["etiqueta"] + ": el Portador colocado NO lleva "
+                "BP_DA_AuraComponent, asi que pelea como un Vigilante y la receta "
+                "no mide lo que cree medir.")
+        else:
+            leido = {"radio": aura.get_editor_property("RadioAura"),
+                     "bonificacion": aura.get_editor_property("Bonificacion")}
+            informe["aura"] = leido
+            if (abs(leido["radio"] - 1200.0) > 0.5
+                    or abs(leido["bonificacion"] - 15.0) > 0.5):
+                informe["avisos"].append(
+                    "EL AURA DE " + e["etiqueta"] + " NO ES LA SIMULADA: el motor "
+                    "dice radio " + str(leido["radio"]) + " y +"
+                    + str(leido["bonificacion"]) + ", el simulador asume 1200 y +15. "
+                    "Los porcentajes de la receta no valen hasta cuadrarlo.")
 
 # EL GAMEMODE DEL NIVEL. Sin esto sale BP_CombatCharacter -el personaje de demo
 # de DCS- en vez de Malakh, y entonces no estas probando NADA de lo tuyo: ni la
@@ -501,15 +523,35 @@ for sdef in D["solidos"]:
 # Los actores de navegacion NO cuentan como "ajenos": los crea el motor solo, en
 # cuanto se coloca el volumen, y contarlos hacia que la propia exportacion se
 # convenciera de que el nivel ya estaba habitado y se saltara el suelo y la luz.
+#
+# NI CUENTAN LOS DE DEBUG, Y ESTO COSTO UN NIVEL ENTERO. El 2026-08-26,
+# L_Forja_romper-la-linea era el unico de los cinco SIN suelo y SIN luz: el
+# jugador y los de mele caian a z -293437 nada mas darle a Play, y solo se
+# salvaban los dos arqueros porque estaban sobre plataformas. El culpable era un
+# BP_DA_MedidorDano que se habia quedado guardado en el mapa de una sesion
+# anterior —PIE guarda el nivel sin que toques Guardar— y que hacia creer a esta
+# comprobacion que el mapa ya estaba vestido. Un actor de herramienta no viste
+# nada: si lleva el tag 'debug', no cuenta.
+#
+# (Y OJO AL EDITAR ESTE BLOQUE: es python DENTRO de un literal de plantilla de
+# JS. Una comilla invertida aqui cierra el literal y rompe el fichero entero.)
 IGNORAR = ("RecastNavMesh", "AbstractNavData", "NavMeshBoundsVolume",
            "NavigationData", "WorldPartitionMiniMap", "WorldDataLayers")
 ajenos = [a for a in subsys.get_all_level_actors()
           if D["marca"] not in [str(t) for t in a.tags]
+          and "debug" not in [str(t) for t in a.tags]
           and not a.get_actor_label().startswith("Forja_")
           and a.get_class().get_name() not in IGNORAR]
 if ajenos:
+    # SE DICE FUERTE Y CON NOMBRES. Un nivel sin suelo no es "un nivel con un
+    # aviso": es un nivel INJUGABLE, y el aviso viejo —una linea sin nombres, en
+    # medio de otras diez— se leyo y no se entendio.
     informe["avisos"].append(
-        "El nivel ya tiene %d actores propios: NO se ha puesto suelo ni luz." % len(ajenos))
+        "SIN SUELO Y SIN LUZ: el nivel tiene %d actor(es) que no son de la Forja, "
+        "asi que se ha dado por vestido. TAL COMO QUEDA, EL JUGADOR SE CAE AL VACIO "
+        "al darle a Play. Los culpables: %s. Quitalos (o etiquetalos 'debug' si son "
+        "herramientas) y reexporta."
+        % (len(ajenos), ", ".join(a.get_actor_label() for a in ajenos[:6])))
 else:
     E = D["escena"]
     plano = unreal.EditorAssetLibrary.load_asset("/Engine/BasicShapes/Plane.Plane")
@@ -627,23 +669,27 @@ print(json.dumps(informe))
   };
   // LAS OLEADAS SON PARTE DEL ENCUENTRO, NO UN ADORNO.
   //
-  // `BP_DA_Arena` de hoy sabe sellar, vencer, purgar, reponer y vigilar, pero
-  // NO sabe escalonar: sus propiedades son RadioArena, ReintentarAlMorir,
-  // AutoDetectarEnemigos y Enemigos, y ninguna dice cuando entra cada uno
-  // (leido del CDO el 2026-08-25). Mientras no exista, exportar una receta con
-  // oleadas coloca a los cinco de golpe — que es un encuentro DISTINTO y, para
-  // "Romper la linea", medido: 0% con espada sola contra el 94% escalonado.
+  // `BP_DA_Arena` YA SABE ESCALONAR desde el 2026-08-25: tiene
+  // `RetardoEntreOleadas` (publico), `OleadasEnemigos`, `OleadaActual` y
+  // `MaxOleada`, y las funciones LeerOleadas / AplicarOleadas /
+  // PedirSiguienteOleada / EntrarOleada. El numero de oleada NO viaja en una
+  // variable del AI —los cinco heredan de `BP_BaseAI`, que es de DCS— sino en
+  // un Tag del actor (`Oleada2`, `Oleada3`…; sin tag = primera).
   //
-  // Se dice fuerte y se pone al principio del informe, porque el fallo de ayer
-  // fue justo ese: exportar un diorama creyendo que era un encuentro.
+  // Por eso el aviso de abajo sigue vivo pero cambia de sentido: ya no dice
+  // "falta construirlo", dice "el TAG no ha llegado al actor". Y hay que
+  // decirlo fuerte, porque sin escalonado se colocan los cinco de golpe — un
+  // encuentro DISTINTO y, para "Romper la linea", medido: 0% con espada sola
+  // contra el 94% escalonado.
   informe.oleadas = plan.oleadas;
   if (plan.oleadas.length && informe.sinOleadas?.length) {
     informe.avisos.unshift(
       `EL ESCALONADO NO HA VIAJADO: ${informe.sinOleadas.length} de ${plan.enemigos.length} enemigos se han `
       + `colocado sin numero de oleada porque su Blueprint no tiene la propiedad. `
       + `Tal como queda, los ${plan.enemigos.length} entran a la vez, que NO es el encuentro simulado. `
-      + `Hace falta un entero "OleadaIndice" en el AI y que BP_DA_Arena active la oleada N+1 cuando la N `
-      + `este limpia, esperando "RetardoEntreOleadas" segundos.`);
+      + `BP_DA_Arena SI sabe escalonar (RetardoEntreOleadas + LeerOleadas/EntrarOleada): lo que ha `
+      + `fallado es que el Tag "OleadaN" no ha quedado escrito en el actor, asi que la arena los lee `
+      + `a todos como primera oleada. Reexporta y vuelve a mirar este informe.`);
   }
   // LOS DROPS DE LA RECETA, EN SU PROPIA LLAMADA. Entre esta peticion y la
   // anterior el editor ha tickeado y los actores recien spawneados ya han
