@@ -1,0 +1,440 @@
+{
+ "_que_es": "Las marcas de los 10 takedowns single: sacudidas y encuadres de camara.",
+ "_por_que": "Content/DarkAngels/Animations/ esta en .gitignore por ser derivado de un pack de pago. Esto versiona el TRABAJO (los tiempos y los numeros) sin versionar el asset.",
+ "_como_reaplicar": "node ue.mjs script finisher_marcas.py",
+ "_ojo": "sonidos_cues_sin_ordenar NO se puede casar con sonidos_tiempos: el listado da tiempos sin propiedades y los objetos propiedades sin tiempo. Va solo de referencia.",
+ "_orden_campos_camara": [
+  "Lado",
+  "Frente",
+  "Alto",
+  "Mira",
+  "FOV",
+  "Desfase"
+ ],
+ "takedowns": {
+  "01": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_01_Montage",
+   "duracion": 3.6333,
+   "sacudidas": [
+    1.64
+   ],
+   "camara": [
+    {
+     "t": 0.4671,
+     "Lado": 210.0,
+     "Frente": -25.0,
+     "Alto": 28.0,
+     "Mira": 16.0,
+     "FOV": 78.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.4986,
+     "Lado": 210.0,
+     "Frente": 30.0,
+     "Alto": -1.0,
+     "Mira": -19.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    1.6398
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword"
+   ]
+  },
+  "02": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_02_Montage",
+   "duracion": 4.9,
+   "sacudidas": [
+    0.3702,
+    2.3097
+   ],
+   "camara": [
+    {
+     "t": 0.1739,
+     "Lado": 175.0,
+     "Frente": -25.0,
+     "Alto": 38.0,
+     "Mira": 26.0,
+     "FOV": 78.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.9229,
+     "Lado": 290.0,
+     "Frente": 30.0,
+     "Alto": 2.0,
+     "Mira": -16.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.3471,
+    0.3644,
+    2.3039,
+    2.3212
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_SwingSmall",
+    "CUE_HitSword",
+    "CUE_SwingSmall",
+    "CUE_HitSword"
+   ]
+  },
+  "03": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_03_Montage",
+   "duracion": 5.3,
+   "sacudidas": [
+    0.463,
+    1.225,
+    1.992
+   ],
+   "camara": [
+    {
+     "t": 0.4316,
+     "Lado": 170.0,
+     "Frente": -25.0,
+     "Alto": 37.0,
+     "Mira": 25.0,
+     "FOV": 66.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.1371,
+     "Lado": 170.0,
+     "Frente": 10.0,
+     "Alto": 20.0,
+     "Mira": 5.0,
+     "FOV": 59.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.8863,
+     "Lado": 205.0,
+     "Frente": 30.0,
+     "Alto": -12.0,
+     "Mira": -30.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.4628,
+    1.2245,
+    1.9925
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword",
+    "CUE_HitSword",
+    "CUE_HitSword"
+   ]
+  },
+  "04": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_04_Montage",
+   "duracion": 4.9,
+   "sacudidas": [
+    0.503,
+    1.467,
+    3.164
+   ],
+   "camara": [
+    {
+     "t": 0.3702,
+     "Lado": 200.0,
+     "Frente": -25.0,
+     "Alto": 39.0,
+     "Mira": 27.0,
+     "FOV": 78.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.109,
+     "Lado": 215.0,
+     "Frente": 10.0,
+     "Alto": 25.0,
+     "Mira": 10.0,
+     "FOV": 75.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 2.8292,
+     "Lado": 230.0,
+     "Frente": 30.0,
+     "Alto": -3.0,
+     "Mira": -21.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.5029,
+    1.4667,
+    3.1524
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword",
+    "CUE_HitSword",
+    "CUE_HitSword"
+   ]
+  },
+  "05": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_05_Montage",
+   "duracion": 4.1333,
+   "sacudidas": [
+    0.473,
+    3.024
+   ],
+   "camara": [
+    {
+     "t": 0.2175,
+     "Lado": 195.0,
+     "Frente": -25.0,
+     "Alto": 38.0,
+     "Mira": 26.0,
+     "FOV": 78.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.6667,
+     "Lado": 260.0,
+     "Frente": 10.0,
+     "Alto": 12.0,
+     "Mira": -3.0,
+     "FOV": 75.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 2.6657,
+     "Lado": 345.0,
+     "Frente": 30.0,
+     "Alto": 1.0,
+     "Mira": -17.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.4729,
+    3.0244
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword",
+    "CUE_HitSword"
+   ]
+  },
+  "06": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_06_Montage",
+   "duracion": 3.9667,
+   "sacudidas": [
+    1.281,
+    2.024
+   ],
+   "camara": [
+    {
+     "t": 0.1968,
+     "Lado": 170.0,
+     "Frente": -25.0,
+     "Alto": 33.0,
+     "Mira": 21.0,
+     "FOV": 68.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.0146,
+     "Lado": 180.0,
+     "Frente": 10.0,
+     "Alto": 63.0,
+     "Mira": 48.0,
+     "FOV": 75.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.8604,
+     "Lado": 245.0,
+     "Frente": 30.0,
+     "Alto": -18.0,
+     "Mira": -36.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    1.2809,
+    2.0239
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword",
+    "CUE_HitSword"
+   ]
+  },
+  "07": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_07_Montage",
+   "duracion": 3.6333,
+   "sacudidas": [
+    0.394,
+    1.824
+   ],
+   "camara": [
+    {
+     "t": 0.7667,
+     "Lado": 195.0,
+     "Frente": -25.0,
+     "Alto": 37.0,
+     "Mira": 25.0,
+     "FOV": 78.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.8282,
+     "Lado": 245.0,
+     "Frente": 30.0,
+     "Alto": 4.0,
+     "Mira": -14.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.3943,
+    1.8239
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword",
+    "CUE_HitSword"
+   ]
+  },
+  "08": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_08_Montage",
+   "duracion": 4.2333,
+   "sacudidas": [
+    0.35,
+    1.242,
+    2.529
+   ],
+   "camara": [
+    {
+     "t": 0.255,
+     "Lado": 225.0,
+     "Frente": -25.0,
+     "Alto": 36.0,
+     "Mira": 24.0,
+     "FOV": 78.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 0.7337,
+     "Lado": 215.0,
+     "Frente": 10.0,
+     "Alto": 34.0,
+     "Mira": 19.0,
+     "FOV": 75.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 2.3333,
+     "Lado": 280.0,
+     "Frente": 30.0,
+     "Alto": 4.0,
+     "Mira": -14.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.3497,
+    1.2424,
+    2.529
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_HitSword",
+    "CUE_HitSword",
+    "CUE_HitSword"
+   ]
+  },
+  "09": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_09_Montage",
+   "duracion": 4.6333,
+   "sacudidas": [
+    2.179
+   ],
+   "camara": [
+    {
+     "t": 0.4319,
+     "Lado": 170.0,
+     "Frente": -25.0,
+     "Alto": 35.0,
+     "Mira": 23.0,
+     "FOV": 62.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 1.2506,
+     "Lado": 170.0,
+     "Frente": 10.0,
+     "Alto": 5.0,
+     "Mira": -10.0,
+     "FOV": 75.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 2.3095,
+     "Lado": 215.0,
+     "Frente": 30.0,
+     "Alto": -5.0,
+     "Mira": -23.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.934,
+    2.1785
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_SwingLarge",
+    "CUE_HitSword"
+   ]
+  },
+  "10": {
+   "montage": "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_10_Montage",
+   "duracion": 2.6,
+   "sacudidas": [
+    0.996
+   ],
+   "camara": [
+    {
+     "t": 0.6834,
+     "Lado": 170.0,
+     "Frente": -25.0,
+     "Alto": 33.0,
+     "Mira": 21.0,
+     "FOV": 54.0,
+     "Desfase": 61.0
+    },
+    {
+     "t": 0.9039,
+     "Lado": 230.0,
+     "Frente": 30.0,
+     "Alto": 0.0,
+     "Mira": -18.0,
+     "FOV": 85.0,
+     "Desfase": 61.0
+    }
+   ],
+   "sonidos_tiempos": [
+    0.3526,
+    0.8243,
+    0.9958
+   ],
+   "sonidos_cues_sin_ordenar": [
+    "CUE_SwingSmall",
+    "CUE_SwingSmall",
+    "CUE_HitSword"
+   ]
+  }
+ }
+}
