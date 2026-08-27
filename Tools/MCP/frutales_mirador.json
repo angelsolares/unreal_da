@@ -1,0 +1,181 @@
+{
+ "_que_es": "Frutales de Mirador (27/08)",
+ "arboles": [
+  {
+   "actor": "Mirador_Frutal_0",
+   "malla": "SM_Cherry_Tree_01",
+   "loc": [
+    -1439,
+    -210,
+    -45
+   ],
+   "escala": 1.11,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_1",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -3219,
+    -1002,
+    -45
+   ],
+   "escala": 1.226,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_2",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    3158,
+    -1294,
+    -45
+   ],
+   "escala": 1.134,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_3",
+   "malla": "SM_Lemon_Tree_02",
+   "loc": [
+    526,
+    -1455,
+    -45
+   ],
+   "escala": 1.139,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_4",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    2916,
+    -533,
+    -45
+   ],
+   "escala": 1.31,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_5",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    1324,
+    -682,
+    -45
+   ],
+   "escala": 0.993,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_6",
+   "malla": "SM_Lemon_Tree_05",
+   "loc": [
+    -424,
+    -2697,
+    -45
+   ],
+   "escala": 1.32,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_7",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -2021,
+    -1554,
+    -45
+   ],
+   "escala": 1.341,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_8",
+   "malla": "SM_Cherry_Tree_01",
+   "loc": [
+    -1948,
+    -2455,
+    -45
+   ],
+   "escala": 1.041,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_9",
+   "malla": "SM_Orange_Tree_03",
+   "loc": [
+    1699,
+    -2427,
+    -45
+   ],
+   "escala": 1.092,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_10",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    -699,
+    -1403,
+    -45
+   ],
+   "escala": 1.242,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_11",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    2883,
+    704,
+    -45
+   ],
+   "escala": 1.199,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_12",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -1016,
+    -768,
+    -45
+   ],
+   "escala": 1.301,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_13",
+   "malla": "SM_Cherry_Tree_01",
+   "loc": [
+    -2687,
+    -96,
+    -45
+   ],
+   "escala": 1.115,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_14",
+   "malla": "SM_Pomegranate_Tree_01",
+   "loc": [
+    -1074,
+    -2360,
+    -45
+   ],
+   "escala": 1.165,
+   "sobre": "Mirador_Suelo"
+  },
+  {
+   "actor": "Mirador_Frutal_15",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -3228,
+    1156,
+    -45
+   ],
+   "escala": 1.291,
+   "sobre": "Mirador_Suelo"
+  }
+ ]
+}

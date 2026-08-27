@@ -1,0 +1,146 @@
+{
+ "_que_es": "Frutales de Gazebo, capa media al estilo del Jardin (27/08)",
+ "_como_quitar": "borrar los actores cuya etiqueta empiece por Gazebo_Frutal_",
+ "arboles": [
+  {
+   "actor": "Gazebo_Frutal_0",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -972,
+    1943,
+    -48
+   ],
+   "escala": 1.198
+  },
+  {
+   "actor": "Gazebo_Frutal_1",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    -1057,
+    -1473,
+    380
+   ],
+   "escala": 1.121
+  },
+  {
+   "actor": "Gazebo_Frutal_2",
+   "malla": "SM_Orange_Tree_03",
+   "loc": [
+    -2866,
+    -657,
+    -48
+   ],
+   "escala": 1.319
+  },
+  {
+   "actor": "Gazebo_Frutal_3",
+   "malla": "SM_Lemon_Tree_02",
+   "loc": [
+    3133,
+    1195,
+    -48
+   ],
+   "escala": 1.268
+  },
+  {
+   "actor": "Gazebo_Frutal_4",
+   "malla": "SM_Orange_Tree_01",
+   "loc": [
+    1722,
+    808,
+    -48
+   ],
+   "escala": 1.07
+  },
+  {
+   "actor": "Gazebo_Frutal_5",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    -3677,
+    1888,
+    -48
+   ],
+   "escala": 1.242
+  },
+  {
+   "actor": "Gazebo_Frutal_6",
+   "malla": "SM_Orange_Tree_03",
+   "loc": [
+    1751,
+    1725,
+    -48
+   ],
+   "escala": 0.979
+  },
+  {
+   "actor": "Gazebo_Frutal_7",
+   "malla": "SM_Pomegranate_Tree_01",
+   "loc": [
+    -3058,
+    -3153,
+    -48
+   ],
+   "escala": 1.253
+  },
+  {
+   "actor": "Gazebo_Frutal_8",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -2686,
+    -1414,
+    -48
+   ],
+   "escala": 1.119
+  },
+  {
+   "actor": "Gazebo_Frutal_9",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    1658,
+    -249,
+    -48
+   ],
+   "escala": 1.179
+  },
+  {
+   "actor": "Gazebo_Frutal_10",
+   "malla": "SM_Orange_Tree_03",
+   "loc": [
+    1697,
+    -2092,
+    -48
+   ],
+   "escala": 1.09
+  },
+  {
+   "actor": "Gazebo_Frutal_11",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    -1476,
+    3835,
+    -48
+   ],
+   "escala": 1.132
+  },
+  {
+   "actor": "Gazebo_Frutal_12",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    1497,
+    3218,
+    -48
+   ],
+   "escala": 1.14
+  },
+  {
+   "actor": "Gazebo_Frutal_13",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -1903,
+    -2269,
+    -48
+   ],
+   "escala": 1.231
+  }
+ ]
+}

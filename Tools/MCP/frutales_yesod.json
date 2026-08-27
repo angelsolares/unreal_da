@@ -1,0 +1,138 @@
+{
+ "_que_es": "Frutales de Yesod, capa media al estilo del Jardin (27/08)",
+ "_como_quitar": "borrar los actores cuya etiqueta empiece por Yesod_Frutal_",
+ "arboles": [
+  {
+   "actor": "Yesod_Frutal_0",
+   "malla": "SM_Orange_Tree_03",
+   "loc": [
+    -388,
+    3243,
+    -60
+   ],
+   "escala": 1.088,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_1",
+   "malla": "SM_Orange_Tree_01",
+   "loc": [
+    -1435,
+    -2219,
+    -60
+   ],
+   "escala": 1.172,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_2",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    499,
+    2227,
+    -60
+   ],
+   "escala": 1.242,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_3",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -394,
+    -1086,
+    -60
+   ],
+   "escala": 1.022,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_4",
+   "malla": "SM_Lemon_Tree_02",
+   "loc": [
+    -2021,
+    158,
+    -60
+   ],
+   "escala": 1.134,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_5",
+   "malla": "SM_Orange_Tree_01",
+   "loc": [
+    -867,
+    2713,
+    -60
+   ],
+   "escala": 1.002,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_6",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    1131,
+    -1707,
+    -60
+   ],
+   "escala": 1.176,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_7",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    1725,
+    692,
+    -60
+   ],
+   "escala": 1.002,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_8",
+   "malla": "SM_Lemon_Tree_05",
+   "loc": [
+    1591,
+    2918,
+    -60
+   ],
+   "escala": 1.331,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_9",
+   "malla": "SM_Lemon_Tree_02",
+   "loc": [
+    2524,
+    -395,
+    -60
+   ],
+   "escala": 1.12,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_10",
+   "malla": "SM_Cherry_Tree_01",
+   "loc": [
+    -3066,
+    750,
+    -60
+   ],
+   "escala": 1.149,
+   "sobre": "Yesod_Suelo"
+  },
+  {
+   "actor": "Yesod_Frutal_11",
+   "malla": "SM_Peach_Tree_01",
+   "loc": [
+    -1736,
+    2236,
+    -60
+   ],
+   "escala": 1.014,
+   "sobre": "Yesod_Suelo"
+  }
+ ]
+}

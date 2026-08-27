@@ -1,0 +1,95 @@
+{
+ "_que_es": "Frutales del Elevador, solo en las terrazas (27/08)",
+ "arboles": [
+  {
+   "actor": "Elevador_Frutal_0",
+   "malla": "SM_Orange_Tree_01",
+   "loc": [
+    1104,
+    7661,
+    -264
+   ],
+   "escala": 1.063
+  },
+  {
+   "actor": "Elevador_Frutal_1",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    361,
+    4433,
+    -243
+   ],
+   "escala": 1.071
+  },
+  {
+   "actor": "Elevador_Frutal_2",
+   "malla": "SM_Cherry_Tree_01",
+   "loc": [
+    152,
+    11076,
+    44
+   ],
+   "escala": 1.085
+  },
+  {
+   "actor": "Elevador_Frutal_3",
+   "malla": "SM_Lemon_Tree_05",
+   "loc": [
+    865,
+    10266,
+    44
+   ],
+   "escala": 1.076
+  },
+  {
+   "actor": "Elevador_Frutal_4",
+   "malla": "SM_Orange_Tree_01",
+   "loc": [
+    874,
+    12027,
+    44
+   ],
+   "escala": 1.157
+  },
+  {
+   "actor": "Elevador_Frutal_5",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    546,
+    13106,
+    44
+   ],
+   "escala": 1.039
+  },
+  {
+   "actor": "Elevador_Frutal_6",
+   "malla": "SM_Cherry_Tree_02",
+   "loc": [
+    -409,
+    5163,
+    -243
+   ],
+   "escala": 0.969
+  },
+  {
+   "actor": "Elevador_Frutal_7",
+   "malla": "SM_Peach_Tree_03",
+   "loc": [
+    744,
+    8960,
+    -264
+   ],
+   "escala": 0.955
+  },
+  {
+   "actor": "Elevador_Frutal_8",
+   "malla": "SM_Peach_Tree_01",
+   "loc": [
+    -351,
+    7946,
+    -264
+   ],
+   "escala": 1.037
+  }
+ ]
+}
