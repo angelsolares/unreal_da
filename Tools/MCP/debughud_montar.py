@@ -2759,6 +2759,17 @@ def dsl_click():
 # y el camino de recogida, que es un asset de pago.
 
 
+def dsl_guardar_arma():
+    """GUARDAR ARMA -> ESPADA (§5.2). La salida de emergencia que hace que
+    ningun drop sea una trampa: la temporal se disuelve —mismo destino que un
+    swap, nada al suelo— y Malakh vuelve a la espada base. En el player deja
+    MotivoSalidaArma = GUARDADA, que la propia pestaña enseña."""
+    return jugador_accion(
+        "DbgGuardarArma",
+        '      (Class|BPDAPlayerCharacter|GuardarArmaTemporal j)\n',
+        "Arma guardada: vuelta a la espada")
+
+
 def dsl_tab_weapon():
     """SHOW WEAPON STATE — §10. Solo lectura: ni un boton.
 
@@ -2791,6 +2802,12 @@ def dsl_tab_weapon():
              '"ENEMIGO DE ORIGEN"', GRIS, 0.95).strip())
     l.append('      ' + texto(X(250.0), Y(216.0),
              '"-- sin registrar: el pickup vive en DCS"', GRIS, 1.0).strip())
+    # GUARDAR ARMA (§5.2): el unico boton de la pestaña. Llama a
+    # GuardarArmaTemporal del player: disuelve la temporal y vuelve a la
+    # espada, dejando MotivoSalidaArma en GUARDADA — que se lee justo arriba.
+    l.append('      (CallFunction|DbgBoton :X %s :Y %s :W %s'
+             ' :Etiqueta "GUARDAR ARMA -> ESPADA" :Encendido false)'
+             % (X(16.0), Y(310.0), SC(300.0)))
     # La ultima del "Is Valid": su cierre va pegado.
     l.append('      ' + texto(X(16.0), Y(256.0),
              '"ULTIMA SALIDA se escribe en Swap / Discard / Seal Break."',
@@ -2802,9 +2819,14 @@ def dsl_tab_weapon():
     return "\n".join(l)
 
 def dsl_click_weapon():
-    """Sin botones: WEAPON solo lee. Ver la nota de arriba."""
-    return ('(fn DbgClickWeapon (MX MY)\n'
-            '  (return false))')
+    """Un solo boton: GUARDAR ARMA. El resto de la pestaña es lectura."""
+    l = ['(fn DbgClickWeapon (MX MY)', BIND_GEO]
+    l.append('  (if %s' % caja('MX', 'MY', X(16.0), Y(310.0),
+                               SC(300.0), SC(BOTON_H)))
+    l.append('    (CallFunction|DbgGuardarArma)')
+    l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
 
 def dsl_click_world():
     l = ['(fn DbgClickWorld (MX MY)',
@@ -2998,6 +3020,7 @@ def run():
         ("DbgTabBoss", dsl_tab_boss, []),
         ("DbgTabStory", dsl_tab_story, []),
         ("DbgTabFinishers", dsl_tab_finishers, []),
+        ("DbgGuardarArma", dsl_guardar_arma, []),
         ("DbgTabWeapon", dsl_tab_weapon, []),
         ("DbgTabWorld", dsl_tab_world, []),
         ("DbgClickWorld", dsl_click_world, [("MX", "float", True),

@@ -355,36 +355,13 @@ for e in D["enemigos"]:
         unreal.Vector(e["pos"]["x"], e["pos"]["y"], e["pos"]["z"]),
         unreal.Rotator(0, 0, e["yaw"]))
     coloca(a, e)
-    # LOS DROPS DE LA RECETA VIAJAN AL COMPONENTE, y esto tapa un agujero que
-    # estuvo abierto desde el primer export: el plan traia e["drop"] pero aqui
-    # nadie lo escribia, asi que los niveles usaban los DEFECTOS DE CLASE de
-    # cada enemigo — daba igual lo que dijera la receta. Con el director del §8
-    # ademas viajan la probabilidad y la piedad (AplicarPolitica, 25/08).
-    # Releido campo a campo porque el editor devuelve exito sin escribir.
-    if a is not None:
-        wdc = None
-        for c in a.get_components_by_class(unreal.ActorComponent):
-            if c.get_class().get_name() == "BP_DA_WeaponDropComponent_C":
-                wdc = c
-                break
-        if wdc is None:
-            informe["avisos"].append(e["etiqueta"] + " no tiene"
-                " BP_DA_WeaponDropComponent: sus drops quedan como la clase diga.")
-        else:
-            dd = e.get("drop") or {}
-            pedido = {
-                "DropMainHandWeapon": bool(dd.get("principal", False)),
-                "DropOffHandWeapon": bool(dd.get("secundaria", False)),
-                "ProbabilidadDrop": float(dd.get("probabilidad", 1.0)),
-                "PiedadActiva": bool(dd.get("piedad", False)),
-            }
-            for k, vq in pedido.items():
-                wdc.set_editor_property(k, vq)
-            for k, vq in pedido.items():
-                leido = wdc.get_editor_property(k)
-                if (abs(leido - vq) > 0.001) if isinstance(vq, float) else (bool(leido) != vq):
-                    informe["avisos"].append(e["etiqueta"] + ": el drop pedido "
-                        + k + "=" + str(vq) + " pero el editor dice " + str(leido))
+    # Los drops de la receta NO se escriben aqui: van en una SEGUNDA LLAMADA a
+    # python, despues de que el editor tickee. Se probo el 26/08 en este bucle
+    # Y al final del mismo script: en los dos sitios el booleano de piedad
+    # REVERTIA al defecto de clase (el flotante no). Los actores spawneados en
+    # esta pasada reconstruyen al siguiente tick y el delta booleano del
+    # componente se pierde; el mismo write, un tick despues, persiste — y se
+    # comprobo guardando y recargando el nivel.
     # Releer el tag del actor vivo, que es lo unico que prueba que la oleada
     # viajo. marcar() lo pone, pero aqui se comprueba: el editor devuelve exito
     # en llamadas que no han hecho nada.
@@ -668,6 +645,74 @@ print(json.dumps(informe))
       + `Hace falta un entero "OleadaIndice" en el AI y que BP_DA_Arena active la oleada N+1 cuando la N `
       + `este limpia, esperando "RetardoEntreOleadas" segundos.`);
   }
+  // LOS DROPS DE LA RECETA, EN SU PROPIA LLAMADA. Entre esta peticion y la
+  // anterior el editor ha tickeado y los actores recien spawneados ya han
+  // reconstruido: el delta booleano del componente ya no se pierde (escribirlo
+  // en la misma pasada del spawn se probo dos veces el 26/08 y la piedad
+  // revertia en silencio, con la verificacion en linea dando el visto bueno).
+  // EL RESPIRO NO ES ADORNO. Las dos llamadas a python llegan pegadas y el
+  // editor las drena en el mismo frame: la reconstruccion diferida de los
+  // actores recien spawneados corre DESPUES, y pisa el delta escrito (la
+  // piedad revertia con la verificacion en linea dando el visto bueno). Dos
+  // segundos garantizan frames de por medio; la misma escritura hecha a mano
+  // segundos despues del export persistia — guardada y recargada.
+  await new Promise(r => setTimeout(r, 2000));
+  const datosDrops = JSON.stringify(Object.fromEntries(
+    plan.enemigos.map(e => [e.etiqueta, e.drop || {}])));
+  const { salida: salidaDrops } = await python(`
+import unreal, json
+D = json.loads(r'''${datosDrops}''')
+subsys = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+avisos = []
+escritos = 0
+for a in subsys.get_all_level_actors():
+    dd = D.get(a.get_actor_label())
+    if dd is None:
+        continue
+    # FORZAR LA RECONSTRUCCION PENDIENTE ANTES DE ESCRIBIR. Un actor recien
+    # spawneado reconstruye en diferido, y esa reconstruccion pisa el delta
+    # BOOLEANO del componente (el flotante sobrevive — cosa de la cache de
+    # instancia). Medido el 26/08 tres veces: en el bucle de spawn, al final
+    # del mismo script y en una llamada aparte — en los tres sitios la piedad
+    # revertia con la verificacion en linea dando el visto bueno. Mover el
+    # actor a su propia posicion dispara la reconstruccion AHORA, y lo que se
+    # escriba despues ya persiste (comprobado guardando y recargando).
+    a.set_actor_location(a.get_actor_location(), False, False)
+    wdc = None
+    for c in a.get_components_by_class(unreal.ActorComponent):
+        if c.get_class().get_name() == "BP_DA_WeaponDropComponent_C":
+            wdc = c
+            break
+    if wdc is None:
+        avisos.append(a.get_actor_label() + " no tiene BP_DA_WeaponDropComponent:"
+            " sus drops quedan como la clase diga.")
+        continue
+    pedido = {
+        "DropMainHandWeapon": bool(dd.get("principal", False)),
+        "DropOffHandWeapon": bool(dd.get("secundaria", False)),
+        "ProbabilidadDrop": float(dd.get("probabilidad", 1.0)),
+        "PiedadActiva": bool(dd.get("piedad", False)),
+    }
+    for k, vq in pedido.items():
+        wdc.set_editor_property(k, vq)
+    a.modify()
+    escritos += 1
+    for k, vq in pedido.items():
+        leido = wdc.get_editor_property(k)
+        mal = (abs(leido - vq) > 0.001) if isinstance(vq, float) else (bool(leido) != vq)
+        if mal:
+            avisos.append(a.get_actor_label() + ": el drop pedido " + k + "="
+                + str(vq) + " pero el editor dice " + str(leido))
+print(json.dumps({"avisos": avisos, "escritos": escritos}))
+`);
+  const drops = JSON.parse(salidaDrops);
+  informe.dropsEscritos = drops.escritos;
+  informe.avisos.push(...drops.avisos);
+  if (drops.escritos !== plan.enemigos.length) {
+    informe.avisos.push(`Drops escritos en ${drops.escritos} de ${plan.enemigos.length} ` +
+      'enemigos: alguno no se encontro por etiqueta en la segunda llamada.');
+  }
+
   informe.offset = plan.offset;
   informe.guardado = false;
   informe.nota = 'El nivel NO se ha guardado. Revisalo en el editor y guarda tu.';
