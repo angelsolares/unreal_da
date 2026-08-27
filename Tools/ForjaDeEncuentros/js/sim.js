@@ -273,6 +273,7 @@ export class Simulacion {
     }
 
     this._pasoOleadas();
+    this._pasoAura();
     this._pasoProyectiles(dt);
     this._pasoDrops(dt);
     this._pasoZonas(dt);
@@ -850,14 +851,35 @@ export class Simulacion {
    *
    * El portador no se buffea a si mismo: el componente recorre aliados.
    */
+  /**
+   * EL ARRANQUE DEL AURA (§5.1, la señal de timing — 2026-08-26). El buff ya no
+   * nace encendido: cuando el jugador entra en `radioArranque` del portador
+   * empieza la cuenta de `retraso`, y solo al agotarse el aura suma. Espejo de
+   * `BP_DA_AuraComponent.VigilarArranque/ActivarAura` en el motor. Con
+   * `retraso` a 0 (o sin campo) todo queda como siempre — y ese es el modo de
+   * las pruebas viejas, que miden radio y muerte, no timing.
+   */
+  _pasoAura() {
+    const aura = this.cal.aura;
+    if (!aura || !(aura.retraso > 0)) return;
+    const ra = aura.radioArranque ?? 1500;
+    for (const P of this.enemigos) {
+      if (P.arquetipo !== aura.arquetipo || P.tVistaAura != null) continue;
+      if (P.estado === ESTADOS.MUERTO || !P.presente) continue;
+      if (dist(this.malakh.pos, P.pos) <= ra) P.tVistaAura = this.t;
+    }
+  }
+
   _danoDe(E) {
     const aura = this.cal.aura;
     if (!aura) return E.perfil.dano;
+    const retraso = aura.retraso ?? 0;
     let extra = 0;
     for (const P of this.enemigos) {
       if (P === E || P.arquetipo !== aura.arquetipo) continue;
       if (P.estado === ESTADOS.MUERTO || !P.presente) continue;
       if (dist(P.pos, E.pos) > aura.radio) continue;
+      if (retraso > 0 && (P.tVistaAura == null || this.t - P.tVistaAura < retraso)) continue;
       extra += aura.bonificacion;
     }
     return E.perfil.dano + extra;

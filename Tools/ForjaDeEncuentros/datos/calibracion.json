@@ -267,7 +267,9 @@
     "arquetipo": "portador_del_estandarte",
     "radio": 1200,
     "bonificacion": 15,
-    "nota": "BP_DA_AuraComponent. Mientras el portador viva, cada aliado dentro del radio suma esto a su dano. Dos portadores apilan."
+    "nota": "BP_DA_AuraComponent. Mientras el portador viva, cada aliado dentro del radio suma esto a su dano. Dos portadores apilan. Desde el 26/08 el aura NO nace encendida: cuando el jugador entra en radioArranque empieza la cuenta de retraso (s), y solo entonces se monta el visual y suma el buff — la señal de timing del §5.1. Espejo exacto de VigilarArranque/ActivarAura en el motor.",
+    "retraso": 4,
+    "radioArranque": 1500
   },
   "arena": {
     "radioDespertar": 150
