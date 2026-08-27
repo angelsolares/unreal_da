@@ -139,6 +139,10 @@ export function nuevoEnemigo(arquetipo, x, y) {
     drop: meta.armaEsOffHand
       ? { principal: false, secundaria: !!meta.sueltaPorDefecto }
       : { principal: !!meta.sueltaPorDefecto, secundaria: false },
+    // El director del §8 cabe en dos numeros por enemigo (los mismos que
+    // expone BP_DA_WeaponDropComponent): probabilidad 1.0 = garantizado,
+    // 0.5 = oportunidad, 0.0 = nada; piedad = el interruptor del Mercy
+    // Drop. Los defectos son el comportamiento de siempre.
     // null = la primera oleada declarada. Un enemigo sin oleada no se queda
     // fuera del encuentro por descuido.
     oleada: null,

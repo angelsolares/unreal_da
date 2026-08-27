@@ -136,11 +136,12 @@ export function purgarPorSeal(M) {
 /**
  * ¿Este enemigo suelta arma al morir?
  *
- * Dos booleanos y ninguna probabilidad, porque eso es lo que sabe hacer
- * BP_DA_WeaponDropComponent: DropMainHandWeapon y DropOffHandWeapon. Las cuatro
- * politicas del §8 —garantizado, estandar, piedad, ninguno— no se pueden
- * implementar hoy, y simularlas seria medir algo que el juego no puede hacer.
- * Vuelven el dia que el componente tenga probabilidad.
+ * Dos booleanos: el PERMISO por mano. Desde el 25/08 el componente del motor
+ * tiene ademas ProbabilidadDrop y PiedadActiva (AplicarPolitica), asi que las
+ * cuatro politicas del §8 caben en dos numeros y el simulador las modela en
+ * `_quizaSoltarArma` — DESPUES de este permiso, igual que el motor decide
+ * despues de sus booleanos. Esta funcion se queda como esta: es la mitad
+ * determinista de la decision.
  *
  * La ranura la decide el ARMA, no el enemigo: el escudo es off-hand, todo lo
  * demas es principal.

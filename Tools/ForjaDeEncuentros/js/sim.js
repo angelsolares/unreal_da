@@ -518,6 +518,12 @@ export class Simulacion {
   }
 
   _completarRecogida(dropId) {
+    // El sello que lee la piedad del §8: la ultima vez que Malakh ADQUIRIO
+    // una temporal. Espejo de TUltimoTemporal en el motor, que lo anota
+    // SustituirArmaTemporal — el embudo unico del canje. Las salidas
+    // (descarte, guardar, purga) NO lo tocan, igual que alli: el fallo es
+    // benigno a proposito — ante la duda, la piedad reparte.
+    this.malakh.tUltimoTemporal = this.t;
     const i = this.drops.findIndex(d => d.id === dropId);
     if (i < 0) return;
     const drop = this.drops[i];
@@ -1123,6 +1129,29 @@ export class Simulacion {
     if (!decideDrop(E, familia, this.armas)) {
       this._evento('sinDrop', { agente: E.id, ranura: E.drop });
       return;
+    }
+    // EL DIRECTOR DEL §8, espejo exacto de `AplicarPolitica` en el motor
+    // (BP_DA_WeaponDropComponent, 25/08): suelta si el dado entra en la
+    // probabilidad O si la piedad esta activa y el jugador va mal — mucho
+    // tiempo sin tocar una temporal, o la vida por debajo del umbral. La
+    // formula es OR y no AND a proposito, y esta documentada alli: ante la
+    // duda, repartir. Los umbrales salen de reglas.piedad, que es la misma
+    // fuente que uso el generador del motor: si cambian, cambian en los dos.
+    const d = E.drop || {};
+    const prob = d.probabilidad ?? 1.0;
+    if (prob < 1.0 || d.piedad) {
+      const M = this.malakh;
+      const p = this.armas.reglas.piedad || {};
+      const sinArma = this.t - (M.tUltimoTemporal ?? -1) >
+        (p.segundosSinArma ?? 35);
+      const vidaBaja = M.hp <
+        this.cal.malakh.hp * (p.vidaPorDebajoDe ?? 0.5);
+      const piedad = !!d.piedad && (sinArma || vidaBaja);
+      if (!piedad && !this.azar.probabilidad(prob)) {
+        this._evento('sinDrop', { agente: E.id, ranura: E.drop, motivo: 'dado' });
+        return;
+      }
+      if (piedad) this._evento('piedad', { agente: E.id, sinArma, vidaBaja });
     }
     const drop = {
       id: `drop_${++this._contadorDrops}`,

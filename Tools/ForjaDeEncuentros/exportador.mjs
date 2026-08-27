@@ -355,6 +355,36 @@ for e in D["enemigos"]:
         unreal.Vector(e["pos"]["x"], e["pos"]["y"], e["pos"]["z"]),
         unreal.Rotator(0, 0, e["yaw"]))
     coloca(a, e)
+    # LOS DROPS DE LA RECETA VIAJAN AL COMPONENTE, y esto tapa un agujero que
+    # estuvo abierto desde el primer export: el plan traia e["drop"] pero aqui
+    # nadie lo escribia, asi que los niveles usaban los DEFECTOS DE CLASE de
+    # cada enemigo — daba igual lo que dijera la receta. Con el director del §8
+    # ademas viajan la probabilidad y la piedad (AplicarPolitica, 25/08).
+    # Releido campo a campo porque el editor devuelve exito sin escribir.
+    if a is not None:
+        wdc = None
+        for c in a.get_components_by_class(unreal.ActorComponent):
+            if c.get_class().get_name() == "BP_DA_WeaponDropComponent_C":
+                wdc = c
+                break
+        if wdc is None:
+            informe["avisos"].append(e["etiqueta"] + " no tiene"
+                " BP_DA_WeaponDropComponent: sus drops quedan como la clase diga.")
+        else:
+            dd = e.get("drop") or {}
+            pedido = {
+                "DropMainHandWeapon": bool(dd.get("principal", False)),
+                "DropOffHandWeapon": bool(dd.get("secundaria", False)),
+                "ProbabilidadDrop": float(dd.get("probabilidad", 1.0)),
+                "PiedadActiva": bool(dd.get("piedad", False)),
+            }
+            for k, vq in pedido.items():
+                wdc.set_editor_property(k, vq)
+            for k, vq in pedido.items():
+                leido = wdc.get_editor_property(k)
+                if (abs(leido - vq) > 0.001) if isinstance(vq, float) else (bool(leido) != vq):
+                    informe["avisos"].append(e["etiqueta"] + ": el drop pedido "
+                        + k + "=" + str(vq) + " pero el editor dice " + str(leido))
     # Releer el tag del actor vivo, que es lo unico que prueba que la oleada
     # viajo. marcar() lo pone, pero aqui se comprueba: el editor devuelve exito
     # en llamadas que no han hecho nada.
