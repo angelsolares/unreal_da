@@ -483,6 +483,44 @@ def dsl_toggle():
             '    (:"Is Not Valid")))')
 
 
+def dsl_inicio_tick():
+    """Guarda una sola vez el punto de arranque, para RESPAWN AT START.
+
+    Vive aparte de DbgTick por el Utilities|IsValid: con ramas es TERMINAL, y
+    dejarlo dentro del tick metia TODO lo que venia detras --la tecla . y los
+    clics del panel-- dentro de su rama else.
+
+    La guarda va como salida temprana, que es el idioma del resto del fichero:
+    el escritor la convierte en if/else, pero para una guarda eso es lo mismo.
+    El IsValid queda de ULTIMA sentencia, sin nada detras que tragarse, y su
+    tercer parentesis final es el que cierra el (fn.
+
+    Y la rotacion se le pide al PAWN, no al controller. Pawn|GetControlRotation
+    quiere un Pawn; al pasarle el PlayerController el escritor colaba un
+    Variables|Actor|GetInstigator para convertirlo, y en un controller eso es
+    None: de ahi el "Accessed None ... property Instigator" en juego, y que
+    DbgInicioRot se quedara a cero (RESPAWN AT START te devolvia mirando a otro
+    lado)."""
+    l = ['(fn DbgInicioTick ()',
+         '  (if (Variables|Default|GetDbgTieneInicio)',
+         '    (return))',
+         '  (bind pawn (Game|GetPlayerPawn 0))',
+         '  (Utilities|IsValid pawn',
+         '    (:"Is Valid"',
+         '      (Variables|Default|SetDbgInicioLoc'
+         ' (Transformation|GetActorLocation :self pawn))',
+         '      (Variables|Default|SetDbgInicioRot'
+         ' (Pawn|GetControlRotation :self pawn))',
+         '      (Variables|Default|SetDbgTieneInicio true)']
+    if AUTO_ABRIR:
+        l.append('      (Development|PrintString :InString "DBG primer frame"'
+                 ' :bPrintToScreen false :bPrintToLog true :Duration 5.0)')
+        l.append('      (CallFunction|DbgToggle)')
+    l.append('      )')
+    l.append('    (:"Is Not Valid")))')
+    return "\n".join(l)
+
+
 def dsl_tick():
     # Sobreescribe la funcion vacia del padre. Se llama desde EventTick.
     l = ['(fn DbgTick ()',
@@ -493,20 +531,11 @@ def dsl_tick():
          '    (Variables|Default|SetDbgFps',
          '      (+ (* (Variables|Default|GetDbgFps) 0.9) (* (/ 1.0 dt) 0.1))))',
          '  (bind pc (Game|GetPlayerController 0))',
-         '  (bind pawn (Game|GetPlayerPawn 0))',
-         # El punto de arranque se guarda una vez, para "RESPAWN AT START".
-         '  (if (not (Variables|Default|GetDbgTieneInicio))',
-         '    (Utilities|IsValid pawn',
-         '      (:"Is Valid"',
-         '        (Variables|Default|SetDbgInicioLoc'
-         ' (Transformation|GetActorLocation :self pawn))',
-         '        (Variables|Default|SetDbgInicioRot'
-         ' (Pawn|GetControlRotation :self (Game|GetPlayerController 0)))',
-         '        (Variables|Default|SetDbgTieneInicio true)'
-         + ('\n        (Development|PrintString :InString "DBG primer frame"'
-            ' :bPrintToScreen false :bPrintToLog true :Duration 5.0)'
-            '\n        (CallFunction|DbgToggle)' if AUTO_ABRIR else '') + ')',
-         '      (:"Is Not Valid")))']
+         '  (bind pawn (Game|GetPlayerPawn 0))']
+    # El punto de arranque va en su PROPIA funcion: lleva un Utilities|IsValid
+    # con ramas, que es TERMINAL, y dejarlo aqui metia TODO el resto del tick
+    # --la tecla . incluida-- dentro de su rama else. Ver la memoria del DSL.
+    l.append('  (CallFunction|DbgInicioTick)')
     cond = " ".join('(Game|Player|WasInputKeyJustPressed :self pc :Key "%s")' % k
                     for k in TECLAS)
     # God Mode / recurso infinito / velocidad: se mantienen desde el tick, y
@@ -3194,6 +3223,7 @@ def run():
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
+        ("DbgInicioTick", dsl_inicio_tick, []),
         ("DbgTick", dsl_tick, []),
         ("DbgDibujar", dsl_dibujar, []),
     ]
