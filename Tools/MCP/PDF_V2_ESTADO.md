@@ -1,16 +1,170 @@
 # Estado contra el PDF v2 — *Divine Weapon Corruption + Encounter Combat Loop*
 
 Auditoría del 2026-08-24 contra
-`Dark_Angels_Divine_Weapon_Corruption_Combat_Loop_v2.pdf` (14 páginas).
+`Dark_Angels_Divine_Weapon_Corruption_Combat_Loop_v2.pdf` (14 páginas),
+**repasada frase a frase el 2026-08-26** — ese repaso está en la sección siguiente y es lo
+primero que hay que leer: corrige siete cosas que este documento daba por donde no estaban.
 
 **Cómo se hizo:** lo marcado ✅ VERIFICADO se comprobó **en PIE o leyendo el asset**, no las
 notas. El resto se leyó del código del generador y de los Blueprints. Las notas de traspaso
 ya se equivocaron una vez este mes afirmando cosas que el motor desmentía, así que aquí solo
 vale lo medido.
 
-**Titular:** de las 13 fases y bloques del PDF, **el bucle de arena está entero** y **el ciclo
-de arma temporal casi**. Lo que falta se concentra en dos sitios: **las recetas de encuentro
-sin montar** y **el director de drops**.
+**Titular:** de las 13 fases y bloques del PDF, **el bucle de arena está entero**, **el ciclo
+de arma temporal también** —las cuatro salidas del §3, incluida la de agotar el recurso
+natural— y **las cinco recetas del §6 están montadas y exportadas**. **Los doce criterios de
+aceptación del §12 están en verde**, aunque uno de ellos esté medido y no jugado.
+
+Lo que falta ya no es ningún criterio: **el VFX del descarte (§9)**, **tres entradas del §10**,
+y tres divergencias del PDF que son decisiones tuyas. Todo eso está en la sección siguiente, que
+es el repaso frase a frase del 26/08.
+
+---
+
+## Puesta al día del 2026-08-26 (tarde): repaso frase a frase contra el PDF
+
+Se releyó el PDF **entero, las 14 páginas** y se comprobó cada afirmación contra el motor y
+los assets, no contra estas notas. Salieron tres huecos que este documento no listaba y cuatro
+cosas que daba por pendientes y ya estaban. Lo verificado ese día lleva la marca 🔬.
+
+**Lo que se destapó:**
+
+1. ~~**§12 criterio 1: falta la cuarta cláusula.**~~ — **CERRADO el 26/08.** El PDF pide volver
+   a la espada cuando la temporal *«se cambia, se sacrifica, **agota su recurso natural** o es
+   purgada»*, y este documento había reescrito el criterio sin la tercera. 🔬 El `EventGraph`
+   del jugador son 16 nodos y **ninguno miraba las flechas**: con el arco a cero te quedabas
+   con un arco inútil hasta cambiar de arma o romper el sello — que es justo la trampa que el
+   §5.2 no quiere («cualquier encuentro se completa sin depender de un drop»).
+
+   Hecho en `Tools/MCP/arma_sin_municion.py`. **Un temporizador que corre sólo mientras llevas
+   un arma temporal**: `SustituirArmaTemporal` —el embudo único del canje— arranca
+   `VigilarMunicion` cada 0,5 s, y la función se apaga sola en cuanto no hay arma o en cuanto
+   acaba de devolver la espada. En el Tick sería al revés: pagarlo siempre para usarlo casi
+   nunca. El arma se clasifica por `GetObjectName` = `DA_ElvenBow`, el mismo idioma con el que
+   `ArrojarLanza` ya elige el montaje de descarte de cada familia.
+
+   **Motivo de salida nuevo: `AMMO OUT`.** Son cuatro y ya salen en la pestaña WEAPON sin
+   tocar el HUD.
+
+   ✅ **PROBADO EN PIE** los tres casos (`arma_sin_municion_probar.py`, cinco pasos):
+
+   | caso | resultado |
+   |---|---|
+   | arco con 12 flechas, 11,7 s | sigue en la mano — no dispara de más |
+   | el carcaj a 0 | `arma=''`, `motivo='AMMO OUT'`, y `BP_DI_SteelSword_C` en la mano |
+   | con MUNICIÓN INFINITA puesta | sigue en la mano — el debug no te desarma |
+   | segundo arco tras el primero | vuelve a caer: el vigilante se rearma |
+
+   **Y tres decisiones que van dentro:** el carcaj **no** se toca (las flechas son equipo base,
+   no del arco robado); con munición infinita no dispara (es un botón de debug, y su razón de
+   ser es la contraria); y **un arco recogido con cero flechas se cae solo a los 0,5 s**, que
+   no es efecto colateral sino lo correcto — un arco sin munición es exactamente la trampa que
+   el §5.2 prohíbe, y así el drop nunca te deja peor que antes de tocarlo.
+2. **§9 «Arma disponible»** — **el brillo, hecho el 26/08; falta el sonido.**
+
+   **Y antes, una corrección de este mismo documento:** el 26/08 dije aquí que «no existe
+   ningún feedback» porque miré `BP_DA_WeaponDropComponent` —el componente que *suelta* el
+   arma— en vez de `BP_DA_DroppedWeapon`, que es el arma soltada. **El componente no tiene ni
+   un nodo de VFX y eso era cierto; el actor sí.** Ya había un `PointLightComponent` (`Luz`) y
+   un `PulsarLuz` latiéndole la intensidad en el Tick. Lo que no había era color —salía
+   blanca— ni forma de verla de lejos: una luz puntual se apaga con la distancia.
+
+   Montado en `Tools/MCP/arma_pilar_luz.py`: un **pilar de luz celestial** que sale del arma,
+   1.200 uu de alto (unos 6,7 Malakhs), con `M_DA_HazLuz` —el mismo haz aditivo que usan los
+   orbes de las Sefirot— a través de `MI_DA_PilarArma`. Y la `Luz` que ya estaba pasa a azul
+   (0.20, 0.50, 1.0) con 900 de atenuación: el pilar te dice **dónde** desde el otro lado de
+   la arena, la luz te dice **qué** cuando llegas. Un solo latido para los dos.
+
+   ✅ **PROBADO EN PIE**, jugando *romper-la-linea*: se sella la arena, cae el Lancero y su
+   Lanza del Alba queda bajo el haz. Legible a 25 m.
+
+   **Tres cosas que sólo se vieron jugando, y por eso hay que jugar:**
+
+   - **Salía torcido.** El arma cae con física y al posarse `Posar` le pasa al ACTOR la
+     rotación con la que quedó el mesh, así que cualquier hijo del root hereda el tumbo:
+     medido, arma en (−2354, −156, 115) y su pilar en (−2284, 388, **−127**), metido en el
+     suelo. Ahora el transform lo fija `PulsarLuz` en coordenadas de mundo.
+   - **Salía blanco.** `M_DA_HazLuz` es aditivo: con `Brillo 3` satura los tres canales y el
+     azul celeste acaba siendo un tubo de neón. Con 1,1 sobrevive.
+   - **Salía de un extremo del arma, y era un tubo de plástico.** Estaba centrado en el
+     pivote —que en las armas de DCS está en la empuñadura— y era un cilindro cerrado, con su
+     tapa recortada contra el cielo. Ahora se centra en el **centro de la caja del mesh** y
+     toma de diámetro su lado mayor (la lanza pide 171 cm), y es un **cono**: la base envuelve
+     el arma y se afila hacia arriba, que es como se lee un haz.
+
+   **El sonido, hecho el mismo día.** `SC_DA_ArmaDisponible`, un SoundCue —no un MetaSound:
+   esos matan el editor en este proyecto— que se dispara al final de `MontarPilar`, junto al
+   brillo, porque los dos anuncian lo mismo y separarlos sería que un día uno suene y el otro
+   no. **Dos capas, porque en el proyecto no hay ningún sonido celestial**: se listaron los 151
+   SoundWaves de `/Game` que no son de DCS y son ambientes de pueblo, pasos, fuego y truenos.
+   `WAV_UnsheathSword` subido de tono dice **arma**; `WAV_PotionHeal` bajado y flojo dice
+   **celestial**. Con su atenuación (radio 2.500, caída 6.000) para que diga *dónde*.
+   Cambiarlo el día que haya un campanazo de verdad es tocar dos rutas en
+   `arma_sonido_disponible.py`: ni el grafo del cue ni el blueprint se enteran.
+
+   **Y una trampa que costó el editor entero:** un `SoundNodeMixer` guarda un array
+   `InputVolume` con **una entrada por hijo**. Dejarlo vacío no da ningún error — el asset se
+   crea, se guarda y se relee perfecto—, y a la primera vez que el cue **suena** el motor
+   indexa `InputVolume[0]` sobre un array de cero y se lleva el editor por delante
+   (`Assertion failed: (Index >= 0) & (Index < ArrayNum)`). Pasó al matar al Lancero en PIE.
+   Sin pérdida, porque estaba todo guardado, pero la lección es que **un SoundCue mal formado
+   no se detecta releyéndolo: se detecta sonando.**
+
+   ✅ Con el arreglo, la misma prueba en PIE: el arma cae, `MontarPilar` llega hasta el final
+   —o sea que el `PlaySoundAtLocation` corrió—, el cue está cargado (2,50 s) y el editor sigue
+   en pie. **Lo que no puedo hacer yo es oírlo**: eso es de Angel.
+
+   **Lo que falta del §9:** sólo el **VFX del descarte**.
+3. ~~**§11.3 snapshot mínimo: 4 de 8.**~~ — **6 de 8, cerrado el 26/08.** El agujero era que
+   `TomarInstantanea` guardaba vida, stamina, pociones, posición de entrada y transforms de
+   los enemigos, pero **no las flechas** — y el carcaj de 30 es equipo base, así que era el
+   único recurso del jugador que se filtraba entre intentos: morir con 8 y reintentar te metía
+   otra vez con 8. Hecho en `Tools/MCP/arena_flechas.py`.
+
+   ✅ **PROBADO EN PIE** sobre `L_Forja_romper-la-linea` (`arena_flechas_probar.py`):
+   30 de partida → puestas a 17 → `FlechasAlSellar = 17` → gastadas a 3 → `ReiniciarEncuentro`
+   → **17**. Y verificado en el grafo que los **dos** `BreakFStoredItem` cuelgan del pin
+   `Amount` (índice 2, Integer), no del `Id`.
+
+   **Las dos que quedan fuera, y no es olvido:** el *arma temporal + off-hand + su corrupción*
+   —el propio §7.2 dice que «si el checkpoint es el estándar previo al sello, normalmente sólo
+   habrá equipo base», y aquí siempre lo es, porque el Seal Break purga al salir de la arena
+   anterior— y los *cooldowns*, que el PDF condiciona a «si DCS lo expone de forma estable»
+   y hoy no hay vía leída y verificada para eso.
+
+   **Y de paso, dos trampas nuevas del escritor de grafos**, que están en la cabecera de
+   `arena_flechas.py`: `ReiniciarEncuentro` **no se puede reescribir** (`Game|SpawnActor` se
+   lee pero no se escribe, así que la restauración vive en `RestaurarFlechas` y en el grafo
+   viejo se injerta un solo nodo por cirugía); y un `Break` **hay que destructurarlo**
+   —`(bind (_id _it _am) …)`— porque copiar la forma corta que imprime el lector conecta el
+   primer pin y revienta.
+
+**Lo que ya estaba y este documento negaba:**
+
+4. **El aura del Portador SÍ está en el motor**, y esto deroga el aviso que salía en cada
+   exportación. 🔬 `BP_DA_Inspector.uasset` trae `BP_DA_AuraComponent`; el componente vive en
+   `Blueprints/Combat/` con `RadioAura = 1200` y `Bonificacion = 15` leídos del CDO, y
+   `L_Forja_el-estandarte-vive.umap` lo referencia. La calibración del simulador dice
+   exactamente lo mismo, sumado como **plano** en `sim.js._danoDe`. El aviso muerto vivía en
+   `exportador.mjs` y hoy es una **comprobación de verdad**: lee el componente del actor
+   colocado y sólo grita si falta o si sus números no son los que el simulador asumió.
+5. **Force Shield Discard ya funciona**, aunque no tenga botón propio. 🔬 `ArrojarLanza` —la
+   tecla y el botón FORCE DISCARD— tiene **cinco ramas con cinco montajes**, una por familia.
+   El docstring de `dsl_forzar_descarte` decía «con cualquier otra no pasa nada»: corregido.
+6. **INFINITE AMMO existe** en la pestaña COMBAT (`AlternarMunicionInfinita`, toggle con
+   temporizador). Lo que falta del §10 es **mostrar** el ammo en WEAPON, no darlo.
+7. **`L_Forja_romper-la-linea.umap` ya no está a medias.** 🔬 1 Lancero, 2 Arqueros,
+   2 Vigilantes, `BP_DA_Arena` y `PlayerStart`.
+
+**Divergencias deliberadas del PDF, que hasta hoy no estaban escritas aquí:**
+
+| § | el PDF pide | lo montado | por qué |
+|---|---|---|---|
+| 6.3 | 1 Portador + **2 Lanceros + 2 Escuderos** | **4 enemigos: falta un Escudero** | en `notasDiseno`: con los cinco se ganaba el 36% y 2.534 de 5.000 partidas agotaban el límite de 180 s |
+| 4.1 | el arma queda en el mundo «una ventana breve y clara» | `DropLifeSpan = 0`, para siempre, en los cinco | decisión de la POC; el suelo no se satura porque el swap es irreversible |
+| 6.4 | «Elite con **gran guardia**» | `elite_pesado` tiene `guardia 0.4`, la misma que el escudero y el lancero | sin decidir: el guard break del Espadón rompe una guardia que no es grande |
+
+---
 
 **Puesta al día del 2026-08-25:** «Romper la línea» (§6.1) pasa de perderse el 100% de las
 veces a ganarse el **94% solo con la espada**, sin cambiar un número de la calibración: lo que
@@ -23,18 +177,18 @@ la separa del juego son dos datos que a `BP_DA_Arena` le faltan. Detalle en el �
 
 | § | Bloque | Estado |
 |---|---|---|
-| 3.1 | Persistencia y estados del ciclo | 🟢 completo, salvo progresión de corrupción |
-| 3.2 | Ataque de descarte por familia | 🟢 **5 de 5** (el escudo, pendiente de ver el rebote en PIE) |
+| 3.1 | Persistencia y estados del ciclo | 🟢 el ciclo entero — **las cuatro salidas** desde el 26/08 (SWAP, DISCARD, SEAL BREAK y AMMO OUT); sólo falta la progresión de corrupción, que el PDF marca opcional |
+| 3.2 | Ataque de descarte por familia | 🟢 **5 de 5**, verificado sobre el grafo: cinco ramas, cinco montajes |
 | 4 | Arsenal de oportunidad | 🟢 las 5 familias existen; **counters medidos el 25/08**, 3 de 5 en banda y las otras 2 con diagnóstico |
-| 4.1 | Reglas de pickup | 🟢 completa: la regla de dos manos es del 25/08 (52ddd94) |
+| 4.1 | Reglas de pickup | 🟠 completa salvo la «ventana breve y clara»: hoy el arma se queda para siempre (`DropLifeSpan = 0`) |
 | 5 | Orden de bajas implícito | 🟠 el Arquero ya reacciona a la distancia; falta que distinga el arma |
-| 6 | Recetas de encuentro | 🟢 **5 de 5 montadas y en el motor** (26/08, banda 70-94% con espada sola); falta jugarlas |
+| 6 | Recetas de encuentro | 🟢 **5 de 5 montadas y en el motor** (26/08, banda 70-94% con espada sola); falta jugarlas. El §6.3 va con 4 enemigos y no 5, por el reloj |
 | 7 | Arenas selladas | 🟢 completo |
 | 8 | Sistema de drops | 🟢 las 4 políticas: motor 25/08, simulador+exportador+piedad AND 26/08 |
-| 9 | Feedback visual/audio/UX | 🟢 casi; falta VFX del descarte |
-| 10 | Integración con DA Debug HUD | 🟠 faltan 6 entradas |
-| 11 | Guía técnica / arquitectura | 🟢 adaptado a DCS, sin sistemas paralelos |
-| 12 | Criterios de aceptación | 🟠 **10 de 12** |
+| 9 | Feedback visual/audio/UX | 🟠 el «arma disponible» está entera —pilar de luz + SoundCue, probados en juego el 26/08—; falta sólo el **VFX del descarte** |
+| 10 | Integración con DA Debug HUD | 🟠 faltan 3 enteras y 1 a medias (ver abajo) |
+| 11 | Guía técnica / arquitectura | 🟢 adaptado a DCS, sin sistemas paralelos. Snapshot del §11.3: **6 de 8** desde el 26/08 |
+| 12 | Criterios de aceptación | 🟢 **12 de 12** desde el 26/08; el del encuentro, medido pero sin jugar |
 | 13 | Orden de implementación (fases) | 🟠 fases 1-8 hechas, 9 a medias, 10 sin empezar |
 
 ---
@@ -212,13 +366,24 @@ debug**. En juego, `CorromperArmaTemporal` salta a 0,45 al recoger y ahí se que
 El PDF dice *«**puede** progresar por uso, tiempo portado o beats»*, así que es opcional —
 pero hoy los cuatro estados no los ve nadie que no abra el HUD.
 
-### Seis entradas del Debug HUD (§10)
+### Las entradas del Debug HUD (§10) — tres enteras y dos a medias
 
-De la lista del §10 faltan:
+**Al día del 26/08.** De las trece que pide el §10 faltan **tres**: la cadena táctica, el
+resalte de drops garantizados y el watchdog en pantalla. Otras dos están a medias: Show Weapon
+State (sin enemigo de origen ni ammo) y Create/Respawn Pre-Combat Snapshot (hay checkpoint de
+posición, no instantánea de arena). Lo tachado ya está hecho:
 
 - ~~Give Arco~~ — **hecho el 24/08.** La fila tiene ya los seis: LANZA, TROMPETA, HACHA,
   ESPADON, **ARCO** y ESCUDO, verificado en el panel en PIE.
-- **Force Shield Discard** — no existe el descarte, así que tampoco el botón.
+- ~~**Force Shield Discard**~~ — **cubierto desde el 24/08, sin botón propio.** `ArrojarLanza`
+  —la tecla y el botón FORCE DISCARD— enruta por familia con cinco ramas, así que con el
+  escudo en la mano FORCE DISCARD **es** el descarte del escudo. Verificado sobre el grafo el
+  26/08.
+- ~~**Infinite Ammo ON/OFF**~~ — **está**: `AlternarMunicionInfinita`, toggle con temporizador
+  de 1 s (rellenar una vez se agotaría igual). Lo que falta es *mostrar* el ammo, no darlo.
+- **Create / Respawn Pre-Combat Snapshot** — a medias: la pestaña STORY tiene SET DEBUG
+  CHECKPOINT / IR AL CHECKPOINT, pero son de **posición**, no la instantánea de la arena
+  (`TomarInstantanea`), que hoy sólo se dispara al sellar.
 - ~~**Show Weapon State**~~ — **hecho el 26/08, a medias y con lo que falta escrito en el
   propio panel.** Pestaña **WEAPON**, la octava, de sólo lectura. Muestra el **arma actual**
   (nombre del asset), el **tipo** (la clase del item, que dice si es melé, arco o escudo),
@@ -284,26 +449,46 @@ mayores sobre `distanciaMinima`.
 
 ---
 
-## Criterios de aceptación del §12: 10 de 12
+## Criterios de aceptación del §12: 12 de 12
+
+Al día del 2026-08-26. El último en caer fue el primero, con `AMMO OUT`. Uno de los doce
+queda **medido pero no jugado**, y está dicho en su fila.
 
 | criterio | |
 |---|---|
-| Vuelve a la espada al cambiar / sacrificar / purgar | ✅ |
+| Vuelve a la espada al cambiar / sacrificar / **agotar su recurso natural** / purgar | ✅ **las cuatro** desde el 26/08, probadas en PIE (`AMMO OUT`) |
 | Recoger una Lanza y sentir el cambio de rango/moveset | ✅ |
-| Escudo Celestial como off-hand junto con la espada | ⚠️ funciona, pero ya lo lleva de base |
+| Escudo Celestial como off-hand junto con la espada | ✅ desde el 24/08: Malakh ya no lo lleva de base, así que vuelve a ser recompensa |
 | Corrupción visual sin reducir vida útil | ✅ |
 | Al cambiar/purgar nunca queda sin loadout válido | ✅ verificado |
 | **Al menos un** ataque de descarte funcional | ✅ (hay dos) |
-| **Encounter de prueba con orden de bajas ventajoso** | ⚠️ diseñado y validado en la Forja (94% con espada sola, −25% de daño con armas); falta montarlo, y para eso `BP_DA_Arena` tiene que saber escalonar |
+| **Encounter de prueba con orden de bajas ventajoso** | ✅ los cinco, montados y exportados (banda 70-94% con espada sola). **Pendiente de confirmarlo jugándolo**: medido en la Forja, no en las manos |
 | La arena se sella tras el trigger y se abre al vencer | ✅ |
 | Al morir, checkpoint previo y poder retirarse | ✅ |
 | Reset limpia enemigos/drops sin tocar NPCs externos | ✅ |
-| Debug HUD: dar armas, estados, ammo, descarte, reset | ⚠️ el arco y Show Weapon State ya están; falta el ammo, que vive en DCS |
+| Debug HUD: dar armas, estados, ammo, descarte, reset | ✅ las seis armas, los cuatro estados de corrupción, INFINITE AMMO, FORCE DISCARD y los tres de arena. Lo que falta del §10 no es de este criterio |
 | Nada de debug accesible en Shipping | ✅ |
 
 ---
 
-## Orden sugerido para cerrar
+## Orden sugerido para cerrar — al día del 2026-08-26
+
+**Con `AMMO OUT` cerrado, los doce criterios de aceptación del §12 están en verde.** Lo que
+queda ya no es ningún criterio: es lectura, herramienta y decisiones.
+
+1. **JUGAR LOS CINCO NIVELES.** Están validados en el simulador y ninguno se ha jugado; el
+   motor ya ha desmentido al papel varias veces. En *lluvia-del-firmamento*, gastar el arco
+   hasta cero y ver el `AMMO OUT` en el sitio donde importa: en las manos.
+2. **El VFX del descarte (§9)**, que es lo único que queda de esa sección: el «arma
+   disponible» está entera desde el 26/08, brillo y sonido, probados en juego.
+3. **Las tres entradas que quedan del §10** (tactical chain, highlight de drops garantizados,
+   watchdog en pantalla) y el ammo en la pestaña WEAPON.
+4. Decidir las tres divergencias de la tabla de arriba: el quinto enemigo del §6.3, la ventana
+   de vida del drop y la «gran guardia» del elite.
+5. §3.1 progresión de corrupción y §9 VFX del descarte, que el PDF marca como opcional y
+   *polish* respectivamente.
+
+## Orden sugerido, el del 2026-08-24 (registro)
 
 1. ~~Oleadas en `BP_DA_Arena`~~ — **hecho el 25/08**, y la receta ya está exportada a
    `L_Forja_romper-la-linea`. Lo siguiente es **jugarla en PIE**: confirmar que los dormidos no
