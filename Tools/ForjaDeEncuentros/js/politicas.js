@@ -286,6 +286,17 @@ class PoliticaBase {
   // ------------------------------------------------------- armas temporales
 
   _planDeArma(sim, M, obj) {
+    // 3-pre. «Volver a la espada cuando quieras» (§5.2). Si lo que llevo vale
+    // MENOS que la espada base contra lo que queda vivo, se guarda y punto:
+    // no hace falta otro drop ni un descarte con condiciones. El margen de
+    // 0,15 evita el aleteo con armas que rondan el valor de la espada.
+    if (M.temporal &&
+        this._valorDeArma(sim, M, M.temporal.familia) + 0.15 <
+          this._valorDeArma(sim, M, null) &&
+        this._huecoSeguro(sim, M, (sim.armas.reglas.duracionGuardado ?? 0.5) * 1.2)) {
+      return { accion: 'guardar', objetivo: obj?.id };
+    }
+
     // 3a. ¿Merece la pena sacrificar lo que llevo? (§3.2)
     const d = obj ? descarteDe(M, sim.armas) : null;
     if (d && this._mereceDescarte(sim, M, obj, d)) {
@@ -347,8 +358,17 @@ class PoliticaBase {
    * la lanza vale mucho con arqueros en pie y poco cuando solo quedan escuderos.
    */
   _valorDeArma(sim, M, familia) {
-    const vivos = sim.enemigosVivos();
-    if (!vivos.length) return 0;
+    const todos = sim.enemigosVivos();
+    if (!todos.length) return 0;
+    // EN JUEGO, NO EN NOMINA. Hasta el 26/08 esto contaba tambien a los
+    // DORMIDOS de oleadas futuras, y ese era el motor de la trampa del Arco:
+    // un arquero dormido en un balcon lejano inflaba el valor del arco
+    // mientras a Malakh le pegaba un escudero en la cara, asi que ni lo
+    // guardaba ni dejaba de recogerlo. Un arma se valora contra la pelea que
+    // tienes; la nomina completa solo cuenta en los huecos de calma entre
+    // oleadas, que es cuando un jugador planifica el siguiente asalto.
+    let vivos = todos.filter(e => e.activo);
+    if (!vivos.length) vivos = todos;
     const lejanos = vivos.filter(e =>
       RANGO_LARGO.includes(e.arquetipo) || Math.abs((e.cota || 0) - (M.cota || 0)) > 120).length;
     const conGuardia = vivos.filter(e => (e.perfil.guardia || 0) > 0).length;
@@ -356,7 +376,13 @@ class PoliticaBase {
     switch (familia) {
       case null: return 1.0;                                   // espada base
       case 'lanza_del_alba': return 2.0 + lejanos * 0.8;
-      case 'arco_del_firmamento': return 1.2 + lejanos * 1.6;
+      // MEDIDO 26/08, tres veces: un arco en melé es PEOR que la espada, no
+      // un empate. La matriz da +9% contra Cierre, +18% contra Mole y +124%
+      // contra Formacion, y en dos recetas recogerlo EMPEORABA el encuentro
+      // (+27% de daño en «Romper la linea»). El 1,2 de base era la trampa:
+      // con todo el mundo a melé la politica lo conservaba. Por debajo de la
+      // espada, quien lo lleva sin arqueros a la vista lo guarda.
+      case 'arco_del_firmamento': return 0.6 + lejanos * 1.6;
       case 'espadon_alabarda': return 2.0 + conGuardia * 1.0;
       case 'estandarte_ritual': return 1.4 + (vivos.length >= 3 ? 1.2 : 0);
       // El Escudo Celestial para flechas, asi que su valor lo fijan los arqueros

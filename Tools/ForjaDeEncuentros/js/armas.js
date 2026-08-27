@@ -93,6 +93,23 @@ export function gastarRecurso(M, cantidad) {
   return { tipo: 'agotada', arma: familia };
 }
 
+/**
+ * «GUARDAR ARMA» (§5.2): volver a la espada base cuando el jugador quiere,
+ * sin gastar el descarte ni esperar otro drop. El arma se disuelve — mismo
+ * destino irreversible que un swap, sin dejar nada en el suelo.
+ *
+ * Existe porque se midio TRES veces (26/08) que sin esto un drop puede ser
+ * una trampa: el Arco recogido contra melé empeoraba el encuentro y la unica
+ * salida era otro drop o un descarte situacional. El §5.2 promete que nunca
+ * dependas de un drop, y eso incluye poder soltarlo.
+ */
+export function guardarTemporal(M) {
+  if (!M.temporal) return null;
+  const familia = M.temporal.familia;
+  M.temporal = null;
+  return { tipo: 'guardada', arma: familia };
+}
+
 export function consumirPorDescarte(M) {
   if (!M.temporal) return null;
   const familia = M.temporal.familia;

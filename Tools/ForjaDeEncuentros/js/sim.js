@@ -14,7 +14,8 @@ import {
 } from './geometria.js';
 import {
   perfilAtaque, perfilBloqueo, descarteDe, equipar, gastarRecurso,
-  consumirPorDescarte, consumirOffHandPorDescarte, purgarPorSeal, decideDrop
+  consumirPorDescarte, consumirOffHandPorDescarte, purgarPorSeal, decideDrop,
+  guardarTemporal
 } from './armas.js';
 
 export const ESTADOS = {
@@ -361,7 +362,15 @@ export class Simulacion {
 
     if (M.estado === ESTADOS.RECOGIENDO) {
       if (M.tEstado >= M.accion.duracion) {
-        this._completarRecogida(M.accion.dropId);
+        // El mismo estado sirve para las dos pausas cortas de manos ocupadas:
+        // agacharse a por un drop, o disolver lo que llevas para volver a la
+        // espada. Lo que cambia es solo que ocurre al completarse.
+        if (M.accion.guardar) {
+          const g = guardarTemporal(M);
+          if (g) this._evento('guardada', { agente: M.id, arma: g.arma });
+        } else {
+          this._completarRecogida(M.accion.dropId);
+        }
         this._aLibre(M);
       }
       return;
@@ -397,6 +406,14 @@ export class Simulacion {
       M.tEstado = 0;
       M.accion = { duracion: p.duracion, curacion: p.curacion };
       this._evento('bebe', { agente: M.id, restantes: M.pociones });
+      return;
+    }
+
+    // --- guardar el arma temporal y volver a la espada (§5.2) ---
+    if (intencion.accion === 'guardar' && M.temporal) {
+      M.estado = ESTADOS.RECOGIENDO;
+      M.tEstado = 0;
+      M.accion = { duracion: this.armas.reglas.duracionGuardado ?? 0.5, guardar: true };
       return;
     }
 
