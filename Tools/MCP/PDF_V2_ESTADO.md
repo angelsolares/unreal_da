@@ -15,9 +15,46 @@ de arma temporal también** —las cuatro salidas del §3, incluida la de agotar
 natural— y **las cinco recetas del §6 están montadas y exportadas**. **Los doce criterios de
 aceptación del §12 están en verde**, aunque uno de ellos esté medido y no jugado.
 
-Lo que falta ya no es ningún criterio: **el VFX del descarte (§9)**, **tres entradas del §10**,
-y tres divergencias del PDF que son decisiones tuyas. Todo eso está en la sección siguiente, que
-es el repaso frase a frase del 26/08.
+**Desde el 27/08 no queda NADA del PDF por construir**: el §9 y el §10 se cerraron esa noche
+(la sección siguiente) y las dos señales lógicas del §5.1 también. Lo que queda es **jugar los
+cinco niveles**, tres divergencias que son decisiones de Angel, y dos opcionales que el propio
+PDF marca como tales.
+
+---
+
+## Puesta al día del 2026-08-27: los tres flecos, cerrados y probados en PIE
+
+Los tres bloques que quedaban «en corto», hechos en una sesión nocturna y VERIFICADOS en
+juego (fotos en la sesión):
+
+- **§9, el destello del descarte**: `BP_DA_DestelloDescarte`, un actor efímero (0,8 s) que
+  `ArrojarLanza` — el despachador común de las cinco familias — spawnea a los pies de Malakh
+  antes de enrutar el montaje: disco celestial en expansión (el material del pilar) + pulso
+  de luz azul, un solo latido. Probado arrojando la Lanza.
+- **§10, el resto del Debug HUD**: pestaña **ARENA** nueva (novena; la rejilla de pestañas
+  pasó a 5 por fila) con el watchdog EN PANTALLA —estado del sello, oleada actual/máx,
+  vivos/por venir/válidos y un veredicto que es LA MISMA condición de apertura de emergencia
+  de `VigilarArena`—, la **cadena táctica** (una línea por enemigo: oleada + nombre +
+  `[MUERTO]`/`*DROP GARANTIZADO*`, calculada de lo que la arena ya sabe: sus oleadas y las
+  políticas de drop del §8) y el botón **HIGHLIGHT GUARANTEED DROPS** (esferas de debug 4 s).
+  Y WEAPON pasa de 4 a 6 filas: **FLECHAS** (la cuenta real) y **ENEMIGO DE ORIGEN** — la
+  nota «el pickup vive en DCS» era falsa desde que existe `BP_DA_DroppedWeapon`, y ahora
+  `DropOne` anota el dueño, el arma caída lo lleva, y `CanjearTemporal` se lo pasa al
+  jugador. Verificado con una recogida real: `Forja_lancero_del_alba_lancero_de_la_linea`.
+- **§5.1, las dos señales lógicas**: el salto atrás de los Arqueros y el arranque del aura —
+  el detalle en su sección, incluida la corrección del «450» y la trampa de la traza de
+  suelo que tiró a los dos arqueros del balcón en la primera pasada.
+
+**Tres trampas nuevas de las herramientas, pagadas y documentadas** (en las memorias y en
+las cabeceras de los scripts): el borrado del asset del HUD miente en TODAS las vías (la cura
+es borrar el `.uasset` a disco con el editor cerrado y regenerar sobre el hueco); un nodo de
+interfaz con exec (`IsAlive`) dentro de una expresión queda SIN ejecutar y devuelve false sin
+que la relectura lo delate; y al crear llamadas por cirugía, el candidato ajeno lleva su
+Target LLAMADO `self` pero tipado de otra clase — la firma del propio es `Self Object
+Reference`.
+
+Herramientas nuevas: `aura_arranque.py`, `jugador_seniales.py`, `arma_origen.py`,
+`descarte_destello.py` (+`_crear`), `arena_hud.py`, y el generador del HUD con la pestaña.
 
 ---
 
@@ -181,12 +218,12 @@ la separa del juego son dos datos que a `BP_DA_Arena` le faltan. Detalle en el �
 | 3.2 | Ataque de descarte por familia | 🟢 **5 de 5**, verificado sobre el grafo: cinco ramas, cinco montajes |
 | 4 | Arsenal de oportunidad | 🟢 las 5 familias existen; **counters medidos el 25/08**, 3 de 5 en banda y las otras 2 con diagnóstico |
 | 4.1 | Reglas de pickup | 🟠 completa salvo la «ventana breve y clara»: hoy el arma se queda para siempre (`DropLifeSpan = 0`) |
-| 5 | Orden de bajas implícito | 🟠 el Arquero ya reacciona a la distancia; falta que distinga el arma |
+| 5 | Orden de bajas implícito | 🟢 las dos señales lógicas del §5.1 están (26/08 noche): salto atrás de los Arqueros al ver la Lanza —por evento, no por umbral— y el aura del Portador arrancando «tras pocos segundos». El resto es layout de arenas |
 | 6 | Recetas de encuentro | 🟢 **5 de 5 montadas y en el motor** (26/08, banda 70-94% con espada sola); falta jugarlas. El §6.3 va con 4 enemigos y no 5, por el reloj |
 | 7 | Arenas selladas | 🟢 completo |
 | 8 | Sistema de drops | 🟢 las 4 políticas: motor 25/08, simulador+exportador+piedad AND 26/08 |
-| 9 | Feedback visual/audio/UX | 🟠 el «arma disponible» está entera —pilar de luz + SoundCue, probados en juego el 26/08—; falta sólo el **VFX del descarte** |
-| 10 | Integración con DA Debug HUD | 🟠 faltan 3 enteras y 1 a medias (ver abajo) |
+| 9 | Feedback visual/audio/UX | 🟢 **entero** desde el 27/08: pilar + sonido del arma disponible, y el destello celestial del descarte (probado en PIE arrojando la Lanza) |
+| 10 | Integración con DA Debug HUD | 🟢 **entero** desde el 27/08: pestaña ARENA nueva (watchdog en pantalla, cadena táctica, highlight de drops) y WEAPON con 6 filas (ammo y enemigo de origen). Fuera de la letra del PDF quedan solo el moveset y la compatibilidad off-hand como texto propio |
 | 11 | Guía técnica / arquitectura | 🟢 adaptado a DCS, sin sistemas paralelos. Snapshot del §11.3: **6 de 8** desde el 26/08 |
 | 12 | Criterios de aceptación | 🟢 **12 de 12** desde el 26/08; el del encuentro, medido pero sin jugar |
 | 13 | Orden de implementación (fases) | 🟠 fases 1-8 hechas, 9 a medias, 10 sin empezar |
@@ -366,7 +403,7 @@ debug**. En juego, `CorromperArmaTemporal` salta a 0,45 al recoger y ahí se que
 El PDF dice *«**puede** progresar por uso, tiempo portado o beats»*, así que es opcional —
 pero hoy los cuatro estados no los ve nadie que no abra el HUD.
 
-### Las entradas del Debug HUD (§10) — tres enteras y dos a medias
+### ~~Las entradas del Debug HUD (§10)~~ — CERRADAS el 27/08 (ver la puesta al día); lo de abajo queda como registro
 
 **Al día del 26/08.** De las trece que pide el §10 faltan **tres**: la cadena táctica, el
 resalte de drops garantizados y el watchdog en pantalla. Otras dos están a medias: Show Weapon
@@ -402,31 +439,40 @@ posición, no instantánea de arena). Lo tachado ya está hecho:
 - **Watchdog status en pantalla**: hoy el watchdog existe y funciona, pero **escupe al log**;
   el PDF lo quiere visible (enemies alive, victory condition, barrier state).
 
-### La reacción enemiga (§5.1) — **a medias desde el 26/08**
+### ~~La reacción enemiga (§5.1)~~ — **cerrada el 26/08 (noche), y NO con un decorador**
 
-*«Arquero retrocede al ver a Malakh con lanza»* — la única señal del §5.1 que es lógica y no
-layout. Las otras cinco (posición, presión, silueta, geometría, timing) son trabajo de
-construir las arenas, o sea el punto 2 de arriba.
+Dos señales entraron, y las dos van por donde el propio proyecto había medido que tenían que ir:
 
-**Resulta que el árbol YA la tenía montada** y nadie la había mirado. Bajo «Is Target Set?»
-hay un `Sequence` con el decorador `Is Close to Target` (DistanceToTarget < 300) que dispara
-un `Roll` (Chance 60) o, si no, `Jog` → `Run EQS Query` → `Move To`. El Arquero ya retrocedía;
-lo que estaba mal era **cuándo**.
+**1. «Arquero retrocede al ver a Malakh con lanza» — por EVENTO, no por umbral.** Primero, una
+corrección de este documento: el «puesto en 450» de la versión anterior era falso — **se
+revirtió a 300 el mismo día**, y el porqué está medido en `bt_arquero_da.py`: la rama de huir
+del árbol lleva un `Force Success` que **apaga el disparo** mientras el jugador esté dentro
+del umbral, la EQS no tiene adónde mandar a un arquero cuyo balcón (400×550) es más pequeño
+que el propio umbral, y el umbral mide en 2D — desde el balcón, 450 horizontales son 557 reales.
+Cualquier número ahí solo compra una burbuja de silencio. Y un decorador propio que
+distinguiera el arma heredaría los tres defectos.
 
-Los 300 son de DCS, de un mundo donde la espada medía 243 unidades de animación. El alcance
-REAL de Malakh son **433 cm** (327 + 106), así que el Arquero empezaba a apartarse cuando ya
-llevaba 133 cm dentro del arco de espada: reaccionaba estando muerto. **Puesto en 450** en
-nuestra copia `BT_DA_Arquero` (`Tools/MCP/bt_arquero_da.py`), con el `BT_ArcherAI` de DCS
-intacto y verificado.
+La conclusión escrita allí era que la señal pide **un paso atrás visible**, y eso es lo
+montado: en el momento en que Malakh ADQUIERE la Lanza —`SustituirArmaTemporal`, el embudo
+único, así que vale para el pickup y para el give del HUD—, `AvisarLanza` hace que todo
+Arquero vivo a menos de 2.500 dé un **salto atrás** (`LaunchCharacter` alejándose, 380
+horizontal + 300 de brinco) **con comprobación de suelo**: los arqueros viven en balcones, y
+sin el `LineTrace` el susto los tiraría a la arena y cambiaría el encuentro — si detrás no
+hay suelo, ese arquero no salta. El árbol NO se toca: sigue disparando igual. La señal es un
+gesto, no un estado.
 
-**Lo que sigue faltando es el «con lanza».** `Is Close to Target` es un
-`BTDecorator_Blackboard` y compara contra un LITERAL, no contra una clave de blackboard, así
-que no puede depender del arma sin escribir un decorador propio. Con la Lanza en 448 y la
-espada en 433 la diferencia real son 15 cm: distinguirlas sería **lectura**, no balance.
+**2. «Estandarte empieza buff tras pocos segundos» — el aura ya no nace encendida.** El
+BeginPlay del componente corre al CARGAR el nivel, así que un retraso contado desde ahí se
+consume antes de que llegues; y engancharlo a la arena dejaría colgados a los portadores
+sueltos. Por eso el arranque es por proximidad: cuando el jugador entra en `RadioArranque`
+(1500) empieza la cuenta de `RetrasoAura` (4 s), y al agotarse se monta el visual y empieza el
+buff — te acercas, y a los pocos segundos el anillo se enciende y los aliados pegan más.
+`SiempreActiva` se respeta. **Espejo exacto en el simulador** (`_pasoAura` + el gate en
+`_danoDe`, números en `calibracion.json`) y `pruebas/aura.mjs` cubre el arranque: 9 de 9, y
+`npm test` entero verde. Ambas señales, pendientes de verse en PIE.
 
-Sin verificar en PIE todavía. Y ojo: subirle la distancia de retirada al Arquero **en el
-simulador** salía al revés —retrocediendo no dispara—, aunque aquello eran valores mucho
-mayores sobre `distanciaMinima`.
+Las otras cuatro señales del §5.1 (posición, presión, silueta, geometría) son layout de
+arena, no lógica: se cierran construyendo encuentros, no código.
 
 ---
 
@@ -476,17 +522,15 @@ queda **medido pero no jugado**, y está dicho en su fila.
 **Con `AMMO OUT` cerrado, los doce criterios de aceptación del §12 están en verde.** Lo que
 queda ya no es ningún criterio: es lectura, herramienta y decisiones.
 
-1. **JUGAR LOS CINCO NIVELES.** Están validados en el simulador y ninguno se ha jugado; el
-   motor ya ha desmentido al papel varias veces. En *lluvia-del-firmamento*, gastar el arco
-   hasta cero y ver el `AMMO OUT` en el sitio donde importa: en las manos.
-2. **El VFX del descarte (§9)**, que es lo único que queda de esa sección: el «arma
-   disponible» está entera desde el 26/08, brillo y sonido, probados en juego.
-3. **Las tres entradas que quedan del §10** (tactical chain, highlight de drops garantizados,
-   watchdog en pantalla) y el ammo en la pestaña WEAPON.
-4. Decidir las tres divergencias de la tabla de arriba: el quinto enemigo del §6.3, la ventana
-   de vida del drop y la «gran guardia» del elite.
-5. §3.1 progresión de corrupción y §9 VFX del descarte, que el PDF marca como opcional y
-   *polish* respectivamente.
+1. **JUGAR LOS CINCO NIVELES.** Sigue siendo lo primero y ya es lo ÚNICO grande: todo lo
+   demás del PDF está montado. Al jugar se ven de una pasada las señales nuevas: el pilar y
+   el sonido del arma caída, el salto atrás de los Arqueros al robar la Lanza, el arranque
+   del aura del Portador (en *el-estandarte-vive*), el destello del descarte, y la tecla `.`
+   con las pestañas ARENA y WEAPON contando la pelea.
+2. Decidir las tres divergencias de la tabla de arriba: el quinto enemigo del §6.3, la ventana
+   de vida del drop (§4.1) y la «gran guardia» del elite (§6.4).
+3. Opcionales por el propio PDF: progresión de corrupción (§3.1) y los cooldowns del snapshot
+   (§11.3).
 
 ## Orden sugerido, el del 2026-08-24 (registro)
 
