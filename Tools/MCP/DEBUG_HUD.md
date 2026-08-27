@@ -93,9 +93,14 @@ OTRO blueprint, así que la lectura vive en `BP_DA_PlayerCharacter.DbgEstadoArma
 devuelve cuatro cadenas ya formateadas —arma, tipo, segundos con ella y último motivo de
 salida— y aquí sólo se destructuran con `(bind (arma tipo seg mot) …)` y se pintan.
 
-El **motivo de salida** se escribe en los tres puntos por los que un arma temporal se va:
-`SustituirArmaTemporal` → SWAP, `ArrojarArmaTemporal` → DISCARD, `PurgarTemporales` →
-SEAL BREAK. Un nodo `Set` al principio de cada una.
+El **motivo de salida** se escribe en los **cuatro** puntos por los que un arma temporal se va
+—los cuatro que enumera el §3 del PDF—: `SustituirArmaTemporal` → SWAP, `ArrojarArmaTemporal`
+→ DISCARD, `PurgarTemporales` → SEAL BREAK y `VigilarMunicion` → **AMMO OUT**. Un nodo `Set`
+al principio de cada una.
+
+`AMMO OUT` es del 26/08 (`arma_sin_municion.py`) y es el que cierra el criterio 1 del §12:
+el arco a cero flechas devuelve la espada sola. El panel no hubo que tocarlo — pinta la cadena
+tal cual—, así que **si mañana aparece un quinto motivo, tampoco.**
 
 Lo que **no** tiene, y está escrito en el propio panel para que no se olvide: el **enemigo
 de origen** y el **ammo**. El pickup ocurre dentro de DCS y el drop no guarda quién lo
