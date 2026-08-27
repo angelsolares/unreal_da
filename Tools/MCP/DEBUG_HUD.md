@@ -11,6 +11,9 @@ desarrollo.
 **No es F8**: en PIE F8 es el Eject/Possess del editor, y F1-F10 las captura el viewport para
 los modos de vista. Se cierra con la misma tecla o con `CLOSE DEBUG HUD`.
 
+**Nueve pestañas desde el 27/08** (la novena es **ARENA**), en rejilla de **5 por fila** —
+antes eran 4 por fila, y la novena abría una tercera fila que pisaba el contenido.
+
 Mientras está abierto: cursor visible, input del pawn desactivado (para que clicar no ataque) y
 los widgets UMG de DCS escondidos (Slate los pinta siempre por encima del canvas del HUD, así
 que la única forma de que el panel se lea es apagarlos; se restauran al cerrar y sólo los que
@@ -102,9 +105,13 @@ al principio de cada una.
 el arco a cero flechas devuelve la espada sola. El panel no hubo que tocarlo — pinta la cadena
 tal cual—, así que **si mañana aparece un quinto motivo, tampoco.**
 
-Lo que **no** tiene, y está escrito en el propio panel para que no se olvide: el **enemigo
-de origen** y el **ammo**. El pickup ocurre dentro de DCS y el drop no guarda quién lo
-soltó; ponerlo pide tocar `BP_DA_WeaponDropComponent` y el camino de recogida.
+**El enemigo de origen y el ammo ya están** (27/08, filas FLECHAS y ENEMIGO DE ORIGEN):
+la nota vieja de que «el pickup vive en DCS» era falsa desde que existe `BP_DA_DroppedWeapon`
+— todo el camino del arma por el suelo es nuestro. `DropOne` anota quién la soltó
+(`AnotarOrigen`, cirugía de un nodo), el actor caído lo lleva en `EnemigoOrigen`, y
+`CanjearTemporal` se lo pasa al jugador al recogerla. `DbgEstadoArma` devuelve ahora SEIS
+cadenas. Un arma dada por el HUD queda con origen vacío, que es la verdad. Todo en
+`arma_origen.py` y `jugador_seniales.py`.
 
 ### Las tres trampas, por orden de lo que cuestan
 
@@ -122,6 +129,29 @@ soltó; ponerlo pide tocar `BP_DA_WeaponDropComponent` y el camino de recogida.
 **La red que funciona:** el `.uasset` commiteado. Las tres veces se recuperó con
 `git checkout -- Content/DarkAngels/Debug/BP_DA_DebugHUD.uasset`. Antes de una pasada,
 comprobar que está limpio en git.
+
+### 3.d La pestaña ARENA, y el borrado que miente en TODAS partes
+
+**ARENA** (27/08) es el resto del §10: el **watchdog en pantalla** (estado del sello, oleada
+actual/máx, vivos/por venir/válidos, y el veredicto con LA MISMA condición que dispara la
+apertura de emergencia de `VigilarArena` — con `HayVivosFuturos` daba falsa ALERTA en el hueco
+entre oleadas), la **cadena táctica** (una línea por enemigo: oleada + nombre + `[MUERTO]` /
+`*DROP GARANTIZADO*`, formateada por `BP_DA_Arena.DbgLineaEnemigo`, de `arena_hud.py`) y el
+botón **HIGHLIGHT GUARANTEED DROPS** (esfera y letrero de debug 4 s). Todo se lee de la arena
+en cuya caja está el jugador.
+
+Dos trampas nuevas del DSL, pagadas aquí:
+
+- **`CanBeAttacked|IsAlive` dentro de una EXPRESIÓN se crea con el execute SIN conectar** y
+  devuelve false siempre — los cinco enemigos salían `[MUERTO]` con cuatro vivos, y la
+  relectura del grafo no lo delata. Es un nodo de interfaz CON exec: hay que izarlo a un
+  `(bind _vivo (...))` en posición de SENTENCIA, como hace `VigilarArena`.
+- **El borrado del asset previo a la regeneración miente en todas partes**: el `delete` del
+  toolset Y `EditorAssetLibrary.delete_asset` devuelven éxito sin borrar, incluso con el
+  editor RECIÉN ARRANCADO y sin referencers en el registro (algo lo enraíza en memoria; el
+  buffer de deshacer es el sospechoso). La única cura que funcionó: **cerrar el editor,
+  borrar el `.uasset` a disco** (commiteado antes: es la red), **relanzar y regenerar sobre
+  el hueco**. La pasada entera son ~22 min con ese ciclo.
 
 ---
 

@@ -41,7 +41,7 @@ AUTO_ABRIR = False
 
 TECLAS = ["Period", "Decimal"]
 PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY", "FINISHERS",
-            "WEAPON"]
+            "WEAPON", "ARENA"]
 
 # --- Geometria del panel.
 #
@@ -54,7 +54,9 @@ PESTANAS = ["WORLD", "PLAYER", "COMBAT", "AI", "BOSS", "STORY", "FINISHERS",
 # Todo pasa por los ayudantes X() / Y() / SC(), y de ahi salen A LA VEZ el
 # dibujado y el enrutado de clics: por construccion no se pueden descuadrar.
 PY, PW = 92.0, 580.0        # PY es fijo: deja hueco al banner de objetivo
-TAB_W, TAB_H, TAB_SEP = 139.0, 28.0, 143.0
+# 5 por fila desde el 26/08 (antes 4): la novena pestaña, ARENA, abria una
+# tercera fila que pisaba el contenido. 5 x 114 = 570 < PW 580.
+TAB_W, TAB_H, TAB_SEP = 110.0, 28.0, 114.0
 TAB_Y0 = 46.0               # desplazamiento desde el borde superior del panel
 FILA = 26.0                 # alto de fila de la lista de destinos
 BOTON_H = 26.0
@@ -189,7 +191,7 @@ BIND_GEO = ('  (bind esc (Variables|Default|GetDbgEscala))\n'
 
 def tab_pos(i):
     """(desplazamiento en X, desplazamiento en Y) desde la esquina del panel."""
-    return (6.0 + (i % 4) * TAB_SEP, TAB_Y0 + (i // 4) * 32.0)
+    return (6.0 + (i % 5) * TAB_SEP, TAB_Y0 + (i // 5) * 32.0)
 
 
 # ###########################################################################
@@ -541,7 +543,7 @@ def dsl_dibujar():
          # AI es la mas alta porque lleva dos listas y el bloque de objetivo.
          '  (bind alto (* (select (== (Variables|Default|GetDbgTab) 0)'
          ' (+ 444.0 (* n %.1f))'
-         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 (select (== (Variables|Default|GetDbgTab) 2) 720.0 (select (== (Variables|Default|GetDbgTab) 7) 420.0 660.0)))))) esc))' % FILA,
+         ' (select (== (Variables|Default|GetDbgTab) 3) 760.0 (select (== (Variables|Default|GetDbgTab) 4) 700.0 (select (== (Variables|Default|GetDbgTab) 6) 682.0 (select (== (Variables|Default|GetDbgTab) 2) 720.0 (select (== (Variables|Default|GetDbgTab) 7) 460.0 (select (== (Variables|Default|GetDbgTab) 8) 640.0 660.0))))))) esc))' % FILA,
          rect("px", "%.1f" % PY, SC(PW), "alto", FONDO),
          rect("px", "%.1f" % PY, SC(PW), SC(3.0), ORO),
          texto(X(14.0), Y(12.0), '"DARK ANGELS - DEV TOOLS"', ORO, 1.35),
@@ -563,9 +565,9 @@ def dsl_dibujar():
         # Dos cierres: uno para el (else y otro para el (if.
         l.append(rect(X(x), Y(y), SC(TAB_W), SC(TAB_H), BOTON) + '))')
         # WORLD, PLAYER, COMBAT y AI ya estan; BOSS y STORY pendientes.
-        etiqueta = '"%s"' % nombre if i < 8 else '"%s  --"' % nombre
+        etiqueta = '"%s"' % nombre if i < 9 else '"%s  --"' % nombre
         l.append(texto(X(x + 12.0), Y(y + 4.0), etiqueta,
-                       ORO if i < 8 else GRIS, 1.0))
+                       ORO if i < 9 else GRIS, 1.0))
     # El hover de las 7 pestañas y los dos TAM: aqui, que es el unico punto por
     # el que pasan todos los caminos y donde la tira ya esta pintada.
     l.append('  (CallFunction|DbgHoverTabs)')
@@ -593,7 +595,10 @@ def dsl_dibujar():
     l.append('                              (if (== (Variables|Default|GetDbgTab) 7)')
     l.append('                                (CallFunction|DbgTabWeapon)')
     l.append('                                (else')
-    l.append('                                  (CallFunction|DbgTabPendiente)))))))))))))))))')
+    l.append('                                  (if (== (Variables|Default|GetDbgTab) 8)')
+    l.append('                                    (CallFunction|DbgTabArena)')
+    l.append('                                    (else')
+    l.append('                                      (CallFunction|DbgTabPendiente)))))))))))))))))))')
     l.append('  (return false))')
     return "\n".join(l)
 
@@ -2696,6 +2701,114 @@ def dsl_cfg_cargar():
     return "\n".join(l)
 
 
+
+
+# ---------------------------------------------------------------- ARENA (tab)
+#
+# La novena pestaña — el resto del §10 que faltaba: el WATCHDOG EN PANTALLA
+# (enemigos vivos, condicion de victoria, estado de las barreras — hasta hoy
+# solo escupia al log), la CADENA TACTICA RECOMENDADA y el resalte de DROPS
+# GARANTIZADOS (los dos DEBUG ONLY del PDF).
+#
+# La cadena no es un guion aparte: son las OLEADAS mas los drops garantizados,
+# que es exactamente lo que el disenador codifico en la receta. La linea por
+# enemigo la formatea `BP_DA_Arena.DbgLineaEnemigo(i)` (arena_hud.py) y aqui
+# solo se pinta en bucle, como la lista de teleports.
+#
+# Todo se lee de LA ARENA EN CUYA CAJA ESTA EL JUGADOR, con el mismo test que
+# usa `arena_accion`. Sin arena debajo, la pestaña lo dice y no pinta nada.
+
+def dsl_arena_resaltar():
+    """HIGHLIGHT GUARANTEED TACTICAL DROPS (DEBUG ONLY, §10): esfera y letrero
+    de debug 4 s sobre cada enemigo vivo con drop garantizado."""
+    return arena_accion(
+        "DbgArenaResaltar",
+        "true",
+        '      (Class|BPDAArena|DbgResaltarDrops a)\n',
+        "Drops garantizados resaltados 4 s")
+
+
+ARENA_BTN_Y = 490.0
+
+
+def dsl_tab_arena():
+    """El panel: estado + watchdog + cadena, todo leido de la arena pisada."""
+    l = ['(fn DbgTabArena ()', BIND_GEO]
+    l.append(texto(X(16.0), Y(116.0), '"ARENA - WATCHDOG Y CADENA TACTICA"',
+                   ORO, 1.15))
+    l.append(texto(X(16.0), Y(142.0),
+                   '"(sin una arena bajo los pies, esto es todo lo que hay)"',
+                   GRIS, 0.85))
+    l.append('  (bind jug (Transformation|GetActorLocation'
+             ' (Game|GetPlayerCharacter 0)))')
+    l.append('  (for a (Actor|GetAllActorsOfClass "%s")' % DA_ARENA)
+    l.append('    (bind rel (Math|Transform|InverseTransformLocation'
+             ' (Transformation|GetActorTransform a) jug))')
+    l.append('    (bind ab (Math|Vector|VectorGetAbs rel))')
+    l.append('    (bind r (Class|BPDAArena|GetRadioArena a))')
+    l.append('    (if (and (< (.x ab) r) (< (.y ab) r))')
+    l.append('      (bind est (Class|BPDAArena|GetEstado a))')
+    l.append('      (bind vivos (Class|BPDAArena|GetHayVivos a))')
+    l.append('      (bind futuros (Class|BPDAArena|GetHayVivosFuturos a))')
+    l.append('      (bind validos (Class|BPDAArena|GetHayValidos a))')
+    l.append('      ' + texto(X(16.0), Y(170.0),
+             '(Utilities|String|Append (Utilities|String|Append "ESTADO: "'
+             ' (select (== est 0) "EXPLORACION"'
+             ' (select (== est 1) "SELLADA" "ABIERTA")))'
+             ' (Utilities|String|Append "    OLEADA "'
+             ' (Utilities|String|Append (Utilities|String|ToString(Integer)'
+             ' (Class|BPDAArena|GetOleadaActual a))'
+             ' (Utilities|String|Append "/"'
+             ' (Utilities|String|ToString(Integer)'
+             ' (Class|BPDAArena|GetMaxOleada a))))))', HUESO, 1.0).strip())
+    l.append('      ' + texto(X(16.0), Y(196.0),
+             '(Utilities|String|Append "VIVOS / POR VENIR / VALIDOS:  "'
+             ' (Utilities|String|Append (select vivos "SI" "NO")'
+             ' (Utilities|String|Append "  /  "'
+             ' (Utilities|String|Append (select futuros "SI" "NO")'
+             ' (Utilities|String|Append "  /  "'
+             ' (select validos "SI" "NO"))))))', HUESO, 1.0).strip())
+    # La condicion es LA MISMA que dispara la apertura de emergencia en
+    # VigilarArena: sellada + sin vivos + sin oleadas por entrar + sin
+    # enemigos validos. Con HayVivosFuturos daba falsa ALERTA en el hueco
+    # de RetardoEntreOleadas.
+    l.append('      ' + texto(X(16.0), Y(222.0),
+             '(select (and (== est 1) (and (not vivos)'
+             ' (and (>= (Class|BPDAArena|GetOleadaActual a)'
+             ' (Class|BPDAArena|GetMaxOleada a)) (not validos))))'
+             ' "WATCHDOG: ALERTA - LA CONDICION DE APERTURA DE EMERGENCIA"'
+             ' "WATCHDOG: OK")', ORO, 1.0).strip())
+    l.append('      ' + texto(X(16.0), Y(252.0),
+             '"CADENA TACTICA   (oleadas + drops garantizados)"',
+             ORO, 1.05).strip())
+    l.append('      (bind ne (Utilities|Array|Length'
+             ' (Class|BPDAArena|GetEnemigos a)))')
+    l.append('      (for i (range ne)')
+    l.append('        ' + texto(X(16.0),
+             "(+ %s (* i %s))" % (Y(276.0), SC(20.0)),
+             '(Class|BPDAArena|DbgLineaEnemigo a i)', HUESO, 0.9).strip())
+    l.append('        )')
+    l.append('      (CallFunction|DbgBoton :X %s :Y %s :W %s'
+             ' :Etiqueta "HIGHLIGHT GUARANTEED DROPS" :Encendido false))'
+             % (X(16.0), Y(ARENA_BTN_Y), SC(320.0)))
+    l.append('    )')
+    l.append(texto(X(16.0), Y(600.0),
+                   '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
+def dsl_click_arena():
+    """Un boton: el resalte. El resto de la pestaña es lectura."""
+    l = ['(fn DbgClickArena (MX MY)', BIND_GEO]
+    l.append('  (if %s' % caja('MX', 'MY', X(16.0), Y(ARENA_BTN_Y),
+                               SC(320.0), SC(BOTON_H)))
+    l.append('    (CallFunction|DbgArenaResaltar)')
+    l.append('    (return))')
+    l.append('  (return false))')
+    return "\n".join(l)
+
+
 def dsl_click():
     l = ['(fn DbgClick (MX MY)',
          # El sonido va en la ENTRADA, antes de resolver nada: asi lee el
@@ -2740,7 +2853,10 @@ def dsl_click():
     l.append('                            (CallFunction|DbgClickFinishers :MX MX :MY MY)')
     l.append('                            (else')
     l.append('                              (if (== (Variables|Default|GetDbgTab) 7)')
-    l.append('                                (CallFunction|DbgClickWeapon :MX MX :MY MY))))))))))))))))')
+    l.append('                                (CallFunction|DbgClickWeapon :MX MX :MY MY)')
+    l.append('                                (else')
+    l.append('                                  (if (== (Variables|Default|GetDbgTab) 8)')
+    l.append('                                    (CallFunction|DbgClickArena :MX MX :MY MY))))))))))))))))))')
     l.append('  (CallFunction|DbgCfgGuardar)')
     l.append('  (return false))')
     return "\n".join(l)
@@ -2790,44 +2906,42 @@ def dsl_tab_weapon():
     `BP_DA_PlayerCharacter.DbgEstadoArma`, que devuelve las cuatro cadenas ya
     formateadas. Aqui solo se destructuran y se pintan."""
     l = ['(fn DbgTabWeapon ()', BIND_GEO]
-    l.append(texto(X(16.0), Y(60.0), '"WEAPON STATE"', ORO, 1.15))
+    l.append(texto(X(16.0), Y(116.0), '"WEAPON STATE"', ORO, 1.15))
     l.append('  (bind j (Utilities|Casting|CastToBP_DA_PlayerCharacter'
              ' (Game|GetPlayerPawn 0)))')
     l.append('  (Utilities|IsValid j')
     l.append('    (:"Is Valid"')
-    l.append('      (bind (arma tipo seg mot)'
+    l.append('      (bind (arma tipo seg mot flechas origen)'
              ' (Class|BPDAPlayerCharacter|DbgEstadoArma j))')
-    filas = [(96.0, '"ARMA"', 'arma'),
-             (126.0, '"TIPO"', 'tipo'),
-             (156.0, '"SEGUNDOS CON ELLA"', 'seg'),
-             (186.0, '"ULTIMA SALIDA"', 'mot')]
+    filas = [(152.0, '"ARMA"', 'arma'),
+             (182.0, '"TIPO"', 'tipo'),
+             (212.0, '"SEGUNDOS CON ELLA"', 'seg'),
+             (242.0, '"ULTIMA SALIDA"', 'mot'),
+             (272.0, '"FLECHAS"', 'flechas'),
+             (302.0, '"ENEMIGO DE ORIGEN"', 'origen')]
     for y, etiqueta, var in filas:
         l.append('      ' + texto(X(16.0), Y(y), etiqueta, GRIS, 0.95).strip())
         l.append('      ' + texto(X(250.0), Y(y), var, HUESO, 1.0).strip())
-    l.append('      ' + texto(X(16.0), Y(216.0),
-             '"ENEMIGO DE ORIGEN"', GRIS, 0.95).strip())
-    l.append('      ' + texto(X(250.0), Y(216.0),
-             '"-- sin registrar: el pickup vive en DCS"', GRIS, 1.0).strip())
     # GUARDAR ARMA (§5.2): el unico boton de la pestaña. Llama a
     # GuardarArmaTemporal del player: disuelve la temporal y vuelve a la
     # espada, dejando MotivoSalidaArma en GUARDADA — que se lee justo arriba.
     l.append('      (CallFunction|DbgBoton :X %s :Y %s :W %s'
              ' :Etiqueta "GUARDAR ARMA -> ESPADA" :Encendido false)'
-             % (X(16.0), Y(310.0), SC(300.0)))
+             % (X(16.0), Y(372.0), SC(300.0)))
     # La ultima del "Is Valid": su cierre va pegado.
-    l.append('      ' + texto(X(16.0), Y(256.0),
-             '"ULTIMA SALIDA se escribe en Swap / Discard / Seal Break."',
+    l.append('      ' + texto(X(16.0), Y(336.0),
+             '"SALIDAS: Swap / Discard / Seal Break / Ammo Out / Guardada."',
              GRIS, 0.85).strip() + ')')
     l.append('    (:"Is Not Valid"')
     # Y la ultima de todo cierra rama, IsValid y fn.
-    l.append('      ' + texto(X(16.0), Y(96.0),
+    l.append('      ' + texto(X(16.0), Y(152.0),
              '"No es el Malakh de DA."', GRIS, 1.0).strip() + ')))')
     return "\n".join(l)
 
 def dsl_click_weapon():
     """Un solo boton: GUARDAR ARMA. El resto de la pestaña es lectura."""
     l = ['(fn DbgClickWeapon (MX MY)', BIND_GEO]
-    l.append('  (if %s' % caja('MX', 'MY', X(16.0), Y(310.0),
+    l.append('  (if %s' % caja('MX', 'MY', X(16.0), Y(372.0),
                                SC(300.0), SC(BOTON_H)))
     l.append('    (CallFunction|DbgGuardarArma)')
     l.append('    (return))')
@@ -3039,6 +3153,9 @@ def run():
         ("DbgClickBoss", dsl_click_boss, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickStory", dsl_click_story, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickFinishers", dsl_click_finishers, [("MX", "float", True), ("MY", "float", True)]),
+        ("DbgArenaResaltar", dsl_arena_resaltar, []),
+        ("DbgTabArena", dsl_tab_arena, []),
+        ("DbgClickArena", dsl_click_arena, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClickWeapon", dsl_click_weapon, [("MX", "float", True), ("MY", "float", True)]),
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
