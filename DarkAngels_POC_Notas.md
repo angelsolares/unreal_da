@@ -15053,3 +15053,233 @@ El contador compila limpio (`BS_UP_TO_DATE`), está guardado y verificado contra
 del `.uasset`. Lo que **no** se ha podido probar es la ruta viva: sólo corre con partida, y
 arrancar PIE guarda el nivel. Se comprueba en la próxima sesión jugada, que es la misma en
 la que saldrá la cadencia.
+
+---
+
+## Sockets de equipo: por qué todo lo que lleva Malakh flotaba (2026-08-27)
+
+Angel señaló en una captura que el carcaj le volaba a la espalda. No era del carcaj:
+**es un defecto de escala que afecta a los seis personajes de DA**.
+
+### La causa, medida
+
+Los seis (`SK_DA_Malakh` y los cinco enemigos) miden **98,4 unidades** en su propio
+espacio, y el componente de malla los escala **x1,83** para llegar al tamaño del maniquí
+de DCS (180,5). Comparten `SK_Mannequin`, y **ahí es donde viven los sockets de equipo**
+(`quiver`, `bow`, `shield`, `sword`, `sword_use`…), colocados a ojo sobre un cuerpo de 180.
+
+El desplazamiento de un socket está en **unidades de hueso**, así que al escalar la malla
+x1,83 el socket **se aleja 1,83 veces más de lo debido**. El carcaj acababa a 25,4 cm de
+`spine_05`, es decir **11 cm por detrás de la silueta de la malla**.
+
+La corrección es dividir el desplazamiento entre **1,8273** — no es un número inventado:
+180,5 / 98,4 = 1,834, que es justo la escala del componente.
+
+### Hecho y verificado (los cuatro sockets de cuerpo de Malakh)
+
+| socket | hueso | antes | después | comprobación |
+|---|---|---|---|---|
+| `quiver` | `spine_05` | 25,4 cm | **13,9 cm** | Y −5,51, dentro de la espalda (el límite es −7,25) |
+| `sword` | `pelvis` | 47,5 cm | **26,0 cm** | Y +13,32, dentro del frente (el límite es +14,57) |
+| `bow` | `spine_05` | 52,2 cm | **28,6 cm** | desplazamiento −18,72 → −10,25 |
+| `shield` | `spine_05` | 50,3 cm | **27,5 cm** | desplazamiento −23,82 → −13,04 |
+
+Los cuatro son **sockets propios de `SK_DA_Malakh`**, que tienen prioridad sobre los del
+esqueleto con el mismo nombre. `SK_Mannequin` **no se ha tocado**: sigue siendo el asset de
+pago intacto y los maniquíes de la demo leen los valores viejos (verificado con
+`SKM_Manny.find_socket()`).
+
+### Dos trampas de herramienta que costaron tiempo
+
+1. **Python no deja poner el nombre a un socket.** `SocketName` es read-only y falla por
+   `set_editor_property`, por atributo y con `PropertyAccessChangeNotifyMode.NEVER`. La vía
+   que sí funciona es el toolset de Epic:
+   `SkeletalMeshTools.add_socket(mesh, socket_name, bone_name)` + `set_socket_transform`.
+2. **`save_asset` devolvió `False` habiendo guardado.** Los dobles nuevos están en el
+   `.uasset` y los viejos no aparecen. La regla de siempre: comprobar contra el binario.
+
+### PENDIENTE 1 — los cinco enemigos
+
+Misma escala, mismo defecto, sin tocar:
+
+| Blueprint | malla | escala |
+|---|---|---|
+| `BP_DA_Arquero` | `SK_DA_Arquero` | 1,8287 |
+| `BP_DA_Lancero` | `SK_DA_Lancero` | 1,8289 |
+| `BP_DA_Vigilante` | `SK_DA_Vigilante` | 1,8273 |
+| `BP_DA_Inspector` | `SK_DA_Inspector` | 1,8318 |
+| `BP_DA_Heraldo` | `SK_DA_Heraldo` | 1,8337 |
+
+Al **Arquero** se le tiene que notar igual que a Malakh: lleva carcaj y arco. Ojo al
+recorrer sus Blueprints: el **primer** `SkeletalMeshComponent` que devuelve el subsystem
+son las alas (`SKM_Wings5`, escala 0,7), no el cuerpo — hay que filtrar por `SK_DA_`.
+
+### PENDIENTE 2 — el tirón al envainar, y por qué lo destapó la corrección
+
+Con el socket ya en su sitio, Angel vio que al pulsar R la espada **se mete un momento por
+el centro del cuerpo**. Medido fotograma a fotograma con un muestreador enganchado al tick
+del editor (`register_slate_post_tick_callback`), dos pulsaciones idénticas al centímetro:
+
+1. La mano baja la espada con suavidad: de 76 cm a 30,5 cm del hueso `pelvis`, sin saltos.
+2. En el aviso `SetCombat` de `M_1H_UnequipSword` (**t=1,2447** de 1,481, rate 1,45)
+   **la espada se teletransporta 25 cm en un fotograma** al socket del costado.
+3. Durante los **7 fotogramas siguientes (0,11 s)** recorre otros 20 cm hasta asentarse:
+   de (24,53, 1,65, −6,0) a (19,18, −12,96, 10,17) respecto al centro del actor. **La
+   distancia a la pelvis se queda clavada en 26,0 cm todo el tramo**, o sea que el enganche
+   está bien: lo que se mueve es **la pelvis, aún a medio giro**. En ese barrido la espada
+   pasa ~14,6 cm por dentro de donde acaba, y cruza el torso.
+
+**La corrección es lo que lo hizo visible** (inferencia, no medición: no se llegó a medir
+el barrido viejo). Con el socket a 47,5 cm el mismo giro barría un arco de radio mucho
+mayor, por fuera del cuerpo; a 26 cm el arco entra por dentro.
+
+**Y no se arregla con más socket.** La malla de DA **no es el maniquí escalado**: comparadas
+las alturas hueso a hueso en espacio componente, el torso va a 0,47, la mano a 0,51 y el
+tobillo a 0,89. Es otro cuerpo sobre el mismo esqueleto, así que una animación dibujada
+para el maniquí no deja nunca la mano exactamente donde está la vaina. Ningún divisor
+uniforme cierra ese hueco.
+
+#### La salida, cuando se retome
+
+DCS ya trae la herramienta: **`ANS_SetDisplayedItemVisibility`**
+(`DCS/Blueprints/AnimNotifies/Equipment/`), un aviso de estado con tres propiedades —
+`ItemType` (`E_ItemType`), `HasToBeInCombat`, `HideThenShow`. DCS lo usa **solo en
+`M_DrinkPotion`**, con dos instancias solapadas, para esconder el arma a distancia y
+enseñar el frasco.
+
+Poniéndolo en `M_1H_UnequipSword` **desde t=1,2447 hasta el final** (0,236 de montaje =
+0,16 s reales), con `ItemType` = arma de melé y `HideThenShow`, la espada desaparece justo
+mientras cruzaría el torso y reaparece en el costado con la pelvis ya derecha.
+
+Dos formas, y la elección es de Angel porque toca asset de pago:
+
+- **Editar el montaje de DCS.** Un solo asset, arregla también a los enemigos. Pero es
+  modificación viva: DCS la revierte al actualizar y hay que anotarla en el inventario.
+- **Duplicar el montaje a `/Game/DarkAngels` y apuntar ahí la tabla de montajes de Malakh.**
+  DCS queda intacto, pero es una divergencia más que mantener y los enemigos se quedan con
+  el defecto.
+
+**Decisión del 27/08: se deja como está**, anotado aquí para retomarlo.
+
+#### La receta del muestreador, que sirve para cualquier artefacto de un fotograma
+
+`unreal.register_slate_post_tick_callback(fn)` corre en cada fotograma del editor,
+**también durante PIE**, y desde ahí se lee el mundo de juego con
+`UnrealEditorSubsystem.get_game_world()`. Tres avisos, pagados los tres:
+
+- Una excepción dentro del callback **se traga sola**: si se captura con `except: pass` el
+  resultado son 0 muestras y ninguna pista. Hay que guardar el `traceback` en una global.
+- `Actor.is_hidden()` y `SceneComponent.get_attachment_root()` **no existen** en la API de
+  Python. Son `actor.get_editor_property("hidden")` y `rc.get_attach_parent()`.
+- Conviene **probar en seco cada accesor** sobre un actor cualquiera del editor antes de
+  pedirle a nadie que juegue: cada pasada fallida cuesta una partida entera.
+
+Y hay que **retirarlo al terminar** (`unregister_slate_post_tick_callback`), o se queda
+corriendo en cada fotograma del editor.
+
+## Los vecinos del finisher: tres errores de ejecución, cerrados (2026-08-27)
+
+Al matar enemigos spawneados en Malkuth, el log escupía tres errores por cada vecino:
+
+```
+Accessed None trying to read (real) property CallFunc_GetAIController_ReturnValue
+Accessed None                                          -> Node: RestartLogic
+Attempted to access BP_DA_Vigilante_C_1 ... pending kill -> Node: Cast To BP_DissolveComponent
+```
+
+**Los tres eran el mismo actor.** `DevolverVecinos` (en `BP_DA_HUD`) recorre `Fin_Vecinos` —los
+enemigos que `ApartarVecinos` había apartado al arrancar el takedown— y les reinicia la IA y les
+devuelve el disolver. Si uno **muere durante el finisher**, su entrada en el array queda
+apuntando a un actor destruido: `GetAIController` devuelve `None`, `GetBrainComponent(None)` da
+el primer error, `RestartLogic(None)` el segundo, y el cast al `BP_DissolveComponent` sobre un
+actor *pending kill* el tercero.
+
+**Arreglado por cirugía, sin reescribir el grafo** (ver la receta en la memoria de límites del
+toolset). Dos guardas:
+
+1. **`IsValid` del actor** entre el `LoopBody` del ForEach y el resto del cuerpo. Mata los tres
+   errores de golpe, porque los tres nacen del actor destruido.
+2. **`IsValid` del controlador** antes de `RestartLogic`, con el `Is Not Valid` llevado al
+   `Branch` del disolver para que **converjan**. Así un vecino muerto pero aún existente
+   recupera su disolver aunque no haya IA que reiniciar — que es lo que hay que querer: si no,
+   se quedaría un cadáver medio transparente para siempre.
+
+Y de paso el mismo agujero en espejo en **`ApartarVecinos`**, que llamaba a `StopLogic` sobre el
+controlador sin comprobarlo. No salía en el log de Angel, pero un vecino ya muerto dentro de los
+500 uu lo daría igual. Mismo patrón, con el `Is Not Valid` convergiendo en el `CastToCharacter`.
+
+`BP_DA_HUD` compila limpio (`BS_UP_TO_DATE`) y está guardado. **No lo regenera ningún script**
+—el generador del Debug HUD solo lo usa como padre y lo recompila—, así que la cirugía aquí no
+se pierde, a diferencia de `BP_DA_DebugHUD`.
+
+## El cine del finisher, ahora opcional (2026-08-27)
+
+Angel quería que el movimiento de cámara de los takedowns **no salga siempre**, sin borrar los
+notifies. Montado el «nivel 1»: cuando la tirada falla no se cambia el view target, así que el
+remate se ve **desde la cámara normal de juego**.
+
+### Cómo funciona
+
+**`Fin_CamaraProbabilidad`**, variable nueva de `BP_DA_HUD` (float, **defecto 1.0 = como
+siempre**, misma configuración que `Fin_Dilatacion`). En `EventProcessBackstab` de
+`BP_DA_FinisherLogic` hay ahora un `Branch` entre `SetFieldOfView` y `SetViewTargetWithBlend`:
+
+```
+... -> SetFieldOfView -> Branch (RandomFloat < Fin_CamaraProbabilidad)
+                            True  -> SetViewTargetWithBlend -> SetGlobalTimeDilation -> ...
+                            False ------------------------->  SetGlobalTimeDilation -> ...
+```
+
+La tirada es **una por takedown**, no una por corte: si fuera por corte se vería el corte 2 sin
+el 1, y eso sí se siente roto.
+
+**Los 26 notifies de cámara se apagan solos y no hubo que tocarlos**: `BP_DA_NotifyCamara`
+empieza con `CastToCameraActor(GetViewTarget(...))`, y si el view target es el personaje, el
+cast falla y el nodo no hace nada. **Sigue intacto todo lo demás**: la cámara lenta
+(`Fin_Dilatacion`), el hit-stop, los vecinos apartados y las 17 sacudidas — `ClientStartCameraShake`
+va al controlador, no al view target.
+
+La cámara **se sigue spawneando** (con su lifespan de 20 s) aunque la tirada falle. Es a
+propósito: gatear solo el `SetViewTargetWithBlend` es un único cable y no toca el cálculo de
+posición ni los dos sphere traces que eligen el lado despejado.
+
+**Para probarlo:** `Fin_CamaraProbabilidad` a 0.5 en los Class Defaults de `BP_DA_HUD`.
+Con 0.0 no hay cine nunca; con 1.0 se comporta como antes del cambio.
+
+### AVISO GORDO: `BP_DA_FinisherLogic` tiene cuerpos duplicados
+
+Su `EventGraph` contiene **al menos cinco copias** del cuerpo de `EventProcessBackstab`. Solo
+una cuelga del evento; las demás son huérfanas y no se ejecutan nunca. Es la trampa conocida del
+`write_graph_dsl` que triunfa sobre un grafo con cuerpo. Pruebas: cinco nodos
+`SetGlobalTimeDilation` distintos, **todos en la fila y=0 y apilados en las mismas x**
+(14840, 15960 ×2, 16240 ×2), y cinco tripletes equivalentes colgando del pin `Applier`.
+
+**Ni el título ni la posición distinguen la copia viva.** `find_nodes` con `title` no filtra de
+verdad (devuelve lo mismo para «Blend» que para «SetViewTargetwithBlend»), y las copias están
+superpuestas. Lo que sí funcionó:
+
+1. Sacar el nodo de evento con `find_nodes(..., entry_points_only: true)`.
+2. Caminar **solo por pines Exec** desde él: `Event_3 -> CallFunction_195 -> DynamicCast_11 -> ...`
+3. Ver que la copia viva usa **una franja de numeración propia** (195-232, más `DynamicCast_11/12/17`,
+   `SpawnActorFromClass_4`, `VariableGet_72..75`). Todo lo que cuelga de esa franja es lo vivo.
+
+Los nodos tocados, para volver: **217** `SetFieldOfView` -> **218** `SetViewTargetWithBlend` ->
+**219** `SetGlobalTimeDilation`. El `Branch` nuevo es `K2Node_IfThenElse_0`.
+
+**Limpiar esas copias huérfanas es trabajo aparte y no se hizo**: borrar nodos en masa en un
+grafo de este tamaño, de noche y sin poder jugar, es justo la clase de cosa que sale mal.
+
+### Dos trampas nuevas de herramienta
+
+- **La base de acciones va por detrás del asset.** Recién creada `Fin_CamaraProbabilidad` y
+  compilado y guardado el HUD, `find_node_types` **seguía sin listar**
+  `Class|BPDAHUD|GetFinCamaraProbabilidad`, aunque listaba las otras 20 variables.
+  **`create_node` con ese type_id lo creó igual.** O sea: el listado es un buscador con caché,
+  no la verdad — si sabes el nombre, créalo y comprueba después con `get_node_infos`.
+- **El operador `<` nace sin tipo.** `Utilities|Operators|Less(<)` crea un
+  `K2Node_PromotableOperator` que se lee como `Math|Timespan|Timespan<Timespan` con los dos pines
+  en `Wildcard`. Al conectarle el primer double promociona solo a `Math|Float|float<float`. No es
+  un error: hay que releerlo **después** de cablear.
+
+Copia de seguridad de los dos `.uasset` antes del cambio, por si acaso, en el scratchpad de la
+sesión (`copia_antes_camara/`). Los dos compilan `BS_UP_TO_DATE` y están guardados.

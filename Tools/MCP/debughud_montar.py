@@ -2413,12 +2413,14 @@ def caja(mx, my, x, y, w, h):
 
 FIN_DEFECTO = [("Dilatacion", 0.65), ("MatarEn", 0.9),
                ("CamaraLado", 200.0), ("CamaraAlto", -20.0),
-               ("CamaraFrente", 0.7), ("CamaraFOV", 80.0)]
+               ("CamaraFrente", 0.7), ("CamaraFOV", 80.0),
+               ("CamaraProbabilidad", 1.0)]
 
 FIN_ETIQ = {"Dilatacion": "Camara lenta", "HitStopEn": "Golpe en",
             "MatarEn": "Muerte en", "CamaraLado": "Distancia",
             "CamaraAlto": "Altura", "CamaraFrente": "Tres cuartos",
-            "CamaraFOV": "FOV"}
+            "CamaraFOV": "FOV",
+            "CamaraProbabilidad": "Cine sale"}
 
 
 def dsl_fin_fijar():
@@ -2432,6 +2434,22 @@ def dsl_fin_fijar():
             ' (Utilities|String|ToString(Float) Valor)))\n'
             '  (return))')
 
+
+def dsl_fin_prob_fijar():
+    """Valor absoluto de la probabilidad de que salga el cine del finisher.
+
+    Va aparte de `DbgFinDilFijar` porque esa escribe `Fin_Dilatacion` fija en
+    el DSL: el nombre de la variable no es un parametro. Y va con lista y join,
+    no con literales encadenados, porque asi no hay que escapar saltos."""
+    l = ['(fn DbgFinProbFijar (Valor)',
+         '  (if (not (CallFunction|DbgPermitido))',
+         '    (return))',
+         '  (Variables|Default|SetFinCamaraProbabilidad Valor)',
+         '  (Variables|Default|SetDbgMensaje'
+         ' (Utilities|String|Append "Cine del finisher:  "'
+         ' (Utilities|String|ToString(Float) Valor)))',
+         '  (return))']
+    return "\n".join(l)
 
 def dsl_fin_delta(nombre):
     """Suma un paso. Una funcion por variable, para no cablear enums."""
@@ -2463,6 +2481,8 @@ def filas_finishers():
     x0, w6, w4 = 8.0, 88.0, 137.0
     dil = lambda v: '(CallFunction|DbgFinDilFijar :Valor %.2f)' % v
     act = lambda v: '(== (Variables|Default|GetFinDilatacion) %.2f)' % v
+    prb = lambda v: '(CallFunction|DbgFinProbFijar :Valor %.2f)' % v
+    acp = lambda v: '(== (Variables|Default|GetFinCamaraProbabilidad) %.2f)' % v
     # Ordenados de mas rapido a mas lento. MUY RAPIDA pasa de 1.0: no es camara
     # lenta suave, es ACELERAR el finisher, que es la unica forma de que se note
     # "rapido" de verdad (0.85 sigue siendo lento, solo poco).
@@ -2522,6 +2542,17 @@ def filas_finishers():
             (x0 + 282.0, 278.0, "VALORES POR DEFECTO",
              "(CallFunction|DbgFinReset)", "false"),
         ]),
+        # El cine NO tiene por que salir siempre: con menos de 1.0 parte de los
+        # remates se ven desde la camara de juego. La tirada la hace
+        # BP_DA_FinisherLogic UNA vez por takedown, no una por corte.
+        ("CADA CUANTO SALE EL CINE   (el resto se ven a camara de juego)",
+         612.0, 634.0, [
+            (x0, w6, "SIEMPRE", prb(1.0), acp(1.0)),
+            (x0 + 92.0, w6, "3 DE 4", prb(0.75), acp(0.75)),
+            (x0 + 184.0, w6, "MITAD", prb(0.5), acp(0.5)),
+            (x0 + 276.0, w6, "1 DE 4", prb(0.25), acp(0.25)),
+            (x0 + 368.0, w6, "NUNCA", prb(0.0), acp(0.0)),
+        ]),
     ]
 
 
@@ -2547,10 +2578,10 @@ def dsl_tab_finishers():
                    ' (Utilities|String|Append "fijo, el numero "'
                    ' (Utilities|String|ToString(Integer)'
                    ' (+ (Variables|Default|GetFinIndice) 1)))))', HUESO, 0.9))
-    l.append(texto(X(16.0), Y(618.0),
+    l.append(texto(X(16.0), Y(668.0),
                    '"Se aplican al siguiente finisher: no hace falta recompilar."',
                    GRIS, 0.8))
-    l.append(texto(X(16.0), Y(640.0),
+    l.append(texto(X(16.0), Y(690.0),
                    '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
     l.append('  (return false))')
     return "\n".join(l)
@@ -2611,6 +2642,7 @@ CFG_TODO = [
     ("Dilatacion", "FinDilatacion"), ("MatarEn", "FinMatarEn"),
     ("CamaraLado", "FinCamaraLado"), ("CamaraAlto", "FinCamaraAlto"),
     ("CamaraFrente", "FinCamaraFrente"), ("CamaraFOV", "FinCamaraFOV"),
+    ("CamProb", "FinCamaraProbabilidad"),
     ("Indice", "FinIndice"), ("Escala", "DbgEscala"), ("Tab", "DbgTab"),
     # selecciones de AI, BOSS y STORY
     ("TipoSel", "DbgTipoSel"), ("CantSel", "DbgCantSel"),
@@ -2641,7 +2673,8 @@ CFG_SOLO_GUARDAR = {"MovMult", "DmgMult", "EnemyMult", "Trazas", "Colisiones",
 # DbgMantener: el jugador no se mueve y TODO lo demas funciona, que despista
 # muchisimo. Los multiplicadores tienen que nacer a 1.0 (y Escala a 1.3).
 # Si se regenera la clase de config, hay que volver a dejarlos asi.
-CFG_DEFECTOS = {"MovMult": 1.0, "DmgMult": 1.0, "EnemyMult": 1.0, "Escala": 1.3}
+CFG_DEFECTOS = {"MovMult": 1.0, "DmgMult": 1.0, "EnemyMult": 1.0, "Escala": 1.3,
+                "CamProb": 1.0}
 
 
 def dsl_cfg_guardar():
@@ -3118,6 +3151,7 @@ def run():
         ("DbgMarcasReiniciar", dsl_marcas_reiniciar, []),
         # --- FINISHERS ---
         ("DbgFinDilFijar", dsl_fin_fijar, [("Valor", "float", True)]),
+        ("DbgFinProbFijar", dsl_fin_prob_fijar, [("Valor", "float", True)]),
         ("DbgFinDilatacion", lambda n='Dilatacion': dsl_fin_delta(n), [("Delta", "float", True)]),
         ("DbgFinHitStopEn", lambda n='HitStopEn': dsl_fin_delta(n), [("Delta", "float", True)]),
         ("DbgFinMatarEn", lambda n='MatarEn': dsl_fin_delta(n), [("Delta", "float", True)]),
