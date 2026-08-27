@@ -1,0 +1,265 @@
+{
+ "_que_es": "Abetos de Yesod ANTES de pasarlos a carpe (27/08)",
+ "arboles": [
+  {
+   "actor": "Yesod_Abeto_0",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3626817497251005,
+    1.3626817497251005,
+    1.3626817497251005
+   ],
+   "alto_real_cm": 1915.9
+  },
+  {
+   "actor": "Yesod_Abeto_1",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.0640523554124182,
+    1.0640523554124182,
+    1.0640523554124182
+   ],
+   "alto_real_cm": 2014.3
+  },
+  {
+   "actor": "Yesod_Abeto_10",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.0428706498084919,
+    1.0428706498084919,
+    1.0428706498084919
+   ],
+   "alto_real_cm": 1974.2
+  },
+  {
+   "actor": "Yesod_Abeto_11",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9565875292553508,
+    0.9565875292553508,
+    0.9565875292553508
+   ],
+   "alto_real_cm": 1389.0
+  },
+  {
+   "actor": "Yesod_Abeto_12",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.8976594448544362,
+    0.8976594448544362,
+    0.8976594448544362
+   ],
+   "alto_real_cm": 1262.1
+  },
+  {
+   "actor": "Yesod_Abeto_13",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.110222572931192,
+    1.110222572931192,
+    1.110222572931192
+   ],
+   "alto_real_cm": 1561.0
+  },
+  {
+   "actor": "Yesod_Abeto_14",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.110086536551866,
+    1.110086536551866,
+    1.110086536551866
+   ],
+   "alto_real_cm": 1611.8
+  },
+  {
+   "actor": "Yesod_Abeto_15",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.1733519589404353,
+    1.1733519589404353,
+    1.1733519589404353
+   ],
+   "alto_real_cm": 2221.2
+  },
+  {
+   "actor": "Yesod_Abeto_16",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.2655759098313637,
+    1.2655759098313637,
+    1.2655759098313637
+   ],
+   "alto_real_cm": 1837.6
+  },
+  {
+   "actor": "Yesod_Abeto_17",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.403404164595252,
+    1.403404164595252,
+    1.403404164595252
+   ],
+   "alto_real_cm": 2656.6
+  },
+  {
+   "actor": "Yesod_Abeto_18",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.8568295717504013,
+    0.8568295717504013,
+    0.8568295717504013
+   ],
+   "alto_real_cm": 1244.1
+  },
+  {
+   "actor": "Yesod_Abeto_19",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.3061904909583695,
+    1.3061904909583695,
+    1.3061904909583695
+   ],
+   "alto_real_cm": 2472.6
+  },
+  {
+   "actor": "Yesod_Abeto_2",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.190031540575452,
+    1.190031540575452,
+    1.190031540575452
+   ],
+   "alto_real_cm": 1727.9
+  },
+  {
+   "actor": "Yesod_Abeto_20",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.8945080876790491,
+    0.8945080876790491,
+    0.8945080876790491
+   ],
+   "alto_real_cm": 1298.8
+  },
+  {
+   "actor": "Yesod_Abeto_21",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.1725880505389479,
+    1.1725880505389479,
+    1.1725880505389479
+   ],
+   "alto_real_cm": 2219.7
+  },
+  {
+   "actor": "Yesod_Abeto_22",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.2936624380264723,
+    1.2936624380264723,
+    1.2936624380264723
+   ],
+   "alto_real_cm": 2448.9
+  },
+  {
+   "actor": "Yesod_Abeto_23",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.1437005402258134,
+    1.1437005402258134,
+    1.1437005402258134
+   ],
+   "alto_real_cm": 1660.7
+  },
+  {
+   "actor": "Yesod_Abeto_24",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9998684973455354,
+    0.9998684973455354,
+    0.9998684973455354
+   ],
+   "alto_real_cm": 1451.8
+  },
+  {
+   "actor": "Yesod_Abeto_25",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.09264788641252,
+    1.09264788641252,
+    1.09264788641252
+   ],
+   "alto_real_cm": 2068.4
+  },
+  {
+   "actor": "Yesod_Abeto_3",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.4398059490322164,
+    1.4398059490322164,
+    1.4398059490322164
+   ],
+   "alto_real_cm": 2090.6
+  },
+  {
+   "actor": "Yesod_Abeto_4",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.0246184797140856,
+    1.0246184797140856,
+    1.0246184797140856
+   ],
+   "alto_real_cm": 1487.7
+  },
+  {
+   "actor": "Yesod_Abeto_5",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.366141212250172,
+    1.366141212250172,
+    1.366141212250172
+   ],
+   "alto_real_cm": 1920.8
+  },
+  {
+   "actor": "Yesod_Abeto_6",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.2770137550667924,
+    1.2770137550667924,
+    1.2770137550667924
+   ],
+   "alto_real_cm": 2417.4
+  },
+  {
+   "actor": "Yesod_Abeto_7",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.1923409433999757,
+    1.1923409433999757,
+    1.1923409433999757
+   ],
+   "alto_real_cm": 1676.4
+  },
+  {
+   "actor": "Yesod_Abeto_8",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.41853526859476,
+    1.41853526859476,
+    1.41853526859476
+   ],
+   "alto_real_cm": 2059.7
+  },
+  {
+   "actor": "Yesod_Abeto_9",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.1677190305514815,
+    1.1677190305514815,
+    1.1677190305514815
+   ],
+   "alto_real_cm": 1641.8
+  }
+ ]
+}

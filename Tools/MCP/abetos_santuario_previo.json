@@ -1,0 +1,165 @@
+{
+ "_que_es": "Abetos de Santuario ANTES de pasarlos a carpe (27/08)",
+ "arboles": [
+  {
+   "actor": "SM_Abeto_0",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9497811199164862,
+    0.9497811199164862,
+    0.9497811199164862
+   ],
+   "alto_real_cm": 1379.1
+  },
+  {
+   "actor": "SM_Abeto_1",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.9970340282875272,
+    0.9970340282875272,
+    0.9970340282875272
+   ],
+   "alto_real_cm": 1401.8
+  },
+  {
+   "actor": "SM_Abeto_10",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.1291100980616688,
+    1.1291100980616688,
+    1.1291100980616688
+   ],
+   "alto_real_cm": 2137.4
+  },
+  {
+   "actor": "SM_Abeto_11",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9207295776208535,
+    0.9207295776208535,
+    0.9207295776208535
+   ],
+   "alto_real_cm": 1336.9
+  },
+  {
+   "actor": "SM_Abeto_12",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.232644140945116,
+    1.232644140945116,
+    1.232644140945116
+   ],
+   "alto_real_cm": 2333.4
+  },
+  {
+   "actor": "SM_Abeto_13",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    0.8874755204364078,
+    0.8874755204364078,
+    0.8874755204364078
+   ],
+   "alto_real_cm": 1680.0
+  },
+  {
+   "actor": "SM_Abeto_14",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.23890006564972,
+    1.23890006564972,
+    1.23890006564972
+   ],
+   "alto_real_cm": 1798.9
+  },
+  {
+   "actor": "SM_Abeto_15",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.247913731493947,
+    1.247913731493947,
+    1.247913731493947
+   ],
+   "alto_real_cm": 1754.6
+  },
+  {
+   "actor": "SM_Abeto_2",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.2267092021539385,
+    1.2267092021539385,
+    1.2267092021539385
+   ],
+   "alto_real_cm": 1724.8
+  },
+  {
+   "actor": "SM_Abeto_3",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    0.8518850207803236,
+    0.8518850207803236,
+    0.8518850207803236
+   ],
+   "alto_real_cm": 1612.6
+  },
+  {
+   "actor": "SM_Abeto_4",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.127540722665163,
+    1.127540722665163,
+    1.127540722665163
+   ],
+   "alto_real_cm": 1585.3
+  },
+  {
+   "actor": "SM_Abeto_5",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.2335923316346447,
+    1.2335923316346447,
+    1.2335923316346447
+   ],
+   "alto_real_cm": 1734.4
+  },
+  {
+   "actor": "SM_Abeto_6",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.0833303929927434,
+    1.0833303929927434,
+    1.0833303929927434
+   ],
+   "alto_real_cm": 1573.0
+  },
+  {
+   "actor": "SM_Abeto_7",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.041552662985191,
+    1.041552662985191,
+    1.041552662985191
+   ],
+   "alto_real_cm": 1971.7
+  },
+  {
+   "actor": "SM_Abeto_8",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.058156550074069,
+    1.058156550074069,
+    1.058156550074069
+   ],
+   "alto_real_cm": 1487.8
+  },
+  {
+   "actor": "SM_Abeto_9",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9260504842624303,
+    0.9260504842624303,
+    0.9260504842624303
+   ],
+   "alto_real_cm": 1344.6
+  }
+ ]
+}

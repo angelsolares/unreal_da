@@ -1,0 +1,345 @@
+{
+ "_que_es": "Abetos de Elevador ANTES de pasarlos a carpe (27/08)",
+ "arboles": [
+  {
+   "actor": "Elevador_Abeto_0",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.002072048281353,
+    1.002072048281353,
+    1.002072048281353
+   ],
+   "alto_real_cm": 1455.0
+  },
+  {
+   "actor": "Elevador_Abeto_1",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.400516224187108,
+    1.400516224187108,
+    1.400516224187108
+   ],
+   "alto_real_cm": 1969.1
+  },
+  {
+   "actor": "Elevador_Abeto_10",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.2457096340347593,
+    1.2457096340347593,
+    1.2457096340347593
+   ],
+   "alto_real_cm": 2358.1
+  },
+  {
+   "actor": "Elevador_Abeto_11",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3610266688098325,
+    1.3610266688098325,
+    1.3610266688098325
+   ],
+   "alto_real_cm": 1913.6
+  },
+  {
+   "actor": "Elevador_Abeto_12",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.4572036984642986,
+    1.4572036984642986,
+    1.4572036984642986
+   ],
+   "alto_real_cm": 2758.5
+  },
+  {
+   "actor": "Elevador_Abeto_13",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0008573533039808,
+    1.0008573533039808,
+    1.0008573533039808
+   ],
+   "alto_real_cm": 1407.2
+  },
+  {
+   "actor": "Elevador_Abeto_14",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0313340426568567,
+    1.0313340426568567,
+    1.0313340426568567
+   ],
+   "alto_real_cm": 1450.1
+  },
+  {
+   "actor": "Elevador_Abeto_15",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    0.8833872795493283,
+    0.8833872795493283,
+    0.8833872795493283
+   ],
+   "alto_real_cm": 1672.3
+  },
+  {
+   "actor": "Elevador_Abeto_16",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.5063920024346524,
+    1.5063920024346524,
+    1.5063920024346524
+   ],
+   "alto_real_cm": 2187.3
+  },
+  {
+   "actor": "Elevador_Abeto_17",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.2529770137988856,
+    1.2529770137988856,
+    1.2529770137988856
+   ],
+   "alto_real_cm": 1819.3
+  },
+  {
+   "actor": "Elevador_Abeto_18",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.3738984349062195,
+    1.3738984349062195,
+    1.3738984349062195
+   ],
+   "alto_real_cm": 2600.8
+  },
+  {
+   "actor": "Elevador_Abeto_19",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.1277814628220078,
+    1.1277814628220078,
+    1.1277814628220078
+   ],
+   "alto_real_cm": 1585.7
+  },
+  {
+   "actor": "Elevador_Abeto_2",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3680637362264394,
+    1.3680637362264394,
+    1.3680637362264394
+   ],
+   "alto_real_cm": 1923.5
+  },
+  {
+   "actor": "Elevador_Abeto_20",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.4690539363161914,
+    1.4690539363161914,
+    1.4690539363161914
+   ],
+   "alto_real_cm": 2780.9
+  },
+  {
+   "actor": "Elevador_Abeto_21",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.527705288272214,
+    1.527705288272214,
+    1.527705288272214
+   ],
+   "alto_real_cm": 2891.9
+  },
+  {
+   "actor": "Elevador_Abeto_22",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.5335741046506792,
+    1.5335741046506792,
+    1.5335741046506792
+   ],
+   "alto_real_cm": 2226.7
+  },
+  {
+   "actor": "Elevador_Abeto_23",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.8435922622883657,
+    0.8435922622883657,
+    0.8435922622883657
+   ],
+   "alto_real_cm": 1224.9
+  },
+  {
+   "actor": "Elevador_Abeto_24",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.101786899707181,
+    1.101786899707181,
+    1.101786899707181
+   ],
+   "alto_real_cm": 1599.8
+  },
+  {
+   "actor": "Elevador_Abeto_25",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.062419843795905,
+    1.062419843795905,
+    1.062419843795905
+   ],
+   "alto_real_cm": 1542.6
+  },
+  {
+   "actor": "Elevador_Abeto_26",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.5416590932484993,
+    1.5416590932484993,
+    1.5416590932484993
+   ],
+   "alto_real_cm": 2238.5
+  },
+  {
+   "actor": "Elevador_Abeto_27",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.136027145542217,
+    1.136027145542217,
+    1.136027145542217
+   ],
+   "alto_real_cm": 2150.5
+  },
+  {
+   "actor": "Elevador_Abeto_28",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.8324271202238404,
+    0.8324271202238404,
+    0.8324271202238404
+   ],
+   "alto_real_cm": 1170.4
+  },
+  {
+   "actor": "Elevador_Abeto_29",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.9289589882497485,
+    0.9289589882497485,
+    0.9289589882497485
+   ],
+   "alto_real_cm": 1306.1
+  },
+  {
+   "actor": "Elevador_Abeto_3",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.2664842607763058,
+    1.2664842607763058,
+    1.2664842607763058
+   ],
+   "alto_real_cm": 2397.5
+  },
+  {
+   "actor": "Elevador_Abeto_30",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.584312630064931,
+    1.584312630064931,
+    1.584312630064931
+   ],
+   "alto_real_cm": 2999.1
+  },
+  {
+   "actor": "Elevador_Abeto_31",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.1894723894025536,
+    1.1894723894025536,
+    1.1894723894025536
+   ],
+   "alto_real_cm": 1672.4
+  },
+  {
+   "actor": "Elevador_Abeto_32",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.1096951486122306,
+    1.1096951486122306,
+    1.1096951486122306
+   ],
+   "alto_real_cm": 1560.2
+  },
+  {
+   "actor": "Elevador_Abeto_33",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.0297466279146015,
+    1.0297466279146015,
+    1.0297466279146015
+   ],
+   "alto_real_cm": 1495.2
+  },
+  {
+   "actor": "Elevador_Abeto_4",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.9968293190919,
+    0.9968293190919,
+    0.9968293190919
+   ],
+   "alto_real_cm": 1401.5
+  },
+  {
+   "actor": "Elevador_Abeto_5",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3754201176461858,
+    1.3754201176461858,
+    1.3754201176461858
+   ],
+   "alto_real_cm": 1933.8
+  },
+  {
+   "actor": "Elevador_Abeto_6",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.9428698540399176,
+    0.9428698540399176,
+    0.9428698540399176
+   ],
+   "alto_real_cm": 1325.7
+  },
+  {
+   "actor": "Elevador_Abeto_7",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.8433796882831397,
+    0.8433796882831397,
+    0.8433796882831397
+   ],
+   "alto_real_cm": 1185.8
+  },
+  {
+   "actor": "Elevador_Abeto_8",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.582240105039552,
+    1.582240105039552,
+    1.582240105039552
+   ],
+   "alto_real_cm": 2995.2
+  },
+  {
+   "actor": "Elevador_Abeto_9",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3830656054350854,
+    1.3830656054350854,
+    1.3830656054350854
+   ],
+   "alto_real_cm": 1944.6
+  }
+ ]
+}

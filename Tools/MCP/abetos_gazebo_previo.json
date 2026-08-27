@@ -1,0 +1,445 @@
+{
+ "_que_es": "Abetos de Gazebo ANTES de pasarlos a carpe (27/08)",
+ "arboles": [
+  {
+   "actor": "Gazebo_Abeto_0",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.188993263425768,
+    1.188993263425768,
+    1.188993263425768
+   ],
+   "alto_real_cm": 2250.8
+  },
+  {
+   "actor": "Gazebo_Abeto_1",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.5357870105354987,
+    1.5357870105354987,
+    1.5357870105354987
+   ],
+   "alto_real_cm": 2907.2
+  },
+  {
+   "actor": "Gazebo_Abeto_10",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.048877346631548,
+    1.048877346631548,
+    1.048877346631548
+   ],
+   "alto_real_cm": 1985.5
+  },
+  {
+   "actor": "Gazebo_Abeto_11",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.310252607106349,
+    1.310252607106349,
+    1.310252607106349
+   ],
+   "alto_real_cm": 2480.3
+  },
+  {
+   "actor": "Gazebo_Abeto_12",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.8330897689019748,
+    0.8330897689019748,
+    0.8330897689019748
+   ],
+   "alto_real_cm": 1171.3
+  },
+  {
+   "actor": "Gazebo_Abeto_13",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.1459000350655524,
+    1.1459000350655524,
+    1.1459000350655524
+   ],
+   "alto_real_cm": 1611.1
+  },
+  {
+   "actor": "Gazebo_Abeto_14",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.001682055090406,
+    1.001682055090406,
+    1.001682055090406
+   ],
+   "alto_real_cm": 1896.2
+  },
+  {
+   "actor": "Gazebo_Abeto_15",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.2051109256246644,
+    1.2051109256246644,
+    1.2051109256246644
+   ],
+   "alto_real_cm": 2281.3
+  },
+  {
+   "actor": "Gazebo_Abeto_16",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.6181614045138293,
+    1.6181614045138293,
+    1.6181614045138293
+   ],
+   "alto_real_cm": 2349.6
+  },
+  {
+   "actor": "Gazebo_Abeto_17",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    0.9423454225726172,
+    0.9423454225726172,
+    0.9423454225726172
+   ],
+   "alto_real_cm": 1783.9
+  },
+  {
+   "actor": "Gazebo_Abeto_18",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9239479095320906,
+    0.9239479095320906,
+    0.9239479095320906
+   ],
+   "alto_real_cm": 1341.6
+  },
+  {
+   "actor": "Gazebo_Abeto_19",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.4838825109805365,
+    1.4838825109805365,
+    1.4838825109805365
+   ],
+   "alto_real_cm": 2154.6
+  },
+  {
+   "actor": "Gazebo_Abeto_2",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.8383929521024195,
+    0.8383929521024195,
+    0.8383929521024195
+   ],
+   "alto_real_cm": 1178.8
+  },
+  {
+   "actor": "Gazebo_Abeto_20",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0050501585961553,
+    1.0050501585961553,
+    1.0050501585961553
+   ],
+   "alto_real_cm": 1413.1
+  },
+  {
+   "actor": "Gazebo_Abeto_21",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.3521370175071699,
+    1.3521370175071699,
+    1.3521370175071699
+   ],
+   "alto_real_cm": 1963.3
+  },
+  {
+   "actor": "Gazebo_Abeto_22",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.6940399442305973,
+    1.6940399442305973,
+    1.6940399442305973
+   ],
+   "alto_real_cm": 3206.8
+  },
+  {
+   "actor": "Gazebo_Abeto_23",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3793103697613396,
+    1.3793103697613396,
+    1.3793103697613396
+   ],
+   "alto_real_cm": 1939.3
+  },
+  {
+   "actor": "Gazebo_Abeto_24",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0798367978445427,
+    1.0798367978445427,
+    1.0798367978445427
+   ],
+   "alto_real_cm": 1518.3
+  },
+  {
+   "actor": "Gazebo_Abeto_25",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0259239674666543,
+    1.0259239674666543,
+    1.0259239674666543
+   ],
+   "alto_real_cm": 1442.4
+  },
+  {
+   "actor": "Gazebo_Abeto_26",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.3896744253997106,
+    1.3896744253997106,
+    1.3896744253997106
+   ],
+   "alto_real_cm": 1953.9
+  },
+  {
+   "actor": "Gazebo_Abeto_27",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.9621999920169824,
+    0.9621999920169824,
+    0.9621999920169824
+   ],
+   "alto_real_cm": 1352.9
+  },
+  {
+   "actor": "Gazebo_Abeto_28",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.162456131150227,
+    1.162456131150227,
+    1.162456131150227
+   ],
+   "alto_real_cm": 2200.5
+  },
+  {
+   "actor": "Gazebo_Abeto_29",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.8334283709681726,
+    0.8334283709681726,
+    0.8334283709681726
+   ],
+   "alto_real_cm": 1210.1
+  },
+  {
+   "actor": "Gazebo_Abeto_3",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.4182501438158797,
+    1.4182501438158797,
+    1.4182501438158797
+   ],
+   "alto_real_cm": 1994.1
+  },
+  {
+   "actor": "Gazebo_Abeto_30",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0090571642895496,
+    1.0090571642895496,
+    1.0090571642895496
+   ],
+   "alto_real_cm": 1418.7
+  },
+  {
+   "actor": "Gazebo_Abeto_31",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.0006181032399732,
+    1.0006181032399732,
+    1.0006181032399732
+   ],
+   "alto_real_cm": 1452.9
+  },
+  {
+   "actor": "Gazebo_Abeto_32",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.6920642022472174,
+    1.6920642022472174,
+    1.6920642022472174
+   ],
+   "alto_real_cm": 2379.0
+  },
+  {
+   "actor": "Gazebo_Abeto_33",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.5092546257699162,
+    1.5092546257699162,
+    1.5092546257699162
+   ],
+   "alto_real_cm": 2191.4
+  },
+  {
+   "actor": "Gazebo_Abeto_34",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.6562252763920582,
+    1.6562252763920582,
+    1.6562252763920582
+   ],
+   "alto_real_cm": 2328.7
+  },
+  {
+   "actor": "Gazebo_Abeto_35",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.4120133641231867,
+    1.4120133641231867,
+    1.4120133641231867
+   ],
+   "alto_real_cm": 2672.9
+  },
+  {
+   "actor": "Gazebo_Abeto_36",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.3754189136323607,
+    1.3754189136323607,
+    1.3754189136323607
+   ],
+   "alto_real_cm": 1997.1
+  },
+  {
+   "actor": "Gazebo_Abeto_37",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.4980182889374056,
+    1.4980182889374056,
+    1.4980182889374056
+   ],
+   "alto_real_cm": 2106.2
+  },
+  {
+   "actor": "Gazebo_Abeto_38",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.0597708971517956,
+    1.0597708971517956,
+    1.0597708971517956
+   ],
+   "alto_real_cm": 2006.1
+  },
+  {
+   "actor": "Gazebo_Abeto_39",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.6067698482455546,
+    1.6067698482455546,
+    1.6067698482455546
+   ],
+   "alto_real_cm": 3041.6
+  },
+  {
+   "actor": "Gazebo_Abeto_4",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    0.9990402937862278,
+    0.9990402937862278,
+    0.9990402937862278
+   ],
+   "alto_real_cm": 1891.2
+  },
+  {
+   "actor": "Gazebo_Abeto_40",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.4572493556222177,
+    1.4572493556222177,
+    1.4572493556222177
+   ],
+   "alto_real_cm": 2048.9
+  },
+  {
+   "actor": "Gazebo_Abeto_41",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.0062365532881752,
+    1.0062365532881752,
+    1.0062365532881752
+   ],
+   "alto_real_cm": 1461.1
+  },
+  {
+   "actor": "Gazebo_Abeto_42",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    0.9690044076037614,
+    0.9690044076037614,
+    0.9690044076037614
+   ],
+   "alto_real_cm": 1407.0
+  },
+  {
+   "actor": "Gazebo_Abeto_43",
+   "malla": "SM_DA_FirTree_fir_tree_01_a_LOD0",
+   "escala": [
+    1.4087951424572593,
+    1.4087951424572593,
+    1.4087951424572593
+   ],
+   "alto_real_cm": 2666.8
+  },
+  {
+   "actor": "Gazebo_Abeto_5",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.0379811407243746,
+    1.0379811407243746,
+    1.0379811407243746
+   ],
+   "alto_real_cm": 1459.4
+  },
+  {
+   "actor": "Gazebo_Abeto_6",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    0.9886482358857283,
+    0.9886482358857283,
+    0.9886482358857283
+   ],
+   "alto_real_cm": 1390.0
+  },
+  {
+   "actor": "Gazebo_Abeto_7",
+   "malla": "SM_DA_FirTree_fir_tree_01_c_LOD0",
+   "escala": [
+    1.444579780401932,
+    1.444579780401932,
+    1.444579780401932
+   ],
+   "alto_real_cm": 2097.5
+  },
+  {
+   "actor": "Gazebo_Abeto_8",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.4528581771314415,
+    1.4528581771314415,
+    1.4528581771314415
+   ],
+   "alto_real_cm": 2042.7
+  },
+  {
+   "actor": "Gazebo_Abeto_9",
+   "malla": "SM_DA_FirTree_fir_tree_01_b_LOD0",
+   "escala": [
+    1.404042160792296,
+    1.404042160792296,
+    1.404042160792296
+   ],
+   "alto_real_cm": 1974.1
+  }
+ ]
+}
