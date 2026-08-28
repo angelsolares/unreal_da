@@ -14,6 +14,12 @@ Por que estas fuentes y no otras:
     sobre todo Stat.ReceivedHitCount, que es la mejor senal de combate que hay.
   - La lista de enemigos se refresca cada 2 s, no cada muestra: con 6.681
     actores en el Master recorrerlos a 10 Hz costaria la partida.
+  - VIVO = Stat.Health.Current > 0, NO "tiene controlador". Un enemigo muerto
+    en combate real CONSERVA el controlador y el cadaver se queda en el mundo;
+    solo desaparece si lo matas por Kill() desde Python, que es lo que me
+    engano el 28/08 y me hizo contar cuatro muertos como vivos toda la
+    partida. Se cuentan aparte los cadaveres presentes, que ademas instrumentan
+    el defecto del disolver que no siempre ocurre.
 """
 import os, re, time
 import unreal
@@ -23,7 +29,8 @@ RADIO_CERCA = 2000.0          # uu; a esta distancia se considera que hay combat
 REFRESCO_ENEMIGOS = 2.0       # s entre reconstrucciones de la lista
 VOLCADO = 2.0                 # s entre escrituras a disco
 
-I_VIDA, I_AGUANTE, I_GOLPES = 0, 2, 12   # indices en el array Stats
+I_VIDA, I_AGUANTE, I_GOLPES = 0, 2, 12   # indices en el array Stats del jugador
+TAG_VIDA = "Stat.Health.Current"
 
 _handle = None
 _estado = {}
@@ -34,29 +41,75 @@ def _num(struct):
     return float(m[0]) if m else 0.0
 
 
+def _gestor(a):
+    return next((c for c in a.get_components_by_class(unreal.ActorComponent)
+                 if c.get_class().get_name() == "BP_StatsManagerComponent_C"), None)
+
+
+def _indice_vida(sm):
+    """Localiza una vez el hueco de Stat.Health.Current; luego se lee por indice."""
+    try:
+        for i, st in enumerate(sm.get_editor_property("Stats")):
+            if TAG_VIDA in st.export_text():
+                return i
+    except Exception:
+        pass
+    return -1
+
+
+def _vida_de(sm, i):
+    try:
+        st = sm.get_editor_property("Stats")
+        return _num(st[i]) if 0 <= i < len(st) else -1.0
+    except Exception:
+        return -1.0
+
+
+def _muerto(a):
+    """Muerto = su malla esta en ragdoll.
+
+    Medido el 28/08: un enemigo abatido se queda TIRADO CON VIDA 100 en el
+    array Stats --DCS no escribe ahi al morir-- y conserva su controlador. Lo
+    unico que cambia de verdad es que la malla pasa a simular fisica. Probado
+    contra ocho vivos (todos False) y un abatido (True).
+    """
+    try:
+        m = a.get_component_by_class(unreal.SkeletalMeshComponent)
+        return bool(m) and m.is_simulating_physics()
+    except Exception:
+        return False
+
+
 def _abrir(gw):
     carpeta = os.path.join(unreal.Paths.project_saved_dir(), "Telemetria")
     os.makedirs(carpeta, exist_ok=True)
     ruta = os.path.join(carpeta, "sesion_%s.csv" % time.strftime("%Y%m%d_%H%M%S"))
     f = open(ruta, "w", encoding="utf-8")
-    f.write("reloj;t;x;y;z;vel;vida;aguante;golpes;cerca;vivos;objetivo\n")
+    f.write("reloj;t;x;y;z;vel;vida;aguante;golpes;cerca;vivos;cadaveres;objetivo\n")
     unreal.log("TELEMETRIA -> " + ruta)
     return f, ruta
 
 
 def _enemigos(gw, pawn):
+    """Devuelve [(actor, gestor de stats, indice de vida)] de los combatientes.
+
+    El filtro por controlador solo sirve para descartar FIGURANTES en el momento
+    del refresco (el custodio del prologo no lo tiene). La vida se lee aparte.
+    """
     fuera = []
     for a in unreal.GameplayStatics.get_all_actors_of_class(gw, unreal.Character):
         if a == pawn:
             continue
-        try:
-            if a.get_editor_property("hidden"):
-                continue
-        except Exception:
-            pass
         if a.get_instigator_controller() is None:
-            continue          # sin controlador = figurante, no combatiente
-        fuera.append(a)
+            continue          # figurante de puesta en escena (el custodio del prologo).
+                              # Seguro como filtro: un cadaver CONSERVA su controlador.
+        sm = _gestor(a)
+        if sm is None:
+            continue
+        i = _indice_vida(sm)
+        if i < 0:
+            continue
+        fuera.append((a, sm, i))
     return fuera
 
 
@@ -101,11 +154,16 @@ def _tick(delta):
             if len(st) > I_GOLPES:
                 vida, aguante, golpes = _num(st[I_VIDA]), _num(st[I_AGUANTE]), _num(st[I_GOLPES])
 
-        cerca = 0
-        for a in e["enem"]:
-            q = a.get_actor_location()
-            if (q - p).length() <= RADIO_CERCA:
-                cerca += 1
+        cerca = vivos = cadaveres = 0
+        for a, sm, i in e["enem"]:
+            lejos = (a.get_actor_location() - p).length() > RADIO_CERCA
+            if _muerto(a):
+                if not lejos:
+                    cadaveres += 1
+            else:
+                vivos += 1
+                if not lejos:
+                    cerca += 1
 
         obj = ""
         hud = pc.get_hud()
@@ -115,9 +173,9 @@ def _tick(delta):
             except Exception:
                 pass
 
-        e["buf"].append("%.3f;%.2f;%.0f;%.0f;%.0f;%.0f;%.1f;%.1f;%.0f;%d;%d;%s\n"
+        e["buf"].append("%.3f;%.2f;%.0f;%.0f;%.0f;%.0f;%.1f;%.1f;%.0f;%d;%d;%d;%s\n"
                         % (time.time(), t, p.x, p.y, p.z, vel, vida, aguante,
-                           golpes, cerca, len(e["enem"]), obj))
+                           golpes, cerca, vivos, cadaveres, obj))
         e["n"] += 1
 
         if t - e["tvol"] > VOLCADO:
