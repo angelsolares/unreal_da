@@ -199,11 +199,12 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 10 — cinco puntos en juego; el resto, aparcado por alcance</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 11 — jugado y medido por primera vez</p>
   <h1>El espinazo de Malkuth</h1>
   <p class="deck">Dónde van las cinco recetas de encuentro de la Forja —sus §6.1–6.5, no las del LDD—, dónde quedó cada una tras
-    colocarlas el 27/08, y cómo quedó el prólogo del umbral: los catorce segundos
-    que le dan a Malakh su primera espada.</p>
+    colocarlas el 27/08, cómo quedó el prólogo del umbral, y —desde esta revisión— qué salió
+    de <strong>recorrerlo entero con el mando</strong>: 6:41 de partida grabada a 9 Hz, cuatro
+    defectos que solo se ven jugando, y el primer beat nuevo puesto donde los números lo pedían.</p>
 
   <dl class="consts">
     <div class="const"><dt>Arranque spawn → Claro</dt><dd>364 m · 1:30</dd></div>
@@ -212,7 +213,8 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div class="const"><dt>Encuentros montados</dt><dd>5 de 5</dd></div>
     <div class="const"><dt>NavMesh</dt><dd>6 volúmenes</dd></div>
     <div class="const"><dt>Prólogo</dt><dd>14,3 s</dd></div>
-    <div class="const"><dt>Definition of Done</dt><dd>0 / 7</dd></div>
+    <div class="const"><dt>Definition of Done</dt><dd>1 / 5 en juego</dd></div>
+    <div class="const"><dt>Partida medida</dt><dd>6:41 · 944 m</dd></div>
   </dl>
 
   <p class="leyenda">
@@ -887,13 +889,16 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
             <td>La trampa no existe. El decorado sí, y en su sitio: 3 <code>Puente_Ray</code> en el Puente.</td></tr>
         <tr class="hot"><td>Vencer a Gabriel con paciencia, espejos y respuestas correctas</td><td>No</td>
             <td>El jefe no está montado. 22 espejos colocados en <code>LI_11_GabrielC2</code>, esperando.</td></tr>
-        <tr class="hot"><td>Usar el Altar de Contemplación como punto de descanso</td><td>No</td>
-            <td><code>BP_AltarOfContemplation</code> existe como asset y <strong>no está colocado en
-                ningún mapa</strong> — ni Master ni submapas. <code>RestAtAltar</code> sí está en Malakh.</td></tr>
+        <tr><td>Usar el Altar de Contemplación como punto de descanso</td><td>Sí</td>
+            <td>Colocado el 28/08 en <strong>(-4000, -30900)</strong>, sobre el tramo de 89 s sin nada
+                de la Senda de Setos. Estaba muerto por dentro: cubo del motor por malla y un cast a
+                <code>BP_DA_PlayerCharacter_V2</code> —hermano del jugador, no ancestro— que no acertaba
+                nunca. Ahora es hijo de <code>BP_DA_Interactuable</code>, dice «Descansar», repone vida
+                y pone checkpoint. Falta jugarlo con el mando.</td></tr>
         <tr><td>Sentir el giro de paraíso a hostilidad</td><td>A medias</td>
             <td>El prólogo del umbral hace exactamente eso, pero 90 s antes de lo que pide el documento
                 —que quiere dos minutos de jardín sin enemigos— y el resto del nivel no lo sostiene.</td></tr>
-        <tr class="sum"><td>Cinco puntos en juego</td><td>0 cerrados</td><td>2 a medias · 3 sin empezar</td></tr>
+        <tr class="sum"><td>Cinco puntos en juego</td><td>1 cerrado</td><td>2 a medias · 2 sin empezar</td></tr>
       </tbody>
     </table>
   </div>
@@ -902,7 +907,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div class="pt"><div>
       <h3>Tres de los cinco puzzles ya tienen su decorado, en el sitio correcto</h3>
       <p>La Snare en el Puente y el laberinto en GabrielC2 están donde el documento los pide; el altar
-        está construido pero sin colocar. Lo que falta en los tres es la <em>mecánica</em>, no el arte.
+        ya está colocado y funcionando. Lo que falta en los otros dos es la <em>mecánica</em>, no el arte.
         Los otros dos ni eso: los 76 setos del nivel son <code>Conn_*</code> —decoran carreteras— y no
         son las tres filas del Sendero Geométrico, y de los Símbolos Sagrados no hay nada.</p></div></div>
     <div class="pt"><div>
@@ -1008,9 +1013,94 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   </div>
 </section>
 
+<section>
+  <div class="sec-head"><span class="sec-num">13</span><h2>La primera partida medida</h2></div>
+
+  <p class="measure">El 28/08 se recorrió el espinazo entero con el mando, grabando a 9 Hz posición,
+    velocidad, vida, aguante, golpes recibidos y el objetivo en pantalla. <strong>6:41 de juego,
+    944 m, 36 % del tiempo parado, 3 golpes recibidos y vida mínima 50.</strong> Salieron cuatro
+    defectos, y ninguno de los cuatro se ve sin jugar: tres eran invisibles desde el editor y el
+    cuarto era el propio instrumento de medida.</p>
+
+  <div class="correction done">
+    <span class="lbl">✓ Resuelto — el grabador mentía sobre las muertes, y me hizo mentir a mí</span>
+    <p>Preguntaba «¿tiene controlador?» para saber si un enemigo seguía vivo. Un enemigo abatido
+      <strong>conserva el controlador y se queda con la vida a 100</strong> —DCS no la escribe al
+      morir—, así que la partida se leyó como «0 enemigos muertos». Lo único que cambia de verdad al
+      caer es que la malla pasa a simular física. Con ese criterio, probado contra ocho vivos y un
+      abatido, la lectura cuadró.</p>
+    <p class="cerrado">Consecuencia: el fichero de esa partida <strong>no sirve</strong> para repartir
+      combate y hueco, y el analizador ahora lo detecta y se niega a dar el veredicto de ritmo en vez
+      de dar uno falso. Lo firme de esa sesión es el recorrido y la traza de objetivos.</p>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Lo que se vio jugando</th><th>Lo que pasaba de verdad</th><th>Cómo quedó</th></tr></thead>
+      <tbody>
+        <tr><td>Un enemigo se cae y no se levanta — y ahí se queda</td>
+            <td>La disolución <em>hacia delante</em> de DCS marca la entrada como terminada y no
+                escribe el valor final, no avisa a nadie y no saca la entrada de la cola. El cadáver
+                se congela al <strong>93 %</strong> y el actor no se destruye nunca.</td>
+            <td>DCS no se toca: el remate lo pone <code>BP_DA_AlasMuerte</code>, que ya detectaba la
+                muerte, 4 s después de arrancar la disolución. De paso, <code>BP_DA_Heraldo</code> era
+                el único de los 22 enemigos <strong>sin ese componente</strong>.</td></tr>
+        <tr><td>Los últimos 148 s con el objetivo del prólogo, ya cumplido</td>
+            <td>No retrocedía: es que <strong>dos de las tres zonas estaban mudas</strong>.
+                <code>SetObjective</code> solo pisa si el índice es mayor, y los índices chocaban
+                (Jardín 1, prólogo 2 y 3, Claro <em>2</em>, Santuario <em>3</em>). La arena guardaba
+                el objetivo vigente al sellar y lo reponía al vencer — reponía el del prólogo.</td>
+            <td>Renumerado con hueco: <strong>1 · 2 · 3 · 10 · 20</strong>. Y
+                <code>RestaurarObjetivo</code>, que escribía a pelo saltándose el guardián, ahora solo
+                repone si el índice vigente sigue siendo el suyo.</td></tr>
+        <tr><td>El altar del LDD no existía en el mundo</td>
+            <td>El asset estaba hecho pero sin colocar — y muerto por dentro: cubo del motor por malla
+                y un cast a una clase hermana del jugador.</td>
+            <td>Colocado en la Senda de Setos y reconstruido como interactuable de DCS. Cierra el
+                primer punto del Definition of Done.</td></tr>
+        <tr><td>La E no hacía nada en sitios donde debería</td>
+            <td>Seis assets casteaban a <code>BP_DA_PlayerCharacter_V2</code>, que es
+                <strong>hermano</strong> del jugador vivo y no ancestro: el cast falla siempre.</td>
+            <td>Cinco estaban muertos (sin colocar en ningún mapa). El vivo era el disparador de zona,
+                que funcionaba solo por su sondeo de 0,5 s. Reapuntado.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="points">
+    <div class="pt"><div>
+      <h3>El hueco real estaba en la entrada, no en la salida</h3>
+      <p>La traza de objetivos parte la partida en seis tramos. El más largo sin nada es el
+        <strong>de entrada: 89 s</strong> con «Avanza por el Sendero de Setos hacia El Claro», de
+        (-15297,-31618) a (10163,-30213), y tres actores en 40 m a la redonda —los tres, hitos fuera
+        de cota—. Ahí va el altar, a mitad de camino. Es el estándar de la casa aplicado por primera
+        vez con números de partida y no de regla.</p></div></div>
+    <div class="pt"><div>
+      <h3>Tres de los cuatro defectos eran casts o índices, no arte</h3>
+      <p>Ninguno se ve abriendo el editor: el cast muerto compila, el índice colisionado no da error
+        —<code>SetObjective</code> falla en silencio por diseño— y la disolución atascada deja el
+        cuerpo al 93 %, que a ojo es casi invisible. Es el argumento a favor de jugar y grabar: el
+        motor no se queja de nada de esto.</p></div></div>
+    <div class="pt"><div>
+      <h3>El editor engaña con esa zona; PIE no</h3>
+      <p>Al colocar el altar, el viewport mostraba un vacío negro porque no tenía la región cargada.
+        Todo lo que se afirma aquí —suelo a z=18, el cartel, la detección por el canal Interactable,
+        el contador de usos subiendo— está comprobado <strong>en PIE</strong>. Vale como norma para
+        lo que venga.</p></div></div>
+  </div>
+
+  <div class="gap">
+    <span class="lbl">Lo que sigue sin medirse</span>
+    Con el grabador arreglado hace falta <strong>una segunda partida</strong> para tener por fin el
+    reparto combate/hueco de verdad, la curva de intensidad de la sección 12 y el tiempo real por
+    beat. Y quedan los dos puntos sin empezar del Definition of Done: la Celestial Snare y Gabriel
+    —que es el 95 % de intensidad del nivel y sigue siendo el agujero que más pesa.
+  </div>
+</section>
+
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 10 · 28 ago 2026 · alcance recortado a lo que se va a construir</span>
+  <span>rev. 11 · 28 ago 2026 · jugado, medido y con cuatro defectos menos</span>
 </footer>
 
 </div>
