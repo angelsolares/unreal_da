@@ -188,7 +188,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 6 — el prólogo del umbral, montado y jugado</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 7 — contrastada contra el LDD de Malkuth</p>
   <h1>El espinazo de Malkuth</h1>
   <p class="deck">Dónde van las cinco recetas de encuentro del §6, dónde quedó cada una tras
     colocarlas el 27/08, y cómo quedó el prólogo del umbral: los catorce segundos
@@ -201,6 +201,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div class="const"><dt>Encuentros montados</dt><dd>5 de 5</dd></div>
     <div class="const"><dt>NavMesh</dt><dd>6 volúmenes</dd></div>
     <div class="const"><dt>Prólogo</dt><dd>14,3 s</dd></div>
+    <div class="const"><dt>Definition of Done</dt><dd>0 / 7</dd></div>
   </dl>
 </header>
 
@@ -826,9 +827,80 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   </div>
 </section>
 
+<section>
+  <div class="sec-head"><span class="sec-num">11</span><h2>Contra el LDD: qué falta</h2></div>
+
+  <p class="measure">Comparación de esta página con <code>LDD_Malkuth_The_Kingdom_v3.pdf</code>,
+    contrastada además con los 6.681 actores del Master. La geografía cuadra: las nueve zonas
+    A→I del documento tienen su Level Instance, en orden y con los nombres que tocan.
+    <strong>Lo que falta es casi todo lo que no es pelear.</strong></p>
+
+  <div class="correction">
+    <span class="lbl">Dos cosas que hay que arreglar en esta página, no en el motor</span>
+    <p><strong>La numeración miente.</strong> Aquí se habla de «las cinco recetas del §6», pero el
+      §6 del LDD es <em>Mechanics Introduced in Malkuth</em>. Nuestras 6.1–6.5 vienen del contrato
+      de la Forja de Encuentros — otro documento. Quien abra los dos a la vez se pierde.</p>
+    <p><strong>La sección 08 contradice la curva del documento.</strong> Aquí se defiende que repetir
+      la mecánica es la tesis; el LDD pide diez beats cuya intensidad alterna
+      5 → 20 → 30 → 50 → <em>25 (trampa)</em> → 60 → <em>10 (descanso)</em> → 75 → <em>95 (jefe)</em> → 5,
+      con <strong>tres beats que no son combate</strong>. Una de las dos tiene que ceder, y conviene
+      decidirlo antes de montar más arenas.</p>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>§1.3 · Definition of Done</th><th>Estado</th><th>Qué falta exactamente</th></tr></thead>
+      <tbody>
+        <tr><td>Movimiento, melé, esquiva, bloqueo y stamina</td><td>Casi</td>
+            <td>Lo da DCS y se enseña peleando. Falta <strong>escalar</strong>: no existe ni en DCS ni en DA.</td></tr>
+        <tr class="hot"><td>Ángeles Mensajeros: patrulla, estado por defecto <em>no hostil</em>, y aprender la Farsa</td><td>No</td>
+            <td>Los nuestros atacan desde el segundo uno. Sin estado neutro no hay nada que aprender.</td></tr>
+        <tr class="hot"><td>Sobrevivir a la Celestial Snare y entender el peligro por patrón</td><td>No</td>
+            <td>La trampa no existe. El decorado sí, y en su sitio: 3 <code>Puente_Ray</code> en el Puente.</td></tr>
+        <tr class="hot"><td>Vencer a Gabriel con paciencia, espejos y respuestas correctas</td><td>No</td>
+            <td>El jefe no está montado. 22 espejos colocados en <code>LI_11_GabrielC2</code>, esperando.</td></tr>
+        <tr><td>Entender el medidor de Farsa y sufrir una consecuencia de tenerla baja</td><td>A medias</td>
+            <td>El número existe (<code>Farsa</code> 100/100) y baja al recibir golpes de algo con Tag «Angel».
+                No hay medidor en pantalla ni consecuencia alguna.</td></tr>
+        <tr class="hot"><td>Usar el Altar de Contemplación y pesar el riesgo de las Lágrimas</td><td>No</td>
+            <td><code>BP_AltarOfContemplation</code> existe como asset y <strong>no está colocado en
+                ningún mapa</strong> — ni Master ni submapas. <code>RestAtAltar</code> sí está en Malakh.</td></tr>
+        <tr><td>Sentir el giro de paraíso a hostilidad</td><td>A medias</td>
+            <td>El prólogo del umbral hace exactamente eso, pero 90 s antes de lo que pide el documento
+                —que quiere dos minutos de jardín sin enemigos— y el resto del nivel no lo sostiene.</td></tr>
+        <tr class="sum"><td>Siete puntos</td><td>0 cerrados</td><td>3 a medias · 4 sin empezar</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="points">
+    <div class="pt"><div>
+      <h3>Tres de los cinco puzzles ya tienen su decorado, en el sitio correcto</h3>
+      <p>La Snare en el Puente y el laberinto en GabrielC2 están donde el documento los pide; el altar
+        está construido pero sin colocar. Lo que falta en los tres es la <em>mecánica</em>, no el arte.
+        Los otros dos ni eso: los 76 setos del nivel son <code>Conn_*</code> —decoran carreteras— y no
+        son las tres filas del Sendero Geométrico, y de los Símbolos Sagrados no hay nada.</p></div></div>
+    <div class="pt"><div>
+      <h3>La Farsa es el corazón del nivel y está a mitad</h3>
+      <p>Cuatro de los siete puntos de arriba dependen de ella: sin estado neutro no hay patrulla que
+        observar, sin medidor no hay consecuencia que entender, y sin consecuencia el Altar no plantea
+        ningún riesgo. Es una pieza, no cuatro.</p></div></div>
+    <div class="pt"><div>
+      <h3>Dos discrepancias de mapa, una nuestra y una suya</h3>
+      <p>Tenemos una zona que el documento no contempla —el <strong>Mirador</strong>— y el documento
+        tiene un hueco que nosotros no: el beat 6, <em>The Mixed Host</em> (8:30–10:30),
+        <strong>no tiene letra</strong> en su propio mapa espacial; la E acaba a las 8:30 y la F
+        empieza a las 10:30.</p></div></div>
+    <div class="pt"><div>
+      <h3>El prólogo del umbral es invención nuestra</h3>
+      <p>No aparece en el LDD, que abre con dos minutos de jardín sin enemigos y el Sendero Geométrico.
+        Si se queda —y creo que debe—, hay que escribirlo en el documento, no solo aquí.</p></div></div>
+  </div>
+</section>
+
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 6 · 28 ago 2026 · el prólogo, montado y fotografiado</span>
+  <span>rev. 7 · 28 ago 2026 · contra el LDD: 0 de 7 cerrados</span>
 </footer>
 
 </div>
