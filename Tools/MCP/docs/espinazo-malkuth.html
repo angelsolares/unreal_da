@@ -199,7 +199,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 9 — con la clave de colores: lo cerrado, en verde</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 10 — cinco puntos en juego; el resto, aparcado por alcance</p>
   <h1>El espinazo de Malkuth</h1>
   <p class="deck">Dónde van las cinco recetas de encuentro de la Forja —sus §6.1–6.5, no las del LDD—, dónde quedó cada una tras
     colocarlas el 27/08, y cómo quedó el prólogo del umbral: los catorce segundos
@@ -649,6 +649,13 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     </table>
   </div>
 
+  <div class="gap">
+    <span class="lbl">Alcance de esta revisión</span>
+    El §1.3 del LDD enumera siete puntos. Aquí se miden <strong>cinco</strong>: los otros dos
+    dependen de un sistema que se ha decidido <strong>no introducir todavía</strong>, y volverán a
+    la tabla el día que entre. Se anota para que nadie lea esta lista como si fuera el §1.3 entero.
+  </div>
+
   <div class="points">
     <div class="pt"><div>
       <h3>Malakh llega sin nada</h3>
@@ -872,26 +879,21 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
   <div class="tblwrap">
     <table>
-      <thead><tr><th>§1.3 · Definition of Done</th><th>Estado</th><th>Qué falta exactamente</th></tr></thead>
+      <thead><tr><th>§1.3 · Definition of Done — los puntos en juego</th><th>Estado</th><th>Qué falta exactamente</th></tr></thead>
       <tbody>
         <tr><td>Movimiento, melé, esquiva, bloqueo y stamina</td><td>Casi</td>
             <td>Lo da DCS y se enseña peleando. Falta <strong>escalar</strong>: no existe ni en DCS ni en DA.</td></tr>
-        <tr class="hot"><td>Ángeles Mensajeros: patrulla, estado por defecto <em>no hostil</em>, y aprender la Farsa</td><td>No</td>
-            <td>Los nuestros atacan desde el segundo uno. Sin estado neutro no hay nada que aprender.</td></tr>
         <tr class="hot"><td>Sobrevivir a la Celestial Snare y entender el peligro por patrón</td><td>No</td>
             <td>La trampa no existe. El decorado sí, y en su sitio: 3 <code>Puente_Ray</code> en el Puente.</td></tr>
         <tr class="hot"><td>Vencer a Gabriel con paciencia, espejos y respuestas correctas</td><td>No</td>
             <td>El jefe no está montado. 22 espejos colocados en <code>LI_11_GabrielC2</code>, esperando.</td></tr>
-        <tr><td>Entender el medidor de Farsa y sufrir una consecuencia de tenerla baja</td><td>A medias</td>
-            <td>El número existe (<code>Farsa</code> 100/100) y baja al recibir golpes de algo con Tag «Angel».
-                No hay medidor en pantalla ni consecuencia alguna.</td></tr>
-        <tr class="hot"><td>Usar el Altar de Contemplación y pesar el riesgo de las Lágrimas</td><td>No</td>
+        <tr class="hot"><td>Usar el Altar de Contemplación como punto de descanso</td><td>No</td>
             <td><code>BP_AltarOfContemplation</code> existe como asset y <strong>no está colocado en
                 ningún mapa</strong> — ni Master ni submapas. <code>RestAtAltar</code> sí está en Malakh.</td></tr>
         <tr><td>Sentir el giro de paraíso a hostilidad</td><td>A medias</td>
             <td>El prólogo del umbral hace exactamente eso, pero 90 s antes de lo que pide el documento
                 —que quiere dos minutos de jardín sin enemigos— y el resto del nivel no lo sostiene.</td></tr>
-        <tr class="sum"><td>Siete puntos</td><td>0 cerrados</td><td>3 a medias · 4 sin empezar</td></tr>
+        <tr class="sum"><td>Cinco puntos en juego</td><td>0 cerrados</td><td>2 a medias · 3 sin empezar</td></tr>
       </tbody>
     </table>
   </div>
@@ -904,10 +906,10 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
         Los otros dos ni eso: los 76 setos del nivel son <code>Conn_*</code> —decoran carreteras— y no
         son las tres filas del Sendero Geométrico, y de los Símbolos Sagrados no hay nada.</p></div></div>
     <div class="pt"><div>
-      <h3>La Farsa es el corazón del nivel y está a mitad</h3>
-      <p>Cuatro de los siete puntos de arriba dependen de ella: sin estado neutro no hay patrulla que
-        observar, sin medidor no hay consecuencia que entender, y sin consecuencia el Altar no plantea
-        ningún riesgo. Es una pieza, no cuatro.</p></div></div>
+      <h3>Gabriel es el agujero que más pesa</h3>
+      <p>Es el <strong>95&nbsp;% de intensidad</strong> del nivel: su clímax. Y no está montado como
+        pelea, aunque sus tres cámaras, sus carreteras y sus 22 espejos llevan colocados desde
+        agosto. Todo lo demás del espinazo desemboca ahí.</p></div></div>
     <div class="pt"><div>
       <h3>Dos discrepancias de mapa, una nuestra y una suya</h3>
       <p>Tenemos una zona que el documento no contempla —el <strong>Mirador</strong>— y el documento
@@ -962,8 +964,8 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
         de oscuro.</p></div></div>
     <div class="pt"><div>
       <h3>Reglas del libro directamente usables en los gaps de la sección 11</h3>
-      <p><strong>Farsa:</strong> los «enemigos desprevenidos» son una de las tres aperturas estándar
-        de encuentro — el estado neutro no es rareza, es herramienta básica.
+      <p><strong>Encuentros:</strong> su tabla de tipos de enemigo —1 enseña, 2 es interesante,
+        3+ es caos— es la escalada exacta que ya pide el LDD para nuestras arenas.
         <strong>Balance:</strong> «duplica o divide el valor; las diferencias pequeñas no se
         sienten», y «si no sabes por qué falla, refuérzalo».
         <strong>Cobertura:</strong> alta ≥ 1,75 m, baja 1,0–1,25 m, &lt; 0,5 m no es cobertura, y
@@ -1008,7 +1010,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 9 · 28 ago 2026 · lo cerrado ya no se lee como pendiente</span>
+  <span>rev. 10 · 28 ago 2026 · alcance recortado a lo que se va a construir</span>
 </footer>
 
 </div>
