@@ -1,0 +1,72 @@
+{
+ "_que_es": "Luz de relleno de Claro, copiando la receta del Gazebo (27/08)",
+ "_como_quitar": "borrar los actores Claro_Relleno_N",
+ "luces": [
+  {
+   "actor": "Claro_Relleno_0",
+   "loc": [
+    4000,
+    -2500,
+    760
+   ],
+   "intensidad": 1800,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Claro_Relleno_1",
+   "loc": [
+    4000,
+    2400,
+    760
+   ],
+   "intensidad": 1800,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Claro_Relleno_2",
+   "loc": [
+    7400,
+    -2500,
+    760
+   ],
+   "intensidad": 2200,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Claro_Relleno_3",
+   "loc": [
+    7400,
+    2400,
+    760
+   ],
+   "intensidad": 2200,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Claro_Relleno_4",
+   "loc": [
+    10800,
+    -2500,
+    760
+   ],
+   "intensidad": 1800,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Claro_Relleno_5",
+   "loc": [
+    10800,
+    2400,
+    760
+   ],
+   "intensidad": 1800,
+   "radio": 4200,
+   "sombras": false
+  }
+ ]
+}

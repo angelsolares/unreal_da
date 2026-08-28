@@ -1,0 +1,393 @@
+[
+ {
+  "label": "Yesod_Monte_7",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -9612.47829768453,
+   -1450.1914447457311,
+   -1440.795611981673
+  ],
+  "rot": [
+   0.0,
+   -63.45192418594468,
+   0.0
+  ],
+  "scale": [
+   7.183071787554338,
+   7.183071787554338,
+   7.183071787554338
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_8",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -10092.92864619213,
+   -530.5661415303875,
+   -1533.9734074352186
+  ],
+  "rot": [
+   0.0,
+   -122.22122658147528,
+   0.0
+  ],
+  "scale": [
+   8.997811199164861,
+   8.997811199164861,
+   8.997811199164861
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_9",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -8940.150828690937,
+   804.4664324291443,
+   -2004.6266554876354
+  ],
+  "rot": [
+   0.0,
+   16.038236625510386,
+   -0.0
+  ],
+  "scale": [
+   7.591093898094769,
+   7.591093898094769,
+   7.591093898094769
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_10",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -7400.363353429246,
+   1523.4317320989176,
+   -1437.2652765536984
+  ],
+  "rot": [
+   0.0,
+   -170.13822546700865,
+   0.0
+  ],
+  "scale": [
+   9.37400904408377,
+   9.37400904408377,
+   9.37400904408377
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_11",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -3595.9181402948307,
+   7269.727687202918,
+   -1997.927951718647
+  ],
+  "rot": [
+   0.0,
+   73.35721496183295,
+   -0.0
+  ],
+  "scale": [
+   7.8659386638859,
+   7.8659386638859,
+   7.8659386638859
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_23",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   8374.049863651948,
+   -1458.9667966408215,
+   -1677.9231545878215
+  ],
+  "rot": [
+   0.0,
+   47.50874521560445,
+   -0.0
+  ],
+  "scale": [
+   8.158766300025754,
+   8.158766300025754,
+   8.158766300025754
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_24",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   4376.1497236812575,
+   -190.80938854914893,
+   -1448.268031723922
+  ],
+  "rot": [
+   0.0,
+   162.10108287730304,
+   -0.0
+  ],
+  "scale": [
+   10.77540722665163,
+   10.77540722665163,
+   10.77540722665163
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_25",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   7472.301471083076,
+   1195.376292251858,
+   -2079.315090123245
+  ],
+  "rot": [
+   0.0,
+   102.79758100528161,
+   -0.0
+  ],
+  "scale": [
+   8.983562112778221,
+   8.983562112778221,
+   8.983562112778221
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_26",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   10413.745576257425,
+   1750.474909276396,
+   -1666.6713712116104
+  ],
+  "rot": [
+   0.0,
+   84.99589924001876,
+   -0.0
+  ],
+  "scale": [
+   10.550398351415247,
+   10.550398351415247,
+   10.550398351415247
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Monte_27",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -113.2076266228396,
+   7401.279165689899,
+   -1864.828181110708
+  ],
+  "rot": [
+   0.0,
+   -150.08208265066247,
+   0.0
+  ],
+  "scale": [
+   8.807921082623267,
+   8.807921082623267,
+   8.807921082623267
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_32",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -387.3403570953087,
+   7856.68486251881,
+   -1876.4974354191206
+  ],
+  "rot": [
+   0.0,
+   -159.58547105993398,
+   0.0
+  ],
+  "scale": [
+   8.746898890355089,
+   8.746898890355089,
+   8.746898890355089
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_33",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -4804.006958587823,
+   7084.786649637321,
+   -2003.1706809081002
+  ],
+  "rot": [
+   0.0,
+   -99.11603438626788,
+   0.0
+  ],
+  "scale": [
+   10.081565500740691,
+   10.081565500740691,
+   10.081565500740691
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_34",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   4223.424884786553,
+   6986.048476336666,
+   -1907.5819967815569
+  ],
+  "rot": [
+   0.0,
+   141.1886072816274,
+   -0.0
+  ],
+  "scale": [
+   10.566003443471157,
+   10.566003443471157,
+   10.566003443471157
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_35",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   5328.222130623268,
+   8316.67992391003,
+   -1593.42384310133
+  ],
+  "rot": [
+   0.0,
+   35.77543260332918,
+   -0.0
+  ],
+  "scale": [
+   7.597835183422005,
+   7.597835183422005,
+   7.597835183422005
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_36",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   2083.3273389688984,
+   10522.051164952773,
+   -1895.9874151721538
+  ],
+  "rot": [
+   0.0,
+   122.9252958870145,
+   -0.0
+  ],
+  "scale": [
+   9.442529351656571,
+   9.442529351656571,
+   9.442529351656571
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_37",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -2973.0348442416725,
+   8019.457169999132,
+   -2058.278846674729
+  ],
+  "rot": [
+   0.0,
+   162.26936467097576,
+   -0.0
+  ],
+  "scale": [
+   7.892936587749485,
+   7.892936587749485,
+   7.892936587749485
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ },
+ {
+  "label": "Yesod_Fondo_38",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -2394.281993376455,
+   8217.114134668289,
+   -1591.2085530307183
+  ],
+  "rot": [
+   0.0,
+   19.520859727412873,
+   -0.0
+  ],
+  "scale": [
+   11.826441409451162,
+   11.826441409451162,
+   11.826441409451162
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Yesod/Entorno/Montanas"
+ }
+]

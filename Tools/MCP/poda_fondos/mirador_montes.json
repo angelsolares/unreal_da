@@ -1,0 +1,692 @@
+[
+ {
+  "label": "Mirador_Monte_0",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -27725.307678024255,
+   13177.261592011904,
+   -2011.506413953149
+  ],
+  "rot": [
+   0.0,
+   143.84240633987005,
+   -0.0
+  ],
+  "scale": [
+   21.76716113452202,
+   21.76716113452202,
+   21.76716113452202
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_1",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   22605.11192412886,
+   22018.033088174543,
+   -2407.1183321099347
+  ],
+  "rot": [
+   0.0,
+   87.91800503056403,
+   -0.0
+  ],
+  "scale": [
+   14.445506572930844,
+   14.445506572930844,
+   14.445506572930844
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_2",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -13200.0,
+   25034.50816763026,
+   -2367.127418223362
+  ],
+  "rot": [
+   0.0,
+   62.347583799784815,
+   -0.0
+  ],
+  "scale": [
+   16.776151002746147,
+   16.776151002746147,
+   16.776151002746147
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_3",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -17000.0,
+   21315.667866302712,
+   -2549.9418494989823
+  ],
+  "rot": [
+   0.0,
+   -125.06541956451974,
+   0.0
+  ],
+  "scale": [
+   15.319687367100123,
+   15.319687367100123,
+   15.319687367100123
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_4",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   20600.0,
+   27362.294359007883,
+   -2459.6630570756565
+  ],
+  "rot": [
+   0.0,
+   142.81647212003193,
+   -0.0
+  ],
+  "scale": [
+   23.67184663269289,
+   23.67184663269289,
+   23.67184663269289
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_5",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -18839.413020210668,
+   17681.572813587263,
+   -1851.5527719871852
+  ],
+  "rot": [
+   0.0,
+   -120.00211704522474,
+   0.0
+  ],
+  "scale": [
+   16.360997201111633,
+   16.360997201111633,
+   16.360997201111633
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_6",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -18800.0,
+   23092.470247786074,
+   -2300.2736088355414
+  ],
+  "rot": [
+   0.0,
+   125.7767201055664,
+   -0.0
+  ],
+  "scale": [
+   16.165567875916867,
+   16.165567875916867,
+   16.165567875916867
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_7",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -6983.161491244082,
+   30444.112195904443,
+   -2532.016038676731
+  ],
+  "rot": [
+   0.0,
+   88.57319359135498,
+   -0.0
+  ],
+  "scale": [
+   21.24677682260367,
+   21.24677682260367,
+   21.24677682260367
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_8",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   20600.0,
+   24368.38004669922,
+   -2529.371309061242
+  ],
+  "rot": [
+   0.0,
+   43.04413320638433,
+   -0.0
+  ],
+  "scale": [
+   21.19275147057732,
+   21.19275147057732,
+   21.19275147057732
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_9",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   20600.0,
+   19709.07993630944,
+   -1882.105779127267
+  ],
+  "rot": [
+   0.0,
+   136.80566317253079,
+   -0.0
+  ],
+  "scale": [
+   17.41459155241707,
+   17.41459155241707,
+   17.41459155241707
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_10",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -18937.94593568793,
+   20047.9955991351,
+   -2459.102117763414
+  ],
+  "rot": [
+   0.0,
+   -12.496218519516392,
+   0.0
+  ],
+  "scale": [
+   17.8970720786122,
+   17.8970720786122,
+   17.8970720786122
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_11",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   20600.0,
+   19094.31256985262,
+   -2670.0587509526213
+  ],
+  "rot": [
+   0.0,
+   32.57577182379355,
+   -0.0
+  ],
+  "scale": [
+   23.123893682436968,
+   23.123893682436968,
+   23.123893682436968
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_12",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   19568.693586991918,
+   26638.270490476076,
+   -1860.6207842289566
+  ],
+  "rot": [
+   0.0,
+   -163.79662504596482,
+   0.0
+  ],
+  "scale": [
+   19.594699385387216,
+   19.594699385387216,
+   19.594699385387216
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_13",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -32918.559717750664,
+   12253.263331627453,
+   -2125.401591847372
+  ],
+  "rot": [
+   0.0,
+   59.92175105024212,
+   -0.0
+  ],
+  "scale": [
+   17.34020406163307,
+   17.34020406163307,
+   17.34020406163307
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_14",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -20600.0,
+   20746.454577626828,
+   -2766.068458448196
+  ],
+  "rot": [
+   0.0,
+   -159.4306646843584,
+   0.0
+  ],
+  "scale": [
+   21.146223786820762,
+   21.146223786820762,
+   21.146223786820762
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_15",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   22937.647739336622,
+   14213.626578935524,
+   -2523.635244147682
+  ],
+  "rot": [
+   0.0,
+   -114.31330192569334,
+   0.0
+  ],
+  "scale": [
+   21.012833360122904,
+   21.012833360122904,
+   21.012833360122904
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_16",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   29445.143385700085,
+   11140.552612562416,
+   -2236.093139292716
+  ],
+  "rot": [
+   0.0,
+   -72.58735643354588,
+   0.0
+  ],
+  "scale": [
+   14.934562683540658,
+   14.934562683540658,
+   14.934562683540658
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_17",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   25773.357331906824,
+   25829.32612896579,
+   -2389.5400998133887
+  ],
+  "rot": [
+   0.0,
+   1.025161743641441,
+   -0.0
+  ],
+  "scale": [
+   23.227066309762684,
+   23.227066309762684,
+   23.227066309762684
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_18",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -20600.0,
+   26695.169314251354,
+   -1864.162694878952
+  ],
+  "rot": [
+   0.0,
+   -162.8599118268396,
+   0.0
+  ],
+  "scale": [
+   18.400707485340867,
+   18.400707485340867,
+   18.400707485340867
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_19",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   14800.0,
+   22956.916609923253,
+   -2639.3222807158354
+  ],
+  "rot": [
+   0.0,
+   112.97206883922782,
+   -0.0
+  ],
+  "scale": [
+   14.145196914740463,
+   14.145196914740463,
+   14.145196914740463
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_20",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   19219.605737885788,
+   15165.716090923124,
+   -2874.9190806760075
+  ],
+  "rot": [
+   0.0,
+   -99.48809969215098,
+   0.0
+  ],
+  "scale": [
+   18.4379401227636,
+   18.4379401227636,
+   18.4379401227636
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_21",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   26000.70969269846,
+   12977.968998650995,
+   -2310.99725929601
+  ],
+  "rot": [
+   0.0,
+   -42.12359890440649,
+   0.0
+  ],
+  "scale": [
+   14.871635675836185,
+   14.871635675836185,
+   14.871635675836185
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_22",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   7255.627083414885,
+   32500.803095136675,
+   -1951.7280573731884
+  ],
+  "rot": [
+   0.0,
+   76.73675540682709,
+   -0.0
+  ],
+  "scale": [
+   19.66221267248607,
+   19.66221267248607,
+   19.66221267248607
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_23",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -23433.828145162523,
+   22028.830044612412,
+   -2339.4003507399
+  ],
+  "rot": [
+   0.0,
+   -161.78359499284235,
+   0.0
+  ],
+  "scale": [
+   14.906625986521425,
+   14.906625986521425,
+   14.906625986521425
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_24",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   15773.47121595045,
+   27716.452878243843,
+   -2317.7501675289823
+  ],
+  "rot": [
+   0.0,
+   83.96610263919742,
+   -0.0
+  ],
+  "scale": [
+   15.178999245715794,
+   15.178999245715794,
+   15.178999245715794
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_25",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -22534.607982649824,
+   15158.308652407755,
+   -2704.385518890054
+  ],
+  "rot": [
+   0.0,
+   118.70740419193518,
+   -0.0
+  ],
+  "scale": [
+   22.86610866005817,
+   22.86610866005817,
+   22.86610866005817
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_26",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   5409.101531896249,
+   34755.48522344924,
+   -2237.4333854939014
+  ],
+  "rot": [
+   0.0,
+   -106.89924705163544,
+   0.0
+  ],
+  "scale": [
+   17.040045501217268,
+   17.040045501217268,
+   17.040045501217268
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_27",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -3573.2439311540948,
+   31697.233592408993,
+   -1908.4420675916792
+  ],
+  "rot": [
+   0.0,
+   -44.2933128794158,
+   0.0
+  ],
+  "scale": [
+   15.771706343522158,
+   15.771706343522158,
+   15.771706343522158
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_28",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   22638.22267124431,
+   17472.285192975316,
+   -1881.3797945535648
+  ],
+  "rot": [
+   0.0,
+   -29.8916529071944,
+   0.0
+  ],
+  "scale": [
+   17.028709889868605,
+   17.028709889868605,
+   17.028709889868605
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ },
+ {
+  "label": "Mirador_Monte_29",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -3633.63832823974,
+   37178.4484963211,
+   -2638.0242346031705
+  ],
+  "rot": [
+   0.0,
+   134.9836064013576,
+   -0.0
+  ],
+  "scale": [
+   14.54490327860457,
+   14.54490327860457,
+   14.54490327860457
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Mirador/Entorno/Montanas"
+ }
+]

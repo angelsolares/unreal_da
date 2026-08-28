@@ -1,0 +1,784 @@
+[
+ {
+  "label": "Gazebo_Monte_0",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   20023.548304799202,
+   5089.394934223539,
+   -1920.5253122004333
+  ],
+  "rot": [
+   0.0,
+   -80.38219915720737,
+   0.0
+  ],
+  "scale": [
+   19.439060335251995,
+   19.439060335251995,
+   19.439060335251995
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_1",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   10023.3160450984,
+   -17170.515199247813,
+   -2106.939983231453
+  ],
+  "rot": [
+   0.0,
+   16.038236625510386,
+   -0.0
+  ],
+  "scale": [
+   10.300406575808491,
+   10.300406575808491,
+   10.300406575808491
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_2",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -11218.802532587833,
+   2192.219764110934,
+   -14007.88649634785
+  ],
+  "rot": [
+   0.0,
+   99.94143609886129,
+   -0.0
+  ],
+  "scale": [
+   19.487602447386646,
+   19.487602447386646,
+   19.487602447386646
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_3",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -202.24620296728244,
+   12862.449743690755,
+   -1616.8847318817325
+  ],
+  "rot": [
+   0.0,
+   47.50874521560445,
+   -0.0
+  ],
+  "scale": [
+   11.549285860056656,
+   11.549285860056656,
+   11.549285860056656
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_4",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   691.6155738585512,
+   -21349.97639002571,
+   -1923.945092933227
+  ],
+  "rot": [
+   0.0,
+   -11.813521223055885,
+   0.0
+  ],
+  "scale": [
+   19.336314563796073,
+   19.336314563796073,
+   19.336314563796073
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_5",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   8083.275051198885,
+   11651.805638609781,
+   -1600.0070568174156
+  ],
+  "rot": [
+   0.0,
+   84.99589924001876,
+   -0.0
+  ],
+  "scale": [
+   16.81087637311354,
+   16.81087637311354,
+   16.81087637311354
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_6",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -6907.494486778851,
+   8583.622822200065,
+   -1980.7442663147785
+  ],
+  "rot": [
+   0.0,
+   77.96044353300726,
+   -0.0
+  ],
+  "scale": [
+   13.608612509727763,
+   13.608612509727763,
+   13.608612509727763
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_7",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -15229.786626829104,
+   10839.04270148946,
+   -2104.75602136215
+  ],
+  "rot": [
+   0.0,
+   -99.11603438626788,
+   0.0
+  ],
+  "scale": [
+   15.77944410162952,
+   15.77944410162952,
+   15.77944410162952
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_8",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -3436.087569670308,
+   -14186.466336320476,
+   -2256.519555978719
+  ],
+  "rot": [
+   0.0,
+   -101.06094705921647,
+   0.0
+  ],
+  "scale": [
+   13.020747544253593,
+   13.020747544253593,
+   13.020747544253593
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_9",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   684.2143371101556,
+   -12871.770100317373,
+   -2185.6952189401236
+  ],
+  "rot": [
+   0.0,
+   139.75327140640152,
+   -0.0
+  ],
+  "scale": [
+   14.373564573644458,
+   14.373564573644458,
+   14.373564573644458
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_10",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   7363.82737379102,
+   15347.250053186159,
+   -1486.8128295460774
+  ],
+  "rot": [
+   0.0,
+   19.520859727412873,
+   -0.0
+  ],
+  "scale": [
+   19.618171100792555,
+   19.618171100792555,
+   19.618171100792555
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_11",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   7906.391603044613,
+   11556.694580647669,
+   -1483.2003589175642
+  ],
+  "rot": [
+   0.0,
+   -97.83230769347041,
+   0.0
+  ],
+  "scale": [
+   9.995370805727024,
+   9.995370805727024,
+   9.995370805727024
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_12",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   24896.390496206877,
+   -3099.993872489069,
+   -2388.9521598764472
+  ],
+  "rot": [
+   0.0,
+   -1.5021133243581635,
+   0.0
+  ],
+  "scale": [
+   14.99510312359552,
+   14.99510312359552,
+   14.99510312359552
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_13",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -4678.094448521639,
+   21272.318932317517,
+   -2195.2009676933294
+  ],
+  "rot": [
+   0.0,
+   -178.07201734654234,
+   0.0
+  ],
+  "scale": [
+   10.830942393201841,
+   10.830942393201841,
+   10.830942393201841
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_14",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -1436.4692290521343,
+   12629.958921865436,
+   -1288.0549902506427
+  ],
+  "rot": [
+   0.0,
+   146.6121626582985,
+   -0.0
+  ],
+  "scale": [
+   15.12850746797794,
+   15.12850746797794,
+   15.12850746797794
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_15",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -14750.27121755101,
+   -5117.678275838469,
+   -11419.600693323728
+  ],
+  "rot": [
+   0.0,
+   -88.83407580146299,
+   0.0
+  ],
+  "scale": [
+   16.507093552270483,
+   16.507093552270483,
+   16.507093552270483
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_16",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -2846.627524292082,
+   20016.547739211455,
+   -1414.1944523035522
+  ],
+  "rot": [
+   0.0,
+   -5.387635065888786,
+   0.0
+  ],
+  "scale": [
+   17.782052997863875,
+   17.782052997863875,
+   17.782052997863875
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_17",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -5474.494883000654,
+   17177.61099897932,
+   -1835.0867268792758
+  ],
+  "rot": [
+   0.0,
+   90.38580898679133,
+   -0.0
+  ],
+  "scale": [
+   9.031324386611267,
+   9.031324386611267,
+   9.031324386611267
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_18",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   11726.74649563765,
+   22582.045155342217,
+   -1608.246087659265
+  ],
+  "rot": [
+   0.0,
+   44.864258787065886,
+   -0.0
+  ],
+  "scale": [
+   15.023724916402124,
+   15.023724916402124,
+   15.023724916402124
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_19",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -3436.653570274226,
+   14084.672201831927,
+   -1335.778395336018
+  ],
+  "rot": [
+   0.0,
+   77.46253970892283,
+   -0.0
+  ],
+  "scale": [
+   12.451924325643072,
+   12.451924325643072,
+   12.451924325643072
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_20",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   4242.173178888916,
+   -14998.314906235926,
+   -1340.4119963480214
+  ],
+  "rot": [
+   0.0,
+   31.378884330102682,
+   -0.0
+  ],
+  "scale": [
+   16.96008584273983,
+   16.96008584273983,
+   16.96008584273983
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_21",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -17396.691295480632,
+   -10997.603481723856,
+   -9468.17835438651
+  ],
+  "rot": [
+   0.0,
+   -156.16034379050154,
+   0.0
+  ],
+  "scale": [
+   14.51581955212905,
+   14.51581955212905,
+   14.51581955212905
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_22",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   11116.885545208686,
+   18187.213292289904,
+   -1739.278649976141
+  ],
+  "rot": [
+   0.0,
+   32.63853551477127,
+   -0.0
+  ],
+  "scale": [
+   10.244475603683142,
+   10.244475603683142,
+   10.244475603683142
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_23",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -4022.4801967217936,
+   -18933.198869738797,
+   -2120.1129912026754
+  ],
+  "rot": [
+   0.0,
+   42.443972845768556,
+   -0.0
+  ],
+  "scale": [
+   15.584929469313906,
+   15.584929469313906,
+   15.584929469313906
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_24",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   13559.68235539661,
+   8828.256487609295,
+   -2004.3086526935494
+  ],
+  "rot": [
+   0.0,
+   -40.820088237905914,
+   0.0
+  ],
+  "scale": [
+   12.905764700801003,
+   12.905764700801003,
+   12.905764700801003
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_25",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -21008.44087603,
+   -8607.265150368687,
+   -13237.318684119216
+  ],
+  "rot": [
+   0.0,
+   109.44163804382163,
+   -0.0
+  ],
+  "scale": [
+   18.19949162434763,
+   18.19949162434763,
+   18.19949162434763
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_26",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -18270.753077322086,
+   6024.9233590805015,
+   -9097.673762041313
+  ],
+  "rot": [
+   0.0,
+   63.78142836679771,
+   -0.0
+  ],
+  "scale": [
+   17.473481301438753,
+   17.473481301438753,
+   17.473481301438753
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_27",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   12843.91759720273,
+   -11223.943071758933,
+   -1299.6388430239813
+  ],
+  "rot": [
+   0.0,
+   109.0335560352698,
+   -0.0
+  ],
+  "scale": [
+   14.977946045798223,
+   14.977946045798223,
+   14.977946045798223
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_28",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -24482.61478061926,
+   6754.123300851512,
+   -10767.941342200062
+  ],
+  "rot": [
+   0.0,
+   19.616518029764542,
+   -0.0
+  ],
+  "scale": [
+   18.639290575701413,
+   18.639290575701413,
+   18.639290575701413
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_29",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   -23173.96411065312,
+   4661.844231766612,
+   -12268.540550027434
+  ],
+  "rot": [
+   0.0,
+   -152.66168107868253,
+   0.0
+  ],
+  "scale": [
+   19.012349491013378,
+   19.012349491013378,
+   19.012349491013378
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_30",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   -12745.331839526523,
+   12794.250503971776,
+   -1548.88515432779
+  ],
+  "rot": [
+   0.0,
+   62.32664111178678,
+   -0.0
+  ],
+  "scale": [
+   9.532987952480553,
+   9.532987952480553,
+   9.532987952480553
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_31",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_02.SM_QuarryCliff_02",
+  "loc": [
+   1404.0271079784143,
+   14908.644902008025,
+   -1361.745607369461
+  ],
+  "rot": [
+   0.0,
+   -23.24985965306394,
+   0.0
+  ],
+  "scale": [
+   15.661270204308103,
+   15.661270204308103,
+   15.661270204308103
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_02.MI_QuarryCliff_02"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_32",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   6501.392395405506,
+   -13119.197639604874,
+   -2027.9339430983803
+  ],
+  "rot": [
+   0.0,
+   164.03707988748192,
+   -0.0
+  ],
+  "scale": [
+   19.197812532166864,
+   19.197812532166864,
+   19.197812532166864
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ },
+ {
+  "label": "Gazebo_Monte_33",
+  "mesh": "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05.SM_QuarryCliff_05",
+  "loc": [
+   16115.690630863231,
+   -495.9555277681975,
+   -1660.3810783756808
+  ],
+  "rot": [
+   0.0,
+   96.85182099083991,
+   -0.0
+  ],
+  "scale": [
+   9.921284199189992,
+   9.921284199189992,
+   9.921284199189992
+  ],
+  "mats": [
+   "/Game/Megascans/3D_Assets/QuarryCliff/MI_QuarryCliff_05.MI_QuarryCliff_05"
+  ],
+  "folder": "Gazebo/Entorno/Montanas"
+ }
+]

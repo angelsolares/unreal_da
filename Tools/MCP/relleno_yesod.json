@@ -1,0 +1,50 @@
+{
+ "_que_es": "Luz de relleno de Yesod, copiando la receta del Gazebo (27/08)",
+ "_como_quitar": "borrar los actores Yesod_Relleno_N",
+ "luces": [
+  {
+   "actor": "Yesod_Relleno_0",
+   "loc": [
+    -2800,
+    -1200,
+    740
+   ],
+   "intensidad": 1800,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Yesod_Relleno_1",
+   "loc": [
+    -2800,
+    1800,
+    740
+   ],
+   "intensidad": 1800,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Yesod_Relleno_2",
+   "loc": [
+    1800,
+    -1200,
+    740
+   ],
+   "intensidad": 2200,
+   "radio": 4200,
+   "sombras": false
+  },
+  {
+   "actor": "Yesod_Relleno_3",
+   "loc": [
+    1800,
+    1800,
+    740
+   ],
+   "intensidad": 2200,
+   "radio": 4200,
+   "sombras": false
+  }
+ ]
+}
