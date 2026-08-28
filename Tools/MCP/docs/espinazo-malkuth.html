@@ -1,0 +1,727 @@
+<title>El espinazo de Malkuth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,600;1,300&display=swap">
+
+<style>
+:root{
+  --ground:#E9EBE6; --surface:#F4F5F1; --surface-2:#DEE2D8;
+  --ink:#1E2320; --ink-soft:#5B6159; --ink-faint:#858B81;
+  --rule:#C6CBC0; --rule-soft:#D9DDD3;
+  --gold:#8A6210; --gold-bg:#EFE6CD;
+  --cold:#2C5B7C; --cold-bg:#DCE6ED;
+  --warn:#95392F; --warn-bg:#F0DEDA;
+  --okay:#3D6B3F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#141713; --surface:#1C201A; --surface-2:#262B22;
+    --ink:#E6E9E1; --ink-soft:#9BA394; --ink-faint:#6E766A;
+    --rule:#343B30; --rule-soft:#272D24;
+    --gold:#D8A840; --gold-bg:#33290F;
+    --cold:#82B2D5; --cold-bg:#15242F;
+    --warn:#E08B7C; --warn-bg:#33201C;
+    --okay:#8FBF91;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#141713; --surface:#1C201A; --surface-2:#262B22;
+  --ink:#E6E9E1; --ink-soft:#9BA394; --ink-faint:#6E766A;
+  --rule:#343B30; --rule-soft:#272D24;
+  --gold:#D8A840; --gold-bg:#33290F;
+  --cold:#82B2D5; --cold-bg:#15242F;
+  --warn:#E08B7C; --warn-bg:#33201C;
+  --okay:#8FBF91;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1060px;margin:0 auto;padding:clamp(2rem,5vw,4.5rem) clamp(1.15rem,4vw,3rem) 5rem}
+.measure{max-width:66ch}
+
+h1,h2,h3{font-family:Spectral,Georgia,"Times New Roman",serif;font-weight:600;text-wrap:balance;margin:0}
+h1{font-size:clamp(2.3rem,6vw,3.6rem);line-height:1.04;letter-spacing:-.015em}
+h2{font-size:clamp(1.45rem,3vw,1.9rem);line-height:1.15;letter-spacing:-.01em}
+h3{font-size:1.05rem;line-height:1.3}
+p{margin:0}
+
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;
+  text-transform:uppercase;letter-spacing:.16em;color:var(--gold);margin:0 0 1rem}
+.deck{font-family:Spectral,Georgia,serif;font-style:italic;font-weight:300;
+  font-size:clamp(1.1rem,2.3vw,1.35rem);line-height:1.5;color:var(--ink-soft);margin-top:1.25rem}
+
+header{border-bottom:1px solid var(--rule);padding-bottom:2.5rem}
+section{margin-top:3.75rem}
+section > * + *{margin-top:1.15rem}
+.sec-head{display:flex;align-items:baseline;gap:.85rem;flex-wrap:wrap;margin-bottom:1.6rem}
+.sec-num{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.14em;
+  color:var(--ink-faint);text-transform:uppercase}
+
+.consts{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:2.5rem}
+.const{background:var(--surface);padding:.95rem 1.1rem}
+.const dt{font-family:"IBM Plex Mono",monospace;font-size:.66rem;text-transform:uppercase;
+  letter-spacing:.13em;color:var(--ink-faint);margin:0}
+.const dd{margin:.3rem 0 0;font-family:"IBM Plex Mono",monospace;font-size:1.02rem;
+  font-weight:500;font-variant-numeric:tabular-nums}
+
+figure{margin:2rem 0 0;background:var(--surface);border:1px solid var(--rule);padding:1.75rem 1.5rem 1.25rem}
+.figscroll{overflow-x:auto}
+figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+figcaption{margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--rule-soft);
+  font-size:.87rem;line-height:1.55;color:var(--ink-soft);max-width:62ch}
+
+.svg-z{font-family:"IBM Plex Sans",sans-serif;font-size:13.5px;font-weight:500;fill:var(--ink)}
+.svg-m{font-family:"IBM Plex Mono",monospace;font-size:10.5px;fill:var(--ink-faint)}
+.svg-d{font-family:"IBM Plex Mono",monospace;font-size:10.5px;fill:var(--ink-soft)}
+.svg-enc{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;fill:var(--gold)}
+.svg-rest{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:var(--cold)}
+.svg-warn{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;fill:var(--warn)}
+.svg-br{font-family:"IBM Plex Mono",monospace;font-size:10.5px;fill:var(--ink-faint);font-style:italic}
+.seg{stroke:var(--ink-soft);stroke-width:1.6}
+.seg-w{stroke:var(--warn);stroke-width:2.6;stroke-dasharray:7 5}
+.seg-br{stroke:var(--rule);stroke-width:1.3;stroke-dasharray:3 4}
+.node{stroke:var(--ink);stroke-width:1.7;fill:var(--surface)}
+.node.filled{fill:var(--ink)}
+.node.enc{stroke:var(--gold);stroke-width:2.2}
+.node.enc.filled{fill:var(--gold)}
+.node-br{stroke:var(--rule);stroke-width:1.3;fill:var(--surface)}
+.bar{fill:var(--rule)}
+.bar-w{fill:var(--warn)}
+.bar-g{fill:var(--surface-2)}
+.bar-gap{fill:var(--gold-bg);stroke:var(--gold);stroke-width:1.2}
+.tick{stroke:var(--rule);stroke-width:1;stroke-dasharray:2 5}
+.beat{stroke:var(--gold);stroke-width:2.4}
+
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;margin-top:1.1rem;
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-soft)}
+.legend span{display:flex;align-items:center;gap:.45rem}
+.key{width:11px;height:11px;border-radius:50%;flex:none;border:1.7px solid var(--ink);background:var(--surface)}
+.key.f{background:var(--ink)}
+.key.g{border-color:var(--gold)}
+.key.g.f{background:var(--gold)}
+.key.c{border-radius:2px;border-color:var(--cold);background:var(--cold)}
+.key.w{border-radius:2px;border-color:var(--warn);background:var(--warn)}
+
+.recipes{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.rec{background:var(--surface);padding:1.5rem;display:grid;gap:1.15rem}
+@media(min-width:760px){.rec{grid-template-columns:minmax(200px,15rem) 1fr;gap:2rem}}
+.rec-id{display:flex;flex-direction:column;gap:.5rem}
+.rec-code{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.12em;color:var(--gold)}
+.rec-name{font-family:Spectral,Georgia,serif;font-size:1.22rem;font-weight:600;line-height:1.2}
+.rec-where{font-family:"IBM Plex Mono",monospace;font-size:.86rem;color:var(--ink);
+  border-left:2px solid var(--gold);padding-left:.7rem;margin-top:.15rem}
+.rec-body > * + *{margin-top:.85rem}
+.lbl{font-family:"IBM Plex Mono",monospace;font-size:.66rem;text-transform:uppercase;
+  letter-spacing:.13em;color:var(--ink-faint);display:block;margin-bottom:.3rem}
+.gap{font-size:.9rem;color:var(--ink-soft);background:var(--ground);
+  border:1px solid var(--rule-soft);padding:.7rem .85rem}
+.gap.ok{border-color:var(--okay);color:var(--ink)}
+.gap.ok .lbl{color:var(--okay)}
+code{font-family:"IBM Plex Mono",monospace;font-size:.88em;
+  background:var(--surface-2);padding:.1em .35em;border-radius:2px}
+
+.pair{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:1.75rem}
+@media(min-width:720px){.pair{grid-template-columns:1fr 1fr}}
+.nofight{background:var(--surface);padding:1.4rem}
+.nofight h3{color:var(--cold);margin-bottom:.6rem}
+.nofight p{font-size:.94rem;color:var(--ink-soft)}
+.quote{font-family:Spectral,Georgia,serif;font-style:italic;font-weight:300;color:var(--ink)}
+
+.correction{border:1px solid var(--warn);background:var(--warn-bg);padding:1.35rem 1.5rem;margin-top:2rem}
+.correction .lbl{color:var(--warn)}
+.correction p{font-size:.94rem;color:var(--ink)}
+.correction p + p{margin-top:.7rem}
+
+.tblwrap{overflow-x:auto;border:1px solid var(--rule);margin-top:1.75rem;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+th,td{text-align:left;padding:.7rem .95rem;border-bottom:1px solid var(--rule-soft)}
+th{font-family:"IBM Plex Mono",monospace;font-size:.66rem;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--ink-faint);font-weight:400;background:var(--surface-2)}
+td.num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;text-align:right}
+tr:last-child td{border-bottom:none}
+tr.hot td{color:var(--warn);font-weight:500}
+tr.sum td{background:var(--surface-2);font-weight:600}
+
+.points{display:flex;flex-direction:column;gap:1.6rem;margin-top:1.75rem;counter-reset:pt}
+.pt{display:grid;grid-template-columns:auto 1fr;gap:1.1rem;align-items:start}
+.pt::before{counter-increment:pt;content:counter(pt);
+  font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--gold);
+  border:1px solid var(--gold);width:1.8rem;height:1.8rem;display:grid;place-items:center;
+  border-radius:50%;margin-top:.15rem}
+.pt h3{margin-bottom:.4rem}
+.pt p{color:var(--ink-soft)}
+
+.phase{margin-top:2rem}
+.phase-name{font-family:"IBM Plex Mono",monospace;font-size:.7rem;text-transform:uppercase;
+  letter-spacing:.15em;color:var(--gold);padding-bottom:.5rem;border-bottom:1px solid var(--rule);
+  margin-bottom:.25rem}
+.phase-name.ok{color:var(--okay)}
+ol.steps{list-style:none;margin:0;padding:0;counter-reset:st}
+ol.steps li{counter-increment:st;display:grid;grid-template-columns:2.4rem 1fr;gap:.9rem;
+  padding:1rem 0;border-bottom:1px solid var(--rule-soft);align-items:baseline}
+ol.steps li::before{content:counter(st,decimal-leading-zero);
+  font-family:"IBM Plex Mono",monospace;font-size:.82rem;color:var(--ink-faint);
+  font-variant-numeric:tabular-nums}
+ol.steps li.done::before{content:"✓";color:var(--okay)}
+ol.steps li.done strong{color:var(--okay)}
+ol.steps p{font-size:.92rem;color:var(--ink-soft);margin-top:.25rem}
+
+.open{border:1px solid var(--rule);background:var(--surface);padding:1.5rem;margin-top:1.75rem}
+.open ul{margin:1rem 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:1rem}
+.open li{padding-left:1.15rem;position:relative;font-size:.94rem;color:var(--ink-soft)}
+.open li::before{content:"";position:absolute;left:0;top:.62em;width:.42rem;height:.42rem;background:var(--gold)}
+.open li strong{color:var(--ink);font-weight:600}
+
+footer{margin-top:4.5rem;padding-top:1.5rem;border-top:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:.74rem;color:var(--ink-faint);
+  display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+a{color:var(--gold)}
+a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 5 — las cinco recetas, colocadas y jugadas</p>
+  <h1>El espinazo de Malkuth</h1>
+  <p class="deck">Dónde van las cinco recetas de encuentro del §6, dónde quedó cada una tras
+    colocarlas el 27/08, y qué probó jugar las cinco en PIE.</p>
+
+  <dl class="consts">
+    <div class="const"><dt>Arranque spawn → Claro</dt><dd>364 m · 1:30</dd></div>
+    <div class="const"><dt>Antes de compactar</dt><dd>1.164 m · 4:51</dd></div>
+    <div class="const"><dt>Espinazo completo</dt><dd>2.377 m · 9:54</dd></div>
+    <div class="const"><dt>Encuentros montados</dt><dd>5 de 5</dd></div>
+    <div class="const"><dt>NavMesh</dt><dd>6 volúmenes</dd></div>
+  </dl>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>El espinazo, con lo que hay hoy</h2></div>
+  <p class="measure">Las cinco recetas no son cinco peleas sueltas: son un temario, y cada una da por
+    sabida la anterior. Van en orden a lo largo del recorrido. Distancias = <strong>carretera medida
+    losa a losa</strong> tras la compactación; los círculos dicen qué zona tiene NavMesh, que es lo
+    único que separa una pelea colocable hoy de una que no.</p>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 660 1180" role="img" width="620"
+         aria-label="Recorrido vertical de Malkuth tras compactar el mundo: del Jardín abajo al Portal a Yesod arriba, con la longitud medida de cada carretera, las cinco recetas repartidas y el estado de NavMesh por zona. La carretera Puente a Anfiteatro está rota.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,1 L9,5 L0,9 z" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <line class="seg" x1="190" y1="1087" x2="190" y2="1001"/>
+      <line class="seg" x1="190" y1="975"  x2="190" y2="889"/>
+      <line class="seg" x1="190" y1="863"  x2="190" y2="777"/>
+      <line class="seg" x1="190" y1="751" x2="190" y2="665"/>
+      <line class="seg" x1="190" y1="639"  x2="190" y2="553"/>
+      <line class="seg" x1="190" y1="527"  x2="190" y2="441"/>
+      <line class="seg" x1="190" y1="415"  x2="190" y2="329"/>
+      <line class="seg" x1="190" y1="303"  x2="190" y2="217"/>
+      <line class="seg" x1="190" y1="191"  x2="190" y2="107" marker-end="url(#ar)" color="var(--ink-soft)"/>
+
+      <line class="seg-br" x1="188" y1="1044" x2="118" y2="1044"/>
+      <circle class="node-br" cx="112" cy="1044" r="5"/>
+      <text class="svg-br" x="98" y="1041" text-anchor="end">Mirador de Sariel</text>
+      <text class="svg-br" x="98" y="1055" text-anchor="end">a 154 m del Claro nuevo</text>
+
+      <line class="seg-br" x1="188" y1="932" x2="118" y2="932"/>
+      <circle class="node-br" cx="112" cy="932" r="5"/>
+      <text class="svg-br" x="98" y="929" text-anchor="end">Ruinas del Gazebo</text>
+      <text class="svg-br" x="98" y="943" text-anchor="end">ramal 221 m · huérfano</text>
+
+      <text class="svg-d"   x="216" y="1026">364 m · 1:30 (senda + vía)</text>
+      <text class="svg-enc" x="216" y="1041">umbral en el hueco · Sariel a mitad</text>
+      <text class="svg-d"   x="216" y="920">651 m · 2:43</text>
+      <text class="svg-enc" x="216" y="935">6.3 El estandarte vive · 5 ✓</text>
+      <text class="svg-d"   x="216" y="824">240 m · 1:00</text>
+      <text class="svg-d" x="216" y="706">328 m · 1:22</text>
+      <text class="svg-d"   x="216" y="600">334 m · 1:23</text>
+      <text class="svg-d"   x="216" y="488">17 m · 0:04</text>
+      <text class="svg-d"   x="216" y="376">177 m · 0:44</text>
+      <text class="svg-d"   x="216" y="264">220 m · 0:55</text>
+      <text class="svg-d"   x="216" y="152">274 m · 1:09</text>
+
+      <circle class="node" cx="190" cy="1100" r="13"/>
+      <text class="svg-z" x="216" y="1097">Jardín Geométrico</text>
+      <text class="svg-m" x="216" y="1112">spawn en la cabeza de la senda</text>
+
+      <circle class="node enc filled" cx="190" cy="988" r="13"/>
+      <text class="svg-z" x="216" y="985">El Claro</text>
+      <text class="svg-enc" x="216" y="1000">6.1 Romper la línea · 4 oleadas ✓</text>
+
+      <circle class="node" cx="190" cy="876" r="13"/>
+      <text class="svg-z" x="216" y="873">Santuario de Malkuth</text>
+      <text class="svg-rest" x="216" y="888">descanso · sin pelea</text>
+
+      <circle class="node" cx="190" cy="764" r="13"/>
+      <text class="svg-z" x="216" y="761">Puente Ascendente</text>
+      <text class="svg-rest" x="216" y="776">travesía · picos de sal</text>
+
+      <circle class="node enc filled" cx="190" cy="652" r="13"/>
+      <text class="svg-z" x="216" y="649">Anfiteatro</text>
+      <text class="svg-enc" x="216" y="664">6.2 La lluvia · 5 oleadas ✓</text>
+
+      <circle class="node enc filled" cx="190" cy="540" r="13"/>
+      <text class="svg-z" x="216" y="537">Elevador del Trono</text>
+      <text class="svg-enc" x="216" y="552">6.4 Pesado contra pesado · 3 ✓</text>
+
+      <circle class="node" cx="190" cy="428" r="13"/>
+      <text class="svg-z" x="216" y="432">Gabriel · Cámara I</text>
+      <text class="svg-m" x="216" y="446">despegada del Mirador: 36 → 127 m</text>
+
+      <circle class="node enc filled" cx="190" cy="316" r="13"/>
+      <text class="svg-z" x="216" y="313">Gabriel · Cámara II</text>
+      <text class="svg-enc" x="216" y="328">6.5 Cadena perfecta · 4 ✓</text>
+
+      <circle class="node filled" cx="190" cy="204" r="13"/>
+      <text class="svg-z" x="216" y="201">Gabriel · Cámara III</text>
+      <text class="svg-m" x="216" y="216">el jefe de la esfera</text>
+
+      <circle class="node" cx="190" cy="92" r="13"/>
+      <text class="svg-z" x="216" y="96">Portal a Yesod</text>
+    </svg>
+    </div>
+
+    <div class="legend">
+      <span><i class="key f"></i> ya tiene NavMesh</span>
+      <span><i class="key"></i> le falta NavMesh</span>
+      <span><i class="key g f"></i> encuentro colocado aquí</span>
+      <span><i class="key c"></i> beat sin combate</span>
+      <span><i class="key g f"></i> encuentro montado y jugado</span>
+    </div>
+
+    <figcaption>Los dos círculos <strong>dorados y huecos</strong> —Anfiteatro y Elevador— siguen
+      siendo el trabajo bloqueante: pelea prevista y sin volumen de navegación. Y el único tramo en
+      obras es <strong>Puente → Anfiteatro</strong>: las zonas ya están a 352 m pero su carretera quedó
+      en 3 trozos al compactar.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>Por qué cada receta cae donde cae</h2></div>
+
+  <div class="recipes">
+
+    <article class="rec">
+      <div class="rec-id">
+        <span class="rec-code">RECETA 6.1</span>
+        <span class="rec-name">Romper la línea</span>
+        <span class="rec-where">El Claro · ahora en (18212, −19920)</span>
+      </div>
+      <div class="rec-body">
+        <div><span class="lbl">Por qué ahí</span>
+          <p>La receta pide <em>«1 Lancero lateral + 2 Arqueros elevados»</em> y El Claro ya tiene el
+            Lancero, dos Vigilantes y el Arquero encaramado a bloques (z+570 sobre el suelo) — colocado
+            así porque lo pedía la lámina, meses antes de que existiera la receta. El anillo doble de
+            acantilados con un solo hueco al sur ya <em>es</em> una arena sellada. Todo viajó intacto al
+            compactar: la arena, los enemigos, el NavMesh y las oleadas.</p></div>
+        <div class="gap ok"><span class="lbl">Montado y jugado el 27/08</span> <code>Arena_Claro</code> en <code>26212, −19920</code>, radio 2800.
+          <strong>Lancero → Vigilante → Arquero → Vigilante</strong>, 3 s entre oleadas. Verificado en
+          PIE: sella al cruzar, 4/4, y al abrirse <code>PurgarTemporales</code> borra las tres armas.</div>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-id">
+        <span class="rec-code">RECETA 6.3</span>
+        <span class="rec-name">El estandarte vive</span>
+        <span class="rec-where">Corredor Claro → Santuario · 651 m, sin sellar</span>
+      </div>
+      <div class="rec-body">
+        <div><span class="lbl">Por qué ahí</span>
+          <p>El estandarte enseña <em>dominio de terreno</em>, y lo único que significa «terreno» es un
+            tramo de carretera que tienes que ganar: 651 m que hoy son 2:43 de nada — tras compactar es
+            <strong>el tramo más largo del juego</strong>, así que el beat hace todavía más falta. Y el
+            Portador del Estandarte es el <strong>Heraldo</strong>, el único enemigo importado que sigue
+            sin colocar. Lleva desde el 14 de agosto esperando esto.</p></div>
+        <div class="gap ok"><span class="lbl">Montado y jugado el 27/08</span> <code>Arena_CS_Heraldo</code> en <code>34540, 15065</code>, radio 2600, con
+          <code>Nav_CS_Heraldo</code> nuevo. <strong>Lancero → Vigilante → Lancero → Vigilante →
+          Heraldo</strong>. Verificado 5/5. El Heraldo suelta <code>SM_GreatAxe</code>: su arma es el
+          hacha grande, no un estandarte plantable — si la receta lo quiere, es contenido aparte.
+          <em>Va sellada</em>, no a campo abierto: sin arena no hay escalonado ni purga.</div>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-id">
+        <span class="rec-code">RECETA 6.2</span>
+        <span class="rec-name">La lluvia del firmamento</span>
+        <span class="rec-where">Anfiteatro</span>
+      </div>
+      <div class="rec-body">
+        <div><span class="lbl">Por qué ahí</span>
+          <p>La receta pide <em>«3 Arqueros en distintos ángulos»</em>. Un graderío escalonado alrededor
+            de un patio de 85 m da tres alturas distintas gratis, ya construidas. La lección —el off-hand
+            cambia la navegación, no solo la defensa— exige una arena que tengas que cruzar bajo fuego.</p></div>
+        <div class="gap ok"><span class="lbl">Montado y jugado el 27/08</span> <code>Arena_Anfiteatro</code> en <code>−18127, 51184</code>, radio 2600, con
+          <code>Nav_Anfiteatro</code> nuevo. <strong>Arquero → Vigilante → Arquero → Vigilante →
+          Arquero</strong>, con los tres arqueros repartidos por el graderío a z≈390–480 y los dos
+          vigilantes en el patio. Verificado 5/5.</div>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-id">
+        <span class="rec-code">RECETA 6.4</span>
+        <span class="rec-name">Pesado contra pesado</span>
+        <span class="rec-where">Elevador del Trono</span>
+      </div>
+      <div class="rec-body">
+        <div><span class="lbl">Por qué ahí</span>
+          <p>Un Elite de guardia dura sobre discos de 26 m con 200–450 uu de hueco al siguiente, y ocho
+            de las doce terrazas deslizándose. O le rompes la guardia o no pasas. El <strong>ataque de
+            descarte</strong> —arrojarle el arma— encuentra su sitio natural con el objetivo en la
+            plataforma de al lado. <code>BP_DA_Plataforma</code> ya está montado y probado.</p></div>
+        <div class="gap ok"><span class="lbl">Montado y jugado el 27/08</span> <code>Arena_Elevador</code> en <code>−18127, 17984</code>, radio 2200, con
+          <code>Nav_Elevador</code> nuevo. <strong>Lancero → Lancero → Elite</strong>, los tres a
+          z=52 sobre la plataforma. Verificado 3/3. <strong>El Elite es un Vigilante sin tocar</strong>:
+          su <code>reducciónGuardia</code> ya vale 1 —golpe bloqueado, cero daño—, que es la «gran
+          guardia» que pide la receta. No le subí la vida porque <code>Stats</code> es un array de
+          structs y por MCP pierden elementos.</div>
+      </div>
+    </article>
+
+    <article class="rec">
+      <div class="rec-id">
+        <span class="rec-code">RECETA 6.5</span>
+        <span class="rec-name">Cadena perfecta</span>
+        <span class="rec-where">Gabriel · Cámara II</span>
+      </div>
+      <div class="rec-body">
+        <div><span class="lbl">Por qué ahí</span>
+          <p>Es el examen —todo el arsenal encadenado— y va donde debe ir un examen: en la última sala
+            antes del jefe. Las Cámaras II y III siguen siendo, con El Claro, las únicas zonas con
+            NavMesh — y sus volúmenes ya viajaron con ellas al compactar.</p></div>
+        <div class="gap ok"><span class="lbl">Montado y jugado el 27/08</span> <code>Arena_GabrielC2</code> en <code>−23295, −5412</code>, radio 2400.
+          <strong>Lancero → Arquero → Vigilante → Elite</strong>, el orden exacto de la receta.
+          Verificado 4/4. Y <code>Nav_GabrielC2</code> se había quedado a 13.000 uu de su zona al
+          moverla: devuelto. Único desvío: el arquero quedó a ras de suelo, no elevado — el terreno
+          de la Cámara II está a z=9 y no hay dónde encaramarlo.</div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>Dónde no va pelea, y es igual de importante</h2></div>
+  <div class="pair">
+    <div class="nofight">
+      <h3>Santuario de Malkuth</h3>
+      <p>Es el beat de descanso, y su propio texto de objetivo lo dice:
+        <span class="quote">«Reza, cura y prepara el tramo difícil.»</span> Su función es avisarte de que
+        lo gordo viene después. Si peleas ahí, la frase deja de significar nada. Aquí van el fragmento de
+        Corruptio y una aparición de Cassiel, no enemigos.</p>
+    </div>
+    <div class="nofight">
+      <h3>Puente Ascendente</h3>
+      <p>Ya tiene su mecánica: los picos de sal en cuatro filas con el hueco alternado. Apilar enemigos
+        sobre un tablero inclinado 14° encima de un abismo es la receta clásica del encuentro tramposo, y
+        el §7 pide lo contrario. Como mucho, uno o dos Arqueros en la mesa norte: la señal «Presión» del
+        §5.1, que además prepara el Anfiteatro.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>Los corredores, medidos tras compactar</h2></div>
+
+  <div class="correction">
+    <span class="lbl">Rev. 4 — lo que salió de jugarlo</span>
+    <p>La partida del 27/08 destapó <strong>cuatro defectos que ninguna medición estática habría
+      encontrado</strong>, y los cuatro están arreglados: el sello de la arena no cerraba, 200 actores
+      de El Claro flotaban a z=9235, el río del Jardín pasaba por encima de la arena, y un abeto
+      asomaba en mitad de la calzada del Elevador.</p>
+    <p>El más instructivo es el sello. <code>Sellar()</code> ponía los cuatro muros en
+      <code>QueryOnly</code> — colisión de <em>consulta</em>: responde a trazas y solapes pero no tiene
+      cuerpo físico, así que el jugador la atravesaba. Lo que despistaba es que la función
+      <strong>sí corría</strong>: encendía las luces y cambiaba el texto de objetivo, así que todo
+      apuntaba al trigger. El trigger nunca estuvo roto.</p>
+  </div>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 700 400" role="img" width="700"
+         aria-label="Longitud de las carreteras del espinazo tras compactar, contra la pierna de 180 metros que equivale a 45 segundos a trote. Jardín a Claro queda en 135 metros de vía; Claro a Santuario, en 647, es ahora el más largo; Puente a Anfiteatro está roto.">
+      <line class="tick" x1="164" y1="34" x2="164" y2="346"/>
+      <line class="tick" x1="264" y1="34" x2="264" y2="346"/>
+      <line class="tick" x1="364" y1="34" x2="364" y2="346"/>
+      <line class="tick" x1="464" y1="34" x2="464" y2="346"/>
+      <line class="tick" x1="564" y1="34" x2="564" y2="346"/>
+      <line class="tick" x1="664" y1="34" x2="664" y2="346"/>
+      <text class="svg-m" x="164" y="26" text-anchor="middle">0</text>
+      <text class="svg-m" x="264" y="26" text-anchor="middle">180</text>
+      <text class="svg-m" x="364" y="26" text-anchor="middle">360</text>
+      <text class="svg-m" x="464" y="26" text-anchor="middle">540</text>
+      <text class="svg-m" x="564" y="26" text-anchor="middle">720</text>
+      <text class="svg-m" x="664" y="26" text-anchor="middle">900 m</text>
+
+      <text class="svg-z" x="150" y="59" text-anchor="end">Jardín → Claro (vía)</text>
+      <rect class="bar" x="164" y="45" width="75" height="16"/>
+      <line class="beat" x1="201" y1="41" x2="201" y2="65"/>
+      <text class="svg-d" x="247" y="59">136 m · Sariel a mitad</text>
+
+      <text class="svg-z" x="150" y="93" text-anchor="end">Claro → Santuario</text>
+      <rect class="bar" x="164" y="79" width="359" height="16"/>
+      <line class="beat" x1="344" y1="75" x2="344" y2="99"/>
+      <text class="svg-d" x="531" y="93">651 m · 2:43 · el Heraldo</text>
+
+      <text class="svg-z" x="150" y="127" text-anchor="end">Santuario → Puente</text>
+      <rect class="bar" x="164" y="113" width="132" height="16"/>
+      <text class="svg-d" x="304" y="127">240 m · 1:00</text>
+
+      <text class="svg-z" x="150" y="161" text-anchor="end">Puente → Anfiteatro</text>
+      <rect class="bar" x="164" y="147" width="182" height="16"/>
+      <text class="svg-d" x="354" y="161">328 m · 1:22 · 57 losas</text>
+
+      <text class="svg-z" x="150" y="195" text-anchor="end">Anfiteatro → Elevador</text>
+      <rect class="bar" x="164" y="181" width="186" height="16"/>
+      <text class="svg-d" x="358" y="195">334 m · 1:23 · 20 de salto</text>
+
+      <text class="svg-z" x="150" y="229" text-anchor="end">Elevador → Gabriel I</text>
+      <rect class="bar" x="164" y="215" width="9" height="16"/>
+      <text class="svg-d" x="181" y="229">17 m · 0:04</text>
+
+      <text class="svg-z" x="150" y="263" text-anchor="end">Gabriel I → II</text>
+      <rect class="bar" x="164" y="249" width="98" height="16"/>
+      <text class="svg-d" x="270" y="263">177 m · 0:44</text>
+
+      <text class="svg-z" x="150" y="297" text-anchor="end">Gabriel II → III</text>
+      <rect class="bar" x="164" y="283" width="122" height="16"/>
+      <text class="svg-d" x="294" y="297">220 m · 0:55</text>
+
+      <text class="svg-z" x="150" y="331" text-anchor="end">Gabriel III → Yesod</text>
+      <rect class="bar" x="164" y="317" width="151" height="16"/>
+      <text class="svg-d" x="323" y="331">274 m · 1:09</text>
+
+      <line x1="164" y1="356" x2="664" y2="356" stroke="var(--rule)" stroke-width="1"/>
+      <text class="svg-m" x="164" y="376">cada casilla = 180 m = una pierna de 45 s a trote</text>
+      <line class="beat" x1="470" y1="368" x2="470" y2="382"/>
+      <text class="svg-m" x="480" y="376">beat previsto</text>
+      <text class="svg-m" x="164" y="394">espinazo completo: 2.377 m · 9:54 a trote · 447 losas · ninguna carretera rota</text>
+    </svg>
+    </div>
+    <figcaption>Todos los tramos caben ya en 1–3 piernas de 45 s. El más largo es
+      <strong>Claro → Santuario</strong> (651 m), que es justo donde va el Heraldo — el corredor y su
+      beat se justifican mutuamente. Las 9 rutas de guía (<code>Ruta_*</code>) están regeneradas desde
+      las losas reales; la del Puente se quedó fuera a propósito hasta que su carretera exista.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>El arranque: 425 metros con dos beats</h2></div>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 700 170" role="img" width="700"
+         aria-label="Los tres tramos del arranque compactado: 225 metros de senda del jardín, 65 de hueco con el umbral y 135 de carretera con Sariel a mitad, hasta El Claro. Total 425 metros, un minuto cuarenta y seis a trote.">
+      <rect class="bar-g" x="20" y="54" width="339" height="28"/>
+      <rect class="bar-gap" x="359" y="54" width="98" height="28"/>
+      <rect class="bar" x="457" y="54" width="203" height="28"/>
+
+      <text class="svg-z" x="189" y="44" text-anchor="middle">senda del jardín</text>
+      <text class="svg-m" x="189" y="102" text-anchor="middle">225 m · 0:56</text>
+      <text class="svg-enc" x="408" y="44" text-anchor="middle">el hueco</text>
+      <text class="svg-m" x="408" y="102" text-anchor="middle">65 m · 0:16</text>
+      <text class="svg-z" x="558" y="44" text-anchor="middle">carretera</text>
+      <text class="svg-m" x="558" y="102" text-anchor="middle">136 m · 0:34</text>
+
+      <line class="beat" x1="408" y1="50" x2="408" y2="86"/>
+      <line class="beat" x1="558" y1="50" x2="558" y2="86"/>
+      <text class="svg-enc" x="408" y="126" text-anchor="middle">UMBRAL</text>
+      <text class="svg-m"   x="408" y="140" text-anchor="middle">10186, −30200, −42</text>
+      <text class="svg-enc" x="558" y="126" text-anchor="middle">SARIEL</text>
+      <text class="svg-m"   x="558" y="140" text-anchor="middle">19322, −26133</text>
+
+      <text class="svg-m" x="20" y="164">spawn (−15297, −31618)</text>
+      <text class="svg-m" x="679" y="164" text-anchor="end">El Claro · 426 m · 1:47 en total</text>
+    </svg>
+    </div>
+    <figcaption>Los marcadores <code>Beat_01_UmbralPrologo</code> y <code>Beat_02_SarielMitadVia</code>
+      están colocados en el Master (carpeta <code>Plan/Beats</code>, ocultos en juego), recalculados
+      para esta geometría y con el suelo trazado: la línea entera es llano a z=−42.</figcaption>
+  </figure>
+
+  <p class="measure">La estructura sobrevive al recorte: <strong>0:56 de Edén con el coloso delante,
+    el umbral en la frontera, y dos tramos de vía partidos por Sariel</strong> — que aparece en el
+    horizonte y desaparece si lo miras más de 5 s, como manda su ficha. El paseo ya no da tiempo a
+    aburrirse y sigue vendiendo la premisa: Malkuth es <span class="quote">«la entrada, la ilusión de
+    seguridad»</span>.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>Los cinco encuentros, jugados</h2></div>
+  <p class="measure">El 27/08 se llevaron los cinco en PIE, arena por arena. Los enemigos murieron por
+    <code>Kill()</code>, no peleando, así que <strong>esto valida los sistemas, no el
+    equilibrio</strong>. Todas sellan al cruzar el borde, escalonan <strong>de uno en uno</strong>
+    —la condición que la Forja midió como innegociable— y al abrirse purgan lo robado.</p>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Receta</th><th>Arena</th><th>Composición por oleada</th><th>Oleadas</th><th>Cierre</th></tr></thead>
+      <tbody>
+        <tr><td><strong>6.1</strong> Romper la línea</td><td>El Claro</td>
+            <td>Lancero → Vigilante → Arquero → Vigilante</td><td class="num">4/4</td><td>✓ purgada</td></tr>
+        <tr><td><strong>6.3</strong> El estandarte vive</td><td>corredor CS</td>
+            <td>Lancero → Vigilante → Lancero → Vigilante → <strong>Heraldo</strong></td><td class="num">5/5</td><td>✓ purgada</td></tr>
+        <tr><td><strong>6.2</strong> La lluvia del firmamento</td><td>Anfiteatro</td>
+            <td>Arquero → Vigilante → Arquero → Vigilante → Arquero</td><td class="num">5/5</td><td>✓ purgada</td></tr>
+        <tr><td><strong>6.4</strong> Pesado contra pesado</td><td>Elevador</td>
+            <td>Lancero → Lancero → Elite</td><td class="num">3/3</td><td>✓ purgada</td></tr>
+        <tr><td><strong>6.5</strong> Cadena perfecta</td><td>Gabriel · Cámara II</td>
+            <td>Lancero → Arquero → Vigilante → Elite</td><td class="num">4/4</td><td>✓ purgada</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="measure" style="margin-top:1.5rem">El Claro se cronometró entero, un enemigo cada vez, para
+    medir la cadencia real: sella al cruzar, y las oleadas entran a los <strong>29,5 · 47,9 · 67,2 s</strong>
+    tras cada muerte —los 3 s de margen más el tiempo de morir—, con el sello abriéndose a los
+    <strong>86,5</strong>.</p>
+
+  <div class="points">
+    <div class="pt"><div>
+      <h3>Nunca hay dos cuerpos a la vez</h3>
+      <p>En las cinco arenas, la oleada 1 arranca con <strong>un único árbol de comportamiento
+        corriendo</strong>; el resto duerme con <code>StopLogic</code> desde que carga el nivel, no desde
+        el sello. Es exactamente lo que la Forja midió como la diferencia entre ganable e imposible.</p>
+    </div></div>
+    <div class="pt"><div>
+      <h3>La cadena táctica cae en orden</h3>
+      <p>Las armas aparecen cuando la receta promete: en El Claro, <code>SM_DA_Lanza</code> está en el
+        suelo <strong>antes</strong> de que despierte el Arquero elevado, que es a quien está pensada
+        para alcanzar. Y el Heraldo estrena <code>SM_GreatAxe</code>.</p>
+    </div></div>
+    <div class="pt"><div>
+      <h3>El remate se ve cinco veces</h3>
+      <p>Al abrirse cada sello, <code>PurgarTemporales</code> borra las armas del suelo y devuelve su
+        espada a Malakh. Repetido en los cinco encuentros, deja de ser una regla y pasa a ser el arco
+        del personaje: nada de lo que le quita al Cielo se le queda.</p>
+    </div></div>
+  </div>
+
+  <p class="measure"><strong>Lo que sigue sin saberse:</strong> si tres enemigos bastan en el Elevador,
+    si un arquero solo en el Anfiteatro es trivial, si 3 s de respiro sobran o faltan, y si la Lanza
+    compensa de verdad contra el Arquero. Eso no lo dice una traza — hace falta el mando.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>Repetir la mecánica no es relleno: es la tesis</h2></div>
+  <p class="measure">Aquí la respuesta no es la genérica, porque en este juego la mecánica <em>ya es</em>
+    una afirmación moral.</p>
+
+  <div class="points">
+    <div class="pt"><div>
+      <h3>El hábito es el personaje</h3>
+      <p>El §2.3 de la Biblia dice que Malakh existe para demostrar que la distinción entre santo y
+        demonio es arbitraria. Su arsenal es <strong>robado</strong>, y el motor ya lo cuenta solo: al
+        recoger un arma ajena, <code>CorromperArmaTemporal</code> sube el parámetro del material — la
+        misma lanza mide 0.0 en manos del Lancero y <strong>0.45</strong> en las de Malakh. Robar una vez
+        es una anécdota. Robar en los cinco encuentros es un hábito, y el hábito es el personaje.</p>
+    </div></div>
+    <div class="pt"><div>
+      <h3>El remate sale gratis, pero solo si se repite</h3>
+      <p><code>Abrir()</code> de la arena llama a <code>PurgarTemporales</code>: cada combate termina con
+        lo robado disolviéndose y su propia espada volviéndole a la mano. Repítelo cinco veces y el
+        jugador aprende, sin una palabra de diálogo, que <strong>nada de lo que le quita al Cielo se le
+        queda</strong>. Con un solo encuentro, ese arco no existe.</p>
+    </div></div>
+    <div class="pt"><div>
+      <h3>Repite el verbo, cambia el precio</h3>
+      <p>La primera lanza es un regalo. La tercera tiene que costar algo: el arma que necesitas en el
+        enemigo peor colocado, o cogerla significa darle la espalda al arquero. Misma mecánica, pregunta
+        nueva. El §5.2 ya lo blinda — la ruta buena <em>reduce</em> tiempo y riesgo, nunca es
+        obligatoria.</p>
+    </div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">08</span><h2>Orden de construcción</h2></div>
+
+  <div class="phase">
+    <p class="phase-name ok">Hecho el 27/08</p>
+    <ol class="steps">
+      <li class="done"><div><strong>Arena_Claro escalonada.</strong>
+        <p>Tags <code>Oleada2/3/4</code> escritos en el sub, verificados en el binario y visibles desde
+          el Master. Retardo 3 s ya estaba; drops por clase ya estaban.</p></div></li>
+      <li class="done"><div><strong>Mundo compactado y coherente.</strong>
+        <p>12 Level Instances, arranque de 425 m, GabrielC1 a 127 m del Mirador, navmesh de C2/C3
+          devueltos a sus zonas, 8 carreteras sanas + la CS reespaciada al Claro nuevo.</p></div></li>
+      <li class="done"><div><strong>El sello de la arena, arreglado y jugado.</strong>
+        <p><code>Sellar()</code> pasa de <code>QueryOnly</code> a <code>QueryAndPhysics</code>: los muros
+          ya frenan. Verificado en PIE el encuentro completo, las cuatro oleadas y la purga final.
+          También: 200 actores de El Claro bajados de z=9235, el río retirado de la arena y un abeto
+          apartado de la calzada.</p></div></li>
+      <li class="done"><div><strong>Beats colocados y carreteras recurvadas.</strong>
+        <p>Umbral y Sariel en <code>Plan/Beats</code> con suelo trazado; las 9 carreteras sanas
+          reconstruidas con la receta de la senda del Jardín — pieza cada 5,9 m, ondulación
+          suave, 499 losas — y las <code>Ruta_*</code> + la constante de
+          <code>guia_rutas_colocar.py</code> regeneradas del trazado curvo.</p></div></li>
+    </ol>
+  </div>
+
+  <div class="phase">
+    <p class="phase-name">Desbloquear</p>
+    <ol class="steps">
+      <li><div><strong>Jugar 6.1 con el mando.</strong>
+        <p>Los sistemas están verificados; el equilibrio no. Hace falta pelear las cuatro oleadas de
+          verdad para saber si un enemigo por oleada es demasiado holgado.</p></div></li>
+      <li><div><strong><code>FijarEspadaBase</code>.</strong>
+        <p>Dos nodos, obligatorios antes de que el prólogo entregue la primera espada: sin ellos entra
+          como <code>ArmaTemporal</code> y el primer sello roto deja a Malakh sin arma — la ranura de
+          partida ya se vació a propósito.</p></div></li>
+    </ol>
+  </div>
+
+  <div class="phase">
+    <p class="phase-name ok">Colocar el temario — hecho el 27/08</p>
+    <ol class="steps">
+      <li class="done"><div><strong>Las cinco recetas, colocadas y jugadas.</strong>
+        <p>6.1 en El Claro, 6.3 en el corredor con el Heraldo —su primera colocación desde el 14 de
+          agosto—, 6.2 en el Anfiteatro, 6.4 en el Elevador y 6.5 en la Cámara II. 21 enemigos, cinco
+          arenas, y las cinco verificadas de 1/N a N/N con purga final.</p></div></li>
+      <li class="done"><div><strong>NavMesh donde hacía falta.</strong>
+        <p>Volúmenes nuevos para Anfiteatro, Elevador y el corredor del Heraldo, duplicando el de El
+          Claro. Y <code>Nav_GabrielC2</code>, que se había quedado a 13.000 uu de su zona, devuelto.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">09</span><h2>Lo que decides tú</h2></div>
+  <div class="open">
+    <ul>
+      <li><strong>Claro → Santuario: 647 m.</strong> Creció al acercar el Claro a la senda. O lo cubre el
+        Heraldo (6.3) como beat central, o el Santuario también baja — y entonces se retienden CS y
+        Santuario→Puente.</li>
+      <li><strong>La cola de la senda y el coloso siguen hundidos a z=−1038</strong> (el suelo real está
+        a −42): 10 m bajo tierra. Es contenido del <code>Jardin_Sub</code>; se arregla abriéndolo como
+        nivel suelto.</li>
+      <li><strong><code>LI_01_Jardin</code> y <code>LI_07_Puente</code> están a z=−2000.</strong> Si no
+        fue a propósito, sus zonas enteras viven 20 m por debajo del resto del mundo.</li>
+      <li><strong>El ramal del Gazebo</strong>: su carretera (221 m, sana) arranca a ~360 m de la puerta
+        norte nueva del Claro. Empalmarla son 3–4 losas.</li>
+      <li><strong>El estandarte del Heraldo.</strong> Suelta <code>SM_GreatAxe</code>, no un estandarte. Si 6.3 quiere de verdad un estandarte plantable que invierta el control de zona, eso es contenido nuevo.</li>
+      <li><strong>Los picos del Puente</strong> siguen estáticos; el pulso quedó pendiente como gameplay.
+        Si nunca se mueven, el Puente pasa de beat a decorado.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
+  <span>rev. 5 · 27 ago 2026 · las cinco jugadas en PIE</span>
+</footer>
+
+</div>
