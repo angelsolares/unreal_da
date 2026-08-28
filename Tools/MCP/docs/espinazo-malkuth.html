@@ -11,7 +11,7 @@
   --gold:#8A6210; --gold-bg:#EFE6CD;
   --cold:#2C5B7C; --cold-bg:#DCE6ED;
   --warn:#95392F; --warn-bg:#F0DEDA;
-  --okay:#3D6B3F;
+  --okay:#3D6B3F; --okay-bg:#DDE9DE;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -21,7 +21,7 @@
     --gold:#D8A840; --gold-bg:#33290F;
     --cold:#82B2D5; --cold-bg:#15242F;
     --warn:#E08B7C; --warn-bg:#33201C;
-    --okay:#8FBF91;
+    --okay:#8FBF91; --okay-bg:#1A2A1B;
   }
 }
 :root[data-theme="dark"]{
@@ -31,7 +31,7 @@
   --gold:#D8A840; --gold-bg:#33290F;
   --cold:#82B2D5; --cold-bg:#15242F;
   --warn:#E08B7C; --warn-bg:#33201C;
-  --okay:#8FBF91;
+  --okay:#8FBF91; --okay-bg:#1A2A1B;
 }
 
 *{box-sizing:border-box}
@@ -136,6 +136,17 @@ code{font-family:"IBM Plex Mono",monospace;font-size:.88em;
 .correction .lbl{color:var(--warn)}
 .correction p{font-size:.94rem;color:var(--ink)}
 .correction p + p{margin-top:.7rem}
+.correction.done{border-color:var(--okay);background:var(--okay-bg)}
+.correction.done .lbl{color:var(--okay)}
+.cerrado{margin-top:.9rem;padding-top:.75rem;border-top:1px solid var(--okay);
+  font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--okay)}
+
+.leyenda{display:flex;flex-wrap:wrap;gap:.5rem 1.75rem;margin-top:1.5rem;
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-soft)}
+.leyenda span{display:flex;align-items:center;gap:.5rem}
+.ck{width:11px;height:11px;flex:none;border:1.6px solid var(--rule);border-radius:2px}
+.ck.ok{border-color:var(--okay);background:var(--okay-bg)}
+.ck.no{border-color:var(--warn);background:var(--warn-bg)}
 
 .tblwrap{overflow-x:auto;border:1px solid var(--rule);margin-top:1.75rem;background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
@@ -188,9 +199,9 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 8 — contrastada contra el LDD y The Level Design Book</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 9 — con la clave de colores: lo cerrado, en verde</p>
   <h1>El espinazo de Malkuth</h1>
-  <p class="deck">Dónde van las cinco recetas de encuentro del §6, dónde quedó cada una tras
+  <p class="deck">Dónde van las cinco recetas de encuentro de la Forja —sus §6.1–6.5, no las del LDD—, dónde quedó cada una tras
     colocarlas el 27/08, y cómo quedó el prólogo del umbral: los catorce segundos
     que le dan a Malakh su primera espada.</p>
 
@@ -203,6 +214,11 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div class="const"><dt>Prólogo</dt><dd>14,3 s</dd></div>
     <div class="const"><dt>Definition of Done</dt><dd>0 / 7</dd></div>
   </dl>
+
+  <p class="leyenda">
+    <span><i class="ck ok"></i> recuadro verde con ✓ · cerrado y verificado, se conserva por lo que enseñó</span>
+    <span><i class="ck no"></i> fila roja · lo único sin empezar, en la tabla de la sección 11</span>
+  </p>
 </header>
 
 <section>
@@ -439,8 +455,8 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <section>
   <div class="sec-head"><span class="sec-num">04</span><h2>Los corredores, medidos tras compactar</h2></div>
 
-  <div class="correction">
-    <span class="lbl">Rev. 4 — lo que salió de jugarlo</span>
+  <div class="correction done">
+    <span class="lbl">✓ Cerrado el 27/08 — lo que salió de jugarlo</span>
     <p>La partida del 27/08 destapó <strong>cuatro defectos que ninguna medición estática habría
       encontrado</strong>, y los cuatro están arreglados: el sello de la arena no cerraba, 200 actores
       de El Claro flotaban a z=9235, el río del Jardín pasaba por encima de la arena, y un abeto
@@ -450,6 +466,9 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
       cuerpo físico, así que el jugador la atravesaba. Lo que despistaba es que la función
       <strong>sí corría</strong>: encendía las luces y cambiaba el texto de objetivo, así que todo
       apuntaba al trigger. El trigger nunca estuvo roto.</p>
+    <p class="cerrado">Los cuatro están arreglados y verificados jugando en PIE — el sello, releído
+      del grafo el 28/08: los cuatro muros llaman hoy a <code>QueryAndPhysics</code>. Este recuadro
+      se conserva por lo que enseñó, no porque quede trabajo.</p>
   </div>
 
   <figure>
@@ -835,15 +854,20 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     A→I del documento tienen su Level Instance, en orden y con los nombres que tocan.
     <strong>Lo que falta es casi todo lo que no es pelear.</strong></p>
 
-  <div class="correction">
-    <span class="lbl">Dos cosas que hay que arreglar en esta página, no en el motor</span>
-    <p><strong>La numeración miente.</strong> Aquí se habla de «las cinco recetas del §6», pero el
-      §6 del LDD es <em>Mechanics Introduced in Malkuth</em>. Nuestras 6.1–6.5 vienen del contrato
-      de la Forja de Encuentros — otro documento. Quien abra los dos a la vez se pierde.</p>
+  <div class="correction done">
+    <span class="lbl">✓ Resuelto — dos cosas que fallaban en esta página, no en el motor</span>
+    <p><strong>La numeración mentía.</strong> Se hablaba de «las cinco recetas del §6» y el §6 del
+      LDD es <em>Mechanics Introduced in Malkuth</em>: las nuestras vienen del contrato de la Forja
+      de Encuentros, otro documento. <strong>Corregido en esta revisión</strong> — la entradilla ya
+      dice de qué documento son.</p>
     <p><strong>La sección 08 contradice la curva del documento.</strong> Aquí se defiende que repetir
       la mecánica es la tesis; el LDD pide diez beats cuya intensidad alterna
       5 → 20 → 30 → 50 → <em>25 (trampa)</em> → 60 → <em>10 (descanso)</em> → 75 → <em>95 (jefe)</em> → 5,
-      con <strong>tres beats que no son combate</strong>. Una de las dos tiene que ceder — la sección 12 trae el árbitro.</p>
+      con <strong>tres beats que no son combate</strong>. <strong>Zanjado en la sección 12</strong>:
+      el libro falla a medias para cada uno y la síntesis es repetición intercalada con los beats
+      de descanso.</p>
+    <p class="cerrado">Las dos eran defectos de redacción de esta página, no del nivel. Se conservan
+      escritas porque explican por qué cambió la entradilla y por qué existe la sección 12.</p>
   </div>
 
   <div class="tblwrap">
@@ -906,8 +930,8 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     composición e iluminación— leídos contra esta página y contra el LDD. Lo que sale: el método
     que usamos es el que el libro predica, y el conflicto abierto de la sección 11 tiene árbitro.</p>
 
-  <div class="correction">
-    <span class="lbl">El árbitro del conflicto 08 vs. LDD — y falla a medias para cada uno</span>
+  <div class="correction done">
+    <span class="lbl">✓ Resuelto — el árbitro del conflicto 08 vs. LDD, y falla a medias para cada uno</span>
     <p>El libro pide <strong>alternar picos y descansos</strong> y avisa de que el combate sostenido
       fatiga: los tres beats sin pelea del LDD no son relleno, son la estructura. Pero su patrón
       Teach-Test-Twist valida la mitad de nuestra tesis: repetir el verbo cambiando el contexto es
@@ -984,7 +1008,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 8 · 28 ago 2026 · contra el LDD y el libro</span>
+  <span>rev. 9 · 28 ago 2026 · lo cerrado ya no se lee como pendiente</span>
 </footer>
 
 </div>
