@@ -188,7 +188,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 7 — contrastada contra el LDD de Malkuth</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 8 — contrastada contra el LDD y The Level Design Book</p>
   <h1>El espinazo de Malkuth</h1>
   <p class="deck">Dónde van las cinco recetas de encuentro del §6, dónde quedó cada una tras
     colocarlas el 27/08, y cómo quedó el prólogo del umbral: los catorce segundos
@@ -843,8 +843,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <p><strong>La sección 08 contradice la curva del documento.</strong> Aquí se defiende que repetir
       la mecánica es la tesis; el LDD pide diez beats cuya intensidad alterna
       5 → 20 → 30 → 50 → <em>25 (trampa)</em> → 60 → <em>10 (descanso)</em> → 75 → <em>95 (jefe)</em> → 5,
-      con <strong>tres beats que no son combate</strong>. Una de las dos tiene que ceder, y conviene
-      decidirlo antes de montar más arenas.</p>
+      con <strong>tres beats que no son combate</strong>. Una de las dos tiene que ceder — la sección 12 trae el árbitro.</p>
   </div>
 
   <div class="tblwrap">
@@ -898,9 +897,94 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   </div>
 </section>
 
+<section>
+  <div class="sec-head"><span class="sec-num">12</span><h2>Contra el libro: el veredicto</h2></div>
+
+  <p class="measure">Quince capítulos de <a href="https://book.leveldesignbook.com">The Level Design
+    Book</a> —todo el bloque de <em>Process</em>: pacing, critical path, encuentros, enemigos,
+    cobertura, balance, métricas, wayfinding, playtesting, gates, flow, verticalidad, parti,
+    composición e iluminación— leídos contra esta página y contra el LDD. Lo que sale: el método
+    que usamos es el que el libro predica, y el conflicto abierto de la sección 11 tiene árbitro.</p>
+
+  <div class="correction">
+    <span class="lbl">El árbitro del conflicto 08 vs. LDD — y falla a medias para cada uno</span>
+    <p>El libro pide <strong>alternar picos y descansos</strong> y avisa de que el combate sostenido
+      fatiga: los tres beats sin pelea del LDD no son relleno, son la estructura. Pero su patrón
+      Teach-Test-Twist valida la mitad de nuestra tesis: repetir el verbo cambiando el contexto es
+      exactamente «repite el verbo, cambia el precio». <strong>La síntesis: se queda la repetición,
+      intercalada con la trampa del Puente y el Santuario</strong> — que es lo que el LDD ya pedía
+      sin decirlo así.</p>
+  </div>
+
+  <div class="points">
+    <div class="pt"><div>
+      <h3>Métricas primero — y aquí vamos por delante del libro</h3>
+      <p>El libro pide medir al personaje y derivar el nivel de ahí, y que la composición visual
+        venga <em>después</em> de métricas y encuentros. Es nuestro método: Malakh medido
+        (200/400/550, salto 327/82, escalón 45, cápsula 42/96) y de ahí las losas cada 585, los
+        huecos del Anfiteatro y el perfilado del umbral. Él propone un «metrics gym» aparte;
+        nosotros barremos el nivel real con la cápsula real.</p></div></div>
+    <div class="pt"><div>
+      <h3>El beat chart del LDD es de manual, y esta página es lo que el libro pide</h3>
+      <p>Beats, intensidad 0–100, arranque lento, Teach-Test-Twist: el §3 del LDD cumple el capítulo
+        de pacing entero. Y su advertencia —«los documentos de pacing caducan; manda lo jugado»—
+        es esta página: el documento vivo re-medido tras cada cambio.</p></div></div>
+    <div class="pt"><div>
+      <h3>El umbral cumple gates, wayfinding y composición a la vez</h3>
+      <p>Forward gate teatral que «enseña la cerradura antes que la llave» —la puerta te rechaza
+        antes de darte la espada—, luz como guía con la puerta enmarcada en piedra oscura (el
+        ejemplo de Half-Life 2 que usa el propio libro), y contraste por el mismo principio:
+        «algo alto solo parece especial rodeado de cosas bajas» — y algo brillante, rodeado
+        de oscuro.</p></div></div>
+    <div class="pt"><div>
+      <h3>Reglas del libro directamente usables en los gaps de la sección 11</h3>
+      <p><strong>Farsa:</strong> los «enemigos desprevenidos» son una de las tres aperturas estándar
+        de encuentro — el estado neutro no es rareza, es herramienta básica.
+        <strong>Balance:</strong> «duplica o divide el valor; las diferencias pequeñas no se
+        sienten», y «si no sabes por qué falla, refuérzalo».
+        <strong>Cobertura:</strong> alta ≥ 1,75 m, baja 1,0–1,25 m, &lt; 0,5 m no es cobertura, y
+        menos es mejor — nuestras arenas están casi peladas y ahora hay números para vestirlas.
+        <strong>Santuario:</strong> la seguridad la comunican los sistemas (música, garantía de
+        no-spawn), no el layout.</p></div></div>
+  </div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Estadístico nuevo</th><th>Cómo se saca</th><th>Qué decide</th></tr></thead>
+      <tbody>
+        <tr><td>Curva de intensidad medida</td>
+            <td class="num">enemigos enganchados por minuto, sobre la polilínea de la ruta</td>
+            <td>Primera verificación numérica de la curva del §3 del LDD</td></tr>
+        <tr><td>Tiempo real por beat</td>
+            <td class="num">el espinazo (9:54) partido por zona, contra la columna «Time»</td>
+            <td>Si los 18 minutos del LDD sobreviven al mundo compactado</td></tr>
+        <tr><td>Heatmap de posición en PIE</td>
+            <td class="num">el muestreador del medidor de daño, apuntado a posición</td>
+            <td>Dónde muere, dónde se atasca, dónde se para el jugador</td></tr>
+        <tr><td>Visibilidad del siguiente hito</td>
+            <td class="num">trazas desde la polilínea cada 10 m al landmark siguiente</td>
+            <td>El wayfinding, medido: en qué % de la ruta se ve a dónde vas</td></tr>
+        <tr><td>Auditoría de cobertura por arena</td>
+            <td class="num">piezas clasificadas con las alturas de Naughty Dog</td>
+            <td>Hoy la respuesta es casi cero en las cinco arenas — y eso es un dato</td></tr>
+        <tr><td>Telemetría por encuentro</td>
+            <td class="num">tiempo por oleada, daño recibido, arma usada</td>
+            <td>Lo que el libro pide para playtest, listo antes de jugar con el mando</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="gap">
+    <span class="lbl">Advertencia técnica que nos toca</span>
+    El libro recomienda albedo entre 50–100% de brillo porque el oscuro mata el rebote de luz.
+    Nuestro Tinte al 18% en el umbral está muy por debajo: ahí es elección consciente —por eso el
+    custodio blanco revienta contra la piedra—, pero no conviene repetirlo en zonas grandes.
+  </div>
+</section>
+
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 7 · 28 ago 2026 · contra el LDD: 0 de 7 cerrados</span>
+  <span>rev. 8 · 28 ago 2026 · contra el LDD y el libro</span>
 </footer>
 
 </div>
