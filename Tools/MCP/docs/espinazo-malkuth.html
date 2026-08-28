@@ -188,10 +188,11 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 5 — las cinco recetas, colocadas y jugadas</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 6 — el prólogo del umbral, montado y jugado</p>
   <h1>El espinazo de Malkuth</h1>
   <p class="deck">Dónde van las cinco recetas de encuentro del §6, dónde quedó cada una tras
-    colocarlas el 27/08, y qué probó jugar las cinco en PIE.</p>
+    colocarlas el 27/08, y cómo quedó el prólogo del umbral: los catorce segundos
+    que le dan a Malakh su primera espada.</p>
 
   <dl class="consts">
     <div class="const"><dt>Arranque spawn → Claro</dt><dd>364 m · 1:30</dd></div>
@@ -199,6 +200,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div class="const"><dt>Espinazo completo</dt><dd>2.377 m · 9:54</dd></div>
     <div class="const"><dt>Encuentros montados</dt><dd>5 de 5</dd></div>
     <div class="const"><dt>NavMesh</dt><dd>6 volúmenes</dd></div>
+    <div class="const"><dt>Prólogo</dt><dd>14,3 s</dd></div>
   </dl>
 </header>
 
@@ -548,8 +550,9 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     </svg>
     </div>
     <figcaption>Los marcadores <code>Beat_01_UmbralPrologo</code> y <code>Beat_02_SarielMitadVia</code>
-      están colocados en el Master (carpeta <code>Plan/Beats</code>, ocultos en juego), recalculados
-      para esta geometría y con el suelo trazado: la línea entera es llano a z=−42.</figcaption>
+      están colocados en el Master con el suelo trazado: la línea entera es llano a z=−42. El primero ya
+      no es solo una marca — el umbral es ahora una escena jugable, y su obelisco se apartó 6,2 m del
+      eje porque estaba clavado en mitad del vano.</figcaption>
   </figure>
 
   <p class="measure">La estructura sobrevive al recorte: <strong>0:56 de Edén con el coloso delante,
@@ -560,7 +563,94 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">06</span><h2>Los cinco encuentros, jugados</h2></div>
+  <div class="sec-head"><span class="sec-num">06</span><h2>El prólogo del umbral, montado</h2></div>
+
+  <p class="measure">Es lo primero que ve el jugador y lo único del espinazo que no es una pelea.
+    Malakh llega <strong>desarmado</strong> —ni espada, ni hacha, ni arco—, cruza bajo un arco de
+    15,8 m, y el umbral no lo reconoce. Un custodio interviene creyendo que ayuda, lo derriba, y
+    asciende dejando su espada en el suelo. Esa espada es la que Malakh llevará el resto del juego.</p>
+
+  <figure>
+    <div class="figscroll">
+    <svg viewBox="0 0 700 196" role="img" width="700"
+         aria-label="Los cinco compases del prólogo medidos en segundos: 1,2 s de cara a cara, 3,63 s de derribo con los dos montages, 1,2 s de cierre, 0,6 s de despliegue y 7,7 s de ascenso, 14,3 s en total.">
+      <rect class="bar-g"   x="30"  y="58" width="53"  height="26"/>
+      <rect class="bar-gap" x="83"  y="58" width="162" height="26"/>
+      <rect class="bar-g"   x="245" y="58" width="53"  height="26"/>
+      <rect class="bar-g"   x="298" y="58" width="27"  height="26"/>
+      <rect class="bar"     x="325" y="58" width="342" height="26"/>
+
+      <text class="svg-z" x="56"  y="48" text-anchor="middle">cara a cara</text>
+      <text class="svg-m" x="56"  y="104" text-anchor="middle">1,2 s</text>
+      <text class="svg-z" x="164" y="48" text-anchor="middle">el derribo</text>
+      <text class="svg-m" x="164" y="104" text-anchor="middle">3,63 s</text>
+      <text class="svg-z" x="271" y="48" text-anchor="middle">cierre</text>
+      <text class="svg-m" x="271" y="104" text-anchor="middle">1,2 s</text>
+      <text class="svg-z" x="496" y="48" text-anchor="middle">el ascenso</text>
+      <text class="svg-m" x="496" y="104" text-anchor="middle">7,7 s · 90 → 200 → 300 uu/s</text>
+
+      <line class="beat" x1="30"  y1="54" x2="30"  y2="88"/>
+      <line class="beat" x1="83"  y1="54" x2="83"  y2="88"/>
+      <line class="beat" x1="245" y1="54" x2="245" y2="88"/>
+      <line class="beat" x1="325" y1="54" x2="325" y2="88"/>
+
+      <text class="svg-enc" x="30"  y="128">cruza</text>
+      <text class="svg-d"   x="30"  y="142">input bloqueado · luz a 3000 y fría</text>
+      <text class="svg-d"   x="30"  y="156">«El umbral no te reconoce»</text>
+
+      <text class="svg-enc" x="245" y="128">cae la espada</text>
+      <text class="svg-d"   x="245" y="142">luz a 18000 · input devuelto</text>
+      <text class="svg-d"   x="245" y="156">«Toma la espada del custodio»</text>
+
+      <text class="svg-m" x="670" y="180" text-anchor="end">14,3 s en total · se esconde a 54 m</text>
+    </svg>
+    </div>
+    <figcaption>Los dos montages del derribo son un <strong>par del pack de finishers</strong> —el
+      del ejecutor y su <code>_React_</code>, clavados ambos a 3,63 s—, así que la coreografía viene
+      hecha: no hay animación nueva. El emplazamiento sale de la fórmula del propio sistema,
+      <code>GetBackstabApplierTargetPosition</code>: 123 uu y encarados.</figcaption>
+  </figure>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Lo que se midió</th><th>Antes</th><th>Ahora</th><th>Por qué importaba</th></tr></thead>
+      <tbody>
+        <tr><td>Salto del reposicionado</td><td class="num">579 uu</td><td class="num">7 uu</td>
+            <td>El volumen disparaba a seis metros del encuentro: se veía el teletransporte</td></tr>
+        <tr><td>Píxeles quemados en la escena</td><td class="num">32,3 %</td><td class="num">0,9 %</td>
+            <td>El relleno a 9000 lavaba el plano entero; el foco no tenía culpa</td></tr>
+        <tr><td>Luminancia media</td><td class="num">239/255</td><td class="num">132/255</td>
+            <td>Con la piedra del umbral al 18 % de tinte</td></tr>
+        <tr><td>Altura del arco</td><td class="num">5,85 m</td><td class="num">15,8 m</td>
+            <td>×3 Malakh era una folly de jardín; ×8 es contrapicado</td></tr>
+        <tr><td>Duración del ascenso</td><td class="num">2,5 s</td><td class="num">8,3 s</td>
+            <td>A 620 uu/s atravesaba la piedra del arco por barrido; al frenarlo, chocaba</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="points">
+    <div class="pt"><div>
+      <h3>Malakh llega sin nada</h3>
+      <p><code>DesarmarAlEmpezar</code> le quita espada, hacha, arco y flechas por la API del propio
+        DCS. No se toca la plantilla: el inventario de salida vive en <code>BP_CombatCharacter</code>,
+        que es de pago y lo comparten los enemigos. Y <code>EspadaBase</code> pasa a vacío, que si no
+        una purga antes del umbral le regalaría la espada que aún no ha ganado.</p></div></div>
+    <div class="pt"><div>
+      <h3>La espada que cae es la que él tenía</h3>
+      <p>En el mismo instante en que aparece la del suelo, la del custodio desaparece. DCS monta el
+        arma como actor enganchado, no como componente, así que el cierre recorre los enganchados y
+        esconde el que casa. El escudo se queda: sigue siendo un guardián.</p></div></div>
+    <div class="pt"><div>
+      <h3>Asciende porque no puede irse andando</h3>
+      <p>Sin controlador su componente de movimiento está en <code>MOVE_NONE</code> y no anda ni gira
+        —rotarlo lo dejaría patinando en idle—. Un cuerpo en vuelo, en cambio, debe deslizarse sin
+        pisar. Y explica que abandone la espada: sube con las manos vacías.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>Los cinco encuentros, jugados</h2></div>
   <p class="measure">El 27/08 se llevaron los cinco en PIE, arena por arena. Los enemigos murieron por
     <code>Kill()</code>, no peleando, así que <strong>esto valida los sistemas, no el
     equilibrio</strong>. Todas sellan al cruzar el borde, escalonan <strong>de uno en uno</strong>
@@ -616,7 +706,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">07</span><h2>Repetir la mecánica no es relleno: es la tesis</h2></div>
+  <div class="sec-head"><span class="sec-num">08</span><h2>Repetir la mecánica no es relleno: es la tesis</h2></div>
   <p class="measure">Aquí la respuesta no es la genérica, porque en este juego la mecánica <em>ya es</em>
     una afirmación moral.</p>
 
@@ -647,7 +737,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">08</span><h2>Orden de construcción</h2></div>
+  <div class="sec-head"><span class="sec-num">09</span><h2>Orden de construcción</h2></div>
 
   <div class="phase">
     <p class="phase-name ok">Hecho el 27/08</p>
@@ -677,10 +767,6 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
       <li><div><strong>Jugar 6.1 con el mando.</strong>
         <p>Los sistemas están verificados; el equilibrio no. Hace falta pelear las cuatro oleadas de
           verdad para saber si un enemigo por oleada es demasiado holgado.</p></div></li>
-      <li><div><strong><code>FijarEspadaBase</code>.</strong>
-        <p>Dos nodos, obligatorios antes de que el prólogo entregue la primera espada: sin ellos entra
-          como <code>ArmaTemporal</code> y el primer sello roto deja a Malakh sin arma — la ranura de
-          partida ya se vació a propósito.</p></div></li>
     </ol>
   </div>
 
@@ -696,23 +782,44 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
           Claro. Y <code>Nav_GabrielC2</code>, que se había quedado a 13.000 uu de su zona, devuelto.</p></div></li>
     </ol>
   </div>
+  <div class="phase">
+    <p class="phase-name ok">El prólogo — hecho el 28/08</p>
+    <ol class="steps">
+      <li class="done"><div><strong>El umbral, a escala divina.</strong>
+        <p>De 5,85 m a 15,8 m con la misma piedra, un foco de 18000 detrás del vano, y piedra oscura
+          al 18&nbsp;% de tinte con la calzada entrando en degradado. El marfil de Malkuth no se tocó:
+          lo usan 267 actores del mapa, así que el maestro ganó un parámetro y el umbral una instancia.</p></div></li>
+      <li class="done"><div><strong>La secuencia, de punta a punta.</strong>
+        <p><code>BP_DA_PrologoUmbral</code>: rechazo, derribo con el par de montages del pack, espada
+          revelada, arma del custodio escondida y ascenso. Input bloqueado los 4,8 s de escena con dos
+          candados —<code>SetIgnoreMoveInput</code> y <code>DisableInput</code>—, y el reposicionado
+          adelantado al fogonazo para que no se vea.</p></div></li>
+      <li class="done"><div><strong>Malakh empieza desarmado, y <code>FijarEspadaBase</code>.</strong>
+        <p>Fuera espada, hacha, arco y flechas; <code>EspadaBase</code> a vacío. Al recoger la del
+          custodio queda fijada como base y sobrevive a <code>PurgarTemporales</code> — verificado en
+          dos arranques limpios.</p></div></li>
+    </ol>
+  </div>
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">09</span><h2>Lo que decides tú</h2></div>
+  <div class="sec-head"><span class="sec-num">10</span><h2>Lo que decides tú</h2></div>
   <div class="open">
     <ul>
       <li><strong>Claro → Santuario: 647 m.</strong> Creció al acercar el Claro a la senda. O lo cubre el
         Heraldo (6.3) como beat central, o el Santuario también baja — y entonces se retienden CS y
         Santuario→Puente.</li>
-      <li><strong>La cola de la senda y el coloso siguen hundidos a z=−1038</strong> (el suelo real está
-        a −42): 10 m bajo tierra. Es contenido del <code>Jardin_Sub</code>; se arregla abriéndolo como
-        nivel suelto.</li>
+      <li><strong>¿El vuelo es del custodio o de Gabriel?</strong> Un ángel alzando el vuelo es un
+        estreno. Gastarlo en un guardia de puerta en el minuto dos se lo quita a quien venga después;
+        la alternativa es que el custodio se quede, y entonces hay que animarle un giro.</li>
       <li><strong><code>LI_01_Jardin</code> y <code>LI_07_Puente</code> están a z=−2000.</strong> Si no
         fue a propósito, sus zonas enteras viven 20 m por debajo del resto del mundo.</li>
       <li><strong>El ramal del Gazebo</strong>: su carretera (221 m, sana) arranca a ~360 m de la puerta
         norte nueva del Claro. Empalmarla son 3–4 losas.</li>
       <li><strong>El estandarte del Heraldo.</strong> Suelta <code>SM_GreatAxe</code>, no un estandarte. Si 6.3 quiere de verdad un estandarte plantable que invierta el control de zona, eso es contenido nuevo.</li>
+      <li><strong>El custodio compite con el vano.</strong> Contra la piedra oscura funciona de cerca,
+        pero en el plano general su blanco pelea con la luz de la puerta. O se le apaga la túnica, o
+        se acepta que hay dos focos.</li>
       <li><strong>Los picos del Puente</strong> siguen estáticos; el pulso quedó pendiente como gameplay.
         Si nunca se mueven, el Puente pasa de beat a decorado.</li>
     </ul>
@@ -721,7 +828,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 5 · 27 ago 2026 · las cinco jugadas en PIE</span>
+  <span>rev. 6 · 28 ago 2026 · el prólogo, montado y fotografiado</span>
 </footer>
 
 </div>
