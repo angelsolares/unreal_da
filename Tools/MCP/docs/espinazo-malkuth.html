@@ -199,7 +199,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 12 — jugado, medido, y con la Snare montada</p>
+  <p class="eyebrow">Malkuth · Diseño de nivel · rev. 13 — Gabriel montado: ya no queda ningún punto sin empezar</p>
   <h1>El espinazo de Malkuth</h1>
   <p class="deck">Dónde van las cinco recetas de encuentro de la Forja —sus §6.1–6.5, no las del LDD—, dónde quedó cada una tras
     colocarlas el 27/08, cómo quedó el prólogo del umbral, y —desde esta revisión— qué salió
@@ -213,13 +213,13 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <div class="const"><dt>Encuentros montados</dt><dd>5 de 5</dd></div>
     <div class="const"><dt>NavMesh</dt><dd>6 volúmenes</dd></div>
     <div class="const"><dt>Prólogo</dt><dd>14,3 s</dd></div>
-    <div class="const"><dt>Definition of Done</dt><dd>2 / 5 en juego</dd></div>
+    <div class="const"><dt>Definition of Done</dt><dd>3 / 5 en juego</dd></div>
     <div class="const"><dt>Partida medida</dt><dd>6:41 · 944 m</dd></div>
   </dl>
 
   <p class="leyenda">
     <span><i class="ck ok"></i> recuadro verde con ✓ · cerrado y verificado, se conserva por lo que enseñó</span>
-    <span><i class="ck no"></i> fila roja · lo único sin empezar, en la tabla de la sección 11</span>
+    <span><i class="ck no"></i> fila roja · ya no queda ninguna: los cinco puntos están cerrados o a medias</span>
   </p>
 </header>
 
@@ -893,8 +893,16 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
                 Cinco directores escalonados sobre el puente (cadencia 3,0 → 2,4 → 1,4).
                 <strong>Falta del §7.3:</strong> el patrón sincronizado con el canto y las fuentes que
                 se paran como ancla visual.</td></tr>
-        <tr class="hot"><td>Vencer a Gabriel con paciencia, espejos y respuestas correctas</td><td>No</td>
-            <td>El jefe no está montado. 22 espejos colocados en <code>LI_11_GabrielC2</code>, esperando.</td></tr>
+        <tr><td>Vencer a Gabriel con paciencia, espejos y respuestas correctas</td><td>Sí</td>
+            <td>Montado el 29/08. <code>BP_DA_GabrielFight</code> lleva las tres fases por vida del
+                jefe: <strong>100→70 %</strong> laberinto entero y la primera pregunta;
+                <strong>70→40 %</strong> caen los paneles junto a Gabriel, entra un ángel de
+                distracción y cambia la respuesta correcta; <strong>40→0 %</strong> estallan los once
+                paneles y golpear <strong>sobre su sombra hace un 50 % más</strong>.
+                Las respuestas son <em>tres pedestales</em> en el laberinto —Redención, Paso,
+                Silencio— en vez de la rueda de diálogo: elegir es caminar.
+                <strong>Falta del §7.4:</strong> los destellos de las esquirlas; y lo que cuelga de
+                Farsa queda fuera por alcance.</td></tr>
         <tr><td>Usar el Altar de Contemplación como punto de descanso</td><td>Sí</td>
             <td>Colocado el 28/08 en <strong>(-4000, -30900)</strong>, sobre el tramo de 89 s sin nada
                 de la Senda de Setos. Estaba muerto por dentro: cubo del motor por malla y un cast a
@@ -904,7 +912,7 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
         <tr><td>Sentir el giro de paraíso a hostilidad</td><td>A medias</td>
             <td>El prólogo del umbral hace exactamente eso, pero 90 s antes de lo que pide el documento
                 —que quiere dos minutos de jardín sin enemigos— y el resto del nivel no lo sostiene.</td></tr>
-        <tr class="sum"><td>Cinco puntos en juego</td><td>2 cerrados</td><td>2 a medias · 1 sin empezar</td></tr>
+        <tr class="sum"><td>Cinco puntos en juego</td><td>3 cerrados</td><td>2 a medias · 0 sin empezar</td></tr>
       </tbody>
     </table>
   </div>
@@ -917,10 +925,13 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
         Los otros dos ni eso: los 76 setos del nivel son <code>Conn_*</code> —decoran carreteras— y no
         son las tres filas del Sendero Geométrico, y de los Símbolos Sagrados no hay nada.</p></div></div>
     <div class="pt"><div>
-      <h3>Gabriel es el agujero que más pesa</h3>
-      <p>Es el <strong>95&nbsp;% de intensidad</strong> del nivel: su clímax. Y no está montado como
-        pelea, aunque sus tres cámaras, sus carreteras y sus 22 espejos llevan colocados desde
-        agosto. Todo lo demás del espinazo desemboca ahí.</p></div></div>
+      <h3>Gabriel ya es una pelea, y el laberinto por fin hace algo</h3>
+      <p>Era el <strong>95&nbsp;% de intensidad</strong> del nivel y el único beat sin montar. Los
+        once paneles llevaban colocados desde agosto sin más papel que decorar; ahora son el reloj
+        del combate: se mantienen, encogen y estallan según baja la vida del jefe. El director los
+        encuentra <strong>por geometría</strong> —están en un anillo perfecto a 1.259 uu del centro,
+        y los pilares a 1.299— porque los tags puestos a actores de una Level Instance desde el
+        maestro no sobreviven a PIE.</p></div></div>
     <div class="pt"><div>
       <h3>Dos discrepancias de mapa, una nuestra y una suya</h3>
       <p>Tenemos una zona que el documento no contempla —el <strong>Mirador</strong>— y el documento
@@ -1099,15 +1110,17 @@ a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
     <span class="lbl">Lo que sigue sin medirse</span>
     Con el grabador arreglado hace falta <strong>una segunda partida</strong> para tener por fin el
     reparto combate/hueco de verdad, la curva de intensidad de la sección 12 y el tiempo real por
-    beat. Esa partida tiene ya tres cosas nuevas que probar con el mando: el altar, la cadena de
-    objetivos arreglada y la Snare del Puente. Del Definition of Done solo queda
-    <strong>Gabriel</strong> sin empezar —el 95 % de intensidad del nivel, y el agujero que más pesa.
+    beat. Esa partida tiene ya cuatro cosas nuevas que probar con el mando: el altar, la cadena de
+    objetivos arreglada, la Snare del Puente y la pelea de Gabriel. <strong>Del Definition of Done
+    ya no queda ningún punto sin empezar</strong>: tres cerrados y dos a medias —escalar, que no
+    existe ni en DCS ni en DA, y el giro de paraíso a hostilidad, que el prólogo hace pero el resto
+    del nivel no sostiene.
   </div>
 </section>
 
 <footer>
   <span>Dark Angels · POC sobre DCS · UE 5.8.1</span>
-  <span>rev. 12 · 29 ago 2026 · dos puntos del Definition of Done cerrados</span>
+  <span>rev. 13 · 29 ago 2026 · tres de cinco cerrados; los otros dos, a medias</span>
 </footer>
 
 </div>
