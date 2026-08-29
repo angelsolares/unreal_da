@@ -26,6 +26,11 @@ MALLAS = [
     "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_05",
     "/Game/Megascans/3D_Assets/AngkorWatTempleStones/SM_AngkorWatTempleStones",
     "/Game/Megascans/3D_Assets/MossyRocksA/SM_MossyRocksA",
+    # Segunda tanda, 2026-08-29. El mismo defecto en las paredes del cuenco del Claro:
+    # se atravesaban andando los acantilados y las agujas que lo cierran.
+    "/Game/Megascans/3D_Assets/IcelandicCliff/SM_IcelandicCliff",
+    "/Game/Megascans/3D_Assets/IcelandicCliff/SM_IcelandicCliff_02",
+    "/Game/Megascans/3D_Assets/QuarryCliff/SM_QuarryCliff_03",
 ]
 
 
