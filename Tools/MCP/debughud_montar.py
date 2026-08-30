@@ -172,11 +172,19 @@ def Y(desplazamiento):
 
 
 def texto(x, y, cadena, color=HUESO, escala=1.0):
-    """DrawText posicional: self, Text, Color, X, Y, Font=0, Scale.
+    """DrawText posicional: self, Text, Color, X, Y, Font, Scale.
 
-    El Font va a 0 a proposito: con una fuente distance-field el canvas no
-    dibuja nada (ya paso), y con 0 cae a la del motor, que si sale."""
-    return '  (HUD|DrawText self %s %s %s %s 0 %s)' % (cadena, color, x, y, SC(escala))
+    El Font sale de la variable `Fuente` de BP_DA_HUD --el padre--, que apunta a
+    `F_DA_Cinzel`. La heredamos, asi que `Variables|Default|GetFuente` vale aqui.
+
+    ANTES IBA A 0, y conviene saber por que se cambio: con una fuente
+    **distance-field** el canvas no dibuja NADA (paso, y por eso quedo el 0, que
+    cae a la del motor). Pero eso es un problema de las distance-field, no de las
+    fuentes propias: probado el 27/08 en juego, `F_DA_Cinzel` --cache `Runtime`--
+    dibuja perfectamente por canvas. Si algun dia el HUD sale en blanco tras
+    tocar la fuente, mira primero el Font Cache Type antes que este nodo."""
+    return ('  (HUD|DrawText self %s %s %s %s (Variables|Default|GetFuente) %s)'
+            % (cadena, color, x, y, SC(escala)))
 
 
 def rect(x, y, w, h, color):
