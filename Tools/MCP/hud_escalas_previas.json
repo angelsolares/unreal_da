@@ -1,0 +1,213 @@
+{
+ "factor": 4.0,
+ "legacy_font_size_previo": 9,
+ "nodos": [
+  {
+   "grafo": "EventGraph",
+   "nodo": "FE55771B48B7E96A096D0EA2F6DE1339",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "8AF3B8E14AC91D9023493484C789D9A4",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "60D02A704B31934F90611E8C4E481A1E",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "72A2EC364ADD36EF2E7D25BA31F4C471",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "566A57D947A1AF8D01458994C7506453",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "B9EF14F547A6EDA67F2FFFA84773C709",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "4DC710C640314C7FD8D1D0A4F3719DDE",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "C015D31E47B2F7D42500C38A7A44FC18",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "2FFB98484CE6B1C619FAB2ABB92149E4",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "E11EE2124A7BC76AE04D20BE79667865",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "54F38D8F445B438233A18AA0134CE44A",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "7ABE17C74766761CC43794B672AD4059",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "E752F09A4B9DD5708FAE5DA93AB3723F",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "FEE02AEF49B9A566D706679E06F4323B",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "88400F3A480E282CB14CA6B7E904F11B",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "1ABE37C848D00651FED0B8A12360A41A",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "BC9796524A24E8A5240D798DF90F80DB",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "21A809A3482F83726853DEA36C152FBD",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "612CE2BC425501D02343559E41E239F6",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "30BA93A84103E2C48263C8891D075E59",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "02B0EAFD4F15FDC6988BAA80F97A6FB3",
+   "escala_previa": 1.35
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "1623369A405796B6CC178FA6477F567E",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "201496FD4B70D1FAB317CFADD6E7755F",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "1FCEEBDA4B9E88C52E4B84A567340E30",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "334EE9EA417EBEA51350A7A32193E7C0",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "7B75967F4599DD78E111A29E2F710EBE",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "2949D843486C2320A76C44A5253DB385",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "E031880349DBB40826F5DA80E1C585F0",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "E566AB2849268DDFCCE8628FA22F0F9B",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "D4497EEE411E9F766795829E8C587C47",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "SaltoZonas_Dibujar",
+   "nodo": "EBE395DD44B607A99DC95BB0566979BF",
+   "escala_previa": 1.2
+  },
+  {
+   "grafo": "Dialogo_Dibujar",
+   "nodo": "DDD1C6E64CB472D3D42AE6B5411BFCDB",
+   "escala_previa": 1.45
+  },
+  {
+   "grafo": "Dialogo_Dibujar",
+   "nodo": "8EA863074BBC0F7842813AAD7377A299",
+   "escala_previa": 1.45
+  },
+  {
+   "grafo": "Dialogo_Dibujar",
+   "nodo": "1C5D977343A56121B6D9B09A6AB47550",
+   "escala_previa": 1.45
+  }
+ ],
+ "get_text_size": [
+  {
+   "grafo": "EventGraph",
+   "nodo": "4BB3D48C414AA159EFF0BDBA0537F837",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "CD294B5649EAF16A49BA68B01E360FEE",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "C996AC994F541D12AA2892885E830784",
+   "escala_previa": 2.0
+  },
+  {
+   "grafo": "EventGraph",
+   "nodo": "413A9F9248625C44A245DDBBA2F07409",
+   "escala_previa": 3.5
+  },
+  {
+   "grafo": "Dialogo_Dibujar",
+   "nodo": "D228FD1A4B76966B4971218077DE029E",
+   "escala_previa": 1.45
+  },
+  {
+   "grafo": "Dialogo_Dibujar",
+   "nodo": "FA8851E04058AD9DD74D2CBA171CAD27",
+   "escala_previa": 1.45
+  },
+  {
+   "grafo": "Dialogo_Dibujar",
+   "nodo": "86178F3C4BB31403AAB037AD9385244F",
+   "escala_previa": 1.45
+  }
+ ]
+}

@@ -161,6 +161,22 @@ def SC(v):
     return "(* %.2f esc)" % v
 
 
+#: Cuanto mas grande se cuece el glifo que el tamano al que se dibuja.
+#: `F_DA_Cinzel` tiene `legacy_font_size` = 36 y el canvas lo rasteriza A ESE
+#: TAMANO; el `Scale` del DrawText estira geometria despues. Con 9 --el valor de
+#: importacion-- el texto salia pixelado. Al subirlo a 36 hay que dividir TODAS
+#: las escalas de texto por este mismo numero o sale cuatro veces mas grande.
+FUENTE_COCIDA = 4.0
+
+
+def SC_TEXTO(v):
+    """La escala de un DrawText, compensada por FUENTE_COCIDA.
+
+    Es aparte de SC() a proposito: SC() escala anchos y altos de rectangulos,
+    que NO llevan compensacion. Si se unifican, las planchas se encogen."""
+    return "(* %.4f esc)" % (v / FUENTE_COCIDA)
+
+
 def X(desplazamiento):
     """X final desde el borde izquierdo del panel."""
     return "(+ px %s)" % SC(desplazamiento)
@@ -184,7 +200,7 @@ def texto(x, y, cadena, color=HUESO, escala=1.0):
     dibuja perfectamente por canvas. Si algun dia el HUD sale en blanco tras
     tocar la fuente, mira primero el Font Cache Type antes que este nodo."""
     return ('  (HUD|DrawText self %s %s %s %s (Variables|Default|GetFuente) %s)'
-            % (cadena, color, x, y, SC(escala)))
+            % (cadena, color, x, y, SC_TEXTO(escala)))
 
 
 def rect(x, y, w, h, color):
