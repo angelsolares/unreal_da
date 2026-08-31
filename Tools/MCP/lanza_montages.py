@@ -43,7 +43,11 @@ CUE     = "/Game/DynamicCombatSystem/DCS/SFX/Weapons/Sword/CUE_SwingSmall"
 ANS     = "/Game/DynamicCombatSystem/DCS/Blueprints/AnimNotifies/%s.%s_C"
 
 #: Secuencias cuyo avance NO se quiere. Vaciar o llenar segun se juegue.
-SIN_AVANCE = []
+#: `01_03` es el salto largo: 579 cm de embestida, cinco metros y medio. Se ve
+#: espectacular en campo abierto y te saca del sitio en el Puente o en las camaras
+#: de Gabriel, asi que Angel lo dejo SIN avance el 2026-08-31. La animacion es la
+#: misma, solo que el personaje se queda clavado en vez de viajar.
+SIN_AVANCE = ["AS_Combo_Attack_01_03_Seq"]
 
 #: (secuencia, montage, hitIni, hitDur, bufIni, bufDur, rmIni)
 GOLPES = [
