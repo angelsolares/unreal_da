@@ -231,3 +231,11 @@ Content/DarkAngels/AI/BT_DA_Guerrero.uasset
 # BT_DA_Arquero es la copia equivalente de BT_ArcherAI (ArcheryModule, de pago) con el
 # disparador de retirada subido de 300 a 450. La regenera Tools/MCP/bt_arquero_da.py.
 Content/DarkAngels/AI/BT_DA_Arquero.uasset
+
+# SM_DA_Talud_Esquiva y SM_DA_Talud_Salto son COPIAS de dos MossyEmbankment de
+# Megascans (Content/Megascans/, ya excluido) con la colision anadida: los
+# originales traen cero primitivas simples y el jugador los atravesaba. Se copian
+# en vez de arreglar la malla porque esas cinco mallas tienen cientos de
+# instancias en los ocho mapas de Malkuth. Las regenera Tools/MCP/taludes_tutorial.py.
+Content/DarkAngels/Environment/Props/SM_DA_Talud_Esquiva.uasset
+Content/DarkAngels/Environment/Props/SM_DA_Talud_Salto.uasset
