@@ -246,6 +246,7 @@ Content/DarkAngels/Environment/Props/SM_DA_Talud_Salto.uasset
 # BT_DA_Guerrero. La regenera Tools/MCP/espadon_montages.py, que ademas construye
 # los siete montages desde el Two-Handed Sword Animation Pack.
 Content/DarkAngels/DataTables/DT_DA_2H_Montages.uasset
+Content/DarkAngels/DataTables/DT_DA_Lanza_Montages.uasset
 
 # El espadon provisional: BP_DI_DA_Espadon y DA_DA_Espadon son COPIAS de
 # BP_DI_GreatAxe y DA_GreatAxe (DCS, de pago) con la malla cambiada por la del
