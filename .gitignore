@@ -254,3 +254,8 @@ Content/DarkAngels/DataTables/DT_DA_Lanza_Montages.uasset
 # Tools/MCP/espadon_item.py.
 Content/DarkAngels/Blueprints/Items/BP_DI_DA_Espadon.uasset
 Content/DarkAngels/Blueprints/Items/DA_DA_Espadon.uasset
+
+# Tablas de montages de la IA: copias de DT_AI_1H_Montages (DCS, de pago).
+# Las rehace Tools/MCP/enemigos_animsets.py
+Content/DarkAngels/DataTables/DT_DA_AI_2H_Montages.uasset
+Content/DarkAngels/DataTables/DT_DA_AI_Lanza_Montages.uasset
