@@ -3181,7 +3181,7 @@ def run():
         ("DbgDarArmaLanza", lambda c='Lanza', r='/Game/DarkAngels/Weapons/Items/DA_DA_Lanza.DA_DA_Lanza', e='Lanza del Alba': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaTrompeta", lambda c='Trompeta', r='/Game/DarkAngels/Weapons/Items/DA_DA_Trompeta.DA_DA_Trompeta', e='Trompeta del Juicio': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaHacha", lambda c='Hacha', r='/Game/DarkAngels/Weapons/Items/DA_DA_HachaMano.DA_DA_HachaMano', e='Hacha': dsl_dar_arma(c, r, e), []),
-        ("DbgDarArmaEspadon", lambda c='Espadon', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_GreatAxe.DA_GreatAxe', e='Espadon': dsl_dar_arma(c, r, e), []),
+        ("DbgDarArmaEspadon", lambda c='Espadon', r='/Game/DarkAngels/Blueprints/Items/DA_DA_Espadon.DA_DA_Espadon', e='Espadon': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaArco", lambda c='Arco', r='/Game/DynamicCombatSystem/ArcheryModule/Blueprints/Items/ObjectItems/Instances/DA_ElvenBow.DA_ElvenBow', e='Arco del Firmamento': dsl_dar_arma(c, r, e), []),
         ("DbgDarArmaEscudo", lambda c='Escudo', r='/Game/DynamicCombatSystem/DCS/Blueprints/Items/ObjectItems/Instances/DA_WoodenShield.DA_WoodenShield', e='Escudo Celestial': dsl_dar_arma(c, r, e), []),
         ("DbgCorrupcionCel", lambda c='Cel', v='0.0', e='Celestial': dsl_corrupcion(c, v, e), []),
