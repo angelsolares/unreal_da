@@ -4,6 +4,7 @@
 // Uso:
 //   node ue.mjs shot <out.png> <x> <y> <z> <pitch> <yaw>
 //   node ue.mjs call <toolset|-> <tool> <argsJson>
+//   node ue.mjs callf <toolset|-> <tool> <argsFile.json>
 //   node ue.mjs script <fichero.py>   -> sandbox (sin `import unreal`)
 //   node ue.mjs py <fichero.py>       -> API unreal completa
 
@@ -113,6 +114,11 @@ if (cmd === 'shot') {
 } else if (cmd === 'call') {
   const [toolset, tool, argsJson] = rest;
   console.log(await callTool(toolset, tool, JSON.parse(argsJson || '{}')));
+} else if (cmd === 'callf') {
+  // Igual que 'call' pero los argumentos vienen de un fichero JSON: hay listas
+  // (miles de posiciones de follaje) que no caben en la linea de comandos.
+  const [toolset, tool, argsFile] = rest;
+  console.log(await callTool(toolset, tool, JSON.parse(readFileSync(argsFile, 'utf8'))));
 } else if (cmd === 'script') {
   // OJO: esto va al sandbox del ProgrammaticToolset, que solo deja importar
   // time, math, re, json, datetime y copy. Para `import unreal`, usar `py`.
