@@ -1,0 +1,83 @@
+DSL de BP_DA_PrologoUmbral.EventGraph ANTES de meter el levantarse (30/08/2026).
+Para revertir: BlueprintTools.write_graph_dsl con este texto exacto.
+NOTA: el lector emite (|Dialogo_Dibujar); el escritor NO lo acepta. Aqui ya va con
+CallFunction|... donde hacia falta. Ver unreal-hud-canvas-texto.
+
+(event EventBeginPlay
+  (bind _outactors (Actor|GetAllActorsWithTag "PrologoCustodio"))
+  (for _array_element _outactors
+    (Variables|Default|SetCustodio _array_element))
+  (bind _outactors_1 (Actor|GetAllActorsWithTag "PrologoEspada"))
+  (for _array_element_1 _outactors_1
+    (Variables|Default|SetEspada _array_element_1))
+  (bind _outactors_2 (Actor|GetAllActorsWithTag "PrologoHaz"))
+  (for _array_element_2 _outactors_2
+    (Variables|Default|SetHaz _array_element_2))
+  (Rendering|SetActorHiddenInGame (Variables|Default|GetEspada) true)
+  (Collision|SetActorEnableCollision (Variables|Default|GetEspada))
+  (bind _asbp_da_player_character (Utilities|Casting|CastToBP_DA_PlayerCharacter (Game|GetPlayerCharacter 0)))
+  (Utilities|FlowControl|Delay 0.2)
+  (Class|BPDAPlayerCharacter|DesarmarAlEmpezar _asbp_da_player_character)
+  (Utilities|FlowControl|Delay 0.5)
+  (Class|BPDAPlayerCharacter|DesarmarAlEmpezar _asbp_da_player_character)
+  (Utilities|FlowControl|Delay 1.0)
+  (Class|BPDAPlayerCharacter|DesarmarAlEmpezar _asbp_da_player_character)
+  (Utilities|FlowControl|Delay 2.0)
+  (Class|BPDAPlayerCharacter|DesarmarAlEmpezar _asbp_da_player_character))
+
+(event Collision|EventActorBeginOverlap (OtherActor)
+  (bind _returnvalue (Game|GetPlayerController 0))
+  (bind _asbp_da_player_character (Utilities|Casting|CastToBP_DA_PlayerCharacter OtherActor))
+  (bind _ascharacter (Utilities|Casting|CastToCharacter (Variables|Default|GetCustodio)))
+  (Utilities|IsValid _asbp_da_player_character
+    (:"Is Valid"
+      (Utilities|IsValid _ascharacter
+        (:"Is Valid"
+          (if (Variables|Default|GetDisparado)
+            (Variables|Default|SetDisparado true)
+            (else
+              (Variables|Default|SetDisparado true)
+              (bind _asbp_da_hud (Utilities|Casting|CastToBP_DA_HUD (HUD|GetHUD _returnvalue)))
+              (bind _ascharacter_1 (Utilities|Casting|CastToCharacter _asbp_da_player_character))
+              (bind _aslight_component (Utilities|Casting|CastToLightComponent (Actor|GetComponentByClass (Variables|Default|GetHaz) "/Script/Engine.LightComponent")))
+              (bind _asskeletal_mesh_component (Utilities|Casting|CastToSkeletalMeshComponent (Actor|GetComponentByClass _ascharacter "/Script/Engine.SkeletalMeshComponent")))
+              (bind _ascharacter_movement_component (Utilities|Casting|CastToCharacterMovementComponent (Actor|GetComponentByClass _ascharacter "/Script/Engine.CharacterMovementComponent")))
+              (Input|SetIgnoreMoveInput _returnvalue true)
+              (Input|SetIgnoreLookInput _returnvalue true)
+              (Input|DisableInput _ascharacter_1 _returnvalue)
+              (Transformation|SetActorLocation _ascharacter_1 (Math|Vector|vector+vector (Transformation|GetActorLocation _ascharacter) (Math|Vector|vector*vector (Transformation|GetActorForwardVector _ascharacter) 123.0)))
+              (Transformation|SetActorRotation _ascharacter_1 (Math|Rotator|MakeRotator 0.0 0.0 (+ (.yaw (Transformation|GetActorRotation _ascharacter)) 180.0)))
+              (Class|BPDAHUD|SetObjective _asbp_da_hud "NSLOCTEXT(\"\", \"C4231B7447DF1CACEC54A78E8378BE9E\", \"El umbral no te reconoce\")" 2)
+              (Rendering|Components|Light|SetLightColor _aslight_component (Utilities|Struct|MakeLinearColor 0.55 0.72 1.0 1.0))
+              (Rendering|Components|Light|SetIntensity _aslight_component 3000.0)
+              (Utilities|FlowControl|Delay 1.2)
+              (bind _returnvalue_1 (Animation|PlayAnimMontage _ascharacter "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_01_Montage.AS_Sword_Takedown_01_Montage"))
+              (Animation|PlayAnimMontage _ascharacter_1 "/Game/DarkAngels/Animations/Finishers/Sword_Single/AS_Sword_Takedown_01_React_Montage.AS_Sword_Takedown_01_React_Montage")
+              (Utilities|FlowControl|Delay _returnvalue_1)
+              (Rendering|SetActorHiddenInGame (Variables|Default|GetEspada))
+              (Rendering|Components|Light|SetLightColor _aslight_component (Utilities|Struct|MakeLinearColor 1.0 0.96 0.84 1.0))
+              (Rendering|Components|Light|SetIntensity _aslight_component 18000.0)
+              (Input|EnableInput _ascharacter_1 _returnvalue)
+              (Input|SetIgnoreMoveInput _returnvalue)
+              (Input|SetIgnoreLookInput _returnvalue)
+              (Class|BPDAHUD|SetObjective _asbp_da_hud "NSLOCTEXT(\"\", \"401799C6472AA5D47A6FB8B1B4638470\", \"Toma la espada del custodio\")" 3)
+              (for _array_element (Actor|GetAttachedActors _ascharacter)
+                (bind _asbp_di_steel_sword (Utilities|Casting|CastToBP_DI_SteelSword _array_element))
+                (Utilities|IsValid _asbp_di_steel_sword
+                  (:"Is Valid"
+                    (Rendering|SetActorHiddenInGame _asbp_di_steel_sword true))))
+              (Utilities|FlowControl|Delay 1.2)
+              (Components|Animation|PlayAnimation _asskeletal_mesh_component 0 true)
+              (Class|CharacterMovementComponent|SetGravityScale 0.0 _ascharacter_movement_component)
+              (Collision|SetActorEnableCollision _ascharacter)
+              (Utilities|FlowControl|Delay 0.6)
+              (Character|LaunchCharacter _ascharacter (Math|Vector|MakeVector 0.0 0.0 90.0) true true)
+              (Utilities|FlowControl|Delay 1.1)
+              (Character|LaunchCharacter _ascharacter (Math|Vector|MakeVector 0.0 0.0 200.0) true true)
+              (Utilities|FlowControl|Delay 1.4)
+              (Character|LaunchCharacter _ascharacter (Math|Vector|MakeVector 0.0 0.0 300.0) true true)
+              (Utilities|FlowControl|Delay 5.2)
+              (Rendering|SetActorHiddenInGame _ascharacter true)
+              (Collision|SetActorEnableCollision (Variables|Default|GetEspada) true))))))))
+
+(event EventTick (DeltaSeconds))
