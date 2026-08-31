@@ -22,10 +22,19 @@ combos enteros:
   PESADO = combo 03, el de picos de velocidad mas bajos (2107-2468 frente a los
            3450-4993 del 01), que es lo que hace que un golpe se sienta pesado.
 
-OJO CON EL AVANCE. La espada de DCS viaja entre 47 y 165 cm; estos van de 111 a
-579. Si en juego resulta demasiado, NO hay que rehacer nada: basta poner
-`enable_root_motion = False` en la secuencia del pack y el golpe se queda en el
-sitio. La lista `SIN_AVANCE` de abajo esta para eso.
+OJO CON EL AVANCE, Y CON LA ESCALA. Los numeros de arriba son los del HUESO ROOT
+de la secuencia, y NO son centimetros de mundo: la malla de Malakh va a escala
+1,8273 y el root motion se multiplica por ella. Comprobado en juego --195 de root
+dieron 357 uu andados-- asi que lo que se siente es esto:
+
+    golpe 1  AS_Combo_Attack_01_01   112 root ->  204 uu
+    golpe 2  AS_Combo_Attack_01_02   296 root ->  541 uu
+    golpe 3  AS_Combo_Attack_04_03   195 root ->  357 uu
+    golpe 4  AS_Combo_Attack_01_04   410 root ->  749 uu
+
+La espada de DCS, sobre la misma malla, viaja de 86 a 302 uu de mundo. Los golpes
+2 y 4 se salen de esa banda; el 3 --el unico del que se quejo Angel, y con 1.058
+uu era el peor con diferencia-- ya esta dentro.
 
 DE DONDE SALEN LAS VENTANAS: se muestrea `hand_r` cada 0,04 s, se deriva la
 velocidad y se busca el pico. Sobre el pico, la forma de la casa: hitbox 0,045
@@ -42,17 +51,28 @@ DESTINO = "/Game/DarkAngels/Animations/Lanza"
 CUE     = "/Game/DynamicCombatSystem/DCS/SFX/Weapons/Sword/CUE_SwingSmall"
 ANS     = "/Game/DynamicCombatSystem/DCS/Blueprints/AnimNotifies/%s.%s_C"
 
-#: Secuencias cuyo avance NO se quiere. Vaciar o llenar segun se juegue.
-#: `01_03` es el salto largo: 579 cm de embestida, cinco metros y medio. Se ve
-#: espectacular en campo abierto y te saca del sitio en el Puente o en las camaras
-#: de Gabriel, asi que Angel lo dejo SIN avance el 2026-08-31. La animacion es la
-#: misma, solo que el personaje se queda clavado en vez de viajar.
-SIN_AVANCE = ["AS_Combo_Attack_01_03_Seq"]
+#: Secuencias cuyo avance NO se quiere.
+#:
+#: ESTA LISTA CASI NUNCA ES LO QUE QUIERES, y se aprendio caro el 2026-08-31.
+#: Apagar `enable_root_motion` NO deja el golpe en el sitio: deja la CAPSULA en el
+#: sitio mientras la MALLA sigue viajando, porque el desplazamiento esta horneado
+#: en el hueso root y la animacion lo sigue aplicando. Medido con el salto de la
+#: lanza: capsula 1 uu, hueso root 109 uu, y creciendo hasta 579. El personaje se
+#: despega de su propia capsula y luego pega el tiron de vuelta.
+#: Si un golpe viaja demasiado, la salida buena es CAMBIAR LA SECUENCIA por una
+#: que viaje menos --que es lo que se hizo con el tercer golpe-- o recortar el
+#: montage, si el impacto no cae dentro del tramo que se corta.
+SIN_AVANCE = []
 
 #: (secuencia, montage, hitIni, hitDur, bufIni, bufDur, rmIni)
 GOLPES = [
     ("AS_Combo_Attack_01_02_Seq", "M_DA_Lanza_AtaqueLigero_02", 0.20, 0.20, 0.13, 0.36, 1.85),
-    ("AS_Combo_Attack_01_03_Seq", "M_DA_Lanza_AtaqueLigero_03", 0.72, 0.20, 0.65, 0.36, 2.60),
+    # El tercer golpe NO es del combo 01. El suyo (01_03) embiste 579 de root, o
+    # sea 1.058 uu de mundo --el salto entero ocurre entre 0,6 y 1,0 s y el impacto
+    # pica en 0,76, justo en medio, asi que recortarlo perderia el golpe--. Se
+    # sustituye por el tercero del combo 04: 195 de root, 357 uu, dentro de la
+    # banda de DCS. Su pico esta en 0,16 (1.608 cm/s), de ahi el hitbox en 0,12.
+    ("AS_Combo_Attack_04_03_Seq", "M_DA_Lanza_AtaqueLigero_03", 0.12, 0.20, 0.05, 0.36, 2.17),
     ("AS_Combo_Attack_01_04_Seq", "M_DA_Lanza_AtaqueLigero_04", 0.92, 0.20, 0.85, 0.36, 2.77),
     ("AS_Combo_Attack_03_01_Seq", "M_DA_Lanza_Pesado_01",       0.08, 0.20, 0.01, 0.36, 2.52),
     ("AS_Combo_Attack_03_02_Seq", "M_DA_Lanza_Pesado_02",       0.56, 0.20, 0.49, 0.36, 2.35),
@@ -94,6 +114,15 @@ def _uno(seq_nombre, montage, hi, hd, bi, bd, ri):
     if unreal.EditorAssetLibrary.does_asset_exist(ruta):
         for i in range(len(svc.list_notifies(ruta)) - 1, -1, -1):
             svc.remove_notify(ruta, i)
+        # Si el montage ya existia pero apunta a OTRA secuencia --paso cuando se
+        # cambio el tercer golpe de combo-- hay que cambiarle el segmento. Borrar
+        # el asset y rehacerlo no vale: `delete_asset` no quita un asset cargado.
+        seg = svc.list_anim_segments(ruta, 0)
+        actual = str(seg[0].anim_name) if seg else None
+        if actual != seq_nombre:
+            for i in range(len(seg) - 1, -1, -1):
+                svc.remove_anim_segment(ruta, 0, i)
+            svc.add_anim_segment(ruta, 0, SEQ, 0.0)
     else:
         ruta = svc.create_montage_from_animation(SEQ, DESTINO, montage)
         if not ruta:
