@@ -15,41 +15,168 @@ LA SALIDA, y por que esta. Los cuatro enemigos de DA YA tenian un `GetMontages`
 propio, pero vacio: llamaba al padre y devolvia su resultado. O sea que el gancho
 ya existia y solo habia que darle contenido. No se toca DCS.
 
-LAS TABLAS son COPIAS COMPLETAS de `DT_AI_1H_Montages` con solo dos filas
-cambiadas, la 1 (Action.Attack.Light) y la 4 (Action.Attack.Heavy). Las otras
-diez --bloqueo, parry, equipar, impacto, especial...-- siguen cayendo en las
-animaciones de DCS, que el pack no cubre.
+LA CADENCIA: POR QUE LOS ENEMIGOS NO USAN LOS MONTAGES DEL JUGADOR TAL CUAL
+---------------------------------------------------------------------------
+`calibracion.json` fija para el Lancero y el Heraldo un ataque de **2,206 s**
+(impacto 0,915, ventana 0,214), y toda la matriz de la Forja esta medida con eso.
+Los montages del pack duran otra cosa --el ligero del Espadon, 0,83 s, es casi
+tres veces mas rapido--, asi que enchufarlos crudos convertia al Heraldo en un
+enemigo distinto del que dice el diseno: "pared con dientes... tarda 2,21 s".
 
-OJO CON EL RITMO. Los montages de IA de DCS llevan `rate_scale` y duran 1,555 s
-el ligero y 1,729 el pesado (medido el 24/08, ver calibracion.json). Los del
-Espadon duran 0,83-1,33 el ligero y 1,50-2,08 el pesado. **Esto cambia la cadencia
-de ataque del Heraldo**, y la calibracion de la Forja se hizo con la vieja.
+Por eso la IA no comparte montage con el jugador: se le hacen COPIAS con
+`rate_scale` ajustado para que duren exactamente 2,206 s. Las copias viven en
+`Animations/IA/` y llevan sufijo `_IA`.
 
-Ninguna de las dos tablas viaja en el repo: son copia de un asset de pago. Viaja
-esta pasada.
+QUE ANIMACION PARA CADA UNO, y por que:
+  - HERALDO: sus ligeros salen de las secuencias PESADAS del Espadon (2,08 s), no
+    de las ligeras (0,83-1,33). Dos motivos: estirar 0,83 hasta 2,21 es camara
+    lenta --un factor 2,6--, y el golpe pesado es lo que pide su arquetipo. Con
+    las pesadas el ajuste es de solo 0,94, o sea casi ninguno.
+  - LANCERO: NO valen las mismas secuencias que usa el jugador. Se eligieron por
+    viajar poco, y las de poco viaje del Spear Pack pican todas muy pronto: con
+    ellas el impacto caia en 0,11-0,26 s, o sea que el Lancero pegaba casi sin
+    telegrafiar (DCS lo hacia en 0,915). Se cambian por las tres que mejor
+    equilibran las dos cosas, medido sobre las veinte del pack:
+
+        AS_Combo_Attack_03_02   impacto al 24,0%  424 uu
+        AS_Combo_Attack_02_03   impacto al 20,0%  376 uu
+        AS_Combo_Attack_05_01   impacto al 16,0%  216 uu
+
+    Las que pican mas tarde (04_04 al 38%, 01_04 al 33%) viajan 748 y 749 uu, o
+    sea que el Lancero cerraria siete metros de golpe. No compensa.
+
+    QUEDA UNA DIFERENCIA REAL Y ESTA ANOTADA EN calibracion.json: el Spear Pack
+    ataca antes que las animaciones de IA de DCS, asi que el Lancero telegrafia
+    menos que antes por mucho que se elija bien.
+
+LAS VENTANAS SE MIDEN AQUI, no se copian. `_pico()` muestrea `hand_r` cada 0,04 s
+sobre la secuencia del pack y busca el maximo de velocidad; encima va la forma de
+la casa (hitbox 0,045 antes del pico, InputBuffer 0,07 antes y 0,36 de ancho,
+IgnoreRootMotion la ultima decima y media). Asi la ventana sigue cayendo sobre el
+golpe aunque se cambie de secuencia.
+
+Las once acciones que el pack no cubre --bloqueo, parry, equipar, impacto,
+especial...-- siguen cayendo en las animaciones de DCS: las tablas son COPIAS
+COMPLETAS de `DT_AI_1H_Montages` con solo dos filas cambiadas.
+
+Nada de esto viaja en el repo --las tablas son copia de un asset de pago y los
+montages referencian packs de pago--, salvo el grafo de cada enemigo. Viaja esta
+pasada.
 """
 import json
 
 import unreal
 
 AI_1H = "/Game/DynamicCombatSystem/DCS/DataTables/Montages/AI/DT_AI_1H_Montages"
+DEST_IA = "/Game/DarkAngels/Animations/IA"
 
-#: enemigo -> (tabla nueva, montages del ligero, montages del pesado)
+#: `calibracion.json` -> arquetipos.lancero_del_alba / elite_pesado -> ataque.duracion
+CADENCIA_IA = 2.206
+
+CUE = "/Game/DynamicCombatSystem/DCS/SFX/Weapons/Sword/CUE_SwingSmall"
+ANS = "/Game/DynamicCombatSystem/DCS/Blueprints/AnimNotifies/%s.%s_C"
+
+#: enemigo -> (tabla, secuencias del ligero, secuencias del pesado, pack, prefijo)
 RECETA = {
     "BP_DA_Heraldo": (
         "/Game/DarkAngels/DataTables/DT_DA_AI_2H_Montages",
-        ["/Game/DarkAngels/Animations/Espadon/M_DA_Espadon_Ligero_0%d" % i for i in (1, 2, 3, 4)],
-        ["/Game/DarkAngels/Animations/Espadon/M_DA_Espadon_Pesado_0%d" % i for i in (1, 2, 3)],
+        ["AS_combo_Attack_03_01_Seq", "AS_Combo_Attack_03_03_Seq"],
+        ["AS_combo_Attack_03_02_Seq"],
+        "/Game/Two_Handed_Sword",
+        "M_DA_IA_Espadon",
     ),
     "BP_DA_Lancero": (
         "/Game/DarkAngels/DataTables/DT_DA_AI_Lanza_Montages",
-        ["/Game/DarkAngels/Animations/Lanza/M_DA_Lanza_AtaqueLigero_0%d" % i for i in (1, 2, 3, 4)],
-        ["/Game/DarkAngels/Animations/Lanza/M_DA_Lanza_Pesado_0%d" % i for i in (1, 2, 3)],
+        ["AS_Combo_Attack_03_02_Seq", "AS_Combo_Attack_02_03_Seq", "AS_Combo_Attack_05_01_Seq"],
+        ["AS_Combo_Attack_02_04_Seq"],
+        "/Game/Spear",
+        "M_DA_IA_Lanza",
     ),
 }
 
 FILA_LIGERO = "1"
 FILA_PESADO = "4"
+
+svc = unreal.AnimMontageService
+
+
+def _ruta_seq(pack, nombre):
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    for a in ar.get_assets_by_path(pack, recursive=True):
+        if str(a.package_name).split("/")[-1] == nombre:
+            return str(a.package_name)
+    raise RuntimeError("no esta la secuencia %s en %s" % (nombre, pack))
+
+
+def _pico(ruta):
+    """Devuelve (duracion, instante del pico de velocidad de `hand_r`)."""
+    import math
+    s = unreal.EditorAssetLibrary.load_asset(ruta)
+    d = s.get_editor_property("sequence_length") / max(0.001, s.get_editor_property("rate_scale"))
+    P, T = [], []
+    t = 0.0
+    while t <= d:
+        b = [x for x in unreal.AnimSequenceService.get_pose_at_time(ruta, t, True)
+             if str(x.bone_name) == "hand_r"][0].transform.translation
+        P.append((b.x, b.y, b.z)); T.append(t); t += 0.04
+    _, tp = max((math.dist(P[i], P[i - 1]) / 0.04, T[i]) for i in range(1, len(P)))
+    return d, tp
+
+
+def _notify_de_sonido(m):
+    for i in range(24):
+        o = unreal.load_object(m, "AnimNotify_PlaySound_%d" % i)
+        if o is not None:
+            return o
+    return None
+
+
+def _montage_ia(pack, seq_nombre, nombre):
+    """Construye un montage de IA: notifies sobre el pico y cadencia 2,206.
+
+    `rate_scale` no toca los tiempos de los notifies --viven en el espacio del
+    montage-- asi que la ventana se escala sola y sigue cayendo sobre el golpe.
+    """
+    eal = unreal.EditorAssetLibrary
+    SEQ = _ruta_seq(pack, seq_nombre)
+    dur, pico = _pico(SEQ)
+
+    hi = max(0.0, pico - 0.045)
+    bi = max(0.0, hi - 0.07)
+    ri = max(0.0, dur - 0.15)
+
+    ruta = DEST_IA + "/" + nombre
+    if eal.does_asset_exist(ruta):
+        for i in range(len(svc.list_notifies(ruta)) - 1, -1, -1):
+            svc.remove_notify(ruta, i)
+        seg = svc.list_anim_segments(ruta, 0)
+        if not seg or str(seg[0].anim_name) != seq_nombre:
+            for i in range(len(seg) - 1, -1, -1):
+                svc.remove_anim_segment(ruta, 0, i)
+            svc.add_anim_segment(ruta, 0, SEQ, 0.0)
+    else:
+        ruta = svc.create_montage_from_animation(SEQ, DEST_IA, nombre)
+        if not ruta:
+            raise RuntimeError("no se pudo crear " + nombre)
+
+    svc.set_slot_name(ruta, 0, "FullBody")
+    svc.set_blend_in(ruta, 0.25, "Linear")
+    svc.set_blend_out(ruta, 0.25, "Linear")
+    for et, clase, ini, d in (
+            ("HitBox",    ANS % ("ANS_HitBox", "ANS_HitBox"),                     hi, 0.20),
+            ("InpBuffer", ANS % ("ANS_InputBuffer", "ANS_InputBuffer"),           bi, 0.36),
+            ("IgnoreRM",  ANS % ("ANS_IgnoreRootMotion", "ANS_IgnoreRootMotion"), ri, 0.15)):
+        if svc.add_notify_state(ruta, clase, ini, d, et) < 0:
+            raise RuntimeError("no entro el notify %s en %s" % (et, nombre))
+    svc.add_notify(ruta, "/Script/Engine.AnimNotify_PlaySound", max(0.0, hi + 0.01), "Cue_Swing")
+    son = _notify_de_sonido(eal.load_asset(ruta))
+    if son is not None:
+        son.set_editor_property("sound", eal.load_asset(CUE))
+
+    m = eal.load_asset(ruta)
+    m.set_editor_property("rate_scale", m.get_editor_property("sequence_length") / CADENCIA_IA)
+    eal.save_asset(ruta)
+    return ruta
 
 
 def _ref(ruta):
@@ -59,9 +186,6 @@ def _ref(ruta):
 
 def _tabla(destino, ligeros, pesados):
     eal = unreal.EditorAssetLibrary
-    for m in ligeros + pesados:
-        if not eal.does_asset_exist(m):
-            raise RuntimeError("falta el montage %s; pasa antes espadon_montages.py / lanza_montages.py" % m)
     if not eal.does_asset_exist(destino):
         if eal.duplicate_asset(AI_1H, destino) is None:
             raise RuntimeError("no pude duplicar " + AI_1H)
@@ -76,27 +200,52 @@ def _tabla(destino, ligeros, pesados):
     eal.save_asset(destino)
 
 
+def _nombres(prefijo, cuantos_l, cuantos_p):
+    l = ["%s_Ligero_%02d" % (prefijo, i + 1) for i in range(cuantos_l)]
+    p = ["%s_Pesado_%02d" % (prefijo, i + 1) for i in range(cuantos_p)]
+    return l, p
+
+
 def tablas():
-    for _, (destino, ligeros, pesados) in RECETA.items():
-        _tabla(destino, ligeros, pesados)
+    for _, (destino, ligeros, pesados, pack, prefijo) in RECETA.items():
+        nl, np_ = _nombres(prefijo, len(ligeros), len(pesados))
+        _tabla(destino,
+               [_montage_ia(pack, s, n) for s, n in zip(ligeros, nl)],
+               [_montage_ia(pack, s, n) for s, n in zip(pesados, np_)])
 
 
 def verificar_tablas():
     """Se relee del disco: el guardado miente en las dos direcciones."""
     eal = unreal.EditorAssetLibrary
     fallos = []
-    for enemigo, (destino, ligeros, pesados) in RECETA.items():
+    for enemigo, (destino, ligeros, pesados, pack, prefijo) in RECETA.items():
+        nl, np_ = _nombres(prefijo, len(ligeros), len(pesados))
         if not eal.does_asset_exist(destino):
             fallos.append("falta la tabla de %s" % enemigo); continue
         datos = json.loads(unreal.DataTableFunctionLibrary.export_data_table_to_json_string(
             eal.load_asset(destino)))
         por = {f["Name"]: [m.split("/")[-1].split(".")[0] for m in f.get("Montages", [])] for f in datos}
-        if por.get(FILA_LIGERO) != [m.split("/")[-1] for m in ligeros]:
+        if por.get(FILA_LIGERO) != nl:
             fallos.append("%s: la fila del ligero no cuajo: %s" % (enemigo, por.get(FILA_LIGERO)))
-        if por.get(FILA_PESADO) != [m.split("/")[-1] for m in pesados]:
+        if por.get(FILA_PESADO) != np_:
             fallos.append("%s: la fila del pesado no cuajo: %s" % (enemigo, por.get(FILA_PESADO)))
         if len(datos) != 12:
             fallos.append("%s: la tabla perdio filas (%d de 12)" % (enemigo, len(datos)))
+        for nombre, seq in zip(nl + np_, ligeros + pesados):
+            ruta = DEST_IA + "/" + nombre
+            a = eal.load_asset(ruta)
+            if a is None:
+                fallos.append("falta el montage %s" % ruta); continue
+            dur = a.get_editor_property("sequence_length") / a.get_editor_property("rate_scale")
+            if abs(dur - CADENCIA_IA) > 0.01:
+                fallos.append("%s dura %.3f y la calibracion pide %.3f" % (nombre, dur, CADENCIA_IA))
+            pistas = a.get_editor_property("slot_anim_tracks")
+            s0 = pistas[0].get_editor_property("anim_track").get_editor_property("anim_segments")[0]
+            if s0.get_editor_property("anim_reference").get_name() != seq:
+                fallos.append("%s no apunta a %s" % (nombre, seq))
+            n = {x.notify_name: x for x in svc.list_notifies(ruta)}
+            if "HitBox" not in n:
+                fallos.append("%s: falta el notify HitBox" % nombre)
     return fallos
 
 
@@ -104,6 +253,7 @@ def verificar_tablas():
 #: `DA_DA_Espadon` esta en .gitignore --es copia de un asset de pago-- y el
 #: blueprint del Heraldo SI viaja: sin esta pasada, un clon recien bajado se
 #: encuentra la ranura vacia.
+#: Y no es un capricho: `calibracion.json` ya le asigna `"arma": "espadon_alabarda"`.
 HERALDO_EQ = ("/Game/DarkAngels/Blueprints/Enemies/BP_DA_Heraldo"
               ".BP_DA_Heraldo_C:Equipment_GEN_VARIABLE")
 ESPADON = "/Game/DarkAngels/Blueprints/Items/DA_DA_Espadon"
@@ -156,7 +306,7 @@ def verificar_variables():
     propio de cada enemigo. El grafo SI viaja en el .uasset; esto solo comprueba
     que el default no se ha perdido."""
     fallos = []
-    for enemigo, (destino, _, _) in RECETA.items():
+    for enemigo, (destino, _, _, _, _) in RECETA.items():
         P = "/Game/DarkAngels/Blueprints/Enemies/" + enemigo
         cdo = unreal.get_default_object(unreal.EditorAssetLibrary.load_asset(P).generated_class())
         try:
@@ -168,9 +318,36 @@ def verificar_variables():
     return fallos
 
 
+def impactos():
+    """Devuelve, por enemigo, cuando cae el golpe en segundos REALES.
+
+    Sirve para contrastar con `calibracion.json` (impacto 0,915, ventana 0,214).
+    El notify vive en el espacio del montage, asi que el tiempo real es
+    `trigger_time / rate_scale`.
+    """
+    eal = unreal.EditorAssetLibrary
+    out = {}
+    for enemigo, (_, ligeros, pesados, _, prefijo) in RECETA.items():
+        nl, _np = _nombres(prefijo, len(ligeros), len(pesados))
+        filas = []
+        for nombre in nl:
+            ruta = DEST_IA + "/" + nombre
+            a = eal.load_asset(ruta)
+            rate = a.get_editor_property("rate_scale")
+            n = {x.notify_name: x for x in svc.list_notifies(ruta)}
+            hb = n.get("HitBox")
+            if hb:
+                filas.append((nombre, hb.trigger_time / rate, hb.duration / rate))
+        out[enemigo] = filas
+    return out
+
+
 if __name__ == "__main__":
     tablas()
     arma_del_heraldo()
     f = verificar_tablas() + verificar_arma() + verificar_variables()
-    print("[OK] enemigos con sus animsets y el Heraldo con el Espadon"
+    print("[OK] enemigos con sus animsets, a la cadencia de la Forja"
           if not f else "[FALLO]\n   " + "\n   ".join(f))
+    for enemigo, filas in impactos().items():
+        for nombre, ini, dur in filas:
+            print("   %-14s %-34s impacto %.3f  ventana %.3f" % (enemigo, nombre, ini, dur))

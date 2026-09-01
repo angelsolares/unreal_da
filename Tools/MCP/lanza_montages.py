@@ -25,16 +25,20 @@ combos enteros:
 OJO CON EL AVANCE, Y CON LA ESCALA. Los numeros de arriba son los del HUESO ROOT
 de la secuencia, y NO son centimetros de mundo: la malla de Malakh va a escala
 1,8273 y el root motion se multiplica por ella. Comprobado en juego --195 de root
-dieron 357 uu andados-- asi que lo que se siente es esto:
+dieron 357 uu andados-- asi que la referencia util es la columna de mundo.
 
-    golpe 1  AS_Combo_Attack_01_01   112 root ->  204 uu
-    golpe 2  AS_Combo_Attack_01_02   296 root ->  541 uu
-    golpe 3  AS_Combo_Attack_04_03   195 root ->  357 uu
-    golpe 4  AS_Combo_Attack_01_04   410 root ->  749 uu
+La espada de DCS, sobre esa misma malla, viaja de 86 a 302 uu. El combo del pack
+se salia por arriba en TRES de sus cuatro golpes, asi que se eligio, para cada
+posicion, la secuencia MENOS viajera de las cinco familias:
 
-La espada de DCS, sobre la misma malla, viaja de 86 a 302 uu de mundo. Los golpes
-2 y 4 se salen de esa banda; el 3 --el unico del que se quejo Angel, y con 1.058
-uu era el peor con diferencia-- ya esta dentro.
+    golpe 1  AS_Combo_Attack_01_01   112 root ->  204 uu   (ya estaba dentro)
+    golpe 2  AS_Combo_Attack_04_02   178 root ->  326 uu   (era 01_02: 541)
+    golpe 3  AS_Combo_Attack_04_03   195 root ->  357 uu   (era 01_03: 1.058)
+    golpe 4  AS_Combo_Attack_03_04   118 root ->  216 uu   (era 01_04: 749)
+
+Los descartes, medidos: en la posicion 2, 03_02 daba 424 y 02_02 458; en la 4,
+02_04 daba 533 y 05_04 642. El unico que sigue rozando la banda es el golpe 2 con
+sus 326, y es lo mejor que hay: no existe un segundo golpe mas corto en el pack.
 
 DE DONDE SALEN LAS VENTANAS: se muestrea `hand_r` cada 0,04 s, se deriva la
 velocidad y se busca el pico. Sobre el pico, la forma de la casa: hitbox 0,045
@@ -66,14 +70,19 @@ SIN_AVANCE = []
 
 #: (secuencia, montage, hitIni, hitDur, bufIni, bufDur, rmIni)
 GOLPES = [
-    ("AS_Combo_Attack_01_02_Seq", "M_DA_Lanza_AtaqueLigero_02", 0.20, 0.20, 0.13, 0.36, 1.85),
+    # Segundo golpe del combo 04 (pico 2.539 cm/s en 0,32): 326 uu frente a los 541
+    # que embestia el 01_02. Es el mas corto de las cinco familias en esta posicion.
+    ("AS_Combo_Attack_04_02_Seq", "M_DA_Lanza_AtaqueLigero_02", 0.28, 0.20, 0.21, 0.36, 2.27),
     # El tercer golpe NO es del combo 01. El suyo (01_03) embiste 579 de root, o
     # sea 1.058 uu de mundo --el salto entero ocurre entre 0,6 y 1,0 s y el impacto
     # pica en 0,76, justo en medio, asi que recortarlo perderia el golpe--. Se
     # sustituye por el tercero del combo 04: 195 de root, 357 uu, dentro de la
     # banda de DCS. Su pico esta en 0,16 (1.608 cm/s), de ahi el hitbox en 0,12.
     ("AS_Combo_Attack_04_03_Seq", "M_DA_Lanza_AtaqueLigero_03", 0.12, 0.20, 0.05, 0.36, 2.17),
-    ("AS_Combo_Attack_01_04_Seq", "M_DA_Lanza_AtaqueLigero_04", 0.92, 0.20, 0.85, 0.36, 2.77),
+    # Cuarto golpe del combo 03 (pico 2.456 cm/s en 0,16): 216 uu, dentro de la banda
+    # de DCS, frente a los 749 del 01_04. El combo 03 solo usa sus tres primeros
+    # golpes para el PESADO, asi que este estaba libre.
+    ("AS_Combo_Attack_03_04_Seq", "M_DA_Lanza_AtaqueLigero_04", 0.12, 0.20, 0.05, 0.36, 2.27),
     ("AS_Combo_Attack_03_01_Seq", "M_DA_Lanza_Pesado_01",       0.08, 0.20, 0.01, 0.36, 2.52),
     ("AS_Combo_Attack_03_02_Seq", "M_DA_Lanza_Pesado_02",       0.56, 0.20, 0.49, 0.36, 2.35),
     ("AS_Combo_Attack_03_03_Seq", "M_DA_Lanza_Pesado_03",       0.28, 0.20, 0.21, 0.36, 2.35),
