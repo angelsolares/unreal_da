@@ -1495,6 +1495,24 @@ def dsl_marcas_reiniciar():
             ' "Contadores de la esfera a cero (el historico se conserva)"))')
 
 
+def dsl_marca_forzar():
+    """Anota una Marca a mano: 1 Gracia, 2 Corrupcion, 3 Voluntad.
+
+    Para ver las diez conjunciones sin jugar diez partidas. El nombre lleva el
+    prefijo DEBUG_ para que en el historico se distinga de una decision real, y
+    el mensaje enseña ya la resolucion de `Conjugar` con la marca puesta."""
+    return ('(fn DbgMarcaForzar (Fuerza)\n'
+            '  (if (not (CallFunction|DbgPermitido))\n'
+            '    (return))\n'
+            '  (bind gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))\n'
+            '  (Class|BPDAGameState|AnotarMarca :self gs :Fuerza Fuerza'
+            ' :Nombre (select (== Fuerza 1) "DEBUG_GRACIA"'
+            ' (select (== Fuerza 2) "DEBUG_CORRUPCION" "DEBUG_VOLUNTAD")))\n'
+            '  (Variables|Default|SetDbgMensaje'
+            ' (Utilities|String|Append "Marca forzada.  "'
+            ' (Class|BPDAGameState|Conjugar :self gs))))')
+
+
 # --------------------------------------------------------- COMBAT: acciones
 #
 # COMO FUNCIONA EL MULTIPLICADOR DE DANO, que es lo que importa entender:
@@ -2386,7 +2404,17 @@ def filas_story():
             (x0 + 190.0, w3, "REINICIAR ESFERA",
              "(CallFunction|DbgMarcasReiniciar)", "false"),
         ]),
-        ("", None, 452.0, [
+        # Forzar marcas: las diez conjunciones sin diez partidas. Segunda fila
+        # de la misma seccion; el estado vivo (Resumen, Historial, Conjugar y
+        # la Transformacion guardada) va debajo, en dsl_tab_story.
+        ("", None, 384.0, [
+            (x0, w3, "+ GRACIA", "(CallFunction|DbgMarcaForzar :Fuerza 1)", "false"),
+            (x0 + 190.0, w3, "+ CORRUPCION",
+             "(CallFunction|DbgMarcaForzar :Fuerza 2)", "false"),
+            (x0 + 380.0, w3, "+ VOLUNTAD",
+             "(CallFunction|DbgMarcaForzar :Fuerza 3)", "false"),
+        ]),
+        ("", None, 560.0, [
             (x0, 564.0, "RESET STORY DEBUG", "(CallFunction|DbgResetStory)", "false"),
         ]),
     ]
@@ -2413,13 +2441,22 @@ def dsl_tab_story():
     # Estado de las Marcas. Se lee por FUNCION y no por variable: el DSL no sabe
     # crear el getter de una variable de otro blueprint.
     l.append('  (bind gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))')
-    l.append(texto(X(16.0), Y(376.0),
+    l.append(texto(X(16.0), Y(418.0),
                    '(Class|BPDAGameState|Resumen :self gs)', HUESO, 0.95))
-    l.append(texto(X(16.0), Y(398.0),
+    l.append(texto(X(16.0), Y(440.0),
                    '(Utilities|String|Append "Marcas:  "'
                    ' (Class|BPDAGameState|Historial :self gs))', GRIS, 0.85))
+    # La conjuncion en vivo: con menos de tres marcas dice cuantas faltan, con
+    # tres resuelve una de las diez. Y la transformacion GUARDADA al cerrar la
+    # esfera (BP_DA_CierreEsfera), que es otra cosa: la de la esfera anterior.
+    l.append(texto(X(16.0), Y(462.0),
+                   '(Utilities|String|Append "Conjugar:  "'
+                   ' (Class|BPDAGameState|Conjugar :self gs))', ORO, 0.9))
+    l.append(texto(X(16.0), Y(484.0),
+                   '(Utilities|String|Append "Transformacion guardada:  "'
+                   ' (Class|BPDAGameState|LeerTransformacion :self gs))', GRIS, 0.85))
     l.append('  (bind vols (Actor|GetAllActorsOfClass :ActorClass "%s"))' % RESPAWN)
-    l.append(texto(X(16.0), Y(486.0),
+    l.append(texto(X(16.0), Y(512.0),
                    '(Utilities|String|Append'
                    ' (Utilities|String|Append "Checkpoints en el nivel:  "'
                    ' (Utilities|String|ToString(Integer)'
@@ -2427,10 +2464,10 @@ def dsl_tab_story():
                    ' (Utilities|String|Append "     seleccionado:  "'
                    ' (Utilities|String|ToString(Integer)'
                    ' (Variables|Default|GetDbgCheckSel))))', HUESO, 0.9))
-    l.append(texto(X(16.0), Y(508.0),
+    l.append(texto(X(16.0), Y(534.0),
                    '"Un destino de WORLD puede llevar objetivo: sexto campo de su linea."',
                    GRIS, 0.8))
-    l.append(texto(X(16.0), Y(534.0),
+    l.append(texto(X(16.0), Y(596.0),
                    '(Variables|Default|GetDbgMensaje)', ORO, 0.95))
     l.append('  (return false))')
     return "\n".join(l)
@@ -3202,6 +3239,7 @@ def run():
         ("DbgResetStory", dsl_reset_story, []),
         ("DbgMarcasBorrar", dsl_marcas_borrar, []),
         ("DbgMarcasReiniciar", dsl_marcas_reiniciar, []),
+        ("DbgMarcaForzar", dsl_marca_forzar, [("Fuerza", "int", True)]),
         # --- FINISHERS ---
         ("DbgFinDilFijar", dsl_fin_fijar, [("Valor", "float", True)]),
         ("DbgFinProbFijar", dsl_fin_prob_fijar, [("Valor", "float", True)]),
