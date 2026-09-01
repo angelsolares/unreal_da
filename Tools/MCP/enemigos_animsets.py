@@ -32,22 +32,22 @@ QUE ANIMACION PARA CADA UNO, y por que:
     de las ligeras (0,83-1,33). Dos motivos: estirar 0,83 hasta 2,21 es camara
     lenta --un factor 2,6--, y el golpe pesado es lo que pide su arquetipo. Con
     las pesadas el ajuste es de solo 0,94, o sea casi ninguno.
-  - LANCERO: NO valen las mismas secuencias que usa el jugador. Se eligieron por
-    viajar poco, y las de poco viaje del Spear Pack pican todas muy pronto: con
-    ellas el impacto caia en 0,11-0,26 s, o sea que el Lancero pegaba casi sin
-    telegrafiar (DCS lo hacia en 0,915). Se cambian por las tres que mejor
-    equilibran las dos cosas, medido sobre las veinte del pack:
+  - LANCERO: NO valen las mismas secuencias que usa el jugador. Aquellas se
+    eligieron por VIAJAR POCO, y las de poco viaje del Spear Pack pican todas muy
+    pronto: el impacto caia en 0,11-0,26 s, o sea que el Lancero pegaba casi sin
+    telegrafiar (DCS lo hacia en 0,915). Van las TRES QUE MAS TARDAN en picar de
+    las veinte del pack, medido:
 
-        AS_Combo_Attack_03_02   impacto al 24,0%  424 uu
-        AS_Combo_Attack_02_03   impacto al 20,0%  376 uu
-        AS_Combo_Attack_05_01   impacto al 16,0%  216 uu
+        AS_Combo_Attack_04_04   impacto al 38,1%  748 uu
+        AS_Combo_Attack_01_04   impacto al 32,9%  749 uu
+        AS_Combo_Attack_05_04   impacto al 31,5%  642 uu
 
-    Las que pican mas tarde (04_04 al 38%, 01_04 al 33%) viajan 748 y 749 uu, o
-    sea que el Lancero cerraria siete metros de golpe. No compensa.
-
-    QUEDA UNA DIFERENCIA REAL Y ESTA ANOTADA EN calibracion.json: el Spear Pack
-    ataca antes que las animaciones de IA de DCS, asi que el Lancero telegrafia
-    menos que antes por mucho que se elija bien.
+    SE ELIGE EL VIAJE LARGO A PROPOSITO, y esto contradice el criterio del
+    JUGADOR: alli 748 uu era inaceptable --Angel se quejo de que el golpe se iba
+    lejos-- pero en un enemigo el viaje es CERRAR DISTANCIA, que es lo que hace un
+    lancero, y el telegrafiado es lo que decide si el jugador puede reaccionar.
+    Lo probo la matriz de la Forja: con las de poco viaje (impacto 0,397) el caso
+    Cierre pasaba de -49% a -23% y el daño base del caso DOBLABA, de 49 a 105.
 
 LAS VENTANAS SE MIDEN AQUI, no se copian. `_pico()` muestrea `hand_r` cada 0,04 s
 sobre la secuencia del pack y busca el maximo de velocidad; encima va la forma de
@@ -87,7 +87,7 @@ RECETA = {
     ),
     "BP_DA_Lancero": (
         "/Game/DarkAngels/DataTables/DT_DA_AI_Lanza_Montages",
-        ["AS_Combo_Attack_03_02_Seq", "AS_Combo_Attack_02_03_Seq", "AS_Combo_Attack_05_01_Seq"],
+        ["AS_Combo_Attack_04_04_Seq", "AS_Combo_Attack_01_04_Seq", "AS_Combo_Attack_05_04_Seq"],
         ["AS_Combo_Attack_02_04_Seq"],
         "/Game/Spear",
         "M_DA_IA_Lanza",
