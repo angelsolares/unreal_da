@@ -141,6 +141,16 @@ def _montage_ia(pack, seq_nombre, nombre):
     SEQ = _ruta_seq(pack, seq_nombre)
     dur, pico = _pico(SEQ)
 
+    # ROOT MOTION. Sin esto la CAPSULA se queda quieta y la MALLA se va sola: el
+    # enemigo se despega de su propio cuerpo. Medido en PIE antes de arreglarlo:
+    # 749 uu de separacion en el Lancero. Es el mismo fallo que se documento para
+    # el tercer golpe del jugador, y se colo aqui porque este guion construia los
+    # montages sin tocar la secuencia. Se escribe SOBRE EL ASSET DEL PACK.
+    s = eal.load_asset(SEQ)
+    if not s.get_editor_property("enable_root_motion"):
+        s.set_editor_property("enable_root_motion", True)
+        eal.save_asset(SEQ)
+
     hi = max(0.0, pico - 0.045)
     bi = max(0.0, hi - 0.07)
     ri = max(0.0, dur - 0.15)
