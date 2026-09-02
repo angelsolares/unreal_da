@@ -187,6 +187,31 @@ de marcas ya ganadas al cargar); si el total baja, como al reiniciar la esfera e
 resincroniza sin avisar y las marcas siguientes vuelven a anunciarse. Medido en PIE con las tres
 subidas y con un reinicio.
 
+## Sellos 6 y 7 (02/09/2026)
+
+**En Fab no hay nada que sirva.** El catálogo libre solo ofrece sistemas de combate completos
+(Melee Trace, Armor And Damage System, Multiplayer Combo Component) que sustituirían a DCS en vez
+de engancharse a él, y la biblioteca propia no es accesible sin abrir el editor desde el
+lanzador de Epic. El gancho estaba dentro de DCS.
+
+- **Sello 6 · Eclipse Oscuro**, el golpe tras parry con combo derriba. El gancho natural era
+  `PlayGetHitEffects` del enemigo, pero **es de forma evento y no se puede escribir en el hijo
+  por MCP**: `add_function_graph` lo rechaza, el DSL no sabe crear el nodo de evento, y
+  `add_event` lo coloca pero sigue sin poder darle cuerpo. Resuelto **desde el jugador**:
+  `ProbarDerribo(Activo)` busca objetivo con `FindTarget` a 260 uu y compara su vida con la del
+  latido anterior; si ha bajado, llama a `DerribarEnemigo`. El componente lo llama cada latido
+  con `DebeDerribar()`, que exige sello 6, combo ≥ 4 y estar dentro de los 3 s posteriores a un
+  parry. Medido en PIE: la puerta se abre al parry y se cierra sola a los 3 s. **El derribo en sí
+  no se ha visto con un enemigo real**, solo la puerta y el cableado.
+- **Sello 7 · Renegado**, el arma arrojada vuelve. No necesita gancho de golpe: el componente
+  vigila el arma temporal del jugador por dos lectores nuevos (`LeerArmaPath` y
+  `LeerMotivoSalida`, porque el DSL no crea getters de variables ajenas del jugador) y, al verla
+  salir con motivo `DISCARD`, cuenta 6 s y llama a `DarArmaTemporal` con la ruta guardada. Medido
+  en PIE: arrojada la lanza vuelve a la mano a los 6 s, y con otro sello no vuelve.
+
+Sigue sin montar la cura por muerte en cadena del sello 2: pide un gancho de muerte, y `Kill` del
+enemigo tiene el mismo problema de forma que `PlayGetHitEffects`.
+
 ## Lo que hay que vigilar
 
 - `CanBeBlocked` y `PlaySuccessfullParryEffects` son del padre `BP_CombatCharacter`; se sobrescriben en el hijo como se hizo con el Espadón, sin tocar el asset de pago.
