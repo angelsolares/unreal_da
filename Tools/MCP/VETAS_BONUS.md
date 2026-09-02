@@ -57,6 +57,44 @@ Se suma a las dos vetas anteriores; es lo que Malakh lleva a Yesod. La numeraci�
 | 9 | Libre Oscuro (V V C) | Dentro del Silencio los enemigos no bloquean. |
 | 10 | Convergente (G C V) | Resonancia: la veta activa rota sola cada 20 s entre las tres primeras vetas; la veta visual cambia de color con ella. |
 
+## Remates (takedowns) atados a las vetas
+
+Hoy `TryBackstab` acepta a cualquier enemigo a 150 uu por delante con la vida al 95 % o menos:
+sale desde el primer golpe, y elige al azar entre los 10 takedowns de espada única. Los 10
+duales no cuentan: no hay estilo dual en DCS y están sin anotar.
+
+**Regla nueva.** Dos cosas escalan con las vetas: **cuándo** se permite el remate (umbral de
+vida del enemigo) y **cuáles** salen (lista de índices que `GetBackstabMontages` ya recorre).
+
+| estado | umbral de vida | remates disponibles | cámara cinematográfica |
+|---|---|---|---|
+| sin marcas | 25 % | 2: uno seco (10) y uno de dos golpes (07) | 0,3 |
+| primera veta | 35 % | + los tres de su fuerza | 0,6 |
+| segunda veta | 45 % | + los de la segunda fuerza (o los que falten si repite) | 0,6 |
+| sello | 55 % | los diez | 1,0 |
+| sello 2 · Corrupto | 65 % | los diez | 1,0 |
+| Juicio activo | sin umbral, esos 6 s | los que haya | 1,0 |
+
+Reparto por fuerza, medido por golpes del montage (20 sacudidas en total):
+
+| fuerza | remates | por qué |
+|---|---|---|
+| Gracia | 01, 09, 10 | un solo golpe, secos (2,6–4,6 s) |
+| Voluntad | 02, 05, 06, 07 | dos golpes |
+| Corrupción | 03, 04, 08 | tres golpes, ensañados (4,2–5,3 s) |
+
+- **Por qué 25 %**: la espada hace 20; en un Heraldo de 200 son 50 de vida, dos o tres golpes de
+  acabar. Más abajo el remate no ahorra nada; el 95 % es un remate de un golpe y se queda solo
+  como valor de pruebas del Debug HUD (`Fin_Indice`, `Fin_CamaraProbabilidad`).
+- **Techo 55 %** (65 % para el Corrupto) para que ni con sello se parezca al 95 %.
+- **Alternativa si el porcentaje se siente raro entre enemigos de vida distinta**: umbral en
+  golpes, «vida restante ≤ N golpes del arma equipada» leyendo `Stat.Damage` del StatsManager,
+  N = 2 de base y +1 por veta. Mismo coste; empezar con porcentaje.
+- **Bosses fuera**: Gigante y Gabriel no aceptan remate a ningún umbral. Hoy nada lo impide
+  salvo que su componente de estados rechace el Backstab; hay que dejarlo explícito.
+- **Coste**: el umbral pasa de un 0,95 fijo a una variable que lee el componente de vetas, y la
+  elección filtra por una lista de índices. Va en la primera sesión de montaje.
+
 ## Orden de montaje
 
 1. `BP_DA_Vetas` (componente): sondeo cada 0,25 s de `LeerFuerza`, aplica y retira modificadores. Un día.
