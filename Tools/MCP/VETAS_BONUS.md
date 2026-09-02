@@ -130,6 +130,29 @@ Stun de DCS), el combo que tarda el doble en romperse (el retardo se fija en `Me
 DCS, no en el componente) y la probabilidad de cámara por veta (`Fin_CamaraProbabilidad` es una
 variable del HUD regenerable y el DSL no escribe variables ajenas).
 
+## Estado: segunda sesión montada (01/09/2026)
+
+Segunda veta por pares, en el mismo `Latir` del componente. Verificado en PIE forzando marcas:
+
+- **Juicio (G+G)**: tres parries logrados seguidos sin recibir daño (la cuenta se reinicia si la
+  vida baja) → 6 s con +10 a `Stat.Damage` (base 10, o sea ×2) y la veta a brillo 40 por
+  `FijarBrillo` de `BP_DA_MarcasVisual`. Medido: daño 10 → 20 al tercer parry, 10 a los 6 s.
+  **No es crítico real**: Malakh no tiene `Stat.CritChance` ni `Stat.CritMultiplier`, así que el
+  modificador de crítico se ignoraba; el doble de daño es el equivalente.
+- **Eclipse (G+C)**: tras un parry, 3 s con +10 de daño. Medido 10 → 20 → 10. El destello del
+  arma queda pendiente.
+- **Heraldo (G+V)**: tras un parry, 3 s con `Stat.AttackSpeed.Melee` 1,0 → 1,25 (medido) y la
+  regeneración de stamina ×2 por `SetRegenMultiplier` (no medida).
+- **Masacre (C+C)**: con combo ≥ 4 el componente marca `MasacreActiva`, y `CanBlock` sobrescrito en
+  Vigilante, Lancero, Heraldo e Inspector devuelve falso mientras dure. Ojo: la llamada a
+  `TieneMasacre` tiene que ir en un `bind` con exec; inline dentro del `return` el compilador la
+  poda y el bonus no existe (lo avisa como «pruned» en el log).
+- **Renegado (C+V)**: `HandleHit` de `BP_DA_LanzaArrojada` aplica el daño dos veces y llama a
+  `DerribarEnemigo` del jugador sobre el impactado.
+- **Pie firme probado en vivo**: `DbgDerribarme` reproduce el derribo del Gigante (montage +
+  estado); sin la veta el montage es `AM_DA_Knockdown`, con ella queda en `None`.
+- **Silencio (V+V) sin montar**: toca `BP_CelestialRay`, `BP_DA_FlechaLluvia` y el estandarte.
+
 ## Lo que hay que vigilar
 
 - `CanBeBlocked` y `PlaySuccessfullParryEffects` son del padre `BP_CombatCharacter`; se sobrescriben en el hijo como se hizo con el Espadón, sin tocar el asset de pago.
