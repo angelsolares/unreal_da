@@ -178,6 +178,15 @@ Silencio, el destello de Eclipse y ocho de los diez sellos. Verificado en PIE fo
   golpe que aterriza), 7 Renegado (que el arma arrojada vuelva a la ranura a los 6 s), y las curas
   por muerte en cadena del sello 2.
 
+## Aviso de veta en el rótulo de zona (02/09/2026)
+
+Al subir el número de marcas, el componente manda al rótulo de zona (`ShowZoneBanner` del HUD,
+5 s) el nombre de lo que se acaba de abrir: «Primera veta · Hambre», «Segunda veta · Masacre»,
+«Sello · Renegado». `UltimoTotal` guarda el último total visto (−1 al arrancar, para no avisar
+de marcas ya ganadas al cargar); si el total baja, como al reiniciar la esfera en Yesod, se
+resincroniza sin avisar y las marcas siguientes vuelven a anunciarse. Medido en PIE con las tres
+subidas y con un reinicio.
+
 ## Lo que hay que vigilar
 
 - `CanBeBlocked` y `PlaySuccessfullParryEffects` son del padre `BP_CombatCharacter`; se sobrescriben en el hijo como se hizo con el Espadón, sin tocar el asset de pago.
