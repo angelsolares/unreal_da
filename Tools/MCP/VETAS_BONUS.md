@@ -1,0 +1,71 @@
+# Vetas de Malakh — bonus por marca
+
+Propuesta del 01/09/2026. Sustituye a los diez bonus de las *Fichas de Conjunciones* (`Kimi3/`)
+por un sistema en **tres vetas**: el jugador recibe algo con la **primera marca** (Mirador), algo
+más con la **segunda** (Gazebo) y el sello de la conjunción con la **tercera** (Gabriel), en vez
+de esperar al cierre de Malkuth. Todo lo de abajo se apoya en piezas que ya existen en el
+proyecto; la columna «gancho» dice cuál.
+
+## Regla de entrega
+
+| marcas | qué se activa | dónde se gana | dónde se juega |
+|---|---|---|---|
+| 1 | la **primera veta**, por la fuerza de esa marca | Sariel, en el Mirador | Mirador → Gazebo |
+| 2 | la **segunda veta**, por el par (misma fuerza o mezcla) | La Fuente, en el Gazebo | Gazebo → Elevador (Gabriel incluido) |
+| 3 | el **sello** de la conjunción (1–10) | Gabriel, en el Elevador | Yesod |
+
+- Las vetas **no se pierden** al ganar la siguiente: en Yesod se llevan las tres.
+- La lectura es la misma que hoy usa la veta visual: `LeerFuerza` 1/2/3 y `TotalMarcas` del
+  GameState, sondeados por un componente (`BP_DA_Vetas`, hermano de `BP_DA_MarcasVisual`).
+- El Debug HUD ya fuerza marcas (`DbgMarcaForzar`), así que cada veta se prueba sin jugar
+  hasta el Mirador.
+- El feedback es el que ya existe: color y brillo de la veta, hit-stop, sacudida, SoundCues.
+
+## Primera veta (una marca)
+
+| fuerza | nombre | qué hace | gancho existente |
+|---|---|---|---|
+| Gracia | **Luz que corrige** | Cada parry logrado devuelve 8 de vida y el aturdido dura 0,4 s más. | `PlaySuccessfullParryEffects` (override en `BP_Malakh_DCS`), `BP_StatsManagerComponent` (Health), duración del `Stun` en `F_StatusEffectParams` |
+| Corrupción | **Hambre** | El combo tarda el doble en resetearse; a partir del 3.er golpe seguido, +15 % de daño. El arma divina se corrompe visualmente con el combo. | `ResetComboCounterWithDelay`, `GetComboCounter`, `AddModifier` (Damage), parámetro `Corrupcion` de `M_DA_ArmaDivina` |
+| Voluntad | **Pie firme** | Inmune al Derribo (golpe de suelo del Gigante, arrojadizos) y la ventana de tech-roll dobla su tamaño. | `StatusEffectsToIgnore` de `BP_StatusEffectsComponent` (+Knockdown), `ANS_DA_TechWindow` |
+
+## Segunda veta (dos marcas)
+
+| par | nombre | qué hace | gancho existente |
+|---|---|---|---|
+| G+G | **Juicio** | Tres parries logrados seguidos sin recibir daño → 6 s de Juicio: todo golpe es crítico, con hit-stop y sacudida; la veta sube a brillo 40. Recibir daño reinicia la cuenta. | contador propio sobre `PlaySuccessfullParryEffects`, `CritMultiplier`, `BP_DA_NotifyHitStop`, `BP_DA_NotifySacudida`, `BrilloVena` |
+| C+C | **Masacre** | Con combo ≥ 4 los enemigos no pueden bloquear: la guardia no existe. | `CanBeBlocked` (override: devuelve `combo < 4`) |
+| V+V | **Silencio** | Un radio de 500 alrededor de Malakh donde el rayo celestial y la lluvia de flechas no hacen daño, y el estandarte del Heraldo no bonifica. | `BP_DA_AuraComponent` reutilizado como aura propia; comprobación en `BP_CelestialRay`, `BP_DA_FlechaLluvia`, `BP_DA_EstandartePlantado` |
+| G+C | **Eclipse** | El golpe siguiente a un parry logrado hace ×2 y suelta el destello del arma. | `AddModifier` de un golpe, `BP_DA_DestelloDescarte` |
+| G+V | **Heraldo** | Tras un parry, 3 s con +25 % de velocidad de ataque y regeneración de stamina ×2. | `AttackSpeed` (StatsManager), `SetRegenMultiplier` (StatsRegenerator) |
+| C+V | **Renegado** | El arma arrojada (tecla G) derriba al que golpea y hace ×2. | `BP_DA_LanzaArrojada`, efecto `Knockdown` propio (`DA_DA_StatusEffect_Knockdown`) |
+
+## Sello de la conjunción (tres marcas)
+
+Se suma a las dos vetas anteriores; es lo que Malakh lleva a Yesod. La numeración es la del PDF.
+
+| # | conjunción | sello |
+|---|---|---|
+| 1 | Ascendido (G G G) | Juicio dura 12 s y entrar en él cura un 25 %. |
+| 2 | Corrupto (C C C) | Masacre desde el 3.er golpe, y cada muerte en cadena cura un 10 %. |
+| 3 | Desatado (V V V) | El Silencio anula también el aura del Inspector y el Derribo del Gigante a cualquier distancia. |
+| 4 | Eclipse Celestial (G G C) | Durante Juicio los golpes rompen guardia (Masacre sin combo). |
+| 5 | Heraldo Libre (G G V) | Durante Juicio la esquiva no gasta stamina. |
+| 6 | Eclipse Oscuro (C C G) | El golpe tras parry, con combo ≥ 4, derriba. |
+| 7 | Renegado (C C V) | El arma arrojada vuelve a la ranura a los 6 s: se arroja sin perderla. |
+| 8 | Libre Luminoso (V V G) | Dentro del Silencio los parries curan el doble. |
+| 9 | Libre Oscuro (V V C) | Dentro del Silencio los enemigos no bloquean. |
+| 10 | Convergente (G C V) | Resonancia: la veta activa rota sola cada 20 s entre las tres primeras vetas; la veta visual cambia de color con ella. |
+
+## Orden de montaje
+
+1. `BP_DA_Vetas` (componente): sondeo cada 0,25 s de `LeerFuerza`, aplica y retira modificadores. Un día.
+2. Primera veta, las tres. Todo son overrides y modificadores: una sesión, probable en la Forja con el Debug HUD.
+3. Segunda veta: Juicio, Masacre y Eclipse primero (solo jugador); Silencio y Renegado tocan actores enemigos.
+4. Sellos: solo cuando las dos vetas anteriores se hayan jugado.
+
+## Lo que hay que vigilar
+
+- `CanBeBlocked` y `PlaySuccessfullParryEffects` son del padre `BP_CombatCharacter`; se sobrescriben en el hijo como se hizo con el Espadón, sin tocar el asset de pago.
+- El parámetro `Corrupcion` solo existe en las armas sobre `M_DA_ArmaDivina` (Lanza, Trompeta). La espada de DCS no lo tiene: Hambre se ve en el arma divina y en la veta del cuerpo.
+- Los números son de arranque; la Forja de Encuentros los mide.
