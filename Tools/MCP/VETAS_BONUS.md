@@ -153,6 +153,31 @@ Segunda veta por pares, en el mismo `Latir` del componente. Verificado en PIE fo
   estado); sin la veta el montage es `AM_DA_Knockdown`, con ella queda en `None`.
 - **Silencio (V+V) sin montar**: toca `BP_CelestialRay`, `BP_DA_FlechaLluvia` y el estandarte.
 
+## Estado: tercera sesión montada (01/09/2026)
+
+Silencio, el destello de Eclipse y ocho de los diez sellos. Verificado en PIE forzando marcas:
+
+- **Silencio (V+V)**: `EnSilencio(Lugar)` en el componente, radio 500 alrededor de Malakh. Medido:
+  verdadero a 0 y 300 uu, falso a 900. Lo consultan el rayo celestial (no hace daño si el punto
+  de impacto cae en Silencio), el aura del Inspector y del estandarte (no bonifica a enemigos
+  dentro) y el `CanBlock` de los cuatro de melé. **Las flechas enemigas no se anulan**: son
+  proyectiles de DCS y no se tocan.
+- **Destello de Eclipse**: `BP_DA_DestelloDescarte` aparece en Malakh al activarse Eclipse; el
+  actor vive menos de un segundo, así que se cuenta justo después del parry.
+- **Sellos**, medidos uno a uno:
+  - 1 Ascendido: Juicio dura 12 s y al entrar cura un 25 % del máximo (vida 22 → 55 con el +8 del parry).
+  - 2 Corrupto: Masacre desde combo 3.
+  - 3 Desatado: Silencio a cualquier distancia (verdadero a 5.000 uu).
+  - 4 Eclipse Celestial: durante Juicio la guardia enemiga queda negada sin combo.
+  - 5 Heraldo Libre: durante Juicio `Stat.Cost.Roll` pasa de 25 a 0 y vuelve a 25 al acabar.
+  - 8 Libre Luminoso: el parry cura 16 aunque la primera veta sea Voluntad.
+  - 9 Libre Oscuro: `BloqueoNegado` verdadero junto a Malakh y falso a 900 uu.
+  - 10 Convergente: `VetaActiva` rota 1 → 2 → 3 cada 20 s y Luz, Hambre y Pie firme la siguen
+    (medido: Hambre a los 10 s, Pie firme a los 22).
+- **Sin montar**: 6 Eclipse Oscuro (el golpe tras parry con combo derriba: hace falta detectar el
+  golpe que aterriza), 7 Renegado (que el arma arrojada vuelva a la ranura a los 6 s), y las curas
+  por muerte en cadena del sello 2.
+
 ## Lo que hay que vigilar
 
 - `CanBeBlocked` y `PlaySuccessfullParryEffects` son del padre `BP_CombatCharacter`; se sobrescriben en el hijo como se hizo con el Espadón, sin tocar el asset de pago.
