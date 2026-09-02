@@ -102,6 +102,34 @@ Reparto por fuerza, medido por golpes del montage (20 sacudidas en total):
 3. Segunda veta: Juicio, Masacre y Eclipse primero (solo jugador); Silencio y Renegado tocan actores enemigos.
 4. Sellos: solo cuando las dos vetas anteriores se hayan jugado.
 
+## Estado: primera sesión montada (01/09/2026)
+
+Hecho y verificado en PIE forzando marcas desde el GameState:
+
+- **`BP_DA_Vetas`** (ActorComponent en `BP_Malakh_DCS`, latido cada 0,25 s como la veta visual):
+  lee `TotalMarcas` y `FuerzaEnPaso(0)`/`(1)` (función nueva del GameState) y decide la primera
+  veta por la fuerza de la **primera** marca. Con la secuencia 3, 1, 2 la veta es Voluntad.
+- **Luz que corrige**: el parry logrado se detecta por `IsInState NewEnumerator3` del StateManager
+  (no se puede sobrescribir `PlaySuccessfullParryEffects` sin perder al padre). Medido: vida
+  60 → 68 → 76 con dos parries, una cura por parry, y nada con Corrupción.
+- **Hambre**: con combo ≥ 3, `AddModifier` de +1,5 a `Stat.Damage` (base 10, o sea +15 %), y se
+  retira al caer el combo. Medido 10 → 13 → 10 con el bonus de prueba a 3. El arma divina se
+  corrompe por combo (0,12 por golpe hasta 0,5) vía `FijarCorrupcion`.
+- **Pie firme**: `BP_DA_StatusEffectLogic_Knockdown` para el montage e interrumpe el estado si el
+  dueño lleva la veta; `ANS_DA_TechWindow` dobla la ventana por `FactorVentanaTech` (2,0 medido).
+  **El Derribo en vivo no se ha probado**: solo el flag y el factor.
+- **Remates**: `TryBackstab` ya no lleva el 0,95 fijo: lee `UmbralRemate` (0,25 / 0,35 / 0,45 /
+  0,55 medidos) y rechaza actores con tag `Boss` (puesto en `BP_DA_GiantBoss` y `BP_Gabriel`).
+  `RematesPermitidos` medido: [9, 6] → + fuerza → los diez con tres marcas. `GetBackstabMontages`
+  del FinisherLogic llama a `ElegirRemate` del jugador cuando `Fin_Indice` del Debug HUD es < 0.
+- Utilidades de prueba en el componente (`DbgLeerVida`, `DbgLeerDano`, `DbgModificarVida`,
+  `DbgForzarParry`, `DbgQuitarParry`): los GameplayTag no se construyen desde Python.
+
+Aplazado a la segunda sesión: el +0,4 s de aturdido del parry (la duración vive en el asset de
+Stun de DCS), el combo que tarda el doble en romperse (el retardo se fija en `MeleeAttack` de
+DCS, no en el componente) y la probabilidad de cámara por veta (`Fin_CamaraProbabilidad` es una
+variable del HUD regenerable y el DSL no escribe variables ajenas).
+
 ## Lo que hay que vigilar
 
 - `CanBeBlocked` y `PlaySuccessfullParryEffects` son del padre `BP_CombatCharacter`; se sobrescriben en el hijo como se hizo con el Espadón, sin tocar el asset de pago.
