@@ -112,6 +112,11 @@ VARIABLES = [
     # en el build no existe el asset, asi que no hay que apagarlo.
     ("CronoInicio", "float", None), ("CronoPasos", "int", None),
     ("CronoOn", "bool", None),
+    # registro de ritmo [BEAT]: ver dsl_crono_tick
+    ("CronoLogT", "float", None), ("CronoMotivo", "string", None),
+    ("CronoVidaPrev", "float", None), ("CronoComboPrev", "int", None),
+    ("CronoAvisado", "bool", None), ("CronoCombateT", "float", None),
+    ("CronoEnemigos", "int", None),
 ]
 
 # --- API de DCS que usa la pestana PLAYER -----------------------------------
@@ -127,6 +132,8 @@ DCS_TARGET = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/"
 RESPAWN = "/Game/DarkAngels/Blueprints/World/BP_RespawnVolume.BP_RespawnVolume_C"
 DATOS_ENEM = CARPETA + "/DA_DA_DebugEnemigos.DA_DA_DebugEnemigos"
 FILA_AI = 24.0
+DCS_COMBAT = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/Combat/"
+              "BP_CombatComponent.BP_CombatComponent_C")
 DCS_AI = "/Game/DynamicCombatSystem/DCS/Blueprints/AI/BP_BaseAI.BP_BaseAI_C"
 DA_ARENA = "/Game/DarkAngels/Blueprints/Combat/BP_DA_Arena.BP_DA_Arena_C"
 DCS_COLL = ("/Game/DynamicCombatSystem/DCS/Blueprints/Components/CollisionHandler/"
@@ -571,17 +578,82 @@ def dsl_crono_reset():
             '  (Variables|Default|SetCronoInicio (Utilities|Time|GetGameTimeinSeconds)))')
 
 
+def dsl_crono_log():
+    """Una linea al log del juego con el prefijo [BEAT]; Tools/MCP/beats.mjs las extrae."""
+    return ('(fn DbgCronoLog (Linea)\n'
+            '  (Development|PrintString :InString (Utilities|String|Append "[BEAT] " Linea)'
+            ' :bPrintToScreen false :bPrintToLog true :Duration 0.0))')
+
+
+def dsl_crono_contexto():
+    """zona | objetivo | vida | enemigos vivos a menos de 15 m | posicion."""
+    return ("\n".join([
+        "(fn DbgCronoContexto ()",
+        "  (bind _pawn (Game|GetPlayerPawn 0))",
+        "  (bind _loc (Transformation|GetActorLocation _pawn))",
+        "  (bind _sm (Actor|GetComponentByClass _pawn \"%s\"))",
+        "  (bind _vida (Interface|GetStatValue _sm \"(TagName=\\\"Stat.Health.Current\\\")\"))",
+        "  (bind _obj (Utilities|String|ToString(Text) (Variables|Default|GetObjectiveText)))",
+        "  (bind _zona (Utilities|String|ToString(Text) (Variables|Default|GetZoneText)))",
+        "  (Variables|Default|SetCronoEnemigos 0)",
+        "  (for _e (Actor|GetAllActorsOfClass \"%s\")",
+        "    (bind _vivo (CanBeAttacked|IsAlive(Message) _e))",
+        "    (if (and _vivo (< (Math|Vector|Distance(Vector) _loc (Transformation|GetActorLocation _e)) 1500.0))",
+        "      (Variables|Default|SetCronoEnemigos (+ (Variables|Default|GetCronoEnemigos) 1))))",
+        "  (return (Utilities|String|Append \"zona=\" (Utilities|String|Append _zona (Utilities|String|Append \" | obj=\" (Utilities|String|Append _obj (Utilities|String|Append \" | vida=\" (Utilities|String|Append (Utilities|String|ToString(Integer) (Math|Float|Truncate _vida)) (Utilities|String|Append \" | enemigos=\" (Utilities|String|Append (Utilities|String|ToString(Integer) (Variables|Default|GetCronoEnemigos)) (Utilities|String|Append \" | pos=\" (Utilities|String|Append (Utilities|String|ToString(Integer) (Math|Float|Truncate (.x _loc))) (Utilities|String|Append \" \" (Utilities|String|Append (Utilities|String|ToString(Integer) (Math|Float|Truncate (.y _loc))) (Utilities|String|Append \" \" (Utilities|String|ToString(Integer) (Math|Float|Truncate (.z _loc))))))))))))))))))"
+    ]) % (DCS_STATS, DCS_AI))
+
+
 def dsl_crono_tick():
-    """Compara el contador del GameState con el ultimo visto; si cambio, a cero."""
-    return ('(fn DbgCronoTick ()\n'
-            '  (bind _gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))\n'
-            '  (Utilities|IsValid _gs\n'
-            '    (:"Is Valid"\n'
-            '      (bind _p (Class|BPDAGameState|LeerPasos _gs))\n'
-            '      (if (!= _p (Variables|Default|GetCronoPasos))\n'
-            '        (Variables|Default|SetCronoPasos _p)\n'
-            '        (CallFunction|DbgCronoReset)))\n'
-            '    (:"Is Not Valid")))')
+    """Reinicia por evento del GameState o por combate (vida que baja, combo que sube);
+    escribe [BEAT] al reiniciar, cada 5 s, y al cumplirse 45 s sin nada."""
+    return ("\n".join([
+        "(fn DbgCronoTick ()",
+        "  (bind _gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))",
+        "  (bind _ahora (Utilities|Time|GetGameTimeinSeconds))",
+        "  (bind _t (- _ahora (Variables|Default|GetCronoInicio)))",
+        "  (bind _seg (Utilities|String|ToString(Integer) (Math|Float|Truncate _t)))",
+        "  (Utilities|IsValid _gs",
+        "    (:\"Is Valid\"",
+        "      (bind _p (Class|BPDAGameState|LeerPasos _gs))",
+        "      (if (!= _p (Variables|Default|GetCronoPasos))",
+        "        (bind _mot (Class|BPDAGameState|LeerUltimoEvento _gs))",
+        "        (bind _ctx (CallFunction|DbgCronoContexto))",
+        "        (if (>= (Variables|Default|GetCronoPasos) 0)",
+        "          (CallFunction|DbgCronoLog :Linea (Utilities|String|Append \"EVENTO \" (Utilities|String|Append _mot (Utilities|String|Append \" tras \" (Utilities|String|Append _seg (Utilities|String|Append \" s | \" _ctx)))))))",
+        "        (Variables|Default|SetCronoPasos _p)",
+        "        (Variables|Default|SetCronoMotivo _mot)",
+        "        (CallFunction|DbgCronoReset)",
+        "        (Variables|Default|SetCronoLogT (+ _ahora 5.0))",
+        "        (Variables|Default|SetCronoAvisado false))",
+        "      (bind _pawn (Game|GetPlayerPawn 0))",
+        "      (bind _sm (Actor|GetComponentByClass _pawn \"%s\"))",
+        "      (bind _cc (Actor|GetComponentByClass _pawn \"%s\"))",
+        "      (bind _vida (Interface|GetStatValue _sm \"(TagName=\\\"Stat.Health.Current\\\")\"))",
+        "      (bind _combo (ComboCounter|GetComboCounter _cc))",
+        "      (bind _pelea (or (< _vida (Variables|Default|GetCronoVidaPrev)) (> _combo (Variables|Default|GetCronoComboPrev))))",
+        "      (if _pelea",
+        "        (if (> (- _ahora (Variables|Default|GetCronoCombateT)) 10.0)",
+        "          (bind _ctx2 (CallFunction|DbgCronoContexto))",
+        "          (CallFunction|DbgCronoLog :Linea (Utilities|String|Append \"COMBATE tras \" (Utilities|String|Append _seg (Utilities|String|Append \" s | \" _ctx2)))))",
+        "        (Variables|Default|SetCronoCombateT _ahora)",
+        "        (CallFunction|DbgCronoReset)",
+        "        (Variables|Default|SetCronoLogT (+ _ahora 5.0))",
+        "        (Variables|Default|SetCronoAvisado false))",
+        # los previos se guardan DESPUES del if: las expresiones puras se evaluan
+        # al consumirse, y si el Set va antes, _pelea compara la vida consigo misma
+        "      (Variables|Default|SetCronoVidaPrev _vida)",
+        "      (Variables|Default|SetCronoComboPrev _combo)",
+        "      (if (>= _ahora (Variables|Default|GetCronoLogT))",
+        "        (Variables|Default|SetCronoLogT (+ _ahora 5.0))",
+        "        (bind _ctx3 (CallFunction|DbgCronoContexto))",
+        "        (CallFunction|DbgCronoLog :Linea (Utilities|String|Append \"+\" (Utilities|String|Append _seg (Utilities|String|Append \" s | \" _ctx3)))))",
+        "      (if (and (>= _t %.1f) (not (Variables|Default|GetCronoAvisado)))",
+        "        (Variables|Default|SetCronoAvisado true)",
+        "        (bind _ctx4 (CallFunction|DbgCronoContexto))",
+        "        (CallFunction|DbgCronoLog :Linea (Utilities|String|Append \"!! 45 s SIN EVENTO NI COMBATE | \" _ctx4))))",
+        "    (:\"Is Not Valid\")))"
+    ]) % (DCS_STATS, DCS_COMBAT, CRONO_PULSO))
 
 
 def dsl_crono_dibujar():
@@ -3356,6 +3428,8 @@ def run():
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
         ("DbgCronoReset", dsl_crono_reset, []),
+        ("DbgCronoLog", dsl_crono_log, [("Linea", "string", True)]),
+        ("DbgCronoContexto", dsl_crono_contexto, [("Texto", "string", False)]),
         ("DbgCronoTick", dsl_crono_tick, []),
         ("DbgCronoDibujar", dsl_crono_dibujar, []),
         ("DbgInicioTick", dsl_inicio_tick, []),
@@ -3446,6 +3520,7 @@ def run():
                                                  "DbgHabilitado": True,
                                                  "CronoOn": True,
                                                  "CronoPasos": -1,
+                                                 "CronoCombateT": -100.0,
                                                  "DbgEscala": ESCALA_DEF,
                                                  "DbgMovMult": 1.0,
                                                  "DbgDmgMult": 1.0,
