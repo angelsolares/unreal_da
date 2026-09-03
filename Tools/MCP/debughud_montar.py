@@ -107,6 +107,11 @@ VARIABLES = [
     ("DbgLog", "string", "ARRAY"),
     ("DbgLastHP", "float", None), ("DbgLastHPObj", "float", None),
     ("DbgTrazas", "bool", None), ("DbgColisiones", "bool", None),
+    # --- CRONO (02/09/2026) --- cronometro de pruebas en el borde superior.
+    # Se dibuja SIEMPRE que exista el Debug HUD, con el panel abierto o cerrado;
+    # en el build no existe el asset, asi que no hay que apagarlo.
+    ("CronoInicio", "float", None), ("CronoPasos", "int", None),
+    ("CronoOn", "bool", None),
 ]
 
 # --- API de DCS que usa la pestana PLAYER -----------------------------------
@@ -545,6 +550,66 @@ def dsl_inicio_tick():
     return "\n".join(l)
 
 
+# ------------------------------------------------------------ cronometro
+#
+# Cronometro de pruebas (02/09/2026). Mide el tiempo desde el ULTIMO EVENTO
+# NARRATIVO: la fuente es el contador `PasosNarrativos` del GameState, que suben
+# `MarcarFlag`, `AnotarMarca`, las arenas al sellarse y al abrirse, y cualquier
+# interactuable al usarse (todos llaman a `MarcarEvento`). Cuando el contador
+# cambia, el cronometro vuelve a cero. Cada 45 s el texto da un pulso: crece y
+# se pone amarillo durante 0,9 s y vuelve a blanco y a su tamano.
+CRONO_PULSO = 45.0
+CRONO_PULSO_DUR = 0.9
+CRONO_ESCALA = 1.15          # en unidades de SC_TEXTO (fuente cocida a 4)
+CRONO_AMARILLO = "(Utilities|Struct|MakeLinearColor 1.0 0.85 0.2 1.0)"
+CRONO_BLANCO = "(Utilities|Struct|MakeLinearColor 1.0 1.0 1.0 1.0)"
+CRONO_SOMBRA = "(Utilities|Struct|MakeLinearColor 0.0 0.0 0.0 0.8)"
+
+
+def dsl_crono_reset():
+    return ('(fn DbgCronoReset ()\n'
+            '  (Variables|Default|SetCronoInicio (Utilities|Time|GetGameTimeinSeconds)))')
+
+
+def dsl_crono_tick():
+    """Compara el contador del GameState con el ultimo visto; si cambio, a cero."""
+    return ('(fn DbgCronoTick ()\n'
+            '  (bind _gs (Utilities|Casting|CastToBP_DA_GameState (Game|GetGameState)))\n'
+            '  (Utilities|IsValid _gs\n'
+            '    (:"Is Valid"\n'
+            '      (bind _p (Class|BPDAGameState|LeerPasos _gs))\n'
+            '      (if (!= _p (Variables|Default|GetCronoPasos))\n'
+            '        (Variables|Default|SetCronoPasos _p)\n'
+            '        (CallFunction|DbgCronoReset)))\n'
+            '    (:"Is Not Valid")))')
+
+
+def dsl_crono_dibujar():
+    """SS.mmm centrado arriba. Sombra negra debajo para que se lea sobre el cielo."""
+    l = ['(fn DbgCronoDibujar ()',
+         '  (if (not (CallFunction|DbgPermitido))',
+         '    (return))',
+         '  (if (not (Variables|Default|GetCronoOn))',
+         '    (return))',
+         '  (bind esc (Variables|Default|GetDbgEscala))',
+         '  (bind _t (- (Utilities|Time|GetGameTimeinSeconds) (Variables|Default|GetCronoInicio)))',
+         '  (bind _seg (Math|Float|Truncate _t))',
+         '  (bind _ms (Math|Float|Truncate (* (- _t (Math|Conversions|ToFloat(Integer) _seg)) 1000.0)))',
+         # sin operador de modulo para floats en el DSL: t - 45*trunc(t/45)
+         '  (bind _fase (- _t (* %.1f (Math|Conversions|ToFloat(Integer) (Math|Float|Truncate (/ _t %.1f))))))' % (CRONO_PULSO, CRONO_PULSO),
+         '  (bind _pulso (and (< _fase %.2f) (>= _t %.1f)))' % (CRONO_PULSO_DUR, CRONO_PULSO),
+         '  (bind _k (select _pulso (- 1.0 (/ _fase %.2f)) 0.0))' % CRONO_PULSO_DUR,
+         '  (bind _escala (* (* %.4f (+ 1.0 (* 0.5 _k))) esc))' % (CRONO_ESCALA / FUENTE_COCIDA),
+         '  (bind _pad (select (< _ms 10) "00" (select (< _ms 100) "0" "")))',
+         '  (bind _txt (Utilities|String|Append (Utilities|String|ToString(Integer) _seg)'
+         ' (Utilities|String|Append "." (Utilities|String|Append _pad (Utilities|String|ToString(Integer) _ms)))))',
+         '  (bind _x (- (* (.x (Viewport|GetViewportSize)) 0.5) (* (+ 34.0 (* 17.0 _k)) esc)))',
+         '  (bind _y (* 10.0 esc))',
+         '  (HUD|DrawText self _txt %s (+ _x (* 2.0 esc)) (+ _y (* 2.0 esc)) (Variables|Default|GetFuente) _escala)' % CRONO_SOMBRA,
+         '  (HUD|DrawText self _txt (select _pulso %s %s) _x _y (Variables|Default|GetFuente) _escala))' % (CRONO_AMARILLO, CRONO_BLANCO)]
+    return "\n".join(l)
+
+
 def dsl_tick():
     # Sobreescribe la funcion vacia del padre. Se llama desde EventTick.
     l = ['(fn DbgTick ()',
@@ -560,6 +625,8 @@ def dsl_tick():
     # con ramas, que es TERMINAL, y dejarlo aqui metia TODO el resto del tick
     # --la tecla . incluida-- dentro de su rama else. Ver la memoria del DSL.
     l.append('  (CallFunction|DbgInicioTick)')
+    # Cronometro de pruebas: vigila el contador de eventos del GameState.
+    l.append('  (CallFunction|DbgCronoTick)')
     cond = " ".join('(Game|Player|WasInputKeyJustPressed :self pc :Key "%s")' % k
                     for k in TECLAS)
     # God Mode / recurso infinito / velocidad: se mantienen desde el tick, y
@@ -582,6 +649,9 @@ def dsl_tick():
 def dsl_dibujar():
     """Marco, cabecera y pestanas; luego delega en la pestana activa."""
     l = ['(fn DbgDibujar ()',
+         # El cronometro se pinta ANTES de la guarda de visibilidad: se ve con el
+         # panel cerrado. Dentro comprueba DbgPermitido y CronoOn por su cuenta.
+         '  (CallFunction|DbgCronoDibujar)',
          '  (if (not (Variables|Default|GetDbgVisible))',
          '    (return false))',
          '  (if (not (CallFunction|DbgPermitido))',
@@ -3285,6 +3355,9 @@ def run():
         ("DbgClick", dsl_click, [("MX", "float", True), ("MY", "float", True)]),
         # Los dos ganchos, ya como sobreescritura de funcion (el padre las
         # declara con valor de retorno justo para que esto sea posible).
+        ("DbgCronoReset", dsl_crono_reset, []),
+        ("DbgCronoTick", dsl_crono_tick, []),
+        ("DbgCronoDibujar", dsl_crono_dibujar, []),
         ("DbgInicioTick", dsl_inicio_tick, []),
         ("DbgTick", dsl_tick, []),
         ("DbgDibujar", dsl_dibujar, []),
@@ -3371,6 +3444,8 @@ def run():
     obj("set_properties", {"instance": cdo,
                            "values": json.dumps({"DbgDatos": DATOS,
                                                  "DbgHabilitado": True,
+                                                 "CronoOn": True,
+                                                 "CronoPasos": -1,
                                                  "DbgEscala": ESCALA_DEF,
                                                  "DbgMovMult": 1.0,
                                                  "DbgDmgMult": 1.0,
