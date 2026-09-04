@@ -241,6 +241,15 @@ Content/DarkAngels/AI/BT_DA_Arquero.uasset
 Content/DarkAngels/Environment/Props/SM_DA_Talud_Esquiva.uasset
 Content/DarkAngels/Environment/Props/SM_DA_Talud_Salto.uasset
 
+# SM_DA_Frutal_Cerezo_01 y _02 son COPIAS de los dos cerezos de FruitTree_Collection
+# (pack de Fab, ya excluido) con la colision cambiada: el original trae un unico convex
+# que envuelve la copa entera, con las paredes en cono, y el jugador se sube al arbol
+# andando. Se sustituye por una capsula vertical. Las regenera
+# Tools/MCP/frutales_colision.py.
+Content/DarkAngels/Environment/Props/SM_DA_Frutal_Cerezo_01.uasset
+Content/DarkAngels/Environment/Props/SM_DA_Frutal_Cerezo_02.uasset
+
+
 # DT_DA_2H_Montages es una COPIA de DT_Player_1H_Montages (DCS, de pago) con las
 # filas de ataque ligero y pesado cambiadas por las del Espadon. Misma regla que
 # BT_DA_Guerrero. La regenera Tools/MCP/espadon_montages.py, que ademas construye
