@@ -109,7 +109,7 @@ def registrar():
     P = {"ruta": construir_ruta(w), "i": 0, "diario": [], "t0": unreal.GameplayStatics.get_time_seconds(w), "pos_prev": None,
          "t_prog": 0.0, "t_scan": 0.0, "enemigos": [], "t_ataque": 0.0, "fotos": 0, "errores": {},
          "pausa": False, "fin": False, "t_salto": 0.0, "combate_desde": None, "t_int": 0.0, "modo": "andar",
-         "tipo_ataque": 0, "pendiente": None, "opcion": 1}
+         "tipo_ataque": 0, "pendiente": None, "opcion": 1, "rastro": [], "tramposos": 0, "bloqueos": []}
     builtins.PILOTO = P
 
     def nota(txt):
@@ -164,6 +164,16 @@ def registrar():
                 return
             ahora = unreal.GameplayStatics.get_time_seconds(w)
             pos = pawn.get_actor_location()
+            # --- rastro: una miga por segundo, con lo que se esta pisando
+            if ahora - P.get("t_miga", -9.0) > 1.0:
+                P["t_miga"] = ahora
+                hit = unreal.SystemLibrary.line_trace_single(
+                    w, V(pos.x, pos.y, pos.z), V(pos.x, pos.y, pos.z - 300),
+                    unreal.TraceTypeQuery.ECC_VISIBILITY, False, [pawn],
+                    unreal.DrawDebugTrace.NONE, False)
+                t = hit.to_tuple() if hit else None
+                suelo = (t[9].get_actor_label() if t[9] else "?") if t and t[0] else "AIRE"
+                P["rastro"].append((round(ahora, 1), round(pos.x), round(pos.y), round(pos.z), suelo, P["modo"]))
             # --- enemigos cercanos, cada 0.5 s
             if ahora - P["t_scan"] > 0.5:
                 P["t_scan"] = ahora
@@ -295,8 +305,16 @@ def registrar():
                     if int(atasco) % 4 == 2:
                         nota("atasco en (%.0f %.0f %.0f) hacia %s: rodeo y salto" % (pos.x, pos.y, pos.z, nombre or "punto %d" % P["i"]))
             pawn.add_movement_input(avance, 1.0, False)
-            if ahora - P["t_prog"] > 9.0:
-                nota("TELEPORT a %s (%.0f %.0f %.0f) tras %.0f s atascado" % (nombre or "punto %d" % P["i"], dest.x, dest.y, dest.z, ahora - P["t_prog"]))
+            if ahora - P["t_prog"] > P.get("paciencia", 9.0):
+                if P.get("sin_teleport"):
+                    P["bloqueos"] = P.get("bloqueos", [])
+                    P["bloqueos"].append((round(ahora, 1), round(pos.x), round(pos.y), round(pos.z), nombre or "punto %d" % P["i"], round(dest.x), round(dest.y), round(dist)))
+                    nota("BLOQUEADO en (%.0f %.0f %.0f) hacia %s, a %.0f uu: lo salto de la ruta" % (pos.x, pos.y, pos.z, nombre or "punto %d" % P["i"], dist))
+                    P["i"] += 1
+                    P["t_prog"] = ahora; P["pos_prev"] = None
+                    return
+                P["tramposos"] = P.get("tramposos", 0) + 1
+                nota("TELEPORT (TRAMPA %d) a %s (%.0f %.0f %.0f) tras %.0f s atascado" % (P["tramposos"], nombre or "punto %d" % P["i"], dest.x, dest.y, dest.z, ahora - P["t_prog"]))
                 pawn.set_actor_location(V(dest.x, dest.y, dest.z + 100), False, True)
                 P["t_prog"] = ahora; P["pos_prev"] = None
         except Exception as e:
@@ -347,6 +365,25 @@ TRAMOS = {
         ("ZONA Gazebo", V(64000, 14600, -20), ""),
         ("ZONA Santuario", V(42850, 47800, 110), ""),
     ], prep_gazebo),
+    # el Umbral (donde esta la espada) hasta el Mirador, por el corredor oeste
+    "umbral_mirador": ([
+        ("Umbral (espada)", V(10186, -30200, 20), ""),
+        ("", V(8000, -29000, -40), ""),
+        ("", V(7000, -26000, -40), ""),
+        ("", V(7000, -20000, -40), ""),
+        ("", V(7000, -14000, -40), ""),
+        ("", V(8500, -10000, -40), ""),
+        ("", V(11000, -8800, -40), ""),
+        ("ZONA Mirador", V(12350, -7060, -20), ""),
+        ("Decision Sariel", V(12229, -4989, 319), ""),
+    ], None),
+    # la misma subida pero en linea recta al norte, que es lo que intentaba el piloto
+    "umbral_mirador_recto": ([
+        ("Umbral (espada)", V(10186, -30200, 20), ""),
+        ("", V(11000, -25000, -40), ""),
+        ("", V(11400, -20000, -40), ""),
+        ("ZONA Mirador", V(12350, -7060, -20), ""),
+    ], None),
     "fuente_puente": ([
         ("Decision Fuente", V(44598, 48048, 17), ""),
         ("ZONA Puente", V(21219, 60661, 20), ""),
@@ -407,5 +444,9 @@ elif a[0] == "saltar":
 elif a[0] == "opcion":
     builtins.PILOTO["opcion"] = int(a[1]); print("opcion", a[1])
 elif a[0] == "guardar":
-    json.dump(builtins.PILOTO["diario"], open(CARPETA + "/piloto_diario.json", "w"), ensure_ascii=False, indent=0)
-    print("guardado", len(builtins.PILOTO["diario"]))
+    P = builtins.PILOTO
+    json.dump(P["diario"], open(CARPETA + "/piloto_diario.json", "w"), ensure_ascii=False, indent=0)
+    json.dump({"rastro": P.get("rastro", []), "tramposos": P.get("tramposos", 0), "bloqueos": P.get("bloqueos", [])},
+              open(CARPETA + "/piloto_rastro.json", "w"), ensure_ascii=False)
+    print("guardado: diario %d, migas %d, teleports %d, bloqueos %d" % (
+        len(P["diario"]), len(P.get("rastro", [])), P.get("tramposos", 0), len(P.get("bloqueos", []))))
