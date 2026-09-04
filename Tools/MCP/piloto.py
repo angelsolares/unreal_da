@@ -6,7 +6,7 @@ CARPETA = r"C:/Users/angel/AppData/Local/Temp/claude/D--Game-Projects-Unreal-DA-
 BEATS = [
     ("Inicio Jardin", V(-15297, -31618, 156), ""),
     ("Altar (Senda de Setos)", V(-4000, -30900, 20), "interact"),
-    ("", V(10186, -30200, 0), ""),
+    ("Espada del Custodio", V(10295, -30075, 20), "interact"),
     ("", V(12380, -8420, -20), ""),
     ("ZONA Mirador", V(12350, -7060, -20), ""),
     ("Decision Sariel", V(12229, -4989, 319), "decision"),
@@ -32,7 +32,7 @@ BEATS = [
     ("ZONA Yesod", V(-36240, 25236, -20), ""),
 ]
 INTERACTUABLES = ("AltarOfContemplation", "GabrielHeraldo", "BP_DA_Interactuable", "BP_DA_Decision", "BP_DA_Paso",
-                  "Tablet", "Cofre", "RespuestaGabriel", "LevelDoor", "DoorToMirror")
+                  "Tablet", "Cofre", "RespuestaGabriel", "LevelDoor", "DoorToMirror", "DroppedWeapon")
 ENEMIGO_CLASES = ("BP_DA_Vigilante", "BP_DA_Lancero", "BP_DA_Arquero", "BP_DA_Heraldo", "BP_DA_Inspector",
                   "BP_DA_Corrupto", "BP_DA_GiantBoss", "BP_Gabriel", "BP_DA_Angel", "BP_DA_Elite")
 
@@ -150,6 +150,10 @@ def registrar():
                 error("Interact " + cn, e)
         if not hechos:
             nota("sin interactuable en %s" % nombre_p)
+        armas = [x.get_actor_label() for x in pawn.get_attached_actors() if "Sword" in x.get_actor_label() or "Spear" in x.get_actor_label() or "Axe" in x.get_actor_label()]
+        if armas and not P.get("armado"):
+            P["armado"] = True
+            nota("ARMADO: %s" % ", ".join(armas))
 
     def tick(dt):
         try:
@@ -212,9 +216,19 @@ def registrar():
                 pc.set_control_rotation(unreal.Rotator(0.0, 0.0, yaw))
                 # sacar el arma: sin ToggleCombat CanMeleeAttack nunca es True
                 if ahora - P["combate_desde"] > P.get("cap_combate", 90.0):
+                    # El piloto no gana peleas: los enemigos bloquean casi todo. Para poder
+                    # validar el resto del nivel se remata por script y queda anotado.
+                    rematados = []
                     for _d, _e in P["enemigos"]:
+                        try:
+                            if _e.get_controller():
+                                _e.call_method("Kill", ())
+                                rematados.append(_e.get_actor_label())
+                        except Exception as e:
+                            error("Kill", e)
                         P.setdefault("ignorados", set()).add(_e.get_actor_label())
-                    nota("COMBATE LARGO (%.0f s) con %s: lo dejo y sigo" % (P.get("cap_combate", 90.0), obj.get_actor_label()))
+                    P["asistidos"] = P.get("asistidos", 0) + len(rematados)
+                    nota("REMATE ASISTIDO tras %.0f s: %s" % (P.get("cap_combate", 90.0), ", ".join(rematados) or "nadie"))
                     P["enemigos"] = []
                     P["t_scan"] = ahora
                     return
