@@ -118,7 +118,7 @@ def registrar():
     P = {"ruta": construir_ruta(w), "i": 0, "diario": [], "t0": unreal.GameplayStatics.get_time_seconds(w), "pos_prev": None,
          "t_prog": 0.0, "t_scan": 0.0, "enemigos": [], "t_ataque": 0.0, "fotos": 0, "errores": {},
          "pausa": False, "fin": False, "t_salto": 0.0, "combate_desde": None, "t_int": 0.0, "modo": "andar",
-         "tipo_ataque": 0, "pendiente": None, "opcion": 1, "rastro": [], "tramposos": 0, "bloqueos": []}
+         "tipo_ataque": 0, "cadencia": 1.6, "pendiente": None, "opcion": 1, "rastro": [], "tramposos": 0, "bloqueos": []}
     builtins.PILOTO = P
 
     def nota(txt):
@@ -283,11 +283,11 @@ def registrar():
                             nota("ToggleCombat (sacar arma)")
                     except Exception as e:
                         error("ToggleCombat", e)
-                if d > 130:
+                if d > 100:
                     pawn.add_movement_input(dirv.normal(), 1.0, False)
                 else:
                     pawn.set_actor_rotation(unreal.Rotator(0.0, 0.0, yaw), False)
-                    if ahora - P["t_ataque"] > 0.8:
+                    if ahora - P["t_ataque"] > P.get("cadencia", 1.6):
                         P["t_ataque"] = ahora
                         try:
                             if pawn.call_method("CanMeleeAttack", ()):
