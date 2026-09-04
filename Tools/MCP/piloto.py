@@ -95,7 +95,16 @@ def construir_ruta(w):
             ia, ib = cerca(a), cerca(p)
             da = ((piezas[ia][0] - a.x) ** 2 + (piezas[ia][1] - a.y) ** 2) ** 0.5
             db = ((piezas[ib][0] - p.x) ** 2 + (piezas[ib][1] - p.y) ** 2) ** 0.5
-            cam = dijkstra(ia, ib) if (da < 9000 and db < 9000 and tipo != "saltos") else None
+            cam = dijkstra(ia, ib) if (da < 4000 and db < 4000 and tipo != "saltos") else None
+            # cordura: si la carretera da un rodeo absurdo respecto a la linea recta,
+            # es que las losas cercanas no son de este tramo. Mejor ir en linea.
+            if cam:
+                largo = da + db
+                for u, v in zip(cam, cam[1:]):
+                    largo += ((piezas[u][0] - piezas[v][0]) ** 2 + (piezas[u][1] - piezas[v][1]) ** 2) ** 0.5
+                recta = ((p.x - a.x) ** 2 + (p.y - a.y) ** 2) ** 0.5
+                if largo > 2.5 * max(recta, 1.0):
+                    cam = None
             if cam:
                 for idx in cam[1:-1]:
                     x, y, z = piezas[idx]
@@ -168,6 +177,14 @@ def registrar():
                 return
             ahora = unreal.GameplayStatics.get_time_seconds(w)
             pos = pawn.get_actor_location()
+            # muerte y reaparicion: el pawn cambia de identidad
+            _id = pawn.get_name()
+            if P.get("pawn_id") is None:
+                P["pawn_id"] = _id
+            elif _id != P["pawn_id"]:
+                P["pawn_id"] = _id
+                P["muertes"] = P.get("muertes", 0) + 1
+                nota("MUERTO Y REAPARECIDO (%d) en (%.0f %.0f %.0f)" % (P["muertes"], pos.x, pos.y, pos.z))
             # --- rastro: una miga por segundo, con lo que se esta pisando
             if ahora - P.get("t_miga", -9.0) > 1.0:
                 P["t_miga"] = ahora
@@ -219,6 +236,25 @@ def registrar():
                     # El piloto no gana peleas: los enemigos bloquean casi todo. Para poder
                     # validar el resto del nivel se remata por script y queda anotado.
                     rematados = []
+                    # si estamos dentro de una arena SELLADA, hay que vaciarla entera:
+                    # sus oleadas siguen entrando y sus muros no dejan salir.
+                    for _ar in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor):
+                        if not _ar.get_class().get_name().startswith("BP_DA_Arena"):
+                            continue
+                        try:
+                            if _ar.get_editor_property("Estado") != 1:
+                                continue
+                            _c = _ar.get_actor_location()
+                            _r = _ar.get_editor_property("RadioArena")
+                            if abs(pos.x - _c.x) > _r or abs(pos.y - _c.y) > _r:
+                                continue
+                            for _q in list(_ar.get_editor_property("Enemigos")) + list(_ar.get_editor_property("EnemigosActivos")):
+                                if _q and _q.get_controller():
+                                    _q.call_method("Kill", ())
+                                    rematados.append(_q.get_actor_label())
+                            nota("ARENA VACIADA: %s (oleada %s/%s)" % (_ar.get_actor_label(), _ar.get_editor_property("OleadaActual"), _ar.get_editor_property("MaxOleada")))
+                        except Exception as e:
+                            error("vaciar arena", e)
                     for _d, _e in P["enemigos"]:
                         try:
                             if _e.get_controller():
@@ -376,6 +412,9 @@ TRAMOS = {
     ], prep_sariel),
     "gazebo_santuario": ([
         ("Tableta", V(64000, 16920, 202), ""),
+        ("", V(64000, 16100, 202), ""),      # la plataforma esta amurallada:
+        ("", V(64000, 15600, 76), ""),       # la unica salida es la escalera del sur
+        ("", V(64000, 15100, -40), ""),
         ("ZONA Gazebo", V(64000, 14600, -20), ""),
         ("ZONA Santuario", V(42850, 47800, 110), ""),
     ], prep_gazebo),
@@ -398,6 +437,34 @@ TRAMOS = {
         ("", V(11400, -20000, -40), ""),
         ("ZONA Mirador", V(12350, -7060, -20), ""),
     ], None),
+    "heraldo_gazebo": ([
+        ("Arena Heraldo", V(34540, 15065, -38), ""),
+        ("ZONA Gazebo", V(64000, 14600, -20), ""),
+        ("Tableta", V(64000, 16920, 202), "interact"),
+    ], None),
+    "puente_anfiteatro": ([
+        ("ZONA Puente", V(21219, 60661, 20), ""),
+        ("Snare 1 del Puente", V(18833, 61530, 657), ""),
+        ("Snare 5 del Puente", V(10080, 64716, 2979), ""),
+        ("ZONA Anfiteatro", V(-18127, 51184, 144), ""),
+    ], None),
+    "anfiteatro_elevador": ([
+        ("ZONA Anfiteatro", V(-18127, 51184, 144), ""),
+        ("ZONA Elevador", V(-18127, 16384, -20), ""),
+        ("Arena Elevador", V(-18127, 17984, -70), "interact"),
+    ], None),
+    "elevador_gc1": ([
+        ("Arena Elevador", V(-18127, 17984, -70), ""),
+        ("ZONA Gabriel C1", V(-18086, 12244, -20), ""),
+    ], None),
+    "gc2_gc3": ([
+        ("ZONA Gabriel C2", V(-23295, -5412, 130), ""),
+        ("ZONA Gabriel C3", V(-36240, -5594, -20), ""),
+    ], None),
+    "gc3_yesod": ([
+        ("ZONA Gabriel C3", V(-36240, -5594, -20), ""),
+        ("ZONA Yesod", V(-36240, 25236, -20), ""),
+    ], None),
     "fuente_puente": ([
         ("Decision Fuente", V(44598, 48048, 17), ""),
         ("ZONA Puente", V(21219, 60661, 20), ""),
@@ -418,7 +485,14 @@ if a[0] == "tramo":
         prep(unreal.GameplayStatics.get_game_state(w0))
     p0 = unreal.GameplayStatics.get_player_pawn(w0, 0)
     ini = BEATS[0][1]
-    p0.set_actor_location(V(ini.x, ini.y, ini.z + 60), False, True)
+    # soltar SOBRE el suelo real: la posicion de un Character es el centro de su
+    # capsula, asi que dejarlo a la cota del beat lo entierra y no se mueve nunca.
+    _h = unreal.SystemLibrary.line_trace_single(w0, V(ini.x, ini.y, ini.z + 2000), V(ini.x, ini.y, ini.z - 500),
+                                                unreal.TraceTypeQuery.ECC_VISIBILITY, False, [p0],
+                                                unreal.DrawDebugTrace.NONE, False)
+    _t = _h.to_tuple() if _h else None
+    _suelo = _t[4].z if _t and _t[0] else ini.z
+    p0.set_actor_location(V(ini.x, ini.y, _suelo + 130.0), False, True)
     P = registrar()
     P["cap_combate"] = 40.0
     print("tramo", a[1], "ruta de", len(P["ruta"]), "puntos; pawn en", p0.get_actor_location())
