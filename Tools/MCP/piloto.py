@@ -201,6 +201,13 @@ def registrar():
                 yaw = math.degrees(math.atan2(dirv.y, dirv.x))
                 pc.set_control_rotation(unreal.Rotator(0.0, 0.0, yaw))
                 # sacar el arma: sin ToggleCombat CanMeleeAttack nunca es True
+                if ahora - P["combate_desde"] > P.get("cap_combate", 90.0):
+                    for _d, _e in P["enemigos"]:
+                        P.setdefault("ignorados", set()).add(_e.get_actor_label())
+                    nota("COMBATE LARGO (%.0f s) con %s: lo dejo y sigo" % (P.get("cap_combate", 90.0), obj.get_actor_label()))
+                    P["enemigos"] = []
+                    P["t_scan"] = ahora
+                    return
                 if ahora - max(P.get("t_golpe", 0.0), P["combate_desde"]) > 30.0:
                     P.setdefault("ignorados", set()).add(obj.get_actor_label())
                     nota("INALCANZABLE %s (30 s sin poder golpearlo, d=%.0f, dz=%.0f): lo ignoro" % (obj.get_actor_label(), d, op.z - pos.z))
@@ -306,8 +313,65 @@ def parar():
         P["fin"] = True
 
 
+# Tramos sueltos: (beats, preparacion). La preparacion recibe el GameState.
+def quitar(prefijo):
+    # los encuentros que en una partida real ya estarian muertos al llegar aqui
+    w0 = gw()
+    n = 0
+    for a in unreal.GameplayStatics.get_all_actors_of_class(w0, unreal.Character):
+        if a.get_actor_label().startswith(prefijo):
+            a.destroy_actor(); n += 1
+    print("quitados", n, "de", prefijo)
+
+
+def prep_sariel(gs):
+    gs.call_method("AnotarMarca", (1, "ORDEN"))
+    quitar("Enc_T1_")
+
+
+def prep_gazebo(gs):
+    gs.call_method("MarcarFlag", ("GAZEBO_TABLETA_LEIDA",))
+    quitar("Enc_T4_")
+
+
+TRAMOS = {
+    "sariel_claro": ([
+        ("Decision Sariel", V(12229, -4989, 319), ""),
+        ("", V(12380, -8420, -20), ""), ("", V(12300, -17200, -20), ""), ("", V(11900, -18800, 70), ""),
+        ("", V(11400, -20300, -20), ""), ("", V(11400, -22300, 416), ""), ("", V(11200, -26100, 261), ""),
+        ("", V(11200, -28100, -20), ""), ("", V(13155, -28878, -20), ""),
+        ("ZONA El Claro", V(26212, -22920, 100), ""),
+    ], prep_sariel),
+    "gazebo_santuario": ([
+        ("Tableta", V(64000, 16920, 202), ""),
+        ("ZONA Gazebo", V(64000, 14600, -20), ""),
+        ("ZONA Santuario", V(42850, 47800, 110), ""),
+    ], prep_gazebo),
+    "fuente_puente": ([
+        ("Decision Fuente", V(44598, 48048, 17), ""),
+        ("ZONA Puente", V(21219, 60661, 20), ""),
+    ], None),
+    "gc1_gc2": ([
+        ("ZONA Gabriel C1", V(-18086, 12244, -20), ""),
+        ("ZONA Gabriel C2", V(-23295, -5412, 130), ""),
+    ], None),
+}
+
 a = open(CARPETA + "/accion.txt").read().strip().split()
-if a[0] == "arrancar":
+if a[0] == "tramo":
+    parar()
+    beats, prep = TRAMOS[a[1]]
+    BEATS[:] = beats
+    w0 = gw()
+    if prep:
+        prep(unreal.GameplayStatics.get_game_state(w0))
+    p0 = unreal.GameplayStatics.get_player_pawn(w0, 0)
+    ini = BEATS[0][1]
+    p0.set_actor_location(V(ini.x, ini.y, ini.z + 60), False, True)
+    P = registrar()
+    P["cap_combate"] = 40.0
+    print("tramo", a[1], "ruta de", len(P["ruta"]), "puntos; pawn en", p0.get_actor_location())
+elif a[0] == "arrancar":
     parar()
     w0 = gw()
     p0 = unreal.GameplayStatics.get_player_pawn(w0, 0)
