@@ -209,8 +209,12 @@ lanzador de Epic. El gancho estaba dentro de DCS.
   salir con motivo `DISCARD`, cuenta 6 s y llama a `DarArmaTemporal` con la ruta guardada. Medido
   en PIE: arrojada la lanza vuelve a la mano a los 6 s, y con otro sello no vuelve.
 
-Sigue sin montar la cura por muerte en cadena del sello 2: pide un gancho de muerte, y `Kill` del
-enemigo tiene el mismo problema de forma que `PlayGetHitEffects`.
+La cura por muerte en cadena del sello 2 quedo montada el 04/09/2026. No hay gancho de muerte:
+`Kill` es del padre de DCS y tiene el mismo problema de forma que `PlayGetHitEffects`, asi que se
+cuenta. `CurarCadena`, en su propio temporizador de 0,25 s para no tocar `Latir`, cuenta los
+enemigos vivos a menos de `RadioCadena` (2.000) y, si el numero baja con el sello 2 y Masacre
+activa, cura `CuraCadena` (10 %) de la vida maxima por cada baja. Medido en PIE con tres marcas
+de Corrupcion y el combo a 4: la vida sube 50 -> 60 -> 70, diez por baja.
 
 ## Lo que hay que vigilar
 
