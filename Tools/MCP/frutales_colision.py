@@ -1,4 +1,8 @@
-# Copias de los dos cerezos de FruitTree_Collection con colision de TRONCO.
+# Copias de los NUEVE frutales de FruitTree_Collection con colision de TRONCO.
+#
+# El 05/09 se comprobo que las nueve mallas del pack que usa el nivel tienen el
+# mismo defecto, no solo los cerezos: el piloto llevaba tres sesiones parandose
+# en (61498, 14422) y estaba SUBIDO a Gazebo_Frutal_8, con el suelo a z=366.
 #
 # Los originales traen un unico convex que envuelve la copa entera: sus paredes
 # suben en cono (radio 135 a z+40, 316 a z+400) y el jugador se sube al arbol
@@ -12,7 +16,14 @@ import unreal
 ORIGEN = "/Game/FruitTree_Collection/Meshes/"
 DESTINO = "/Game/DarkAngels/Environment/Props/"
 COPIAS = [("SM_Cherry_Tree_01", "SM_DA_Frutal_Cerezo_01"),
-          ("SM_Cherry_Tree_02", "SM_DA_Frutal_Cerezo_02")]
+          ("SM_Cherry_Tree_02", "SM_DA_Frutal_Cerezo_02"),
+          ("SM_Lemon_Tree_02", "SM_DA_Frutal_Limonero_02"),
+          ("SM_Lemon_Tree_05", "SM_DA_Frutal_Limonero_05"),
+          ("SM_Orange_Tree_01", "SM_DA_Frutal_Naranjo_01"),
+          ("SM_Orange_Tree_03", "SM_DA_Frutal_Naranjo_03"),
+          ("SM_Peach_Tree_01", "SM_DA_Frutal_Melocotonero_01"),
+          ("SM_Peach_Tree_03", "SM_DA_Frutal_Melocotonero_03"),
+          ("SM_Pomegranate_Tree_01", "SM_DA_Frutal_Granado_01")]
 
 
 def capsula_de_tronco(malla):

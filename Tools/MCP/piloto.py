@@ -343,9 +343,32 @@ def registrar():
                 nota("movimiento ignorado tras interaccion: liberado")
                 P["t_prog"] = ahora
             if atasco > 1.5:
-                lado = 1.0 if int(atasco / 2.5) % 2 == 0 else -1.0
-                perp = V(-avance.y * lado, avance.x * lado, 0)
-                avance = (avance * 0.4 + perp).normal()
+                # Rodear de verdad: abanico de trazas de capsula y me quedo con el primer
+                # rumbo libre. Un tronco de 60 uu paraba al piloto para siempre porque el
+                # rodeo viejo (0,4 de frente + perpendicular) seguia empujando contra el.
+                lado = 1.0 if int(atasco / 3.0) % 2 == 0 else -1.0
+                if ahora > P.get("t_rodeo", 0.0):
+                    base = math.degrees(math.atan2(avance.y, avance.x))
+                    libre = None
+                    for off in (0, 35, -35, 70, -70, 88, -88):
+                        rad = math.radians(base + off * lado)
+                        d = V(math.cos(rad), math.sin(rad), 0)
+                        h = unreal.SystemLibrary.capsule_trace_single(
+                            w, V(pos.x, pos.y, pos.z + 10), V(pos.x + d.x * 350, pos.y + d.y * 350, pos.z + 10),
+                            45.0, 80.0, unreal.TraceTypeQuery.ECC_VISIBILITY, False, [pawn],
+                            unreal.DrawDebugTrace.NONE, False)
+                        t = h.to_tuple() if h else None
+                        if not (t and t[0]):
+                            libre = d
+                            break
+                    P["rodeo"] = libre
+                    P["t_rodeo"] = ahora + 0.5
+                salida = P.get("rodeo")
+                if salida is not None:
+                    avance = salida
+                else:
+                    perp = V(-avance.y * lado, avance.x * lado, 0)
+                    avance = (avance * 0.4 + perp).normal()
                 if atasco > 2.0 and ahora - P["t_salto"] > 1.5:
                     P["t_salto"] = ahora
                     try:
