@@ -24,6 +24,10 @@ BEATS = [
     ("Snare 1 del Puente", V(18833, 61530, 657), ""),
     ("Snare 5 del Puente", V(10080, 64716, 2979), ""),
     ("ZONA Anfiteatro", V(-18127, 51184, 144), ""),
+    # OJO con este tramo: las Elevador_Terraza son MOVABLE y OSCILAN en X (+-1200 uu,
+    # periodo ~6,7 s, desfasadas entre si). Cualquier punto de paso fijo aqui es
+    # mentira, y el hueco entre dos losas va de ~250 uu cuando se alinean a ~2400
+    # cuando estan en oposicion. Hay que cronometrarlas como la Snare y los picos.
     ("ZONA Elevador", V(-18127, 16384, -20), ""),
     ("Arena Elevador", V(-18127, 17984, -70), "interact"),
     ("ZONA Gabriel C1", V(-18086, 12244, -20), ""),
@@ -420,11 +424,48 @@ def registrar():
                 P["pos_prev"] = pos; P["t_prog"] = ahora; P["dist_mejor"] = dist
             atasco = ahora - P["t_prog"]
             avance = dirv.normal()
+            # --- huecos del tramo de saltos: si el suelo se acaba justo delante pero
+            # vuelve a haber a un salto de distancia, saltar en vez de caerse. Malakh
+            # llega a 327 uu (JumpZ 400, gravedad 1, 400 de andar) y el hueco mas ancho
+            # de Anfiteatro->Elevador mide 250.
+            if ahora > P.get("t_hueco", 0.0):
+                P["t_hueco"] = ahora + 0.05
+                P["saltar_hueco"] = False
+                # Sin puerta de is_falling a proposito: si esta en el aire, CustomJump
+                # no hace nada (JumpMaxCount 1), y filtrar por ahi solo esconde casos.
+                if True:
+                    def _hay_suelo(d):
+                        _x, _y = pos.x + avance.x * d, pos.y + avance.y * d
+                        _h = unreal.SystemLibrary.line_trace_single(
+                            w, V(_x, _y, pos.z + 40.0), V(_x, _y, pos.z - 260.0),
+                            unreal.TraceTypeQuery.ECC_VISIBILITY, False, [pawn],
+                            unreal.DrawDebugTrace.NONE, False)
+                        _t = _h.to_tuple() if _h else None
+                        return bool(_t and _t[0])
+                    # Una sola sonda NO vale: con el borde a 170 y un hueco de 100, la
+                    # sonda cae al otro lado y el hueco no se ve. Hay que barrer, con
+                    # paso menor que el hueco mas estrecho.
+                    faltan = [_d for _d in (60.0, 100.0, 140.0, 180.0, 220.0) if not _hay_suelo(_d)]
+                    if faltan and faltan[0] <= 140.0:
+                        _tras = faltan[-1]
+                        for _d in (_tras + 80.0, _tras + 140.0, _tras + 200.0):
+                            if _hay_suelo(_d):
+                                P["saltar_hueco"] = True
+                                break
+            if P.get("saltar_hueco") and ahora - P.get("t_salto", 0.0) > 0.8:
+                P["t_salto"] = ahora
+                try:
+                    pawn.call_method("CustomJump", ())
+                    P["saltos_hueco"] = P.get("saltos_hueco", 0) + 1
+                    nota("SALTO un hueco (%d) en (%.0f %.0f %.0f)" % (
+                        P["saltos_hueco"], pos.x, pos.y, pos.z))
+                except Exception as e:
+                    error("CustomJump hueco", e)
             if atasco > 4.0 and pc.is_move_input_ignored():
                 pc.reset_ignore_move_input(); pc.reset_ignore_look_input()
                 nota("movimiento ignorado tras interaccion: liberado")
                 P["t_prog"] = ahora
-            if atasco > 1.5:
+            if atasco > 1.5 and not P.get("saltar_hueco"):
                 # Rodear de verdad: abanico de trazas de capsula y me quedo con el primer
                 # rumbo libre. Un tronco de 60 uu paraba al piloto para siempre porque el
                 # rodeo viejo (0,4 de frente + perpendicular) seguia empujando contra el.
@@ -636,6 +677,17 @@ TRAMOS = {
         ("", V(11400, -20000, -40), ""),
         ("ZONA Mirador", V(12350, -7060, -20), ""),
     ], None),
+    # Solo el primer hueco de las losas, para probar el salto sin el anfiteatro de por medio
+    "salto_prueba": ([
+        ("Antes del hueco", V(-18127, 41600, 44), ""),
+        ("", V(-18127, 40200, 44), ""),
+        ("Tras el hueco", V(-18127, 39400, 44), ""),
+    ], None),
+    "anfiteatro_elevador": ([
+        ("ZONA Anfiteatro", V(-18127, 51184, 144), ""),
+        ("ZONA Elevador", V(-18127, 16384, -20), ""),
+        ("Arena Elevador", V(-18127, 17984, -70), ""),
+    ], None),
     "heraldo_gazebo": ([
         ("Arena Heraldo", V(34540, 15065, -38), ""),
         ("ZONA Gazebo", V(64000, 14600, -20), ""),
@@ -646,11 +698,6 @@ TRAMOS = {
         ("Snare 1 del Puente", V(18833, 61530, 657), ""),
         ("Snare 5 del Puente", V(10080, 64716, 2979), ""),
         ("ZONA Anfiteatro", V(-18127, 51184, 144), ""),
-    ], None),
-    "anfiteatro_elevador": ([
-        ("ZONA Anfiteatro", V(-18127, 51184, 144), ""),
-        ("ZONA Elevador", V(-18127, 16384, -20), ""),
-        ("Arena Elevador", V(-18127, 17984, -70), "interact"),
     ], None),
     "elevador_gc1": ([
         ("Arena Elevador", V(-18127, 17984, -70), ""),
