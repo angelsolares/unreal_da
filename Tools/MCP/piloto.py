@@ -132,6 +132,22 @@ def registrar():
             P["snares"].append((_a, _luz[0] if _luz else None, float(_a.get_editor_property("RadioImpacto"))))
         except Exception:
             pass
+    # Las filas de picos del Puente: suben y bajan con periodo 3 s (senoidal, 95 uu de
+    # recorrido) y fases escalonadas. Se cachea un pico de cada fila para leer su altura.
+    P["picos"] = []
+    _sm = list(unreal.GameplayStatics.get_all_actors_of_class(w, unreal.StaticMeshActor))
+    for _a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor):
+        if _a.get_class().get_name() != "BP_DA_PicoFila_C":
+            continue
+        _i = _a.get_actor_label().split("_")[-1]
+        _reps = [x for x in _sm if x.get_actor_label().startswith("Pico_%s_" % _i)]
+        if not _reps:
+            continue
+        try:
+            _rad = float(_a.get_editor_property("RadioDano"))
+        except Exception:
+            _rad = 90.0
+        P["picos"].append((_a, _reps[0], _rad, _a.get_actor_location().z))
     P["t_snare"] = 0.0
     P["espera_snare"] = 0.0
     builtins.PILOTO = P
@@ -191,15 +207,66 @@ def registrar():
             if pawn is None or pc is None:
                 return
             ahora = unreal.GameplayStatics.get_time_seconds(w)
-            pos = pawn.get_actor_location()
-            # muerte y reaparicion: el pawn cambia de identidad
+            # Al morir, el pawn se destruye y la envoltura que devuelve get_player_pawn
+            # queda podrida: leerla lanza "ObjectInstance is null". Eso ES la muerte;
+            # antes se comia la excepcion 23.000 veces y la partida seguia desde el
+            # checkpoint como si nada.
+            try:
+                pos = pawn.get_actor_location()
+            except Exception:
+                if ahora - P.get("t_muerte", -99.0) > 3.0:
+                    P["t_muerte"] = ahora
+                    P["muertes"] = P.get("muertes", 0) + 1
+                    nota("MUERTO (%d): el pawn se destruyo, reaparece en checkpoint" % P["muertes"])
+                P["pos_prev"] = None
+                P["t_prog"] = ahora
+                P["ult_pos"] = None
+                return
+            # muerte y reaparicion, por identidad del pawn Y por salto de posicion:
+            # el respawn puede reutilizar el nombre, y un salto de kilometros andando
+            # no existe.
             _id = pawn.get_name()
             if P.get("pawn_id") is None:
                 P["pawn_id"] = _id
             elif _id != P["pawn_id"]:
                 P["pawn_id"] = _id
-                P["muertes"] = P.get("muertes", 0) + 1
-                nota("MUERTO Y REAPARECIDO (%d) en (%.0f %.0f %.0f)" % (P["muertes"], pos.x, pos.y, pos.z))
+                P["ult_pos"] = None
+                if ahora - P.get("t_muerte", -99.0) > 3.0:      # no contar dos veces
+                    P["t_muerte"] = ahora
+                    P["muertes"] = P.get("muertes", 0) + 1
+                    nota("MUERTO Y REAPARECIDO (%d) en (%.0f %.0f %.0f)" % (P["muertes"], pos.x, pos.y, pos.z))
+            # MaxFarsa baja 10 en cada muerte (minimo 50): es el unico contador exacto
+            # que se puede leer. Los otros dos avisos (pawn destruido, salto de km) no
+            # ven la muerte cuando el respawn reutiliza el pawn y cae cerca, que es lo
+            # que pasa en el Puente.
+            try:
+                _mf = float(pawn.get_editor_property("MaxFarsa"))
+            except Exception:
+                _mf = None
+            if _mf is not None:
+                _mf0 = P.get("maxfarsa")
+                if _mf0 is None:
+                    P["maxfarsa"] = _mf
+                elif _mf < _mf0 - 0.5:
+                    P["maxfarsa"] = _mf
+                    P["t_muerte"] = ahora
+                    P["muertes"] = P.get("muertes", 0) + 1
+                    nota("MUERTO (%d) en (%.0f %.0f %.0f): MaxFarsa %.0f -> %.0f" % (
+                        P["muertes"], pos.x, pos.y, pos.z, _mf0, _mf))
+                elif _mf > _mf0 + 0.5:
+                    P["maxfarsa"] = _mf
+            _ant = P.get("ult_pos")
+            if _ant is not None and ahora > P.get("salto_ok", 0.0):
+                _salto = math.hypot(pos.x - _ant[0], pos.y - _ant[1])
+                if _salto > 4000.0:
+                    if ahora - P.get("t_muerte", -99.0) > 3.0:
+                        P["t_muerte"] = ahora
+                        P["muertes"] = P.get("muertes", 0) + 1
+                        nota("MUERTO (%d): salto de %.0f uu a (%.0f %.0f %.0f), reaparecido" % (
+                            P["muertes"], _salto, pos.x, pos.y, pos.z))
+                    P["pos_prev"] = None
+                    P["t_prog"] = ahora
+            P["ult_pos"] = (pos.x, pos.y)
             # --- rastro: una miga por segundo, con lo que se esta pisando
             if ahora - P.get("t_miga", -9.0) > 1.0:
                 P["t_miga"] = ahora
@@ -405,19 +472,73 @@ def registrar():
                 P["t_snare"] = ahora + 0.2
                 delante = V(pos.x + avance.x * 420.0, pos.y + avance.y * 420.0, pos.z)
                 cerca = None
+                encima = None
                 for _sn, _luz, _rad in P["snares"]:
                     if _luz is None or _luz.intensity <= 0.0:
                         continue
                     _pi = _sn.get_editor_property("PuntoImpacto")
                     if not (_pi.x or _pi.y):
                         continue
-                    _d = min(math.hypot(_pi.x - pos.x, _pi.y - pos.y),
-                             math.hypot(_pi.x - delante.x, _pi.y - delante.y))
-                    if _d < _rad + 150.0:
-                        cerca = (_sn.get_actor_label(), _d)
+                    _aqui = math.hypot(_pi.x - pos.x, _pi.y - pos.y)
+                    _alli = math.hypot(_pi.x - delante.x, _pi.y - delante.y)
+                    if _aqui < _rad + 120.0 and (encima is None or _aqui < encima[1]):
+                        encima = (_sn.get_actor_label(), _aqui, _pi)
+                    elif _alli < _rad + 150.0 and cerca is None:
+                        cerca = (_sn.get_actor_label(), _alli)
+                # Si el rayo cae DONDE YA ESTOY, frenar no salva: hay que apartarse.
+                # Con cinco directores de radio 1500-1800 solapados, pararse te deja
+                # quieto dentro del circulo del siguiente.
+                P["huida"] = None
+                if encima is not None:
+                    _nom, _d, _pi = encima
+                    _base = math.degrees(math.atan2(pos.y - _pi.y, pos.x - _pi.x))
+                    for _off in (0, 30, -30, 60, -60, 90, -90):
+                        _r = math.radians(_base + _off)
+                        _dir = V(math.cos(_r), math.sin(_r), 0)
+                        _dst = V(pos.x + _dir.x * 300.0, pos.y + _dir.y * 300.0, pos.z)
+                        _sh = unreal.SystemLibrary.line_trace_single(
+                            w, V(_dst.x, _dst.y, _dst.z + 150), V(_dst.x, _dst.y, _dst.z - 400),
+                            unreal.TraceTypeQuery.ECC_VISIBILITY, False, [pawn],
+                            unreal.DrawDebugTrace.NONE, False)
+                        _st = _sh.to_tuple() if _sh else None
+                        if not (_st and _st[0]):
+                            continue                      # sin suelo: por ahi se cae
+                        _ch = unreal.SystemLibrary.capsule_trace_single(
+                            w, V(pos.x, pos.y, pos.z + 10), V(_dst.x, _dst.y, pos.z + 10),
+                            45.0, 80.0, unreal.TraceTypeQuery.ECC_VISIBILITY, False, [pawn],
+                            unreal.DrawDebugTrace.NONE, False)
+                        _ct = _ch.to_tuple() if _ch else None
+                        if _ct and _ct[0]:
+                            continue
+                        P["huida"] = (_dir, _nom, _d)
                         break
                 P["freno_snare"] = cerca
-            frenado = P.get("freno_snare")
+                # Filas de picos: dañan 12 al pasar y suben/bajan cada 3 s. Se frena
+                # ANTES de meterse en la banda; si ya estoy dentro, lo que salva es
+                # salir andando, no pararse encima.
+                pica = None
+                for _fa, _rep, _rad, _zf in P["picos"]:
+                    _fl = _fa.get_actor_location()
+                    _aqui = math.hypot(_fl.x - pos.x, _fl.y - pos.y)
+                    _alli = math.hypot(_fl.x - delante.x, _fl.y - delante.y)
+                    if _alli > _rad + 220.0:
+                        continue
+                    if _aqui < _rad + 60.0:
+                        continue
+                    if _rep.get_actor_location().z > _zf - 45.0:
+                        pica = (_fa.get_actor_label(), _alli)
+                        break
+                P["freno_picos"] = pica
+            huida = P.get("huida")
+            if huida is not None:
+                _dir, _nom, _d = huida
+                if ahora - P.get("t_aviso_huida", -9.0) > 2.0:
+                    P["t_aviso_huida"] = ahora
+                    nota("SNARE: me aparto de %s, lo tengo a %.0f uu" % (_nom, _d))
+                P["t_prog"] = ahora
+                pawn.add_movement_input(_dir, 1.0, False)
+                return
+            frenado = P.get("freno_snare") or P.get("freno_picos")
             if frenado is not None:
                 # tope de 3 s: con cadencia 1,4 y aviso de 1,5 el puente casi nunca
                 # esta limpio, y quedarse parado para siempre no es cruzar.
@@ -426,7 +547,7 @@ def registrar():
                 if ahora - P["espera_snare"] < 3.0:
                     P["t_prog"] = ahora          # esperar no es atascarse
                     if int((ahora - P["espera_snare"]) * 2) == 0:
-                        nota("SNARE: freno por %s a %.0f uu" % frenado)
+                        nota("FRENO por %s a %.0f uu" % frenado)
                     return
             else:
                 P["espera_snare"] = 0.0
@@ -442,6 +563,8 @@ def registrar():
                 P["tramposos"] = P.get("tramposos", 0) + 1
                 nota("TELEPORT (TRAMPA %d) a %s (%.0f %.0f %.0f) tras %.0f s atascado" % (P["tramposos"], nombre or "punto %d" % P["i"], dest.x, dest.y, dest.z, ahora - P["t_prog"]))
                 pawn.set_actor_location(V(dest.x, dest.y, dest.z + 100), False, True)
+                P["salto_ok"] = ahora + 1.5      # este salto lo hago yo, no es muerte
+                P["ult_pos"] = None
                 P["t_prog"] = ahora; P["pos_prev"] = None
         except Exception as e:
             error("tick", e)
@@ -570,6 +693,7 @@ if a[0] == "tramo":
     _suelo = _t[4].z if _t and _t[0] else ini.z
     p0.set_actor_location(V(ini.x, ini.y, _suelo + 130.0), False, True)
     P = registrar()
+    P["salto_ok"] = unreal.GameplayStatics.get_time_seconds(w0) + 2.0
     P["cap_combate"] = 40.0
     print("tramo", a[1], "ruta de", len(P["ruta"]), "puntos; pawn en", p0.get_actor_location())
 elif a[0] == "arrancar":
