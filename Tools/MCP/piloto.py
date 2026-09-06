@@ -152,6 +152,23 @@ def registrar():
         except Exception:
             _rad = 90.0
         P["picos"].append((_a, _reps[0], _rad, _a.get_actor_location().z))
+    # Las losas oscilantes del Elevador: MOVABLE, +-1200 uu en X y ~6,7 s de periodo,
+    # desfasadas. Se cachean de norte a sur; de dos apiladas en el mismo sitio se queda
+    # la de arriba, que es la que se pisa.
+    P["losas"] = []
+    _ts = []
+    for _a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor):
+        if not _a.get_actor_label().startswith("Elevador_Terraza"):
+            continue
+        _l = _a.get_actor_location(); _b = _a.get_actor_bounds(False)
+        _ts.append([_l.y, _l.z, _a, _b[1].x, _b[1].y])
+    _ts.sort(key=lambda t: -t[0])
+    for _t in _ts:
+        if P["losas"] and abs(_t[0] - P["losas"][-1][0]) < 400:
+            if _t[1] > P["losas"][-1][1]:
+                P["losas"][-1] = _t
+            continue
+        P["losas"].append(_t)
     P["t_snare"] = 0.0
     P["espera_snare"] = 0.0
     builtins.PILOTO = P
@@ -424,6 +441,49 @@ def registrar():
                 P["pos_prev"] = pos; P["t_prog"] = ahora; P["dist_mejor"] = dist
             atasco = ahora - P["t_prog"]
             avance = dirv.normal()
+            # --- losas oscilantes: no hay ruta fija posible. Se persigue la X de la
+            # losa siguiente desde dentro de la mia y solo se baja al borde sur cuando
+            # las dos se alinean; el salto lo dispara luego el detector de huecos.
+            if P["losas"]:
+                _mia = None
+                for _k, _lo in enumerate(P["losas"]):
+                    _l = _lo[2].get_actor_location()
+                    if abs(pos.x - _l.x) <= _lo[3] and abs(pos.y - _l.y) <= _lo[4] and pos.z > _l.z:
+                        _mia = _k
+                        break
+                if _mia is not None and _mia + 1 < len(P["losas"]) and dest.y < P["losas"][_mia][0] - 500:
+                    _lm = P["losas"][_mia][2].get_actor_location()
+                    _ls = P["losas"][_mia + 1][2].get_actor_location()
+                    _ey = P["losas"][_mia][4]
+                    _dx = _ls.x - _lm.x
+                    # Histeresis: se entra a por el borde con |dX| < 250 y no se
+                    # abandona hasta 450, o la ventana se cierra mientras andas y el
+                    # piloto se pasa la vida yendo y viniendo sin saltar nunca.
+                    _yendo = P.get("ir_al_borde_%d" % _mia, False)
+                    if not _yendo and abs(_dx) < 250.0:
+                        _yendo = True
+                        P["t_borde"] = ahora
+                    elif _yendo and (abs(_dx) > 450.0 or ahora - P.get("t_borde", ahora) > 5.0):
+                        _yendo = False
+                    P["ir_al_borde_%d" % _mia] = _yendo
+                    # Dos fases. Alinearse manda: mientras el rumbo sea lateral, las
+                    # sondas de hueco miran a lo largo de la losa —donde SI hay suelo—
+                    # y el salto no se dispara nunca. Solo cuando estoy encarado con la
+                    # losa siguiente se va al sur en linea recta.
+                    _ox = _lm.x + max(-_ey * 0.75, min(_ey * 0.75, _dx))
+                    _encarado = abs(pos.x - _ls.x) < 350.0
+                    if _yendo and _encarado:
+                        avance = V(0.0, -1.0, 0.0)
+                    else:
+                        _oy = _lm.y - _ey * 0.4
+                        _v = V(_ox - pos.x, _oy - pos.y, 0.0)
+                        avance = _v.normal() if _v.length() > 60.0 else V(0.0, -1.0, 0.0)
+                    P["t_prog"] = ahora          # esperar la alineacion no es atascarse
+                    if ahora - P.get("t_aviso_losa", -9.0) > 2.0:
+                        P["t_aviso_losa"] = ahora
+                        nota("LOSA %d->%d dX=%+.0f  al borde=%s  me faltan %.0f uu" % (
+                            _mia, _mia + 1, _dx, ("SI/encarado" if _encarado else "SI") if _yendo else "no",
+                            (pos.y - (_lm.y - _ey))))
             # --- huecos del tramo de saltos: si el suelo se acaba justo delante pero
             # vuelve a haber a un salto de distancia, saltar en vez de caerse. Malakh
             # llega a 327 uu (JumpZ 400, gravedad 1, 400 de andar) y el hueco mas ancho
