@@ -365,6 +365,7 @@ def registrar():
                 if ahora > P.get("t_rodeo", 0.0):
                     base = math.degrees(math.atan2(avance.y, avance.x))
                     libre = None
+                    giro = 0
                     for off in (0, 35, -35, 70, -70, 88, -88):
                         rad = math.radians(base + off * lado)
                         d = V(math.cos(rad), math.sin(rad), 0)
@@ -375,9 +376,13 @@ def registrar():
                         t = h.to_tuple() if h else None
                         if not (t and t[0]):
                             libre = d
+                            giro = off
                             break
                     P["rodeo"] = libre
-                    P["t_rodeo"] = ahora + 0.5
+                    # Comprometerse con el rodeo. Re-evaluar cada 0,5 s hacia que el
+                    # piloto se apartase, volviese a apuntar al objetivo y rebotase
+                    # contra el mismo arbol: 794 s clavado a la salida del Gazebo.
+                    P["t_rodeo"] = ahora + (2.5 if giro else 0.5)
                 salida = P.get("rodeo")
                 if salida is not None:
                     avance = salida
