@@ -119,6 +119,21 @@ def registrar():
          "t_prog": 0.0, "t_scan": 0.0, "enemigos": [], "t_ataque": 0.0, "fotos": 0, "errores": {},
          "pausa": False, "fin": False, "t_salto": 0.0, "combate_desde": None, "t_int": 0.0, "modo": "andar",
          "tipo_ataque": 0, "cadencia": 1.6, "pendiente": None, "opcion": 1, "rastro": [], "tramposos": 0, "bloqueos": []}
+    # Los directores de la Celestial Snare del Puente: se cachean una vez porque
+    # el tick los consulta a 5 Hz. Solo los que tienen Activo puesto hieren.
+    P["snares"] = []
+    for _a in unreal.GameplayStatics.get_all_actors_of_class(w, unreal.Actor):
+        if not _a.get_actor_label().startswith("Snare_"):
+            continue
+        try:
+            if not _a.get_editor_property("Activo"):
+                continue
+            _luz = _a.get_components_by_class(unreal.PointLightComponent)
+            P["snares"].append((_a, _luz[0] if _luz else None, float(_a.get_editor_property("RadioImpacto"))))
+        except Exception:
+            pass
+    P["t_snare"] = 0.0
+    P["espera_snare"] = 0.0
     builtins.PILOTO = P
 
     def nota(txt):
@@ -377,6 +392,39 @@ def registrar():
                         error("CustomJump", e)
                     if int(atasco) % 4 == 2:
                         nota("atasco en (%.0f %.0f %.0f) hacia %s: rodeo y salto" % (pos.x, pos.y, pos.z, nombre or "punto %d" % P["i"]))
+            # --- Celestial Snare: el aviso dura 1,5 s y el rayo solo hiere dentro de
+            # RadioImpacto. El punto se elige POR DELANTE del jugador, asi que la
+            # jugada buena no es esquivar de lado en un puente estrecho: es frenar
+            # y dejar que caiga delante. La luz Aviso a intensidad > 0 es el aviso.
+            if P["snares"] and ahora > P.get("t_snare", 0.0):
+                P["t_snare"] = ahora + 0.2
+                delante = V(pos.x + avance.x * 420.0, pos.y + avance.y * 420.0, pos.z)
+                cerca = None
+                for _sn, _luz, _rad in P["snares"]:
+                    if _luz is None or _luz.intensity <= 0.0:
+                        continue
+                    _pi = _sn.get_editor_property("PuntoImpacto")
+                    if not (_pi.x or _pi.y):
+                        continue
+                    _d = min(math.hypot(_pi.x - pos.x, _pi.y - pos.y),
+                             math.hypot(_pi.x - delante.x, _pi.y - delante.y))
+                    if _d < _rad + 150.0:
+                        cerca = (_sn.get_actor_label(), _d)
+                        break
+                P["freno_snare"] = cerca
+            frenado = P.get("freno_snare")
+            if frenado is not None:
+                # tope de 3 s: con cadencia 1,4 y aviso de 1,5 el puente casi nunca
+                # esta limpio, y quedarse parado para siempre no es cruzar.
+                if P["espera_snare"] == 0.0:
+                    P["espera_snare"] = ahora
+                if ahora - P["espera_snare"] < 3.0:
+                    P["t_prog"] = ahora          # esperar no es atascarse
+                    if int((ahora - P["espera_snare"]) * 2) == 0:
+                        nota("SNARE: freno por %s a %.0f uu" % frenado)
+                    return
+            else:
+                P["espera_snare"] = 0.0
             pawn.add_movement_input(avance, 1.0, False)
             if ahora - P["t_prog"] > P.get("paciencia", 9.0):
                 if P.get("sin_teleport"):
