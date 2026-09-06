@@ -171,6 +171,21 @@ def registrar():
         P["losas"].append(_t)
     P["t_snare"] = 0.0
     P["espera_snare"] = 0.0
+    # Calidad al minimo mientras mide el piloto. NO es cosmetico: a calidad plena este
+    # nivel corre a 11,4 fps en PIE (medido con get_world_delta_seconds), y a esa cadencia
+    # se distorsiona todo lo que depende del tiempo — las losas del Elevador, los picos y
+    # la Snare del Puente, y el impulso que la plataforma imparte al saltar. Con esto sube
+    # a ~50 fps. Ojo: con la calidad asi NO se puede juzgar ni rendimiento ni imagen.
+    for _c in ("sg.ViewDistanceQuality 0", "sg.AntiAliasingQuality 0", "sg.ShadowQuality 0",
+               "sg.GlobalIlluminationQuality 0", "sg.ReflectionQuality 0", "sg.PostProcessQuality 0",
+               "sg.TextureQuality 0", "sg.EffectsQuality 0", "sg.FoliageQuality 0",
+               "sg.ShadingQuality 0", "r.ScreenPercentage 50", "r.Lumen.DiffuseIndirect.Allow 0",
+               "r.Lumen.Reflections.Allow 0", "foliage.DensityScale 0.2", "grass.DensityScale 0.2",
+               "t.MaxFPS 0", "Slate.bAllowThrottling 0", "t.IdleWhenNotForeground 0"):
+        try:
+            unreal.SystemLibrary.execute_console_command(w, _c)
+        except Exception:
+            pass
     builtins.PILOTO = P
 
     def nota(txt):
