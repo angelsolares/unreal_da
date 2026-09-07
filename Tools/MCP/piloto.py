@@ -460,6 +460,7 @@ def registrar():
             # losa siguiente desde dentro de la mia y solo se baja al borde sur cuando
             # las dos se alinean; el salto lo dispara luego el detector de huecos.
             if P["losas"]:
+                P["losa_fase"] = None
                 _mia = None
                 for _k, _lo in enumerate(P["losas"]):
                     _l = _lo[2].get_actor_location()
@@ -494,6 +495,7 @@ def registrar():
                         _v = V(_ox - pos.x, _oy - pos.y, 0.0)
                         avance = _v.normal() if _v.length() > 60.0 else V(0.0, -1.0, 0.0)
                     P["t_prog"] = ahora          # esperar la alineacion no es atascarse
+                    P["losa_fase"] = (_mia, _yendo, _encarado, pos.y - (_lm.y - _ey), _dx)
                     if ahora - P.get("t_aviso_losa", -9.0) > 2.0:
                         P["t_aviso_losa"] = ahora
                         nota("LOSA %d->%d dX=%+.0f  al borde=%s  me faltan %.0f uu" % (
